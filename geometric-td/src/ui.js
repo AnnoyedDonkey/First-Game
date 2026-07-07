@@ -30,7 +30,7 @@ const el = {
   overlay: document.getElementById("overlay"),
   overlayTitle: document.getElementById("overlay-title"),
   overlaySubtitle: document.getElementById("overlay-subtitle"),
-  overlayButton: document.getElementById("overlay-button"),
+  overlayButtons: document.getElementById("overlay-buttons"),
 };
 
 // Cache last-drawn values so we only touch the DOM when they change.
@@ -198,17 +198,31 @@ export function showLevelSelect(levels, completedIds, onPick) {
     });
     el.levelList.appendChild(btn);
   }
+
+  // Skill tree entry point on the main menu — with a point count so
+  // unspent points are impossible to miss.
+  const points = getSkillPoints();
+  const skillBtn = document.createElement("button");
+  skillBtn.className = "level-button skill-entry";
+  skillBtn.innerHTML =
+    `<span>SKILL TREE</span>` +
+    `<span class="${points > 0 ? "level-points" : "level-done"}">` +
+    (points > 0 ? `● ${points} POINT${points === 1 ? "" : "S"} TO SPEND` : "—") +
+    `</span>`;
+  skillBtn.addEventListener("click", openSkillTree);
+  el.levelList.appendChild(skillBtn);
+
   el.levelOverlay.classList.remove("hidden");
 }
 
 // ---------- Skill tree overlay ----------
 
 // onSkillBought lets main.js refresh live tower stats after a purchase.
+let skillBoughtCallback = () => {};
+
 export function initSkillTree(onSkillBought) {
-  el.skillsButton.addEventListener("click", () => {
-    renderSkillList(onSkillBought);
-    el.skillOverlay.classList.remove("hidden");
-  });
+  skillBoughtCallback = onSkillBought;
+  el.skillsButton.addEventListener("click", openSkillTree);
   el.skillClose.addEventListener("click", () => {
     el.skillOverlay.classList.add("hidden");
     resetConfirmState();
@@ -225,6 +239,12 @@ export function initSkillTree(onSkillBought) {
       setTimeout(resetConfirmState, 3000);
     }
   });
+}
+
+// Open the skill tree from anywhere (HUD, level select, end-of-battle).
+export function openSkillTree() {
+  renderSkillList(skillBoughtCallback);
+  el.skillOverlay.classList.remove("hidden");
 }
 
 function resetConfirmState() {
@@ -273,12 +293,21 @@ export function onWaveButtonTap(handler) {
   el.waveButton.addEventListener("click", handler);
 }
 
-export function showOverlay({ title, subtitle, buttonText, type, onButton }) {
+// buttons: [{ text, onTap, secondary }] — first button is the primary
+// action, secondary:true renders quieter (skill tree, main menu...).
+export function showOverlay({ title, subtitle, type, buttons }) {
   el.overlayTitle.textContent = title;
   el.overlaySubtitle.textContent = subtitle;
-  el.overlayButton.textContent = buttonText;
   el.overlay.className = type; // "win" or "loss"
-  el.overlayButton.onclick = onButton;
+
+  el.overlayButtons.innerHTML = "";
+  for (const spec of buttons) {
+    const btn = document.createElement("button");
+    btn.className = "big-button" + (spec.secondary ? " secondary" : "");
+    btn.textContent = spec.text;
+    btn.addEventListener("click", spec.onTap);
+    el.overlayButtons.appendChild(btn);
+  }
 }
 
 export function hideOverlay() {

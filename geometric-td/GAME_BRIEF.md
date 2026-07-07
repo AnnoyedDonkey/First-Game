@@ -39,6 +39,16 @@ increments; maintainable over clever; stability over features.
 - **C** — money/XP economy, upgrade panel, 10 tuned waves, real win/loss ✅
 - **D** — localStorage persistence: roster, skill tree, reset button ✅
 
+## Campaign (5 levels, July 2026)
+1. **First Contact** — entry level; beatable fresh with good play, punishes sloppy openings
+2. **Signal Breach** — short path, denied corners; veterans give the edge
+3. **Dark Relay** — edge-hugging path, walled center; requires a leveled roster (fresh optimal play loses)
+4. **Split Second** — brutally short path, big opening bankroll, fast enemies; post-L3 roster wins ~6/10 core
+5. **Core Siege** — spiral with 3 interior triple-coverage pockets; same roster LOSES with perimeter tactics, wins from the pockets — a tactics puzzle
+
+Difficulty philosophy (user): each level should not fall on the first try —
+only through leveling up or changing tactics.
+
 ## Backlog (user-requested)
 - Fast-forward button: toggle 2x game speed during waves (DEBUG.gameSpeed exists;
   needs a UI button + probably per-battle, not global)

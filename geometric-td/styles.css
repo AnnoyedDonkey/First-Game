@@ -147,6 +147,13 @@ button.hud-item {
 
 .level-button .level-done { color: var(--neon-green); font-size: 12px; }
 
+.level-button.skill-entry { border-color: var(--neon-magenta); }
+.level-button .level-points {
+  color: var(--neon-magenta);
+  font-size: 12px;
+  text-shadow: 0 0 8px rgba(255, 63, 212, 0.6);
+}
+
 /* ---------- Skill tree overlay ---------- */
 
 #skill-overlay {
@@ -294,6 +301,23 @@ button.hud-item {
   color: var(--text-dim);
   font-size: 14px;
   line-height: 1.5;
+}
+
+#overlay-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 300px;
+}
+
+#overlay-buttons .big-button { min-width: 0; width: 100%; }
+
+/* Secondary actions (skill tree, main menu) are visually quieter */
+#overlay-buttons .big-button.secondary {
+  color: var(--text-dim);
+  border-color: var(--panel-border);
+  text-shadow: none;
 }
 
 /* ---------- Bottom action bar ---------- */

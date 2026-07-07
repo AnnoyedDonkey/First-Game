@@ -16,7 +16,7 @@ import {
   updateHUD, onWaveButtonTap, showOverlay,
   initTowerButtons, updateTowerButtons,
   updateUpgradePanel, onUpgradeButtonTap,
-  initSkillTree, showLevelSelect,
+  initSkillTree, showLevelSelect, openSkillTree, hideOverlay,
 } from "./ui.js";
 
 const TILE_SIZE = 64; // internal render resolution per tile
@@ -30,10 +30,16 @@ let overlayShown = false;
 function startLevel(level) {
   game = createGame(level, TILE_SIZE);
   overlayShown = false;
+  hideOverlay();
+  // Clear any leftover selection from the previous battle.
+  uiState.selectedType = null;
+  uiState.selectedDef = null;
+  uiState.selectedTower = null;
+  uiState.hoverTile = null;
   window.game = game; // debug handle: inspect/tweak state from the console
   // Debug: simulate N seconds instantly (e.g. step(30) in the console).
   window.step = (seconds) => {
-    for (let i = 0; i < seconds * 60; i++) updateGame(game, 1 / 60);
+    for (let i = 0; i < seconds * 60 && game; i++) updateGame(game, 1 / 60);
   };
 
   // Internal resolution matches the grid; CSS scales it to fit the
@@ -129,30 +135,50 @@ bindCanvasInput(canvas, {
   },
 });
 
+function goToMainMenu() {
+  game = null;
+  window.game = null;
+  hideOverlay();
+  showLevelSelect(LEVELS, getProgress().completedLevels, startLevel);
+}
+
 function checkEndState() {
   if (overlayShown) return;
 
   if (game.phase === "won") {
     overlayShown = true;
+    const currentIndex = LEVELS.indexOf(game.level);
+    const next = LEVELS[currentIndex + 1];
+    const buttons = [];
+    if (next) {
+      buttons.push({ text: `NEXT: ${next.name.toUpperCase()}`, onTap: () => startLevel(next) });
+    }
+    buttons.push(
+      { text: "ASSIGN SKILL POINTS", onTap: openSkillTree, secondary: !!next },
+      { text: "MAIN MENU", onTap: goToMainMenu, secondary: true },
+    );
     showOverlay({
       title: "CORE DEFENDED",
       subtitle:
-        `All ${game.totalWaves} waves repelled. +1 skill point. ` +
+        `All ${game.totalWaves} waves repelled. +1 skill point earned. ` +
         `Your towers joined the roster and keep their XP.`,
-      buttonText: "PLAY AGAIN",
       type: "win",
-      onButton: () => location.reload(),
+      buttons,
     });
   } else if (game.phase === "lost") {
     overlayShown = true;
+    const level = game.level;
     showOverlay({
       title: "CORE DESTROYED",
       subtitle:
-        `The core fell on wave ${game.waveIndex + 1}. ` +
-        `Your towers kept their XP — redeploy them and try again.`,
-      buttonText: "RETRY",
+        `The core fell on wave ${game.waveIndex + 1}. Your towers kept ` +
+        `their XP — spend skill points, redeploy veterans, try new spots.`,
       type: "loss",
-      onButton: () => location.reload(),
+      buttons: [
+        { text: "RETRY", onTap: () => startLevel(level) },
+        { text: "ASSIGN SKILL POINTS", onTap: openSkillTree, secondary: true },
+        { text: "MAIN MENU", onTap: goToMainMenu, secondary: true },
+      ],
     });
   }
 }
