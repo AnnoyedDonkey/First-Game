@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Geometric TD</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+
+    <!-- Top HUD: money / wave / core health -->
+    <header id="hud">
+      <div class="hud-item" id="hud-money">
+        <span class="hud-label">CREDITS</span>
+        <span class="hud-value" id="money-value">0</span>
+      </div>
+      <div class="hud-item" id="hud-wave">
+        <span class="hud-label">WAVE</span>
+        <span class="hud-value" id="wave-value">-</span>
+      </div>
+      <div class="hud-item" id="hud-core">
+        <span class="hud-label">CORE</span>
+        <span class="hud-value" id="core-value">0</span>
+      </div>
+      <button class="hud-item" id="skills-button">
+        <span class="hud-label">SKILLS</span>
+        <span class="hud-value" id="skill-points-value">0</span>
+      </button>
+    </header>
+
+    <!-- Game canvas -->
+    <main id="game-area">
+      <canvas id="game-canvas"></canvas>
+
+      <!-- Win / loss overlay -->
+      <div id="overlay" class="hidden">
+        <h1 id="overlay-title"></h1>
+        <p id="overlay-subtitle"></p>
+        <button id="overlay-button" class="big-button"></button>
+      </div>
+
+      <!-- Level select overlay (shown at startup) -->
+      <div id="level-overlay" class="hidden">
+        <h1>GEOMETRIC TD</h1>
+        <p>SELECT MISSION</p>
+        <div id="level-list"></div>
+      </div>
+
+      <!-- Skill tree overlay -->
+      <div id="skill-overlay" class="hidden">
+        <h1>SKILL TREE</h1>
+        <p id="skill-points-line"></p>
+        <div id="skill-list"></div>
+        <div id="skill-actions">
+          <button id="skill-close" class="big-button">CLOSE</button>
+          <button id="reset-save">RESET SAVE</button>
+        </div>
+      </div>
+    </main>
+
+    <!-- Bottom action bar -->
+    <footer id="action-bar">
+      <!-- Tower buttons are generated from config.js by ui.js -->
+      <div id="tower-buttons"></div>
+
+      <!-- Shown instead of tower buttons when a placed tower is selected -->
+      <div id="upgrade-panel" class="hidden">
+        <div id="upgrade-info">
+          <div class="upgrade-row">
+            <span id="up-name"></span>
+            <span id="up-level"></span>
+          </div>
+          <div class="upgrade-row dim">
+            <span id="up-xp"></span>
+            <span id="up-kills"></span>
+          </div>
+        </div>
+        <button id="upgrade-button" class="big-button">UPGRADE</button>
+      </div>
+
+      <button id="wave-button" class="big-button">START WAVE</button>
+    </footer>
+
+  </div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

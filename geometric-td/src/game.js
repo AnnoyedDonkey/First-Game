@@ -1,0 +1,137 @@
+// ============================================================
+// GAME — core state machine: waves, spawning, money, core health.
+//
+// Phases:
+//   "ready"    - waiting for the player to start the next wave
+//   "wave"     - enemies spawning / on the field
+//   "countdown"- wave cleared, timer until the next auto-start
+//   "won" / "lost"
+// ============================================================
+
+import { WAVE_DEFAULTS } from "./config.js";
+import { createGridModel } from "./grid.js";
+import { createEnemy, updateEnemies } from "./enemies.js";
+import { updateTowers } from "./towers.js";
+import { updateProjectiles, updateEffects } from "./projectiles.js";
+import { getCoreBonus, recordBattleEnd } from "./progression.js";
+
+export function createGame(level, tileSize) {
+  const grid = createGridModel(level, tileSize);
+
+  const game = {
+    level,
+    grid,
+    time: 0,                       // total game time in seconds
+    phase: "ready",
+    money: level.startingMoney,
+    coreHealth: level.coreHealth + getCoreBonus(),
+    maxCoreHealth: level.coreHealth + getCoreBonus(),
+    waveIndex: 0,                  // 0-based; wave 1 is index 0
+    totalWaves: level.waves.length,
+    enemies: [],
+    towers: [],
+    projectiles: [],
+    effects: [],                   // short-lived visuals (beams, rings...)
+    spawnQueue: [],                // [{ at, type, mods }] sorted by time
+    waveClock: 0,                  // seconds since current wave started
+    countdown: 0,                  // seconds until next wave auto-starts
+
+    // Settings (level overrides config defaults)
+    timeBetweenWaves: level.timeBetweenWaves ?? WAVE_DEFAULTS.timeBetweenWaves,
+    autoStartNextWave: level.autoStartNextWave ?? WAVE_DEFAULTS.autoStartNextWave,
+  };
+
+  return game;
+}
+
+// Build the spawn schedule for a wave from its group definitions.
+function buildSpawnQueue(wave) {
+  const queue = [];
+  const waveMods = {
+    healthMult: wave.healthMult ?? 1,
+    speedMult: wave.speedMult ?? 1,
+  };
+
+  for (const group of wave.groups) {
+    const interval = group.spawnInterval ?? WAVE_DEFAULTS.spawnInterval;
+    const delay = group.startDelay ?? 0;
+    for (let i = 0; i < group.count; i++) {
+      queue.push({
+        at: delay + i * interval,
+        type: group.type,
+        mods: {
+          healthMult: (group.healthMult ?? 1) * waveMods.healthMult,
+          speedMult: (group.speedMult ?? 1) * waveMods.speedMult,
+          bountyMult: group.bountyMult ?? 1,
+          xpMult: group.xpMult ?? 1,
+        },
+      });
+    }
+  }
+  queue.sort((a, b) => a.at - b.at);
+  return queue;
+}
+
+export function startNextWave(game) {
+  if (game.phase !== "ready" && game.phase !== "countdown") return;
+  if (game.waveIndex >= game.totalWaves) return;
+
+  game.spawnQueue = buildSpawnQueue(game.level.waves[game.waveIndex]);
+  game.waveClock = 0;
+  game.phase = "wave";
+}
+
+export function updateGame(game, dt) {
+  if (game.phase === "won" || game.phase === "lost") return;
+
+  game.time += dt;
+
+  // Spawn scheduled enemies.
+  if (game.phase === "wave") {
+    game.waveClock += dt;
+    while (game.spawnQueue.length > 0 && game.spawnQueue[0].at <= game.waveClock) {
+      const s = game.spawnQueue.shift();
+      game.enemies.push(createEnemy(s.type, s.mods));
+    }
+  }
+
+  // Combat: towers fire, projectiles fly, effects fade.
+  updateTowers(game, dt);
+  updateProjectiles(game, dt);
+  updateEffects(game, dt);
+
+  // Move enemies; handle leaks.
+  const leaked = updateEnemies(game.enemies, dt, game.grid, game.time);
+  for (const e of leaked) {
+    game.coreHealth -= e.coreDamage;
+  }
+  if (game.coreHealth <= 0) {
+    game.coreHealth = 0;
+    game.phase = "lost";
+    recordBattleEnd(game, false); // towers keep their XP even in defeat
+    return;
+  }
+
+  // Drop dead enemies from the list.
+  game.enemies = game.enemies.filter((e) => e.alive);
+
+  // Wave cleared?
+  if (game.phase === "wave" && game.spawnQueue.length === 0 && game.enemies.length === 0) {
+    game.waveIndex += 1;
+    if (game.waveIndex >= game.totalWaves) {
+      game.phase = "won";
+      recordBattleEnd(game, true); // roster + 1 skill point, saved
+    } else if (game.autoStartNextWave) {
+      game.phase = "countdown";
+      game.countdown = game.timeBetweenWaves;
+    } else {
+      game.phase = "ready";
+    }
+  }
+
+  // Countdown to next auto-started wave.
+  if (game.phase === "countdown") {
+    game.countdown -= dt;
+    if (game.countdown <= 0) startNextWave(game);
+  }
+}
