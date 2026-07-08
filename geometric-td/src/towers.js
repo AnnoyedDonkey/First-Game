@@ -66,17 +66,26 @@ export function refreshTowerStats(game) {
 }
 
 // Live stats = base stats scaled by level (compound growth per level).
+// Each class also gets its specialty bonus (TOWER_UPGRADES.specialties).
 function recomputeStats(tower, grid) {
   const def = tower.def;
   const g = TOWER_UPGRADES;
+  const spec = g.specialties[tower.type] || {};
   const lv = tower.level - 1; // level 1 = base stats
 
   tower.damage =
-    def.baseDamage * Math.pow(1 + g.damageGrowth, lv) * getTowerDamageMult(tower.type);
-  tower.range = def.baseRange * grid.tileSize * Math.pow(1 + g.rangeGrowth, lv);
-  tower.fireInterval = def.baseFireRate / Math.pow(1 + g.fireRateGrowth, lv);
+    def.baseDamage *
+    Math.pow(1 + g.damageGrowth + (spec.damageGrowth || 0), lv) *
+    getTowerDamageMult(tower.type);
+  tower.range =
+    def.baseRange * grid.tileSize *
+    Math.pow(1 + g.rangeGrowth + (spec.rangeGrowth || 0), lv);
+  tower.fireInterval =
+    def.baseFireRate / Math.pow(1 + g.fireRateGrowth + (spec.fireRateGrowth || 0), lv);
   if (def.splashRadius) {
-    tower.splashRadius = def.splashRadius * grid.tileSize * Math.pow(1 + g.splashGrowth, lv);
+    tower.splashRadius =
+      def.splashRadius * grid.tileSize *
+      Math.pow(1 + g.splashGrowth + (spec.splashGrowth || 0), lv);
   }
   if (def.slowPercent) {
     tower.slowPercent = def.slowPercent;

@@ -9,7 +9,9 @@ import {
   placeTower, towerAt, tryUpgradeTower, sellTower,
   seedRosterCounters, refreshTowerStats,
 } from "./towers.js";
-import { getProgress } from "./progression.js";
+import {
+  getProgress, shouldShowTowerGuide, markTowerGuideSeen,
+} from "./progression.js";
 import { render } from "./renderer.js";
 import { bindCanvasInput } from "./input.js";
 import {
@@ -17,7 +19,7 @@ import {
   initTowerButtons, updateTowerButtons,
   updateUpgradePanel, onUpgradeButtonTap, onSellButtonTap,
   initSkillTree, showLevelSelect, openSkillTree, hideOverlay,
-  initSpeedControls,
+  initSpeedControls, openTowerGuide,
 } from "./ui.js";
 
 const TILE_SIZE = 64; // internal render resolution per tile
@@ -48,6 +50,12 @@ function startLevel(level) {
   canvas.width = level.gridWidth * TILE_SIZE;
   canvas.height = level.gridHeight * TILE_SIZE;
   fitCanvas();
+
+  // First visit to level 2: explain tower classes and specialties.
+  if (level.id === "level_002" && shouldShowTowerGuide()) {
+    markTowerGuideSeen();
+    openTowerGuide();
+  }
 }
 
 // Size the canvas element to the largest rectangle that fits the

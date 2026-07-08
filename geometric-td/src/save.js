@@ -13,6 +13,7 @@ const DEFAULT_SAVE = {
   roster: [],           // [{ name, type, maxLevel, xp, kills }]
   completedLevels: [],  // level ids won at least once
   wins: 0,
+  seenTowerGuide: false, // tower guide auto-opens once at level 2
 };
 
 export function loadSave() {

@@ -171,6 +171,16 @@ export const TOWER_UPGRADES = {
   xpThresholds: [100, 250, 450, 700],
   // Money cost to actually buy each level (index 0 = level 2)
   upgradeCosts: [75, 125, 200, 300],
+
+  // Each tower class gains an EXTRA specialty bonus per level, on top
+  // of the shared growth above. Explained to the player in the Tower
+  // Guide (shown at level 2, and from the main menu).
+  specialties: {
+    laser:   { rangeGrowth: 0.07,    label: "+ extra range per level" },
+    pulse:   { splashGrowth: 0.10,   label: "+ bigger explosions per level" },
+    slow:    { fireRateGrowth: 0.10, label: "+ faster firing per level" },
+    railgun: { damageGrowth: 0.10,   label: "+ extra damage per level" },
+  },
 };
 
 // ---------- Economy ----------

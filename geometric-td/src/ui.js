@@ -2,13 +2,15 @@
 // UI — the HTML parts around the canvas: HUD, buttons, overlays.
 // ============================================================
 
-import { TOWERS, SKILLS, SKILL_VALUES, SKILL_TIERS } from "./config.js";
+import {
+  TOWERS, SKILLS, SKILL_VALUES, SKILL_TIERS, TOWER_UPGRADES,
+} from "./config.js";
 import {
   xpThresholdFor, upgradeCostFor, isUpgradeEligible, sellValueOf,
 } from "./towers.js";
 import {
   getSkillTier, nextTierCost, getSkillPoints, buySkill, resetProgress,
-  isTowerUnlocked,
+  isTowerUnlocked, getProgress,
 } from "./progression.js";
 
 const el = {
@@ -29,6 +31,10 @@ const el = {
   resetSave: document.getElementById("reset-save"),
   levelOverlay: document.getElementById("level-overlay"),
   levelList: document.getElementById("level-list"),
+  actionBar: document.getElementById("action-bar"),
+  towerOverlay: document.getElementById("tower-overlay"),
+  towerList: document.getElementById("tower-list"),
+  towerClose: document.getElementById("tower-close"),
   money: document.getElementById("money-value"),
   wave: document.getElementById("wave-value"),
   core: document.getElementById("core-value"),
@@ -215,6 +221,7 @@ export function onSellButtonTap(handler) {
 // Shows the mission list; completed levels get a check. onPick(level)
 // fires when the player chooses one.
 export function showLevelSelect(levels, completedIds, onPick) {
+  el.actionBar.classList.add("hidden"); // no tower tray on the menu
   el.levelList.innerHTML = "";
   for (const level of levels) {
     const done = completedIds.includes(level.id);
@@ -225,6 +232,7 @@ export function showLevelSelect(levels, completedIds, onPick) {
       (done ? `<span class="level-done">✓ CLEARED</span>` : `<span></span>`);
     btn.addEventListener("click", () => {
       el.levelOverlay.classList.add("hidden");
+      el.actionBar.classList.remove("hidden");
       onPick(level);
     });
     el.levelList.appendChild(btn);
@@ -242,6 +250,13 @@ export function showLevelSelect(levels, completedIds, onPick) {
     `</span>`;
   skillBtn.addEventListener("click", openSkillTree);
   el.levelList.appendChild(skillBtn);
+
+  // Tower guide entry: class specialties + the player's roster.
+  const towersBtn = document.createElement("button");
+  towersBtn.className = "level-button skill-entry";
+  towersBtn.innerHTML = `<span>TOWERS</span><span class="level-done">—</span>`;
+  towersBtn.addEventListener("click", openTowerGuide);
+  el.levelList.appendChild(towersBtn);
 
   // Reset all progress — two-tap confirm, then reload clean.
   const resetBtn = document.createElement("button");
@@ -278,20 +293,26 @@ export function initSpeedControls(onChange) {
   let paused = false;
 
   function apply() {
-    slow.classList.toggle("active", factor === 0.5 && !paused);
-    fast.classList.toggle("active", factor === 2 && !paused);
+    slow.classList.toggle("active", factor < 1 && !paused);
+    fast.classList.toggle("active", factor > 1 && !paused);
+    // Active buttons show the current multiplier instead of the arrow.
+    slow.innerHTML =
+      factor === 0.5 ? "&#189;&#215;" : factor === 0.25 ? "&#188;&#215;" : "&#9664;";
+    fast.innerHTML =
+      factor === 2 ? "2&#215;" : factor === 4 ? "4&#215;" : "&#9654;";
     pause.classList.toggle("active", paused);
     pause.innerHTML = paused ? "&#9654;" : "&#10074;&#10074;"; // play / pause glyph
     onChange(factor, paused);
   }
 
+  // Each arrow steps further in its direction; one more tap wraps to 1x.
   slow.addEventListener("click", () => {
-    factor = factor === 0.5 ? 1 : 0.5;
+    factor = factor === 0.5 ? 0.25 : factor === 0.25 ? 1 : 0.5;
     paused = false;
     apply();
   });
   fast.addEventListener("click", () => {
-    factor = factor === 2 ? 1 : 2;
+    factor = factor === 2 ? 4 : factor === 4 ? 1 : 2;
     paused = false;
     apply();
   });
@@ -300,6 +321,80 @@ export function initSpeedControls(onChange) {
     apply();
   });
 }
+
+// ---------- Tower guide overlay ----------
+// Explains the per-class level-up specialties and lists the player's
+// roster with earned levels/kills. Shown once at level 2, and always
+// reachable from the main menu.
+
+const SPECIALTY_TEXT = {
+  laser: "Specialty: extra RANGE with every level",
+  pulse: "Specialty: bigger EXPLOSIONS with every level",
+  slow: "Specialty: FASTER FIRING with every level",
+  railgun: "Specialty: extra DAMAGE with every level",
+};
+
+export function openTowerGuide() {
+  el.towerList.innerHTML = "";
+
+  const classHeader = document.createElement("div");
+  classHeader.className = "tower-section";
+  classHeader.textContent = "TOWER CLASSES";
+  el.towerList.appendChild(classHeader);
+
+  for (const [type, def] of Object.entries(TOWERS)) {
+    const row = document.createElement("div");
+    row.className = "skill-row";
+    const locked = !isTowerUnlocked(type);
+    const stats =
+      `DMG ${def.baseDamage} · RANGE ${def.baseRange} · ` +
+      `${def.baseFireRate}s/shot · $${def.baseCost}` +
+      (locked ? " · LOCKED (clear level 5)" : "");
+    row.innerHTML =
+      `<div class="skill-text">` +
+      `<span class="skill-name" style="color:${def.color}">${def.name.toUpperCase()}</span>` +
+      `<span class="skill-desc">${stats}</span>` +
+      `<span class="skill-desc">${SPECIALTY_TEXT[type] || ""}</span>` +
+      `</div>`;
+    el.towerList.appendChild(row);
+  }
+
+  const rosterHeader = document.createElement("div");
+  rosterHeader.className = "tower-section";
+  rosterHeader.textContent = "YOUR ROSTER";
+  el.towerList.appendChild(rosterHeader);
+
+  const roster = [...getProgress().roster].sort(
+    (a, b) => b.maxLevel - a.maxLevel || b.kills - a.kills
+  );
+  if (roster.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "skill-row";
+    empty.innerHTML =
+      `<div class="skill-text"><span class="skill-desc">` +
+      `No towers yet — every tower you build joins your permanent roster ` +
+      `and keeps its XP between battles.</span></div>`;
+    el.towerList.appendChild(empty);
+  }
+  for (const rec of roster) {
+    const def = TOWERS[rec.type];
+    const row = document.createElement("div");
+    row.className = "skill-row";
+    row.innerHTML =
+      `<div class="skill-text">` +
+      `<span class="skill-name" style="color:${def.color}">${rec.name}</span>` +
+      `<span class="skill-desc">${def.name} · MAX LV ${rec.maxLevel} · ` +
+      `${rec.xp} XP · ${rec.kills} kills</span>` +
+      `</div>`;
+    el.towerList.appendChild(row);
+  }
+
+  el.towerOverlay.classList.remove("hidden");
+}
+
+el.towerClose.addEventListener("click", () => {
+  el.towerOverlay.classList.add("hidden");
+});
 
 // ---------- Skill tree overlay ----------
 

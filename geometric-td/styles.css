@@ -225,6 +225,64 @@ button.hud-item {
   text-shadow: 0 0 8px rgba(255, 63, 212, 0.6);
 }
 
+/* ---------- Tower guide overlay ---------- */
+
+#tower-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: rgba(5, 6, 15, 0.94);
+  padding: 20px;
+  z-index: 40; /* above the level-select overlay, like the skill tree */
+}
+
+#tower-overlay.hidden { display: none; }
+
+#tower-overlay h1 {
+  font-size: 24px;
+  letter-spacing: 4px;
+  color: var(--neon-cyan);
+  text-shadow: 0 0 16px rgba(53, 224, 255, 0.6);
+}
+
+#tower-guide-line {
+  color: var(--text-dim);
+  font-size: 11px;
+  line-height: 1.5;
+  max-width: 400px;
+  text-align: center;
+}
+
+#tower-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 420px;
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  scrollbar-width: thin;
+  scrollbar-color: var(--panel-border) transparent;
+}
+
+#tower-list::-webkit-scrollbar { width: 4px; }
+#tower-list::-webkit-scrollbar-thumb { background: var(--panel-border); border-radius: 2px; }
+
+.tower-section {
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--text-dim);
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+
 /* ---------- Skill tree overlay ---------- */
 
 #skill-overlay {
@@ -401,6 +459,8 @@ button.hud-item {
 }
 
 /* ---------- Bottom action bar ---------- */
+
+#action-bar.hidden { display: none; }
 
 #action-bar {
   display: flex;

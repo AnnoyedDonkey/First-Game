@@ -72,6 +72,11 @@ src/
 
 - **XP vs money:** XP makes a tower *eligible* for its next level; money pays
   for the upgrade. Thresholds/costs in `config.js TOWER_UPGRADES`.
+- **Level-up specialties:** all towers share base growth per level, but each
+  class gets an extra specialty (TOWER_UPGRADES.specialties): laser +range,
+  pulse +splash radius, slow +fire speed, railgun +damage. Explained in the
+  Tower Guide overlay (auto-opens once at level 2 via save flag
+  `seenTowerGuide`; always reachable from the main menu TOWERS entry).
 - **Final-hit XP:** only the killing tower gets XP. Known consequence: Slow
   towers never level (backlog item: split XP among contributors).
 - **Veterans:** placing a tower type auto-deploys your best not-yet-deployed
@@ -166,6 +171,11 @@ Gotchas when testing:
 - He plays on iPhone; always push after a verified feature so he can test.
 - Speaks plainly about issues; treat his bug reports as accurate (the skill
   tree "sometimes nothing happens" report was a real z-index bug).
+
+Other UI facts: speed controls cycle ◀ 1x->½x->¼x->1x and ▶ 1x->2x->4x->1x
+(pause in the middle); the bottom action bar is hidden while the mission
+selector is open. Note: specialties slightly buffed player power after the
+level calibrations were done — if real play gets easier, that's why.
 
 ## Backlog (user-approved, not yet built)
 

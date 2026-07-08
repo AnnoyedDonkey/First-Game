@@ -76,6 +76,16 @@ export function getTowerDamageMult(type) {
   return 1;
 }
 
+// Tower guide auto-opens once, when the player starts level 2.
+export function shouldShowTowerGuide() {
+  return !state.seenTowerGuide;
+}
+
+export function markTowerGuideSeen() {
+  state.seenTowerGuide = true;
+  writeSave(state);
+}
+
 // The Railgun is the reward for clearing the first campaign.
 export function isTowerUnlocked(type) {
   if (type === "railgun") return state.completedLevels.includes("level_005");
