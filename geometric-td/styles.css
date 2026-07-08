@@ -158,7 +158,17 @@ button.hud-item {
   gap: 10px;
   width: 100%;
   max-width: 380px;
+  /* The mission list grew past one screen: scroll it within the
+     overlay. min-height lets flexbox actually shrink it. */
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch; /* iOS momentum scrolling */
+  touch-action: pan-y;
+  padding: 2px;
 }
+
+.level-button { flex-shrink: 0; } /* buttons keep height while scrolling */
 
 .level-button {
   display: flex;
@@ -189,6 +199,7 @@ button.hud-item {
   letter-spacing: 1px;
   margin-top: 8px;
   min-height: 40px;
+  flex-shrink: 0;
   background: none;
   border: 1px solid var(--panel-border);
   border-radius: 6px;
@@ -240,8 +251,14 @@ button.hud-item {
   gap: 8px;
   width: 100%;
   max-width: 420px;
+  flex: 0 1 auto;
+  min-height: 0;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
 }
+
+.skill-row { flex-shrink: 0; }
 
 .skill-row {
   display: flex;
