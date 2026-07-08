@@ -2,8 +2,9 @@
 // ENEMIES — creation and movement.
 // ============================================================
 
-import { ENEMIES, ECONOMY } from "./config.js";
+import { ENEMIES, ECONOMY, VFX } from "./config.js";
 import { getMoneyMult, getXpMult } from "./progression.js";
+import { emitHitSparks, emitDeathShards } from "./particles.js";
 
 let nextEnemyId = 1;
 
@@ -65,7 +66,12 @@ export function damageEnemy(game, enemy, sourceTower, amount) {
   enemy.health -= amount;
   enemy.hitFlash = 0.1;
 
-  if (enemy.health > 0) return;
+  if (enemy.health > 0) {
+    // Impact sparks where the shot landed.
+    const hp = enemyPosition(enemy, game.grid);
+    emitHitSparks(game, hp.x, hp.y, enemy.def.color);
+    return;
+  }
 
   enemy.alive = false;
   game.money += Math.round(enemy.bounty * ECONOMY.moneyPerKillMultiplier * getMoneyMult());
@@ -76,15 +82,25 @@ export function damageEnemy(game, enemy, sourceTower, amount) {
   }
 
   const pos = enemyPosition(enemy, game.grid);
+  const ts = game.grid.tileSize;
   game.effects.push({
     kind: "burst",
     x: pos.x,
     y: pos.y,
     color: enemy.def.color,
-    radius: game.grid.tileSize * enemy.def.size * 1.6,
+    radius: ts * enemy.def.size * 1.6,
     ttl: 0.35,
     maxTtl: 0.35,
   });
+
+  // GeoDefense-style shatter: edges fly apart + a grid shockwave.
+  emitDeathShards(game, pos.x, pos.y, enemy.def, ts);
+  const isBoss = enemy.type === "boss";
+  game.springGrid.applyShock(
+    pos.x, pos.y,
+    ts * VFX.warp.shockRadiusTiles * (isBoss ? 2 : 1),
+    isBoss ? VFX.warp.bossShock : VFX.warp.deathShock
+  );
 }
 
 // Apply a slow debuff (from Slow Towers).

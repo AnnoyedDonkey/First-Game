@@ -49,10 +49,20 @@ increments; maintainable over clever; stability over features.
 Difficulty philosophy (user): each level should not fall on the first try —
 only through leveling up or changing tactics.
 
+## Visual style (GeoDefense-inspired, July 2026)
+Additive-blended neon: hit sparks, polygon-shard death explosions (enemies
+shatter into their own edges), pre-rendered glow sprites (no per-particle
+shadowBlur — mobile Safari perf), and a Geometry Wars spring-mesh warping
+grid (nodes at half-tile spacing; shocks from deaths/explosions/leaks).
+Tuning in config.js VFX — currently SUBTLE (5px displacement clamp,
+400-particle cap). Path is a dark outlined channel; towers slimmer (0.22
+tile radius); enemy health is an arc, not a bar; HUD/tray compacted.
+
 ## Backlog (user-requested)
 - Fast-forward button: toggle 2x game speed during waves (DEBUG.gameSpeed exists;
   needs a UI button + probably per-battle, not global)
 - Split XP among damage contributors so Slow towers can level (currently final-hit only)
+- Consider raising VFX.warp strengths / particle counts after user plays "subtle" tuning
 
 **Phase 1 complete** (July 2026). Roster rules implemented: veterans auto-deploy
 (best maxLevel first) when placing their type; they re-enter battle at level 1

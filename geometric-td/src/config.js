@@ -129,6 +129,34 @@ export const ECONOMY = {
   xpPerKillMultiplier: 1.0,     // global multiplier on all XP gains
 };
 
+// ---------- Visual effects (GeoDefense-inspired) ----------
+// All the spectacle knobs live here. "Subtle" starting values —
+// raise warp strengths and particle counts for more drama.
+export const VFX = {
+  maxParticles: 400,       // hard cap; oldest particles are dropped first
+  hitSparkCount: 3,        // sparks per projectile/beam hit
+  deathSparkCount: 6,      // extra sparks on top of shards when a unit dies
+  shardSpeed: [50, 170],   // px/sec range for flying shards
+  shardTtl: [0.45, 0.9],   // seconds range before a shard fades out
+
+  // The warping background grid (spring mesh).
+  warp: {
+    spacingTiles: 0.5,     // grid node spacing as a fraction of a tile
+    homeStiffness: 42,     // pull back toward rest position
+    neighborStiffness: 14, // coupling that makes ripples propagate
+    damping: 5.5,          // how fast the wobble dies down
+    maxDisplacement: 5,    // px clamp — keeps the board readable
+    hitShock: 26,          // impulse strengths...
+    deathShock: 95,
+    bossShock: 300,
+    leakShock: 220,        // the core "flinches" when damaged
+    shockRadiusTiles: 1.6, // impulse falloff radius
+  },
+};
+
+// Polygon sides for each enemy shape (renderer + shard explosions).
+export const SHAPE_SIDES = { triangle: 3, diamond: 4, hexagon: 6, octagon: 8 };
+
 // ---------- Permanent skill tree ----------
 // Starter set: each is a one-time purchase costing skill points.
 // The player earns 1 skill point per level won.

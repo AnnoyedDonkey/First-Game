@@ -1,0 +1,91 @@
+// ============================================================
+// PARTICLES — sparks on hits, polygon-shard explosions on deaths.
+//
+// GeoDefense-style: enemies shatter into their own edge segments,
+// which fly outward, spin, and fade. Everything is drawn with
+// additive blending in the renderer so overlaps bloom.
+// ============================================================
+
+import { VFX, SHAPE_SIDES } from "./config.js";
+
+function rand(min, max) {
+  return min + Math.random() * (max - min);
+}
+
+// Respect the particle cap: drop the oldest when full.
+function push(game, particle) {
+  if (game.particles.length >= VFX.maxParticles) game.particles.shift();
+  game.particles.push(particle);
+}
+
+// Small directional spark burst (projectile/beam impacts).
+export function emitHitSparks(game, x, y, color, count = VFX.hitSparkCount) {
+  for (let i = 0; i < count; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const speed = rand(60, 200);
+    push(game, {
+      kind: "spark",
+      x, y,
+      vx: Math.cos(a) * speed,
+      vy: Math.sin(a) * speed,
+      color,
+      size: rand(1.5, 3),
+      ttl: rand(0.15, 0.35),
+      maxTtl: 0.35,
+    });
+  }
+}
+
+// The signature effect: the enemy's polygon breaks into its own
+// edges, which fly apart as spinning line segments.
+export function emitDeathShards(game, x, y, def, tileSize) {
+  const sides = SHAPE_SIDES[def.shape] ?? 3;
+  const radius = tileSize * def.size;
+  const isBoss = def.shape === "octagon";
+  const splits = isBoss ? 3 : 1; // bosses shatter into many more pieces
+
+  for (let i = 0; i < sides; i++) {
+    const a0 = (i / sides) * Math.PI * 2 - Math.PI / 2;
+    const a1 = ((i + 1) / sides) * Math.PI * 2 - Math.PI / 2;
+    const edgeLen = Math.hypot(
+      Math.cos(a1) - Math.cos(a0),
+      Math.sin(a1) - Math.sin(a0)
+    ) * radius;
+
+    for (let s = 0; s < splits; s++) {
+      // Midpoint angle of this piece of the edge.
+      const t = (s + 0.5) / splits;
+      const mid = a0 + (a1 - a0) * t;
+      const mx = x + Math.cos(mid) * radius;
+      const my = y + Math.sin(mid) * radius;
+      const speed = rand(VFX.shardSpeed[0], VFX.shardSpeed[1]) * (isBoss ? 1.4 : 1);
+      push(game, {
+        kind: "shard",
+        x: mx, y: my,
+        vx: Math.cos(mid) * speed + rand(-30, 30),
+        vy: Math.sin(mid) * speed + rand(-30, 30),
+        rot: mid + Math.PI / 2, // start aligned with the edge
+        spin: rand(-7, 7),
+        len: edgeLen / splits,
+        color: def.color,
+        ttl: rand(VFX.shardTtl[0], VFX.shardTtl[1]),
+        maxTtl: VFX.shardTtl[1],
+      });
+    }
+  }
+
+  emitHitSparks(game, x, y, def.color, VFX.deathSparkCount * (isBoss ? 3 : 1));
+}
+
+export function updateParticles(game, dt) {
+  const drag = 2.2;
+  for (const p of game.particles) {
+    p.ttl -= dt;
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.vx -= p.vx * drag * dt;
+    p.vy -= p.vy * drag * dt;
+    if (p.spin) p.rot += p.spin * dt;
+  }
+  game.particles = game.particles.filter((p) => p.ttl > 0);
+}

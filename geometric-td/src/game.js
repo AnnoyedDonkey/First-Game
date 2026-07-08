@@ -14,6 +14,9 @@ import { createEnemy, updateEnemies } from "./enemies.js";
 import { updateTowers } from "./towers.js";
 import { updateProjectiles, updateEffects } from "./projectiles.js";
 import { getCoreBonus, recordBattleEnd } from "./progression.js";
+import { updateParticles } from "./particles.js";
+import { createSpringGrid } from "./springgrid.js";
+import { VFX } from "./config.js";
 
 export function createGame(level, tileSize) {
   const grid = createGridModel(level, tileSize);
@@ -32,6 +35,10 @@ export function createGame(level, tileSize) {
     towers: [],
     projectiles: [],
     effects: [],                   // short-lived visuals (beams, rings...)
+    particles: [],                 // sparks + death shards
+    springGrid: createSpringGrid(
+      level.gridWidth * tileSize, level.gridHeight * tileSize, tileSize
+    ),
     spawnQueue: [],                // [{ at, type, mods }] sorted by time
     waveClock: 0,                  // seconds since current wave started
     countdown: 0,                  // seconds until next wave auto-starts
@@ -99,11 +106,23 @@ export function updateGame(game, dt) {
   updateTowers(game, dt);
   updateProjectiles(game, dt);
   updateEffects(game, dt);
+  updateParticles(game, dt);
+  game.springGrid.update(dt);
 
   // Move enemies; handle leaks.
   const leaked = updateEnemies(game.enemies, dt, game.grid, game.time);
   for (const e of leaked) {
     game.coreHealth -= e.coreDamage;
+    // The core flinches: shockwave + red flash at the path exit.
+    const core = game.grid.pathPoints[game.grid.pathPoints.length - 1];
+    const ts = game.grid.tileSize;
+    game.springGrid.applyShock(
+      core.x, core.y, ts * VFX.warp.shockRadiusTiles * 1.5, VFX.warp.leakShock
+    );
+    game.effects.push({
+      kind: "ring", x: core.x, y: core.y, color: "#ff4a5e",
+      radius: ts * 0.7, ttl: 0.35, maxTtl: 0.35,
+    });
   }
   if (game.coreHealth <= 0) {
     game.coreHealth = 0;

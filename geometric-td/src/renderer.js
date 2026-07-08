@@ -4,23 +4,55 @@
 
 import { enemyPosition } from "./enemies.js";
 import { isUpgradeEligible } from "./towers.js";
+import { SHAPE_SIDES } from "./config.js";
 
 // Visual tuning — tweak the look here.
 const LOOK = {
   background: "#05060f",
-  gridLine: "rgba(80, 120, 255, 0.10)",
-  buildableDot: "rgba(80, 120, 255, 0.25)",
-  pathFill: "rgba(53, 224, 255, 0.07)",
-  pathEdge: "rgba(53, 224, 255, 0.35)",
-  pathFlow: "rgba(53, 224, 255, 0.8)",   // the animated dashes
-  pathFlowSpeed: 40,                      // dash scroll speed, px/sec
-  blockedFill: "rgba(255, 74, 94, 0.08)",
-  blockedEdge: "rgba(255, 74, 94, 0.45)",
+  gridLine: "rgba(80, 120, 255, 0.09)",
+  gridLineMajor: "rgba(80, 120, 255, 0.16)", // tile-boundary lines
+  buildableDot: "rgba(80, 120, 255, 0.22)",
+  pathChannel: "rgba(8, 32, 44, 0.85)",   // dark channel interior
+  pathEdge: "rgba(53, 224, 255, 0.55)",   // glowing channel edges
+  pathFlow: "rgba(53, 224, 255, 0.7)",    // the animated dashes
+  pathFlowSpeed: 40,                       // dash scroll speed, px/sec
+  blockedFill: "rgba(255, 74, 94, 0.07)",
+  blockedEdge: "rgba(255, 74, 94, 0.4)",
   coreColor: "#4affa1",
   portalColor: "#ffe24a",
-  healthBarBack: "rgba(0,0,0,0.6)",
-  healthBarFill: "#4affa1",
+  healthArc: "#4affa1",
+  towerRadius: 0.22,      // tower size as fraction of tile (was 0.3)
+  lineWidth: 1.5,         // main stroke width (was 2)
 };
+
+// ---------- Glow sprites ----------
+// Pre-rendered radial-gradient discs, drawn with additive blending.
+// Far cheaper on mobile Safari than per-frame shadowBlur.
+const glowCache = new Map();
+
+function glowSprite(color) {
+  let sprite = glowCache.get(color);
+  if (sprite) return sprite;
+  const size = 64;
+  const c = document.createElement("canvas");
+  c.width = size;
+  c.height = size;
+  const g = c.getContext("2d");
+  const grad = g.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  grad.addColorStop(0, "rgba(255,255,255,0.9)");
+  grad.addColorStop(0.25, color);
+  grad.addColorStop(1, "rgba(0,0,0,0)");
+  g.fillStyle = grad;
+  g.fillRect(0, 0, size, size);
+  glowCache.set(color, c);
+  return c;
+}
+
+function drawGlow(ctx, x, y, radius, color, alpha = 1) {
+  ctx.globalAlpha = alpha;
+  ctx.drawImage(glowSprite(color), x - radius, y - radius, radius * 2, radius * 2);
+  ctx.globalAlpha = 1;
+}
 
 // uiState: { selectedType, selectedTower, hoverTile } from main.js
 export function render(ctx, game, time, uiState = {}) {
@@ -32,7 +64,7 @@ export function render(ctx, game, time, uiState = {}) {
   ctx.fillStyle = LOOK.background;
   ctx.fillRect(0, 0, w, h);
 
-  drawGrid(ctx, grid);
+  drawWarpGrid(ctx, game);
   drawPath(ctx, grid, time);
   drawBlockedTiles(ctx, grid);
   drawPortal(ctx, grid, time);
@@ -40,24 +72,48 @@ export function render(ctx, game, time, uiState = {}) {
   drawPlacementPreview(ctx, game, uiState);
   drawTowers(ctx, game, uiState);
   drawEnemies(ctx, game);
+
+  // Additive pass: everything glowing blooms where it overlaps.
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
   drawProjectiles(ctx, game);
   drawEffects(ctx, game);
+  drawParticles(ctx, game);
+  ctx.restore();
 }
 
-function drawGrid(ctx, grid) {
+// The spring-mesh background grid — lines pass through the simulated
+// node positions, so shockwaves visibly ripple across the board.
+function drawWarpGrid(ctx, game) {
+  const grid = game.grid;
+  const sg = game.springGrid;
   const ts = grid.tileSize;
-  ctx.strokeStyle = LOOK.gridLine;
+  // How many mesh nodes per tile boundary (spacing 0.5 tiles -> 2).
+  const perTile = Math.round(ts / sg.spacing);
+
   ctx.lineWidth = 1;
-  ctx.beginPath();
-  for (let x = 0; x <= grid.width; x++) {
-    ctx.moveTo(x * ts, 0);
-    ctx.lineTo(x * ts, grid.height * ts);
+  for (let r = 0; r < sg.rows; r++) {
+    ctx.strokeStyle = r % perTile === 0 ? LOOK.gridLineMajor : LOOK.gridLine;
+    ctx.beginPath();
+    for (let c = 0; c < sg.cols; c++) {
+      const x = sg.homeX(c) + sg.dispX(c, r);
+      const y = sg.homeY(r) + sg.dispY(c, r);
+      if (c === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
   }
-  for (let y = 0; y <= grid.height; y++) {
-    ctx.moveTo(0, y * ts);
-    ctx.lineTo(grid.width * ts, y * ts);
+  for (let c = 0; c < sg.cols; c++) {
+    ctx.strokeStyle = c % perTile === 0 ? LOOK.gridLineMajor : LOOK.gridLine;
+    ctx.beginPath();
+    for (let r = 0; r < sg.rows; r++) {
+      const x = sg.homeX(c) + sg.dispX(c, r);
+      const y = sg.homeY(r) + sg.dispY(c, r);
+      if (r === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
   }
-  ctx.stroke();
 
   // Small dot on every buildable tile so players can read the board.
   ctx.fillStyle = LOOK.buildableDot;
@@ -66,33 +122,46 @@ function drawGrid(ctx, grid) {
       if (!grid.isBuildable(x, y)) continue;
       const c = grid.tileCenter(x, y);
       ctx.beginPath();
-      ctx.arc(c.x, c.y, 2, 0, Math.PI * 2);
+      ctx.arc(c.x, c.y, 1.6, 0, Math.PI * 2);
       ctx.fill();
     }
   }
 }
 
+// GeoDefense-style path: a dark outlined channel with rounded
+// corners and glowing edges, instead of filled tiles.
 function drawPath(ctx, grid, time) {
   const ts = grid.tileSize;
+  const pts = grid.pathPoints;
+  const channelWidth = ts * 0.62;
 
-  // Path tiles: soft fill.
-  ctx.fillStyle = LOOK.pathFill;
-  for (const t of grid.pathTiles) {
-    ctx.fillRect(t.x * ts, t.y * ts, ts, ts);
+  function tracePath() {
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
   }
 
-  // Center line with animated dashes flowing toward the core.
   ctx.save();
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+
+  // Wide glowing stroke first...
+  ctx.strokeStyle = LOOK.pathEdge;
+  ctx.lineWidth = channelWidth;
+  tracePath();
+  ctx.stroke();
+  // ...then a slightly narrower dark stroke, leaving 2px neon edges.
+  ctx.strokeStyle = LOOK.pathChannel;
+  ctx.lineWidth = channelWidth - 4;
+  tracePath();
+  ctx.stroke();
+
+  // Animated dashes flowing toward the core.
   ctx.strokeStyle = LOOK.pathFlow;
-  ctx.lineWidth = 2;
-  ctx.shadowColor = LOOK.pathFlow;
-  ctx.shadowBlur = 8;
-  ctx.setLineDash([6, 14]);
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([5, 16]);
   ctx.lineDashOffset = -time * LOOK.pathFlowSpeed;
-  ctx.beginPath();
-  const pts = grid.pathPoints;
-  ctx.moveTo(pts[0].x, pts[0].y);
-  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+  tracePath();
   ctx.stroke();
   ctx.restore();
 }
@@ -174,27 +243,27 @@ function drawEnemies(ctx, game) {
     ctx.save();
     ctx.strokeStyle = flashing ? "#ffffff" : e.def.color;
     ctx.shadowColor = e.def.color;
-    ctx.shadowBlur = 10;
-    ctx.lineWidth = 2;
+    ctx.shadowBlur = 8;
+    ctx.lineWidth = LOOK.lineWidth;
 
-    const sides = { triangle: 3, diamond: 4, hexagon: 6, octagon: 8 }[e.def.shape] ?? 3;
+    const sides = SHAPE_SIDES[e.def.shape] ?? 3;
     // Rotate slowly as they move so they feel alive.
     const angle = e.distance * 0.01;
     drawPolygon(ctx, pos.x, pos.y, r, sides, angle);
     ctx.stroke();
-    ctx.restore();
 
-    // Health bar, only once damaged.
+    // Health as a thin arc hugging the shape (no floating bars).
     if (e.health < e.maxHealth) {
-      const bw = r * 2;
-      const bh = 3;
-      const bx = pos.x - r;
-      const by = pos.y - r - 7;
-      ctx.fillStyle = LOOK.healthBarBack;
-      ctx.fillRect(bx, by, bw, bh);
-      ctx.fillStyle = LOOK.healthBarFill;
-      ctx.fillRect(bx, by, bw * (e.health / e.maxHealth), bh);
+      const frac = Math.max(0, e.health / e.maxHealth);
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = LOOK.healthArc;
+      ctx.lineWidth = 1.5;
+      ctx.globalAlpha = 0.9;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, r + 3.5, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
+      ctx.stroke();
     }
+    ctx.restore();
   }
 }
 
@@ -203,7 +272,7 @@ function drawEnemies(ctx, game) {
 const TOWER_SIDES = { laser: 4, pulse: 12, slow: 6 };
 
 function drawTowerShape(ctx, tower, ts, x, y) {
-  const r = ts * 0.3;
+  const r = ts * LOOK.towerRadius;
   const sides = TOWER_SIDES[tower.type] ?? 4;
   drawPolygon(ctx, x, y, r, sides, tower.aimAngle + Math.PI / 4);
   ctx.stroke();
@@ -222,19 +291,19 @@ function drawTowers(ctx, game, uiState) {
     ctx.save();
     ctx.strokeStyle = tower.def.color;
     ctx.shadowColor = tower.def.color;
-    ctx.shadowBlur = 10;
-    ctx.lineWidth = 2;
+    ctx.shadowBlur = 8;
+    ctx.lineWidth = LOOK.lineWidth;
     drawTowerShape(ctx, tower, ts, tower.pos.x, tower.pos.y);
 
     // Level pips under the tower (one dot per level above 1).
     if (tower.level > 1) {
       ctx.fillStyle = tower.def.color;
       const n = tower.level - 1;
-      const spread = 8;
+      const spread = 7;
       for (let i = 0; i < n; i++) {
         const px = tower.pos.x + (i - (n - 1) / 2) * spread;
         ctx.beginPath();
-        ctx.arc(px, tower.pos.y + ts * 0.38, 2.2, 0, Math.PI * 2);
+        ctx.arc(px, tower.pos.y + ts * 0.32, 1.8, 0, Math.PI * 2);
         ctx.fill();
       }
     }
@@ -256,14 +325,15 @@ function drawTowers(ctx, game, uiState) {
     ctx.restore();
   }
 
-  // Range ring for the selected tower.
+  // Range ring for the selected tower — dashes slowly rotate.
   const sel = uiState.selectedTower;
   if (sel) {
     ctx.save();
     ctx.strokeStyle = sel.def.color;
     ctx.globalAlpha = 0.5;
-    ctx.setLineDash([6, 6]);
-    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6, 8]);
+    ctx.lineDashOffset = -time * 14;
+    ctx.lineWidth = 1.2;
     ctx.beginPath();
     ctx.arc(sel.pos.x, sel.pos.y, sel.range, 0, Math.PI * 2);
     ctx.stroke();
@@ -289,9 +359,9 @@ function drawPlacementPreview(ctx, game, uiState) {
   ctx.save();
   ctx.globalAlpha = 0.55;
   ctx.strokeStyle = color;
-  ctx.lineWidth = 2;
+  ctx.lineWidth = LOOK.lineWidth;
 
-  drawPolygon(ctx, c.x, c.y, ts * 0.3, TOWER_SIDES[selectedType] ?? 4, Math.PI / 4);
+  drawPolygon(ctx, c.x, c.y, ts * LOOK.towerRadius, TOWER_SIDES[selectedType] ?? 4, Math.PI / 4);
   ctx.stroke();
 
   ctx.setLineDash([6, 6]);
@@ -303,16 +373,16 @@ function drawPlacementPreview(ctx, game, uiState) {
 
 // ---------- Projectiles & effects ----------
 
+// NOTE: drawProjectiles/drawEffects/drawParticles run inside the
+// additive ("lighter") pass — glow sprites instead of shadowBlur.
+
 function drawProjectiles(ctx, game) {
   for (const p of game.projectiles) {
-    ctx.save();
-    ctx.fillStyle = p.color;
-    ctx.shadowColor = p.color;
-    ctx.shadowBlur = 12;
+    drawGlow(ctx, p.x, p.y, 10, p.color, 0.9);
+    ctx.fillStyle = "#ffffff";
     ctx.beginPath();
-    ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+    ctx.arc(p.x, p.y, 2.2, 0, Math.PI * 2);
     ctx.fill();
-    ctx.restore();
   }
 }
 
@@ -322,22 +392,22 @@ function drawEffects(ctx, game) {
     ctx.save();
     ctx.globalAlpha = life;
     ctx.strokeStyle = fx.color;
-    ctx.shadowColor = fx.color;
-    ctx.shadowBlur = 10;
 
     if (fx.kind === "beam") {
-      ctx.lineWidth = 2.5;
+      ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(fx.x1, fx.y1);
       ctx.lineTo(fx.x2, fx.y2);
       ctx.stroke();
+      drawGlow(ctx, fx.x2, fx.y2, 8, fx.color, life * 0.8);
     } else if (fx.kind === "ring" || fx.kind === "burst") {
       // Rings/bursts expand as they fade.
       const r = fx.radius * (fx.kind === "burst" ? 1.5 - life * 0.5 : 1.2 - life * 0.2);
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.arc(fx.x, fx.y, r, 0, Math.PI * 2);
       ctx.stroke();
+      if (fx.kind === "burst") drawGlow(ctx, fx.x, fx.y, r * 0.8, fx.color, life * 0.6);
     } else if (fx.kind === "tileFlash") {
       const ts = game.grid.tileSize;
       ctx.fillStyle = fx.color;
@@ -346,6 +416,30 @@ function drawEffects(ctx, game) {
     }
 
     ctx.restore();
+  }
+}
+
+function drawParticles(ctx, game) {
+  for (const p of game.particles) {
+    const life = p.ttl / p.maxTtl;
+
+    if (p.kind === "shard") {
+      // A spinning fragment of the enemy's own outline.
+      const half = p.len / 2;
+      const cos = Math.cos(p.rot) * half;
+      const sin = Math.sin(p.rot) * half;
+      ctx.globalAlpha = Math.min(1, life * 1.4);
+      ctx.strokeStyle = p.color;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(p.x - cos, p.y - sin);
+      ctx.lineTo(p.x + cos, p.y + sin);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    } else {
+      // Spark: a small glowing dot with a motion streak.
+      drawGlow(ctx, p.x, p.y, p.size * 3, p.color, life);
+    }
   }
 }
 

@@ -4,6 +4,8 @@
 // ============================================================
 
 import { enemyPosition, damageEnemy } from "./enemies.js";
+import { emitHitSparks } from "./particles.js";
+import { VFX } from "./config.js";
 
 // Visual/feel tuning for projectiles.
 const ORB = {
@@ -58,6 +60,12 @@ function explode(game, orb) {
     ttl: 0.25,
     maxTtl: 0.25,
   });
+  emitHitSparks(game, orb.x, orb.y, orb.color, 8);
+  game.springGrid.applyShock(
+    orb.x, orb.y,
+    game.grid.tileSize * VFX.warp.shockRadiusTiles,
+    VFX.warp.hitShock * 2
+  );
 
   // Splash damage to every enemy inside the radius.
   for (const e of game.enemies) {

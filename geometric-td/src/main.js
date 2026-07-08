@@ -192,6 +192,9 @@ function frame(now) {
   lastTime = now;
 
   if (game) {
+    // Self-heal: if the canvas was sized while the page was hidden
+    // (layout reports 0), fit it again now that we're visible.
+    if (canvas.style.width === "0px") fitCanvas();
     updateGame(game, dt);
     render(ctx, game, game.time, uiState);
     updateHUD(game);
