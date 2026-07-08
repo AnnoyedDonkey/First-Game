@@ -8,6 +8,7 @@ import {
 } from "./towers.js";
 import {
   getSkillTier, nextTierCost, getSkillPoints, buySkill, resetProgress,
+  isTowerUnlocked,
 } from "./progression.js";
 
 const el = {
@@ -109,16 +110,22 @@ export function initTowerButtons(onSelect) {
   }
 }
 
-// Highlight the selected type; grey out unaffordable towers.
+// Highlight the selected type; grey out unaffordable/locked towers.
 export function updateTowerButtons(game, selectedType) {
   for (const [type, btn] of Object.entries(towerButtonRefs)) {
+    const unlocked = isTowerUnlocked(type);
     const affordable = game.money >= TOWERS[type].baseCost;
     const stateKey = `towerBtn:${type}`;
-    const state = `${affordable}:${selectedType === type}`;
+    const state = `${unlocked}:${affordable}:${selectedType === type}`;
     if (last[stateKey] === state) continue;
     last[stateKey] = state;
-    btn.disabled = !affordable;
+    btn.disabled = !unlocked || !affordable;
     btn.classList.toggle("selected", selectedType === type);
+    btn.classList.toggle("locked", !unlocked);
+    const costSpan = btn.querySelector(".tower-button-cost");
+    costSpan.textContent = unlocked
+      ? `$${TOWERS[type].baseCost}`
+      : "CLEAR LV 5";
   }
 }
 

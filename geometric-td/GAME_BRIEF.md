@@ -58,8 +58,21 @@ Tuning in config.js VFX — currently SUBTLE (5px displacement clamp,
 400-particle cap). Path is a dark outlined channel; towers slimmer (0.22
 tile radius); enemy health is an arc, not a bar; HUD/tray compacted.
 
+## Batch 2 (levels 6-10, July 2026)
+- **Railgun Tower** (R-xx): 100 cost, 60 dmg, 3.5 range, 2.5s interval,
+  PIERCES all enemies along the beam. Unlocked by clearing level 5.
+  Rail Overcharge added to skill tree.
+- **Splitter** (orange square): splits into 2 fast splitlings on death.
+  **Regenerator** (acid pentagon): heals 5%/sec — burst counters it.
+- Per-level palettes via level.palette: Ember, Toxic, Ultraviolet,
+  Glacier, Solar. Enemy/tower colors stay fixed for readability.
+- Calibration: L7 tense win w/ campaign-1 roster; L9 kills that roster
+  ~wave 4 (needs batch-2 veterans); L10 costs a near-maxed roster half
+  its core. L6 is the soft opener — may need a bump after playtests.
+
 ## Backlog (user-requested)
 - Split XP among damage contributors so Slow towers can level (currently final-hit only)
+- Possibly stiffen level 6 if real play finds it too easy
 
 Done from backlog: speed controls (0.5x/pause/2x in HUD), VFX raised from
 "subtle" to "pizzazz" tuning + effects scale with the firing tower's level,

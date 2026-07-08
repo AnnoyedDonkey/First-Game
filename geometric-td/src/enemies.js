@@ -21,6 +21,7 @@ export function createEnemy(type, mods = {}) {
     id: nextEnemyId++,
     type,
     def,
+    mods,               // kept so splitters can pass scaling to children
     health: def.baseHealth * healthMult,
     maxHealth: def.baseHealth * healthMult,
     speedTilesPerSec: def.speed * speedMult,
@@ -31,20 +32,36 @@ export function createEnemy(type, mods = {}) {
     slowUntil: 0,       // game-time until which the enemy is slowed
     slowFactor: 1,      // current speed multiplier from slow towers
     hitFlash: 0,        // seconds remaining of the "just hit" flash
+    healPulse: 0,       // regenerator visual timer
     alive: true,
   };
 }
 
 // Advance all enemies. Returns the enemies that reached the core
 // this frame (they are marked dead and should damage the core).
-export function updateEnemies(enemies, dt, grid, gameTime) {
+export function updateEnemies(game, dt) {
+  const { grid } = game;
   const leaked = [];
-  for (const e of enemies) {
+  for (const e of game.enemies) {
     if (!e.alive) continue;
 
-    const slow = gameTime < e.slowUntil ? e.slowFactor : 1;
+    const slow = game.time < e.slowUntil ? e.slowFactor : 1;
     e.distance += e.speedTilesPerSec * slow * grid.tileSize * dt;
     if (e.hitFlash > 0) e.hitFlash -= dt;
+
+    // Regenerators heal while alive (and pulse a soft ring).
+    if (e.def.regenRate && e.health < e.maxHealth) {
+      e.health = Math.min(e.maxHealth, e.health + e.maxHealth * e.def.regenRate * dt);
+      e.healPulse -= dt;
+      if (e.healPulse <= 0) {
+        e.healPulse = 1.2;
+        const pos = grid.positionOnPath(e.distance);
+        game.effects.push({
+          kind: "ring", x: pos.x, y: pos.y, color: e.def.color,
+          radius: grid.tileSize * e.def.size * 1.3, ttl: 0.5, maxTtl: 0.5,
+        });
+      }
+    }
 
     if (e.distance >= grid.totalPathLength) {
       e.alive = false;
@@ -103,6 +120,18 @@ export function damageEnemy(game, enemy, sourceTower, amount) {
     ts * VFX.warp.shockRadiusTiles * (isBoss ? 2 : 1),
     isBoss ? VFX.warp.bossShock : VFX.warp.deathShock
   );
+
+  // Splitters burst into children that keep marching from the same
+  // spot, inheriting the parent's wave scaling.
+  if (enemy.def.splitInto) {
+    const { type, count } = enemy.def.splitInto;
+    for (let i = 0; i < count; i++) {
+      const child = createEnemy(type, enemy.mods);
+      // Stagger them slightly so they don't overlap perfectly.
+      child.distance = Math.max(0, enemy.distance - i * game.grid.tileSize * 0.25);
+      game.enemies.push(child);
+    }
+  }
 }
 
 // Apply a slow debuff (from Slow Towers).

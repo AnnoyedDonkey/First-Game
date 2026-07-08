@@ -54,14 +54,28 @@ function drawGlow(ctx, x, y, radius, color, alpha = 1) {
   ctx.globalAlpha = 1;
 }
 
+// Per-level palette: levels may override any LOOK color via their
+// `palette` field (see levels.js). Cached per level id.
+let pal = LOOK;
+let palLevelId = null;
+
+function activePalette(game) {
+  if (game.level.id !== palLevelId) {
+    pal = game.level.palette ? { ...LOOK, ...game.level.palette } : LOOK;
+    palLevelId = game.level.id;
+  }
+  return pal;
+}
+
 // uiState: { selectedType, selectedTower, hoverTile } from main.js
 export function render(ctx, game, time, uiState = {}) {
   const { grid } = game;
   const ts = grid.tileSize;
   const w = grid.width * ts;
   const h = grid.height * ts;
+  activePalette(game);
 
-  ctx.fillStyle = LOOK.background;
+  ctx.fillStyle = pal.background;
   ctx.fillRect(0, 0, w, h);
 
   drawWarpGrid(ctx, game);
@@ -93,7 +107,7 @@ function drawWarpGrid(ctx, game) {
 
   ctx.lineWidth = 1;
   for (let r = 0; r < sg.rows; r++) {
-    ctx.strokeStyle = r % perTile === 0 ? LOOK.gridLineMajor : LOOK.gridLine;
+    ctx.strokeStyle = r % perTile === 0 ? pal.gridLineMajor : pal.gridLine;
     ctx.beginPath();
     for (let c = 0; c < sg.cols; c++) {
       const x = sg.homeX(c) + sg.dispX(c, r);
@@ -104,7 +118,7 @@ function drawWarpGrid(ctx, game) {
     ctx.stroke();
   }
   for (let c = 0; c < sg.cols; c++) {
-    ctx.strokeStyle = c % perTile === 0 ? LOOK.gridLineMajor : LOOK.gridLine;
+    ctx.strokeStyle = c % perTile === 0 ? pal.gridLineMajor : pal.gridLine;
     ctx.beginPath();
     for (let r = 0; r < sg.rows; r++) {
       const x = sg.homeX(c) + sg.dispX(c, r);
@@ -116,7 +130,7 @@ function drawWarpGrid(ctx, game) {
   }
 
   // Small dot on every buildable tile so players can read the board.
-  ctx.fillStyle = LOOK.buildableDot;
+  ctx.fillStyle = pal.buildableDot;
   for (let y = 0; y < grid.height; y++) {
     for (let x = 0; x < grid.width; x++) {
       if (!grid.isBuildable(x, y)) continue;
@@ -146,21 +160,21 @@ function drawPath(ctx, grid, time) {
   ctx.lineCap = "round";
 
   // Wide glowing stroke first...
-  ctx.strokeStyle = LOOK.pathEdge;
+  ctx.strokeStyle = pal.pathEdge;
   ctx.lineWidth = channelWidth;
   tracePath();
   ctx.stroke();
   // ...then a slightly narrower dark stroke, leaving 2px neon edges.
-  ctx.strokeStyle = LOOK.pathChannel;
+  ctx.strokeStyle = pal.pathChannel;
   ctx.lineWidth = channelWidth - 4;
   tracePath();
   ctx.stroke();
 
   // Animated dashes flowing toward the core.
-  ctx.strokeStyle = LOOK.pathFlow;
+  ctx.strokeStyle = pal.pathFlow;
   ctx.lineWidth = 1.5;
   ctx.setLineDash([5, 16]);
-  ctx.lineDashOffset = -time * LOOK.pathFlowSpeed;
+  ctx.lineDashOffset = -time * pal.pathFlowSpeed;
   tracePath();
   ctx.stroke();
   ctx.restore();
@@ -269,7 +283,7 @@ function drawEnemies(ctx, game) {
 
 // ---------- Towers ----------
 
-const TOWER_SIDES = { laser: 4, pulse: 12, slow: 6 };
+const TOWER_SIDES = { laser: 4, pulse: 12, slow: 6, railgun: 3 };
 
 function drawTowerShape(ctx, tower, ts, x, y) {
   const r = ts * LOOK.towerRadius;

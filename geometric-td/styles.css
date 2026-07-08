@@ -440,6 +440,9 @@ button.hud-item {
   cursor: default;
 }
 
+.tower-button.locked { opacity: 0.55; }
+.tower-button.locked .tower-button-cost { font-size: 8px; letter-spacing: 0; }
+
 /* ---------- Upgrade panel ---------- */
 
 #upgrade-panel {

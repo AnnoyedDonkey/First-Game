@@ -110,7 +110,7 @@ export function updateGame(game, dt) {
   game.springGrid.update(dt);
 
   // Move enemies; handle leaks.
-  const leaked = updateEnemies(game.enemies, dt, game.grid, game.time);
+  const leaked = updateEnemies(game, dt);
   for (const e of leaked) {
     game.coreHealth -= e.coreDamage;
     // The core flinches: shockwave + red flash at the path exit.

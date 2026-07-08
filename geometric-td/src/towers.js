@@ -9,8 +9,9 @@ import { TOWERS, TOWER_UPGRADES } from "./config.js";
 import { enemyPosition, damageEnemy, slowEnemy } from "./enemies.js";
 import { spawnPulseOrb } from "./projectiles.js";
 import {
-  getTowerDamageMult, getSlowDurationMult, takeRosterUnit,
+  getTowerDamageMult, getSlowDurationMult, takeRosterUnit, isTowerUnlocked,
 } from "./progression.js";
+import { emitHitSparks } from "./particles.js";
 
 let nextTowerId = 1;
 const rosterCounters = {}; // per-prefix counters for names like L-01
@@ -82,6 +83,9 @@ function recomputeStats(tower, grid) {
     tower.slowDuration =
       def.slowDuration * Math.pow(1 + g.slowGrowth, lv) * getSlowDurationMult();
   }
+  if (def.pierceWidth) {
+    tower.pierceWidth = def.pierceWidth * grid.tileSize;
+  }
 }
 
 // ---------- Upgrades ----------
@@ -138,6 +142,7 @@ export function towerAt(game, tileX, tileY) {
 // Try to place a tower. Returns { ok, reason }.
 export function placeTower(game, type, tileX, tileY) {
   const def = TOWERS[type];
+  if (!isTowerUnlocked(type)) return { ok: false, reason: "locked" };
   if (!game.grid.isBuildable(tileX, tileY)) return { ok: false, reason: "blocked" };
   if (towerAt(game, tileX, tileY)) return { ok: false, reason: "occupied" };
   if (game.money < def.baseCost) return { ok: false, reason: "money" };
@@ -239,6 +244,55 @@ function fire(game, tower, target, targetPos) {
       ttl: 0.08, maxTtl: 0.08,
     });
     damageEnemy(game, target, tower, tower.damage);
+
+  } else if (tower.type === "railgun") {
+    // The rail: a piercing shot that damages EVERY enemy along the
+    // beam corridor, out to full range.
+    const dirX = Math.cos(tower.aimAngle);
+    const dirY = Math.sin(tower.aimAngle);
+    const endX = tower.pos.x + dirX * tower.range;
+    const endY = tower.pos.y + dirY * tower.range;
+
+    // Collect victims first (kills can spawn splitlings mid-loop).
+    const victims = [];
+    for (const e of game.enemies) {
+      if (!e.alive) continue;
+      const pos = enemyPosition(e, game.grid);
+      const relX = pos.x - tower.pos.x;
+      const relY = pos.y - tower.pos.y;
+      const along = relX * dirX + relY * dirY;        // projection on beam
+      if (along < 0 || along > tower.range) continue;
+      const perp = Math.abs(relX * dirY - relY * dirX); // distance off-axis
+      const hitWidth = tower.pierceWidth + game.grid.tileSize * e.def.size;
+      if (perp <= hitWidth) victims.push({ enemy: e, pos });
+    }
+
+    // White-hot rail flash + sparks at every victim.
+    game.effects.push({
+      kind: "beam",
+      x1: tower.pos.x, y1: tower.pos.y,
+      x2: endX, y2: endY,
+      color: "#ffffff",
+      width: 3 + tower.level,
+      ttl: 0.15, maxTtl: 0.15,
+    });
+    game.effects.push({
+      kind: "beam",
+      x1: tower.pos.x, y1: tower.pos.y,
+      x2: endX, y2: endY,
+      color: def.color,
+      width: 6 + tower.level * 2,
+      ttl: 0.1, maxTtl: 0.1,
+    });
+    for (const v of victims) {
+      emitHitSparks(game, v.pos.x, v.pos.y, def.color, 6);
+      damageEnemy(game, v.enemy, tower, tower.damage);
+    }
+    game.springGrid.applyShock(
+      tower.pos.x + dirX * tower.range * 0.5,
+      tower.pos.y + dirY * tower.range * 0.5,
+      game.grid.tileSize * 1.5, 60
+    );
 
   } else if (tower.type === "pulse") {
     // Slow homing orb that explodes on impact (see projectiles.js).

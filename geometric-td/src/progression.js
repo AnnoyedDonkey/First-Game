@@ -72,7 +72,14 @@ export function getCoreBonus() {
 export function getTowerDamageMult(type) {
   if (type === "laser") return 1 + SKILL_VALUES.laserDamage * getSkillTier("laserDamage");
   if (type === "pulse") return 1 + SKILL_VALUES.pulseDamage * getSkillTier("pulseDamage");
+  if (type === "railgun") return 1 + SKILL_VALUES.railDamage * getSkillTier("railDamage");
   return 1;
+}
+
+// The Railgun is the reward for clearing the first campaign.
+export function isTowerUnlocked(type) {
+  if (type === "railgun") return state.completedLevels.includes("level_005");
+  return true;
 }
 
 export function getSlowDurationMult() {

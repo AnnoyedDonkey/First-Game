@@ -60,6 +60,43 @@ export const ENEMIES = {
     size: 0.42,
     color: "#ff4a5e",    // neon red
   },
+  // Splits into 2 splitlings on death — punishes single-target builds.
+  splitter: {
+    name: "Splitter",
+    shape: "square",
+    baseHealth: 42,
+    speed: 1.1,
+    coreDamage: 2,
+    bounty: 10,
+    xp: 20,
+    size: 0.28,
+    color: "#ff7a2f",    // neon orange
+    splitInto: { type: "splitling", count: 2 },
+  },
+  splitling: {
+    name: "Splitling",
+    shape: "diamond",
+    baseHealth: 10,
+    speed: 2.4,
+    coreDamage: 1,
+    bounty: 3,
+    xp: 5,
+    size: 0.16,
+    color: "#ff7a2f",
+  },
+  // Heals itself while alive — punishes chip damage, rewards burst.
+  regenerator: {
+    name: "Regenerator",
+    shape: "pentagon",
+    baseHealth: 70,
+    speed: 0.85,
+    coreDamage: 2,
+    bounty: 14,
+    xp: 28,
+    size: 0.30,
+    color: "#7dff4a",    // acid green
+    regenRate: 0.05,     // heals 5% of max health per second
+  },
 };
 
 // ---------- Waves ----------
@@ -105,6 +142,19 @@ export const TOWERS = {
     slowDuration: 1.5,     // seconds
     damageType: "control",
     color: "#4affa1",
+  },
+  // Unlocked by clearing Core Siege (level 5). Slow, long-ranged,
+  // devastating — the shot PIERCES every enemy along the beam line.
+  railgun: {
+    name: "Railgun Tower",
+    prefix: "R",
+    baseCost: 100,
+    baseDamage: 60,
+    baseRange: 3.5,
+    baseFireRate: 2.5,
+    pierceWidth: 0.18,     // beam corridor half-width, in tiles
+    damageType: "rail",
+    color: "#ff9d3f",
   },
 };
 
@@ -158,7 +208,9 @@ export const VFX = {
 };
 
 // Polygon sides for each enemy shape (renderer + shard explosions).
-export const SHAPE_SIDES = { triangle: 3, diamond: 4, hexagon: 6, octagon: 8 };
+export const SHAPE_SIDES = {
+  triangle: 3, diamond: 4, square: 4, pentagon: 5, hexagon: 6, octagon: 8,
+};
 
 // ---------- Permanent skill tree ----------
 // Each skill has 5 TIERS. Tier N gives N x the base value below
@@ -172,6 +224,7 @@ export const SKILL_TIERS = {
 export const SKILLS = {
   laserDamage:  { name: "Laser Calibration", desc: "Laser Tower damage" },
   pulseDamage:  { name: "Pulse Amplifier",   desc: "Pulse Tower damage" },
+  railDamage:   { name: "Rail Overcharge",   desc: "Railgun Tower damage" },
   slowDuration: { name: "Stasis Field",      desc: "slow effect duration" },
   moneyPerKill: { name: "Salvage Protocol",  desc: "money per kill" },
   xpGain:       { name: "Combat Learning",   desc: "tower XP gain" },
@@ -182,6 +235,7 @@ export const SKILLS = {
 export const SKILL_VALUES = {
   laserDamage: 0.10,   // +10% per tier
   pulseDamage: 0.10,
+  railDamage: 0.10,
   slowDuration: 0.10,
   moneyPerKill: 0.10,
   xpGain: 0.10,
