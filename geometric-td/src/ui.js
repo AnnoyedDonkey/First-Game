@@ -42,6 +42,22 @@ const el = {
 // Cache last-drawn values so we only touch the DOM when they change.
 const last = {};
 
+// Desktop: the mouse wheel only scrolls the element under the cursor,
+// but these lists are narrow columns — forward wheel input from the
+// whole overlay so scrolling works anywhere on screen.
+function forwardWheel(overlay, list) {
+  overlay.addEventListener(
+    "wheel",
+    (e) => {
+      list.scrollTop += e.deltaY;
+      e.preventDefault();
+    },
+    { passive: false }
+  );
+}
+forwardWheel(el.levelOverlay, el.levelList);
+forwardWheel(el.skillOverlay, el.skillList);
+
 function setText(node, key, value) {
   if (last[key] === value) return;
   last[key] = value;

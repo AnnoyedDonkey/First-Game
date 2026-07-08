@@ -170,6 +170,14 @@ button.hud-item {
 
 .level-button { flex-shrink: 0; } /* buttons keep height while scrolling */
 
+/* Thin visible scrollbar so desktop users can see the list scrolls */
+#level-list::-webkit-scrollbar, #skill-list::-webkit-scrollbar { width: 4px; }
+#level-list::-webkit-scrollbar-thumb, #skill-list::-webkit-scrollbar-thumb {
+  background: var(--panel-border);
+  border-radius: 2px;
+}
+#level-list, #skill-list { scrollbar-width: thin; scrollbar-color: var(--panel-border) transparent; }
+
 .level-button {
   display: flex;
   align-items: center;
