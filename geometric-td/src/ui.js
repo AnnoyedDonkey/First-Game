@@ -2,9 +2,13 @@
 // UI — the HTML parts around the canvas: HUD, buttons, overlays.
 // ============================================================
 
-import { TOWERS, SKILLS } from "./config.js";
-import { xpThresholdFor, upgradeCostFor, isUpgradeEligible } from "./towers.js";
-import { hasSkill, getSkillPoints, buySkill, resetProgress } from "./progression.js";
+import { TOWERS, SKILLS, SKILL_VALUES, SKILL_TIERS } from "./config.js";
+import {
+  xpThresholdFor, upgradeCostFor, isUpgradeEligible, sellValueOf,
+} from "./towers.js";
+import {
+  getSkillTier, nextTierCost, getSkillPoints, buySkill, resetProgress,
+} from "./progression.js";
 
 const el = {
   towerButtons: document.getElementById("tower-buttons"),
@@ -14,6 +18,7 @@ const el = {
   upXp: document.getElementById("up-xp"),
   upKills: document.getElementById("up-kills"),
   upgradeButton: document.getElementById("upgrade-button"),
+  sellButton: document.getElementById("sell-button"),
   skillsButton: document.getElementById("skills-button"),
   skillPoints: document.getElementById("skill-points-value"),
   skillOverlay: document.getElementById("skill-overlay"),
@@ -162,6 +167,7 @@ export function updateUpgradePanel(game, tower) {
   }
 
   setText(el.upgradeButton, "upBtn", label);
+  setText(el.sellButton, "sellBtn", `SELL $${sellValueOf(tower)}`);
   if (last.upBtnDisabled !== disabled) {
     last.upBtnDisabled = disabled;
     el.upgradeButton.disabled = disabled;
@@ -175,6 +181,10 @@ export function updateUpgradePanel(game, tower) {
 
 export function onUpgradeButtonTap(handler) {
   el.upgradeButton.addEventListener("click", handler);
+}
+
+export function onSellButtonTap(handler) {
+  el.sellButton.addEventListener("click", handler);
 }
 
 // ---------- Level select ----------
@@ -305,29 +315,45 @@ function resetConfirmState() {
   el.resetSave.textContent = "RESET SAVE";
 }
 
+// One row per skill: name, tier pips, current -> next effect, buy button.
 function renderSkillList(onSkillBought) {
   el.skillPointsLine.textContent = `AVAILABLE POINTS: ${getSkillPoints()} — win battles to earn more`;
   el.skillList.innerHTML = "";
 
   for (const [id, def] of Object.entries(SKILLS)) {
+    const tier = getSkillTier(id);
+    const cost = nextTierCost(id); // null when maxed
+    const step = SKILL_VALUES[id];
+    const isPercent = step < 1;
+    const fmt = (t) => (isPercent ? `+${Math.round(step * t * 100)}%` : `+${step * t}`);
+
     const row = document.createElement("div");
     row.className = "skill-row";
+
+    // Tier pips: ● earned, ○ remaining.
+    const pips = "●".repeat(tier) + "○".repeat(SKILL_TIERS.maxTier - tier);
+    const effectLine =
+      cost === null
+        ? `${fmt(tier)} ${def.desc} — MAXED`
+        : tier === 0
+          ? `next: ${fmt(1)} ${def.desc}`
+          : `${fmt(tier)} ${def.desc} → next: ${fmt(tier + 1)}`;
 
     const text = document.createElement("div");
     text.className = "skill-text";
     text.innerHTML =
-      `<span class="skill-name">${def.name}</span>` +
-      `<span class="skill-desc">${def.desc}</span>`;
+      `<span class="skill-name">${def.name} <span class="skill-pips">${pips}</span></span>` +
+      `<span class="skill-desc">${effectLine}</span>`;
 
     const buy = document.createElement("button");
     buy.className = "skill-buy";
-    if (hasSkill(id)) {
-      buy.textContent = "OWNED";
+    if (cost === null) {
+      buy.textContent = "MAX";
       buy.classList.add("owned");
       buy.disabled = true;
     } else {
-      buy.textContent = `${def.cost} PT`;
-      buy.disabled = getSkillPoints() < def.cost;
+      buy.textContent = `${cost} PT`;
+      buy.disabled = getSkillPoints() < cost;
       buy.addEventListener("click", () => {
         if (buySkill(id)) {
           onSkillBought();

@@ -8,19 +8,38 @@
 // available roster unit of that type before creating a new one.
 // ============================================================
 
-import { SKILLS, SKILL_VALUES } from "./config.js";
+import { SKILLS, SKILL_VALUES, SKILL_TIERS } from "./config.js";
 import { loadSave, writeSave, clearSave } from "./save.js";
 
 let state = loadSave();
+migrateSkills();
+
+// Older saves stored skills as an array of owned ids; tiers store
+// them as { id: tierNumber }. Convert once on load.
+function migrateSkills() {
+  if (Array.isArray(state.skills)) {
+    const tiers = {};
+    for (const id of state.skills) tiers[id] = 1;
+    state.skills = tiers;
+    writeSave(state);
+  }
+}
 
 export function getProgress() {
   return state;
 }
 
-// ---------- Skill tree ----------
+// ---------- Skill tree (5 tiers per skill) ----------
 
-export function hasSkill(id) {
-  return state.skills.includes(id);
+export function getSkillTier(id) {
+  return state.skills[id] || 0;
+}
+
+// Cost of the NEXT tier, or null if maxed.
+export function nextTierCost(id) {
+  const tier = getSkillTier(id);
+  if (tier >= SKILL_TIERS.maxTier) return null;
+  return SKILL_TIERS.costs[tier];
 }
 
 export function getSkillPoints() {
@@ -28,35 +47,36 @@ export function getSkillPoints() {
 }
 
 export function buySkill(id) {
-  const def = SKILLS[id];
-  if (!def || hasSkill(id) || state.skillPoints < def.cost) return false;
-  state.skillPoints -= def.cost;
-  state.skills.push(id);
+  if (!SKILLS[id]) return false;
+  const cost = nextTierCost(id);
+  if (cost === null || state.skillPoints < cost) return false;
+  state.skillPoints -= cost;
+  state.skills[id] = getSkillTier(id) + 1;
   writeSave(state);
   return true;
 }
 
-// Skill-derived modifiers, read by the combat/game modules.
+// Skill-derived modifiers: tier N = N x the per-tier value.
 export function getMoneyMult() {
-  return hasSkill("moneyPerKill") ? 1 + SKILL_VALUES.moneyPerKill : 1;
+  return 1 + SKILL_VALUES.moneyPerKill * getSkillTier("moneyPerKill");
 }
 
 export function getXpMult() {
-  return hasSkill("xpGain") ? 1 + SKILL_VALUES.xpGain : 1;
+  return 1 + SKILL_VALUES.xpGain * getSkillTier("xpGain");
 }
 
 export function getCoreBonus() {
-  return hasSkill("coreHealth") ? SKILL_VALUES.coreHealth : 0;
+  return SKILL_VALUES.coreHealth * getSkillTier("coreHealth");
 }
 
 export function getTowerDamageMult(type) {
-  if (type === "laser" && hasSkill("laserDamage")) return 1 + SKILL_VALUES.laserDamage;
-  if (type === "pulse" && hasSkill("pulseDamage")) return 1 + SKILL_VALUES.pulseDamage;
+  if (type === "laser") return 1 + SKILL_VALUES.laserDamage * getSkillTier("laserDamage");
+  if (type === "pulse") return 1 + SKILL_VALUES.pulseDamage * getSkillTier("pulseDamage");
   return 1;
 }
 
 export function getSlowDurationMult() {
-  return hasSkill("slowDuration") ? 1 + SKILL_VALUES.slowDuration : 1;
+  return 1 + SKILL_VALUES.slowDuration * getSkillTier("slowDuration");
 }
 
 // ---------- Roster ----------

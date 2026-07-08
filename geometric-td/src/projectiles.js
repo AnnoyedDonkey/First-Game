@@ -60,7 +60,7 @@ function explode(game, orb) {
     ttl: 0.25,
     maxTtl: 0.25,
   });
-  emitHitSparks(game, orb.x, orb.y, orb.color, 8);
+  emitHitSparks(game, orb.x, orb.y, orb.color, 18);
   game.springGrid.applyShock(
     orb.x, orb.y,
     game.grid.tileSize * VFX.warp.shockRadiusTiles,

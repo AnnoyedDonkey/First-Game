@@ -52,6 +52,7 @@ export function createTower(type, tileX, tileY, grid, rosterRecord = null) {
     kills: rosterRecord ? rosterRecord.kills : 0,
     cooldown: 0,              // seconds until the tower may fire again
     aimAngle: -Math.PI / 2,
+    invested: def.baseCost,   // total money spent (build + upgrades)
   };
   recomputeStats(tower, grid);
   return tower;
@@ -115,6 +116,7 @@ export function tryUpgradeTower(game, tower) {
 
   game.money -= cost;
   tower.level += 1;
+  tower.invested += cost;
   recomputeStats(tower, game.grid);
 
   game.effects.push({
@@ -158,6 +160,29 @@ export function placeTower(game, type, tileX, tileY) {
     maxTtl: 0.3,
   });
   return { ok: true, tower };
+}
+
+// Sell a deployed tower for half of everything spent on it. The
+// tower leaves the battle but its roster record (XP, unlocked level)
+// is untouched — it can be redeployed later.
+export function sellValueOf(tower) {
+  return Math.floor(tower.invested / 2);
+}
+
+export function sellTower(game, tower) {
+  const refund = sellValueOf(tower);
+  game.money += refund;
+  game.towers = game.towers.filter((t) => t !== tower);
+  game.effects.push({
+    kind: "ring",
+    x: tower.pos.x,
+    y: tower.pos.y,
+    color: "#ffe24a",
+    radius: game.grid.tileSize * 0.5,
+    ttl: 0.35,
+    maxTtl: 0.35,
+  });
+  return refund;
 }
 
 function findTarget(game, tower) {

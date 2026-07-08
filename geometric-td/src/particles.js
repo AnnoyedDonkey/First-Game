@@ -18,20 +18,21 @@ function push(game, particle) {
   game.particles.push(particle);
 }
 
-// Small directional spark burst (projectile/beam impacts).
+// Spark burst (projectile/beam impacts) — firework-style, with a
+// few white-hot sparks mixed in for extra pop.
 export function emitHitSparks(game, x, y, color, count = VFX.hitSparkCount) {
   for (let i = 0; i < count; i++) {
     const a = Math.random() * Math.PI * 2;
-    const speed = rand(60, 200);
+    const speed = rand(VFX.sparkSpeed[0], VFX.sparkSpeed[1]);
     push(game, {
       kind: "spark",
       x, y,
       vx: Math.cos(a) * speed,
       vy: Math.sin(a) * speed,
-      color,
-      size: rand(1.5, 3),
-      ttl: rand(0.15, 0.35),
-      maxTtl: 0.35,
+      color: i % 4 === 0 ? "#ffffff" : color,
+      size: rand(1.5, 3.2),
+      ttl: rand(VFX.sparkTtl[0], VFX.sparkTtl[1]),
+      maxTtl: VFX.sparkTtl[1],
     });
   }
 }

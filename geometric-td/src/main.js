@@ -6,7 +6,7 @@ import { DEBUG, TOWERS } from "./config.js";
 import { LEVELS } from "./levels.js";
 import { createGame, updateGame, startNextWave } from "./game.js";
 import {
-  placeTower, towerAt, tryUpgradeTower,
+  placeTower, towerAt, tryUpgradeTower, sellTower,
   seedRosterCounters, refreshTowerStats,
 } from "./towers.js";
 import { getProgress } from "./progression.js";
@@ -15,7 +15,7 @@ import { bindCanvasInput } from "./input.js";
 import {
   updateHUD, onWaveButtonTap, showOverlay,
   initTowerButtons, updateTowerButtons,
-  updateUpgradePanel, onUpgradeButtonTap,
+  updateUpgradePanel, onUpgradeButtonTap, onSellButtonTap,
   initSkillTree, showLevelSelect, openSkillTree, hideOverlay,
   initSpeedControls,
 } from "./ui.js";
@@ -87,6 +87,12 @@ initTowerButtons((type) => {
 
 onUpgradeButtonTap(() => {
   if (uiState.selectedTower) tryUpgradeTower(game, uiState.selectedTower);
+});
+
+onSellButtonTap(() => {
+  if (!uiState.selectedTower) return;
+  sellTower(game, uiState.selectedTower);
+  uiState.selectedTower = null; // panel closes, tower tray returns
 });
 
 // Roster names continue from the saved roster (no L-01 collisions).

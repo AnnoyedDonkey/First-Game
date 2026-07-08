@@ -9,7 +9,7 @@ const KEY = "geometric-td-save-v1";
 const DEFAULT_SAVE = {
   version: 1,
   skillPoints: 0,
-  skills: [],           // owned skill ids from config.js SKILLS
+  skills: {},           // { skillId: tier } — see config.js SKILLS
   roster: [],           // [{ name, type, maxLevel, xp, kills }]
   completedLevels: [],  // level ids won at least once
   wins: 0,

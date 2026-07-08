@@ -64,6 +64,10 @@ tile radius); enemy health is an arc, not a bar; HUD/tray compacted.
 Done from backlog: speed controls (0.5x/pause/2x in HUD), VFX raised from
 "subtle" to "pizzazz" tuning + effects scale with the firing tower's level,
 RESTORE renamed to UPGRADE, RESET ALL PROGRESS on the main menu.
+Later: fireworks-level impact sparks (9 base/hit + streak trails + white-hot
+mix, 900 cap), SELL button (50% of build+upgrade cost, roster record kept),
+skill tree reworked to 5 tiers per skill (costs 1/1/2/2/3 pts, +10%/tier;
+old boolean saves migrate automatically), skill overlay z-index bug fixed.
 
 **Phase 1 complete** (July 2026). Roster rules implemented: veterans auto-deploy
 (best maxLevel first) when placing their type; they re-enter battle at level 1

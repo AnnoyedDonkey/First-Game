@@ -133,12 +133,14 @@ export const ECONOMY = {
 // All the spectacle knobs live here. "Subtle" starting values —
 // raise warp strengths and particle counts for more drama.
 export const VFX = {
-  maxParticles: 600,       // hard cap; oldest particles are dropped first
-  hitSparkCount: 4,        // base sparks per hit (+1 per tower level)
-  deathSparkCount: 10,     // extra sparks on top of shards when a unit dies
+  maxParticles: 900,       // hard cap; oldest particles are dropped first
+  hitSparkCount: 9,        // base sparks per hit (+1 per tower level)
+  deathSparkCount: 20,     // extra sparks on top of shards when a unit dies
+  sparkSpeed: [80, 320],   // px/sec range for sparks (fireworks!)
+  sparkTtl: [0.2, 0.5],    // seconds range before a spark fades out
   shardSpeed: [60, 220],   // px/sec range for flying shards
   shardTtl: [0.5, 1.1],    // seconds range before a shard fades out
-  powerSparkBonus: 2,      // extra death sparks per killer tower level
+  powerSparkBonus: 4,      // extra death sparks per killer tower level
 
   // The warping background grid (spring mesh).
   warp: {
@@ -159,23 +161,29 @@ export const VFX = {
 export const SHAPE_SIDES = { triangle: 3, diamond: 4, hexagon: 6, octagon: 8 };
 
 // ---------- Permanent skill tree ----------
-// Starter set: each is a one-time purchase costing skill points.
-// The player earns 1 skill point per level won.
-export const SKILLS = {
-  laserDamage:  { name: "Laser Calibration", desc: "+10% Laser Tower damage",   cost: 1 },
-  pulseDamage:  { name: "Pulse Amplifier",   desc: "+10% Pulse Tower damage",   cost: 1 },
-  slowDuration: { name: "Stasis Field",      desc: "+10% slow effect duration", cost: 1 },
-  moneyPerKill: { name: "Salvage Protocol",  desc: "+10% money per kill",       cost: 1 },
-  xpGain:       { name: "Combat Learning",   desc: "+10% tower XP gain",        cost: 1 },
-  coreHealth:   { name: "Core Plating",      desc: "+5 AI Core health",         cost: 1 },
+// Each skill has 5 TIERS. Tier N gives N x the base value below
+// (e.g. Laser Calibration tier 3 = +30% damage). The player earns
+// 1 skill point per level won; tier costs escalate.
+export const SKILL_TIERS = {
+  maxTier: 5,
+  costs: [1, 1, 2, 2, 3],  // cost of tier 1, 2, 3, 4, 5
 };
 
-// Effect sizes for the skills above — tweak strengths here.
+export const SKILLS = {
+  laserDamage:  { name: "Laser Calibration", desc: "Laser Tower damage" },
+  pulseDamage:  { name: "Pulse Amplifier",   desc: "Pulse Tower damage" },
+  slowDuration: { name: "Stasis Field",      desc: "slow effect duration" },
+  moneyPerKill: { name: "Salvage Protocol",  desc: "money per kill" },
+  xpGain:       { name: "Combat Learning",   desc: "tower XP gain" },
+  coreHealth:   { name: "Core Plating",      desc: "AI Core health" },
+};
+
+// Per-tier effect size (tier N = N x this value).
 export const SKILL_VALUES = {
-  laserDamage: 0.10,
+  laserDamage: 0.10,   // +10% per tier
   pulseDamage: 0.10,
   slowDuration: 0.10,
   moneyPerKill: 0.10,
   xpGain: 0.10,
-  coreHealth: 5,
+  coreHealth: 5,       // +5 HP per tier
 };

@@ -439,7 +439,15 @@ function drawParticles(ctx, game) {
       ctx.stroke();
       ctx.globalAlpha = 1;
     } else {
-      // Spark: a small glowing dot with a motion streak.
+      // Spark: glowing dot + a motion-trail streak behind it.
+      ctx.globalAlpha = life;
+      ctx.strokeStyle = p.color;
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(p.x - p.vx * 0.045, p.y - p.vy * 0.045);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
       drawGlow(ctx, p.x, p.y, p.size * 3, p.color, life);
     }
   }

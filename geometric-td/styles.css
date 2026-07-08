@@ -218,7 +218,9 @@ button.hud-item {
   gap: 14px;
   background: rgba(5, 6, 15, 0.94);
   padding: 20px;
-  z-index: 20;
+  /* Above the level-select overlay (30) — opening the tree from the
+     main menu used to render invisibly underneath it. */
+  z-index: 40;
 }
 
 #skill-overlay.hidden { display: none; }
@@ -255,6 +257,7 @@ button.hud-item {
 .skill-row .skill-text { display: flex; flex-direction: column; gap: 2px; text-align: left; }
 .skill-row .skill-name { font-size: 13px; color: var(--text); letter-spacing: 1px; }
 .skill-row .skill-desc { font-size: 11px; color: var(--text-dim); }
+.skill-row .skill-pips { font-size: 10px; color: var(--neon-magenta); letter-spacing: 2px; margin-left: 6px; }
 
 .skill-buy {
   font-family: inherit;
@@ -479,6 +482,14 @@ button.hud-item {
   color: var(--bg);
   text-shadow: none;
   box-shadow: 0 0 12px rgba(74, 255, 161, 0.6);
+}
+
+#sell-button {
+  min-width: 78px;
+  font-size: 11px;
+  color: var(--neon-yellow);
+  border-color: var(--neon-yellow);
+  text-shadow: none;
 }
 
 .big-button {
