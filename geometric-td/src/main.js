@@ -17,6 +17,7 @@ import {
   initTowerButtons, updateTowerButtons,
   updateUpgradePanel, onUpgradeButtonTap,
   initSkillTree, showLevelSelect, openSkillTree, hideOverlay,
+  initSpeedControls,
 } from "./ui.js";
 
 const TILE_SIZE = 64; // internal render resolution per tile
@@ -94,6 +95,14 @@ seedRosterCounters(getProgress().roster);
 // Skill purchases apply to deployed towers immediately.
 initSkillTree(() => {
   if (game) refreshTowerStats(game);
+});
+
+// Player speed control: 0.5x / pause / 2x (multiplies the game clock).
+let speedFactor = 1;
+let gamePaused = false;
+initSpeedControls((factor, paused) => {
+  speedFactor = factor;
+  gamePaused = paused;
 });
 
 bindCanvasInput(canvas, {
@@ -188,7 +197,10 @@ let lastTime = performance.now();
 
 function frame(now) {
   // Clamp dt so a backgrounded tab doesn't cause a huge jump.
-  const dt = Math.min((now - lastTime) / 1000, 0.05) * DEBUG.gameSpeed;
+  // Paused = zero-length ticks: the world freezes but still renders.
+  const dt =
+    Math.min((now - lastTime) / 1000, 0.05) *
+    DEBUG.gameSpeed * (gamePaused ? 0 : speedFactor);
   lastTime = now;
 
   if (game) {

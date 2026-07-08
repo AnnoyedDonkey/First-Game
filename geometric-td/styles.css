@@ -92,6 +92,40 @@ button.hud-item {
 
 #skills-button .hud-value { color: var(--neon-magenta); text-shadow: 0 0 8px rgba(255, 63, 212, 0.5); }
 
+/* ---------- Speed controls ---------- */
+
+#speed-controls {
+  display: flex;
+  gap: 3px;
+}
+
+.speed-btn {
+  width: 34px;
+  height: 34px;
+  font-family: inherit;
+  font-size: 11px;
+  background: var(--bg);
+  color: var(--text-dim);
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.speed-btn.active {
+  color: var(--neon-cyan);
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 8px rgba(53, 224, 255, 0.4);
+}
+
+#speed-pause.active {
+  color: var(--neon-yellow);
+  border-color: var(--neon-yellow);
+  box-shadow: 0 0 8px rgba(255, 226, 74, 0.4);
+}
+
 /* ---------- Level select overlay ---------- */
 
 #level-overlay {
@@ -148,6 +182,24 @@ button.hud-item {
 .level-button .level-done { color: var(--neon-green); font-size: 12px; }
 
 .level-button.skill-entry { border-color: var(--neon-magenta); }
+
+.menu-reset {
+  font-family: inherit;
+  font-size: 10px;
+  letter-spacing: 1px;
+  margin-top: 8px;
+  min-height: 40px;
+  background: none;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.menu-reset.confirming {
+  color: var(--neon-red);
+  border-color: var(--neon-red);
+}
 .level-button .level-points {
   color: var(--neon-magenta);
   font-size: 12px;

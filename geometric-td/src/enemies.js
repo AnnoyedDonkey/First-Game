@@ -67,9 +67,10 @@ export function damageEnemy(game, enemy, sourceTower, amount) {
   enemy.hitFlash = 0.1;
 
   if (enemy.health > 0) {
-    // Impact sparks where the shot landed.
+    // Impact sparks where the shot landed — more from stronger towers.
     const hp = enemyPosition(enemy, game.grid);
-    emitHitSparks(game, hp.x, hp.y, enemy.def.color);
+    const level = sourceTower ? sourceTower.level : 1;
+    emitHitSparks(game, hp.x, hp.y, enemy.def.color, VFX.hitSparkCount + level - 1);
     return;
   }
 
@@ -94,7 +95,8 @@ export function damageEnemy(game, enemy, sourceTower, amount) {
   });
 
   // GeoDefense-style shatter: edges fly apart + a grid shockwave.
-  emitDeathShards(game, pos.x, pos.y, enemy.def, ts);
+  // Stronger killers produce a more violent explosion.
+  emitDeathShards(game, pos.x, pos.y, enemy.def, ts, sourceTower ? sourceTower.level : 1);
   const isBoss = enemy.type === "boss";
   game.springGrid.applyShock(
     pos.x, pos.y,

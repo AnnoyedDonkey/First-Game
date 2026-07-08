@@ -38,11 +38,15 @@ export function emitHitSparks(game, x, y, color, count = VFX.hitSparkCount) {
 
 // The signature effect: the enemy's polygon breaks into its own
 // edges, which fly apart as spinning line segments.
-export function emitDeathShards(game, x, y, def, tileSize) {
+// `power` = the killing tower's level: stronger towers blow enemies
+// apart into more, faster pieces.
+export function emitDeathShards(game, x, y, def, tileSize, power = 1) {
   const sides = SHAPE_SIDES[def.shape] ?? 3;
   const radius = tileSize * def.size;
   const isBoss = def.shape === "octagon";
-  const splits = isBoss ? 3 : 1; // bosses shatter into many more pieces
+  // Base pieces per edge, +1 at tower level 3, +1 more at level 5.
+  const splits = (isBoss ? 3 : 1) + (power >= 3 ? 1 : 0) + (power >= 5 ? 1 : 0);
+  const speedMult = (isBoss ? 1.4 : 1) * (1 + 0.09 * (power - 1));
 
   for (let i = 0; i < sides; i++) {
     const a0 = (i / sides) * Math.PI * 2 - Math.PI / 2;
@@ -58,7 +62,7 @@ export function emitDeathShards(game, x, y, def, tileSize) {
       const mid = a0 + (a1 - a0) * t;
       const mx = x + Math.cos(mid) * radius;
       const my = y + Math.sin(mid) * radius;
-      const speed = rand(VFX.shardSpeed[0], VFX.shardSpeed[1]) * (isBoss ? 1.4 : 1);
+      const speed = rand(VFX.shardSpeed[0], VFX.shardSpeed[1]) * speedMult;
       push(game, {
         kind: "shard",
         x: mx, y: my,
@@ -74,7 +78,9 @@ export function emitDeathShards(game, x, y, def, tileSize) {
     }
   }
 
-  emitHitSparks(game, x, y, def.color, VFX.deathSparkCount * (isBoss ? 3 : 1));
+  const sparkCount =
+    VFX.deathSparkCount * (isBoss ? 3 : 1) + VFX.powerSparkBonus * (power - 1);
+  emitHitSparks(game, x, y, def.color, sparkCount);
 }
 
 export function updateParticles(game, dt) {

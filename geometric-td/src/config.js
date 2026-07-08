@@ -133,24 +133,25 @@ export const ECONOMY = {
 // All the spectacle knobs live here. "Subtle" starting values —
 // raise warp strengths and particle counts for more drama.
 export const VFX = {
-  maxParticles: 400,       // hard cap; oldest particles are dropped first
-  hitSparkCount: 3,        // sparks per projectile/beam hit
-  deathSparkCount: 6,      // extra sparks on top of shards when a unit dies
-  shardSpeed: [50, 170],   // px/sec range for flying shards
-  shardTtl: [0.45, 0.9],   // seconds range before a shard fades out
+  maxParticles: 600,       // hard cap; oldest particles are dropped first
+  hitSparkCount: 4,        // base sparks per hit (+1 per tower level)
+  deathSparkCount: 10,     // extra sparks on top of shards when a unit dies
+  shardSpeed: [60, 220],   // px/sec range for flying shards
+  shardTtl: [0.5, 1.1],    // seconds range before a shard fades out
+  powerSparkBonus: 2,      // extra death sparks per killer tower level
 
   // The warping background grid (spring mesh).
   warp: {
     spacingTiles: 0.5,     // grid node spacing as a fraction of a tile
     homeStiffness: 42,     // pull back toward rest position
     neighborStiffness: 14, // coupling that makes ripples propagate
-    damping: 5.5,          // how fast the wobble dies down
-    maxDisplacement: 5,    // px clamp — keeps the board readable
-    hitShock: 26,          // impulse strengths...
-    deathShock: 95,
-    bossShock: 300,
-    leakShock: 220,        // the core "flinches" when damaged
-    shockRadiusTiles: 1.6, // impulse falloff radius
+    damping: 5.0,          // how fast the wobble dies down
+    maxDisplacement: 9,    // px clamp — keeps the board readable
+    hitShock: 40,          // impulse strengths...
+    deathShock: 150,
+    bossShock: 460,
+    leakShock: 320,        // the core "flinches" when damaged
+    shockRadiusTiles: 2.0, // impulse falloff radius
   },
 };
 

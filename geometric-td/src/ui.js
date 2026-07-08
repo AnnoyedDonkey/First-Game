@@ -157,9 +157,7 @@ export function updateUpgradePanel(game, tower) {
     label = `$${cost}`;
     disabled = true;
   } else {
-    // "Restore" when re-buying a level the veteran already earned.
-    const verb = tower.level < tower.maxUnlockedLevel ? "RESTORE" : "UPGRADE";
-    label = `${verb} $${cost}`;
+    label = `UPGRADE $${cost}`;
     disabled = false;
   }
 
@@ -212,7 +210,62 @@ export function showLevelSelect(levels, completedIds, onPick) {
   skillBtn.addEventListener("click", openSkillTree);
   el.levelList.appendChild(skillBtn);
 
+  // Reset all progress — two-tap confirm, then reload clean.
+  const resetBtn = document.createElement("button");
+  resetBtn.className = "menu-reset";
+  resetBtn.textContent = "RESET ALL PROGRESS";
+  resetBtn.addEventListener("click", () => {
+    if (resetBtn.classList.contains("confirming")) {
+      resetProgress();
+      location.reload();
+    } else {
+      resetBtn.classList.add("confirming");
+      resetBtn.textContent = "WIPE ROSTER, SKILLS & LEVELS? TAP AGAIN";
+      setTimeout(() => {
+        resetBtn.classList.remove("confirming");
+        resetBtn.textContent = "RESET ALL PROGRESS";
+      }, 3000);
+    }
+  });
+  el.levelList.appendChild(resetBtn);
+
   el.levelOverlay.classList.remove("hidden");
+}
+
+// ---------- Speed controls ----------
+// Half / pause / double. Tapping an active speed button returns to 1x;
+// tapping pause again resumes. onChange(factor, paused) fires on every
+// state change so main.js can scale (or freeze) the game clock.
+
+export function initSpeedControls(onChange) {
+  const slow = document.getElementById("speed-slow");
+  const pause = document.getElementById("speed-pause");
+  const fast = document.getElementById("speed-fast");
+  let factor = 1;
+  let paused = false;
+
+  function apply() {
+    slow.classList.toggle("active", factor === 0.5 && !paused);
+    fast.classList.toggle("active", factor === 2 && !paused);
+    pause.classList.toggle("active", paused);
+    pause.innerHTML = paused ? "&#9654;" : "&#10074;&#10074;"; // play / pause glyph
+    onChange(factor, paused);
+  }
+
+  slow.addEventListener("click", () => {
+    factor = factor === 0.5 ? 1 : 0.5;
+    paused = false;
+    apply();
+  });
+  fast.addEventListener("click", () => {
+    factor = factor === 2 ? 1 : 2;
+    paused = false;
+    apply();
+  });
+  pause.addEventListener("click", () => {
+    paused = !paused;
+    apply();
+  });
 }
 
 // ---------- Skill tree overlay ----------

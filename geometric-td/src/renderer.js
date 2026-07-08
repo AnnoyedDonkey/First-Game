@@ -394,12 +394,14 @@ function drawEffects(ctx, game) {
     ctx.strokeStyle = fx.color;
 
     if (fx.kind === "beam") {
-      ctx.lineWidth = 2;
+      ctx.lineWidth = fx.width || 2;
       ctx.beginPath();
       ctx.moveTo(fx.x1, fx.y1);
       ctx.lineTo(fx.x2, fx.y2);
       ctx.stroke();
-      drawGlow(ctx, fx.x2, fx.y2, 8, fx.color, life * 0.8);
+      drawGlow(ctx, fx.x2, fx.y2, 6 + (fx.width || 2) * 2, fx.color, life * 0.8);
+    } else if (fx.kind === "muzzle") {
+      drawGlow(ctx, fx.x, fx.y, fx.radius, fx.color, life);
     } else if (fx.kind === "ring" || fx.kind === "burst") {
       // Rings/bursts expand as they fade.
       const r = fx.radius * (fx.kind === "burst" ? 1.5 - life * 0.5 : 1.2 - life * 0.2);

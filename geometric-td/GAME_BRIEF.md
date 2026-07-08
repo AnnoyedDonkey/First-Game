@@ -59,10 +59,11 @@ Tuning in config.js VFX — currently SUBTLE (5px displacement clamp,
 tile radius); enemy health is an arc, not a bar; HUD/tray compacted.
 
 ## Backlog (user-requested)
-- Fast-forward button: toggle 2x game speed during waves (DEBUG.gameSpeed exists;
-  needs a UI button + probably per-battle, not global)
 - Split XP among damage contributors so Slow towers can level (currently final-hit only)
-- Consider raising VFX.warp strengths / particle counts after user plays "subtle" tuning
+
+Done from backlog: speed controls (0.5x/pause/2x in HUD), VFX raised from
+"subtle" to "pizzazz" tuning + effects scale with the firing tower's level,
+RESTORE renamed to UPGRADE, RESET ALL PROGRESS on the main menu.
 
 **Phase 1 complete** (July 2026). Roster rules implemented: veterans auto-deploy
 (best maxLevel first) when placing their type; they re-enter battle at level 1

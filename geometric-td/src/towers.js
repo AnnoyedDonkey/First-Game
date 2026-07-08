@@ -192,13 +192,25 @@ export function updateTowers(game, dt) {
 function fire(game, tower, target, targetPos) {
   const def = tower.def;
 
+  // Muzzle flash at the barrel — bigger on higher-level towers.
+  const barrel = game.grid.tileSize * 0.22;
+  game.effects.push({
+    kind: "muzzle",
+    x: tower.pos.x + Math.cos(tower.aimAngle) * barrel,
+    y: tower.pos.y + Math.sin(tower.aimAngle) * barrel,
+    color: def.color,
+    radius: 5 + tower.level * 2,
+    ttl: 0.07, maxTtl: 0.07,
+  });
+
   if (tower.type === "laser") {
-    // Instant beam.
+    // Instant beam — thicker as the tower levels up.
     game.effects.push({
       kind: "beam",
       x1: tower.pos.x, y1: tower.pos.y,
       x2: targetPos.x, y2: targetPos.y,
       color: def.color,
+      width: 1.5 + tower.level * 0.5,
       ttl: 0.08, maxTtl: 0.08,
     });
     damageEnemy(game, target, tower, tower.damage);
@@ -214,6 +226,7 @@ function fire(game, tower, target, targetPos) {
       x1: tower.pos.x, y1: tower.pos.y,
       x2: targetPos.x, y2: targetPos.y,
       color: def.color,
+      width: 1.2 + tower.level * 0.4,
       ttl: 0.12, maxTtl: 0.12,
     });
     slowEnemy(game, target, tower.slowPercent, tower.slowDuration);
