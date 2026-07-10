@@ -84,11 +84,12 @@ export function damageEnemy(game, enemy, sourceTower, amount) {
 
   // Damage-type counters: enemies resist / are weak to specific towers
   // (ENEMIES[type].damageMult keyed by the tower's damageType).
-  let dmg = amount;
+  let typeMult = 1;
   if (sourceTower) {
-    const mult = enemy.def.damageMult && enemy.def.damageMult[sourceTower.def.damageType];
-    if (mult != null) dmg *= mult;
+    const m = enemy.def.damageMult && enemy.def.damageMult[sourceTower.def.damageType];
+    if (m != null) typeMult = m;
   }
+  let dmg = amount * typeMult;
   // Slow-tower vulnerability debuff: slowed enemies take extra damage
   // from EVERY source while the debuff lasts.
   if (game.time < enemy.vulnUntil) dmg *= enemy.vulnMult;
@@ -97,10 +98,27 @@ export function damageEnemy(game, enemy, sourceTower, amount) {
   enemy.hitFlash = 0.1;
 
   if (enemy.health > 0) {
-    // Impact sparks where the shot landed — more from stronger towers.
+    // Impact feedback that TEACHES the counter: a wrong-tower hit clangs
+    // off dull grey with a shield ring; a super-effective hit pops bright
+    // white with a colored halo. Neutral hits use the normal spark burst.
     const hp = enemyPosition(enemy, game.grid);
     const level = sourceTower ? sourceTower.level : 1;
-    emitHitSparks(game, hp.x, hp.y, enemy.def.color, VFX.hitSparkCount + level - 1);
+    if (typeMult >= 1.2) {
+      emitHitSparks(game, hp.x, hp.y, "#ffffff", VFX.hitSparkCount + level + 4);
+      game.effects.push({
+        kind: "ring", x: hp.x, y: hp.y, color: sourceTower.def.color,
+        radius: game.grid.tileSize * enemy.def.size * 1.4, ttl: 0.22, maxTtl: 0.22,
+      });
+    } else if (typeMult <= 0.75) {
+      emitHitSparks(game, hp.x, hp.y, "#8a97ac",
+        Math.max(2, Math.round((VFX.hitSparkCount + level - 1) * 0.35)));
+      game.effects.push({
+        kind: "ring", x: hp.x, y: hp.y, color: "#8a97ac",
+        radius: game.grid.tileSize * enemy.def.size * 1.05, ttl: 0.18, maxTtl: 0.18,
+      });
+    } else {
+      emitHitSparks(game, hp.x, hp.y, enemy.def.color, VFX.hitSparkCount + level - 1);
+    }
     return;
   }
 

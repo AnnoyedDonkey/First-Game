@@ -47,9 +47,9 @@ export const ENEMIES = {
     xp: 12,
     size: 0.22,
     color: "#ffe24a",    // neon yellow
-    // Fragile flyers — Lasers (fast fire) shred them; Pulse orbs are too
-    // slow to reliably catch them.
-    damageMult: { energy: 1.3, pulse: 0.8 },
+    // Fragile flyers — Lasers (fast fire) shred them; slow Pulse orbs
+    // struggle to catch them. ANSWER: Laser (or Slow to pin them).
+    damageMult: { energy: 1.3, pulse: 0.7 },
   },
   armored: {
     name: "Armored",
@@ -61,8 +61,10 @@ export const ENEMIES = {
     xp: 25,
     size: 0.32,
     color: "#ff3fd4",    // neon magenta
-    // Plated: lasers & slow-zaps chip harmlessly; a Railgun punches through.
-    damageMult: { energy: 0.55, control: 0.6, rail: 1.6 },
+    // Plated: lasers & slow-zaps clang off harmlessly. Concussive Pulse
+    // splash rattles it, and a Railgun punches clean through.
+    // ANSWER: Pulse early, Railgun once unlocked. NOT Laser.
+    damageMult: { energy: 0.4, control: 0.5, pulse: 1.2, rail: 1.6 },
   },
   boss: {
     name: "Boss",
@@ -74,9 +76,10 @@ export const ENEMIES = {
     xp: 150,
     size: 0.42,
     color: "#ff4a5e",    // neon red
-    // Massive: hard to keep slowed, and splash is inefficient on a lone
-    // target — focus it down with direct fire.
-    damageMult: { control: 0.5, pulse: 0.8 },
+    // Massive lone target: shrugs off slows, and splash is wasted on a
+    // single body. Focused direct fire is the answer.
+    // ANSWER: Railgun / Laser focus. NOT Pulse, NOT Slow.
+    damageMult: { control: 0.4, pulse: 0.75, rail: 1.2 },
   },
   // Splits into 2 splitlings on death — punishes single-target builds.
   splitter: {
@@ -90,9 +93,10 @@ export const ENEMIES = {
     size: 0.28,
     color: "#ff7a2f",    // neon orange
     splitInto: { type: "splitling", count: 2 },
-    // Pulse splash hits the parent AND both children; a single-line
+    // Pulse splash hits the parent AND both children at once; a single-line
     // Railgun wastes most of its shot on one body.
-    damageMult: { pulse: 1.5, rail: 0.7 },
+    // ANSWER: Pulse. NOT Railgun.
+    damageMult: { pulse: 1.5, rail: 0.6 },
   },
   splitling: {
     name: "Splitling",
@@ -118,8 +122,9 @@ export const ENEMIES = {
     size: 0.30,
     color: "#7dff4a",    // acid green
     regenRate: 0.05,     // heals 5% of max health per second
-    // Out-heals steady laser chip; a Railgun's burst outruns the regen.
-    damageMult: { energy: 0.65, rail: 1.6 },
+    // Out-heals steady laser chip almost entirely; only a Railgun's burst
+    // outruns the regen. ANSWER: Railgun. NOT Laser.
+    damageMult: { energy: 0.45, rail: 1.6 },
   },
 };
 

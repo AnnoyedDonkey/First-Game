@@ -144,62 +144,70 @@ const level002 = {
     { x: 0, y: 8 },
   ],
 
+  // Waves teach the Laser/Pulse split: pure-FAST rushes punish Pulse
+  // (fast resists it) and reward Laser/Slow; pure-ARMORED walls clang off
+  // Lasers and demand Pulse; the bosses shrug off Pulse+Slow (bring focus).
   waves: [
-    // 1-2 — no warmup this time
-    { groups: [{ type: "basic", count: 10, spawnInterval: 0.7 }] },
+    // 1 — warmup basics
+    { groups: [{ type: "basic", count: 12, spawnInterval: 0.6, healthMult: 1.3 }] },
+
+    // 2 — FAST rush (Laser check)
+    { groups: [{ type: "fast", count: 14, spawnInterval: 0.35, healthMult: 1.4 }] },
+
+    // 3 — first ARMORED wall (Pulse check — lasers clang off)
+    { groups: [{ type: "armored", count: 8, spawnInterval: 0.9, healthMult: 1.8 }] },
+
+    // 4 — mixed: fast AND armored at once (need both answers)
     { groups: [
-      { type: "basic", count: 10, spawnInterval: 0.6, healthMult: 1.2 },
-      { type: "fast", count: 4, spawnInterval: 0.5, startDelay: 3 },
+      { type: "fast", count: 12, spawnInterval: 0.35, healthMult: 1.8 },
+      { type: "armored", count: 6, spawnInterval: 1.0, startDelay: 3, healthMult: 2.0 },
     ] },
 
-    // 3-4 — fast pressure, then early armor
-    { groups: [{ type: "fast", count: 12, spawnInterval: 0.4, healthMult: 1.2 }] },
+    // 5 — basics + fast pressure
     { groups: [
-      { type: "armored", count: 5, spawnInterval: 1.2 },
-      { type: "basic", count: 8, spawnInterval: 0.5, startDelay: 2, healthMult: 1.4 },
+      { type: "basic", count: 16, spawnInterval: 0.4, healthMult: 2.6 },
+      { type: "fast", count: 10, spawnInterval: 0.3, startDelay: 4, healthMult: 2.2 },
     ] },
 
-    // 5-6 — sustained mixed assault
+    // 6 — armored column with fast chasers
     { groups: [
-      { type: "basic", count: 12, spawnInterval: 0.5, healthMult: 2.2 },
-      { type: "fast", count: 8, spawnInterval: 0.4, startDelay: 3, healthMult: 1.8 },
-    ] },
-    { groups: [
-      { type: "armored", count: 7, spawnInterval: 1.0, healthMult: 1.8 },
-      { type: "fast", count: 8, spawnInterval: 0.35, startDelay: 4, healthMult: 2.0 },
+      { type: "armored", count: 11, spawnInterval: 0.8, healthMult: 2.4 },
+      { type: "fast", count: 8, spawnInterval: 0.35, startDelay: 5, healthMult: 2.4 },
     ] },
 
-    // 7 — mini-boss checkpoint
+    // 7 — mini-boss (Laser focus; Pulse/Slow are weak on it)
     { groups: [
-      { type: "boss", count: 1, healthMult: 0.9, speedMult: 1.2 },
-      { type: "basic", count: 10, spawnInterval: 0.5, startDelay: 2, healthMult: 2.4 },
+      { type: "boss", count: 1, healthMult: 1.1, speedMult: 1.2 },
+      { type: "basic", count: 12, spawnInterval: 0.45, startDelay: 2, healthMult: 3.0 },
     ] },
 
     // 8-9 — the grind
     { groups: [
-      { type: "basic", count: 18, spawnInterval: 0.4, healthMult: 3.0 },
-      { type: "armored", count: 6, spawnInterval: 1.0, startDelay: 3, healthMult: 2.2 },
+      { type: "basic", count: 20, spawnInterval: 0.35, healthMult: 3.6 },
+      { type: "armored", count: 8, spawnInterval: 0.9, startDelay: 3, healthMult: 2.8 },
     ] },
     { groups: [
-      { type: "fast", count: 16, spawnInterval: 0.3, healthMult: 2.4, speedMult: 1.1 },
-      { type: "armored", count: 8, spawnInterval: 0.9, startDelay: 2, healthMult: 2.5 },
+      { type: "fast", count: 18, spawnInterval: 0.28, healthMult: 3.0, speedMult: 1.15 },
+      { type: "armored", count: 9, spawnInterval: 0.8, startDelay: 2, healthMult: 3.2 },
     ] },
 
-    // 10-11 — heavy armor columns
+    // 10 — heavy ARMORED wall (real Pulse gate)
     { groups: [
-      { type: "armored", count: 12, spawnInterval: 0.8, healthMult: 2.8 },
-      { type: "fast", count: 10, spawnInterval: 0.35, startDelay: 5, healthMult: 2.8 },
+      { type: "armored", count: 15, spawnInterval: 0.7, healthMult: 3.4 },
+      { type: "fast", count: 10, spawnInterval: 0.32, startDelay: 5, healthMult: 3.4 },
     ] },
+
+    // 11 — basics flood + armored
     { groups: [
-      { type: "basic", count: 20, spawnInterval: 0.35, healthMult: 3.8 },
-      { type: "armored", count: 8, spawnInterval: 0.8, startDelay: 4, healthMult: 3.0 },
+      { type: "basic", count: 24, spawnInterval: 0.3, healthMult: 4.6 },
+      { type: "armored", count: 9, spawnInterval: 0.75, startDelay: 4, healthMult: 3.6 },
     ] },
 
     // 12 — twin bosses with escorts
     { groups: [
-      { type: "boss", count: 2, spawnInterval: 6, healthMult: 1.8 },
-      { type: "armored", count: 6, spawnInterval: 1.0, startDelay: 3, healthMult: 2.8 },
-      { type: "fast", count: 10, spawnInterval: 0.4, startDelay: 10, healthMult: 2.8 },
+      { type: "boss", count: 2, spawnInterval: 6, healthMult: 2.4 },
+      { type: "armored", count: 7, spawnInterval: 0.9, startDelay: 3, healthMult: 3.4 },
+      { type: "fast", count: 12, spawnInterval: 0.35, startDelay: 10, healthMult: 3.4 },
     ] },
   ],
 };
@@ -314,46 +322,49 @@ const level004 = {
     { x: 1, y: 3 }, { x: 6, y: 2 },
   ],
 
+  // The short staircase gives each tower an enemy for only a heartbeat, so
+  // FAST swarms blow through unless you SLOW them (and lasers finish what
+  // the slow pins). Armored interludes still demand Pulse. The pure-fast
+  // "blitz" waves (5, 9) are the real Slow-tower gates.
   waves: [
-    { groups: [{ type: "basic", count: 12, spawnInterval: 0.55, healthMult: 1.4 }] },
-    { groups: [{ type: "fast", count: 10, spawnInterval: 0.4, healthMult: 1.6 }] },
+    { groups: [{ type: "fast", count: 14, spawnInterval: 0.4, healthMult: 1.5 }] },
+    { groups: [{ type: "fast", count: 16, spawnInterval: 0.3, healthMult: 1.8, speedMult: 1.1 }] },
     { groups: [
-      { type: "basic", count: 12, spawnInterval: 0.45, healthMult: 2.2 },
-      { type: "fast", count: 8, spawnInterval: 0.35, startDelay: 3, healthMult: 1.8 },
+      { type: "basic", count: 14, spawnInterval: 0.4, healthMult: 2.4 },
+      { type: "fast", count: 10, spawnInterval: 0.3, startDelay: 3, healthMult: 2.0 },
     ] },
     { groups: [
-      { type: "armored", count: 7, spawnInterval: 0.9, healthMult: 2.2 },
-      { type: "fast", count: 8, spawnInterval: 0.3, startDelay: 4, healthMult: 2.4 },
+      { type: "armored", count: 7, spawnInterval: 0.9, healthMult: 2.2 },      // Pulse check
+      { type: "fast", count: 10, spawnInterval: 0.28, startDelay: 4, healthMult: 2.6 },
     ] },
-    { groups: [{ type: "fast", count: 20, spawnInterval: 0.25, healthMult: 2.6, speedMult: 1.1 }] },
+    // 5 — FAST BLITZ: no Slow tower and these run the staircase untouched.
+    { groups: [{ type: "fast", count: 24, spawnInterval: 0.22, healthMult: 2.8, speedMult: 1.2 }] },
     { groups: [
-      { type: "basic", count: 18, spawnInterval: 0.35, healthMult: 3.6 },
-      { type: "armored", count: 6, spawnInterval: 0.9, startDelay: 3, healthMult: 2.9 },
-    ] },
-    { groups: [
-      { type: "boss", count: 1, healthMult: 1.6, speedMult: 1.3 },
-      { type: "fast", count: 12, spawnInterval: 0.3, startDelay: 2, healthMult: 3.1 },
+      { type: "basic", count: 20, spawnInterval: 0.32, healthMult: 3.8 },
+      { type: "armored", count: 6, spawnInterval: 0.9, startDelay: 3, healthMult: 3.0 },
     ] },
     { groups: [
-      { type: "armored", count: 12, spawnInterval: 0.7, healthMult: 3.4 },
-      { type: "fast", count: 10, spawnInterval: 0.3, startDelay: 5, healthMult: 3.4 },
+      { type: "boss", count: 1, healthMult: 1.9, speedMult: 1.35 },
+      { type: "fast", count: 14, spawnInterval: 0.28, startDelay: 2, healthMult: 3.4 },
     ] },
     { groups: [
-      { type: "fast", count: 24, spawnInterval: 0.22, healthMult: 3.6, speedMult: 1.15 },
-      { type: "basic", count: 14, spawnInterval: 0.4, startDelay: 3, healthMult: 4.8 },
+      { type: "armored", count: 12, spawnInterval: 0.65, healthMult: 3.6 },
+      { type: "fast", count: 12, spawnInterval: 0.26, startDelay: 4, healthMult: 3.6 },
+    ] },
+    // 9 — the brutal Slow gate.
+    { groups: [{ type: "fast", count: 30, spawnInterval: 0.18, healthMult: 4.0, speedMult: 1.3 }] },
+    { groups: [
+      { type: "armored", count: 14, spawnInterval: 0.6, healthMult: 4.6 },
+      { type: "fast", count: 14, spawnInterval: 0.26, startDelay: 5, healthMult: 4.4 },
     ] },
     { groups: [
-      { type: "armored", count: 14, spawnInterval: 0.65, healthMult: 4.3 },
-      { type: "fast", count: 12, spawnInterval: 0.3, startDelay: 5, healthMult: 4.1 },
+      { type: "boss", count: 2, spawnInterval: 6, healthMult: 2.6, speedMult: 1.25 },
+      { type: "fast", count: 16, spawnInterval: 0.24, startDelay: 4, healthMult: 4.0 },
     ] },
     { groups: [
-      { type: "boss", count: 2, spawnInterval: 6, healthMult: 2.2, speedMult: 1.15 },
-      { type: "fast", count: 14, spawnInterval: 0.3, startDelay: 4, healthMult: 3.6 },
-    ] },
-    { groups: [
-      { type: "boss", count: 2, spawnInterval: 5, healthMult: 2.6, speedMult: 1.2 },
-      { type: "armored", count: 8, spawnInterval: 0.8, startDelay: 6, healthMult: 4.1 },
-      { type: "fast", count: 12, spawnInterval: 0.3, startDelay: 12, healthMult: 4.1 },
+      { type: "boss", count: 2, spawnInterval: 5, healthMult: 3.0, speedMult: 1.3 },
+      { type: "armored", count: 9, spawnInterval: 0.75, startDelay: 6, healthMult: 4.6 },
+      { type: "fast", count: 14, spawnInterval: 0.26, startDelay: 12, healthMult: 4.6 },
     ] },
   ],
 };
@@ -393,53 +404,57 @@ const level005 = {
     { x: 7, y: 11 },
   ],
 
+  // The roster's final exam: every enemy type, and each demands its
+  // counter. Armored walls (waves 3, 5, 9) punish Laser and gate on
+  // Pulse/Railgun; the fast surges want Slow+Laser; bosses shrug off
+  // Pulse+Slow. A mono-tower wall will leak somewhere.
   waves: [
-    { groups: [{ type: "basic", count: 14, spawnInterval: 0.5, healthMult: 1.8 }] },
+    { groups: [{ type: "basic", count: 16, spawnInterval: 0.5, healthMult: 2.2 }] },
     { groups: [
-      { type: "fast", count: 12, spawnInterval: 0.35, healthMult: 1.9 },
-      { type: "basic", count: 10, spawnInterval: 0.5, startDelay: 4, healthMult: 2.4 },
+      { type: "fast", count: 14, spawnInterval: 0.32, healthMult: 2.4 },
+      { type: "basic", count: 12, spawnInterval: 0.5, startDelay: 4, healthMult: 3.0 },
     ] },
-    { groups: [{ type: "armored", count: 8, spawnInterval: 0.9, healthMult: 2.4 }] },
+    { groups: [{ type: "armored", count: 10, spawnInterval: 0.85, healthMult: 3.0 }] },
     { groups: [
-      { type: "basic", count: 18, spawnInterval: 0.4, healthMult: 3.6 },
-      { type: "fast", count: 10, spawnInterval: 0.3, startDelay: 4, healthMult: 2.9 },
-    ] },
-    { groups: [
-      { type: "armored", count: 10, spawnInterval: 0.8, healthMult: 3.1 },
-      { type: "fast", count: 10, spawnInterval: 0.3, startDelay: 5, healthMult: 3.4 },
+      { type: "basic", count: 20, spawnInterval: 0.38, healthMult: 4.4 },
+      { type: "fast", count: 12, spawnInterval: 0.3, startDelay: 4, healthMult: 3.4 },
     ] },
     { groups: [
-      { type: "boss", count: 1, healthMult: 1.8 },
-      { type: "basic", count: 14, spawnInterval: 0.4, startDelay: 2, healthMult: 4.1 },
+      { type: "armored", count: 12, spawnInterval: 0.75, healthMult: 3.8 },
+      { type: "fast", count: 12, spawnInterval: 0.3, startDelay: 5, healthMult: 3.8 },
     ] },
     { groups: [
-      { type: "basic", count: 24, spawnInterval: 0.3, healthMult: 4.8 },
-      { type: "armored", count: 8, spawnInterval: 0.8, startDelay: 3, healthMult: 3.8 },
+      { type: "boss", count: 1, healthMult: 2.2 },
+      { type: "basic", count: 16, spawnInterval: 0.4, startDelay: 2, healthMult: 4.8 },
     ] },
     { groups: [
-      { type: "fast", count: 20, spawnInterval: 0.25, healthMult: 3.8, speedMult: 1.15 },
-      { type: "armored", count: 10, spawnInterval: 0.7, startDelay: 3, healthMult: 4.3 },
+      { type: "basic", count: 26, spawnInterval: 0.28, healthMult: 5.6 },
+      { type: "armored", count: 10, spawnInterval: 0.8, startDelay: 3, healthMult: 4.4 },
     ] },
     { groups: [
-      { type: "boss", count: 2, spawnInterval: 8, healthMult: 2.2 },
-      { type: "armored", count: 10, spawnInterval: 0.8, startDelay: 3, healthMult: 4.8 },
+      { type: "fast", count: 22, spawnInterval: 0.24, healthMult: 4.4, speedMult: 1.15 },
+      { type: "armored", count: 12, spawnInterval: 0.7, startDelay: 3, healthMult: 5.0 },
     ] },
     { groups: [
-      { type: "basic", count: 28, spawnInterval: 0.26, healthMult: 7.8 },
-      { type: "fast", count: 16, spawnInterval: 0.28, startDelay: 5, healthMult: 6 },
+      { type: "boss", count: 2, spawnInterval: 7, healthMult: 2.8 },
+      { type: "armored", count: 12, spawnInterval: 0.75, startDelay: 3, healthMult: 5.4 },
     ] },
     { groups: [
-      { type: "armored", count: 18, spawnInterval: 0.55, healthMult: 6.6, speedMult: 1.3 },
-      { type: "fast", count: 14, spawnInterval: 0.28, startDelay: 6, healthMult: 6.6, speedMult: 1.25 },
+      { type: "basic", count: 30, spawnInterval: 0.25, healthMult: 8.4 },
+      { type: "fast", count: 16, spawnInterval: 0.28, startDelay: 5, healthMult: 6.6 },
     ] },
     { groups: [
-      { type: "boss", count: 2, spawnInterval: 6, healthMult: 3.6, speedMult: 1.25 },
-      { type: "basic", count: 18, spawnInterval: 0.32, startDelay: 4, healthMult: 7.8, speedMult: 1.3 },
+      { type: "armored", count: 20, spawnInterval: 0.5, healthMult: 7.2, speedMult: 1.3 },
+      { type: "fast", count: 14, spawnInterval: 0.28, startDelay: 6, healthMult: 7.0, speedMult: 1.25 },
     ] },
     { groups: [
-      { type: "boss", count: 3, spawnInterval: 5, healthMult: 4.1, speedMult: 1.3 },
-      { type: "armored", count: 12, spawnInterval: 0.65, startDelay: 8, healthMult: 7.2, speedMult: 1.35 },
-      { type: "fast", count: 16, spawnInterval: 0.28, startDelay: 14, healthMult: 7.2, speedMult: 1.3 },
+      { type: "boss", count: 2, spawnInterval: 6, healthMult: 4.2, speedMult: 1.25 },
+      { type: "basic", count: 18, spawnInterval: 0.32, startDelay: 4, healthMult: 8.4, speedMult: 1.3 },
+    ] },
+    { groups: [
+      { type: "boss", count: 3, spawnInterval: 5, healthMult: 4.8, speedMult: 1.3 },
+      { type: "armored", count: 12, spawnInterval: 0.65, startDelay: 8, healthMult: 7.8, speedMult: 1.35 },
+      { type: "fast", count: 16, spawnInterval: 0.28, startDelay: 14, healthMult: 7.6, speedMult: 1.3 },
     ] },
   ],
 };
