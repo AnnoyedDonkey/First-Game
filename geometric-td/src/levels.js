@@ -62,52 +62,52 @@ const level001 = {
 
   waves: [
     // Wave 1 — gentle introduction
-    { groups: [{ type: "basic", count: 8, spawnInterval: 0.9 }] },
+    { groups: [{ type: "basic", count: 14, spawnInterval: 0.4 }] },
 
     // Wave 2 — more of the same, slightly tighter
-    { groups: [{ type: "basic", count: 12, spawnInterval: 0.7 }] },
+    { groups: [{ type: "basic", count: 16, spawnInterval: 0.3, healthMult: 2.0 }] },
 
     // Wave 3 — first fast enemies, arriving after the basics
     { groups: [
-      { type: "basic", count: 8, spawnInterval: 0.7 },
-      { type: "fast", count: 4, spawnInterval: 0.5, startDelay: 4 },
+      { type: "basic", count: 25, spawnInterval: 0.6, healthMult: 2.8 },
+      { type: "fast", count: 25, spawnInterval: 0.4, startDelay: 2 },
     ] },
 
     // Wave 4 — a fast rush
-    { groups: [{ type: "fast", count: 12, spawnInterval: 0.45, healthMult: 1.3 }] },
+    { groups: [{ type: "fast", count: 25, spawnInterval: 0.4, healthMult: 5.0 }] },
 
     // Wave 5 — tougher basics escorted by fasts
     { groups: [
-      { type: "basic", count: 12, spawnInterval: 0.55, healthMult: 2.4 },
-      { type: "fast", count: 6, spawnInterval: 0.5, startDelay: 3, healthMult: 2.0 },
+      { type: "basic", count: 12, spawnInterval: 0.55, healthMult: 3.4 },
+      { type: "fast", count: 6, spawnInterval: 0.5, startDelay: 3, healthMult: 3.0 },
     ] },
 
     // Wave 6 — first armored enemies
-    { groups: [{ type: "armored", count: 9, spawnInterval: 1.1, healthMult: 2.0 }] },
+    { groups: [{ type: "armored", count: 9, spawnInterval: 1.1, healthMult: 3.0 }] },
 
     // Wave 7 — armor up front, fasts sneak in behind
     { groups: [
-      { type: "armored", count: 7, spawnInterval: 1.0, healthMult: 2.4 },
-      { type: "fast", count: 12, spawnInterval: 0.4, startDelay: 5, healthMult: 2.4 },
+      { type: "armored", count: 7, spawnInterval: 1.0, healthMult: 3.4 },
+      { type: "fast", count: 12, spawnInterval: 0.4, startDelay: 5, healthMult: 3.4 },
     ] },
 
     // Wave 8 — a long mixed assault
     { groups: [
-      { type: "basic", count: 18, spawnInterval: 0.4, healthMult: 3.8 },
-      { type: "armored", count: 7, spawnInterval: 1.0, startDelay: 4, healthMult: 2.8 },
+      { type: "basic", count: 18, spawnInterval: 0.4, healthMult: 4.8 },
+      { type: "armored", count: 7, spawnInterval: 1.0, startDelay: 4, healthMult: 3.8 },
     ] },
 
     // Wave 9 — everything at once
     { groups: [
-      { type: "fast", count: 18, spawnInterval: 0.35, healthMult: 3.0 },
-      { type: "armored", count: 10, spawnInterval: 0.85, startDelay: 2, healthMult: 3.0 },
+      { type: "fast", count: 18, spawnInterval: 0.35, healthMult: 4.0 },
+      { type: "armored", count: 10, spawnInterval: 0.85, startDelay: 2, healthMult: 4.0 },
     ] },
 
     // Wave 10 — the boss, with escorts
     { groups: [
-      { type: "boss", count: 1, healthMult: 2.8 },
-      { type: "basic", count: 12, spawnInterval: 0.6, startDelay: 3, healthMult: 3.8 },
-      { type: "armored", count: 6, spawnInterval: 1.1, startDelay: 8, healthMult: 2.8 },
+      { type: "boss", count: 1, healthMult: 5.2 },
+      { type: "basic", count: 14, spawnInterval: 0.6, startDelay: 3, healthMult: 4.2 },
+      { type: "armored", count: 8, spawnInterval: 1.1, startDelay: 8, healthMult: 3.2 },
     ] },
   ],
 };
