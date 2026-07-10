@@ -181,8 +181,7 @@ export function updateUpgradePanel(game, tower) {
   const rank = masteryRankFor(tower.xp);
   const dps = tower.damage / tower.fireInterval;
   const dpsText = `${dps >= 100 ? Math.round(dps) : dps.toFixed(1)} DPS`;
-  const nameText = `${tower.name}${rank > 0 ? ` ★${rank}` : ""} · ${dpsText}`;
-  setText(el.upName, "upName", nameText);
+  setText(el.upName, "upName", tower.name + (rank > 0 ? ` ★${rank}` : ""));
   // Veterans show their unlocked potential, e.g. "LV 1/3".
   const lvText = tower.maxUnlockedLevel > tower.level
     ? `LV ${tower.level}/${tower.maxUnlockedLevel}`
@@ -202,7 +201,7 @@ export function updateUpgradePanel(game, tower) {
       ? `★${rank} MAX · +${pct}% DMG`
       : `★${rank} (+${pct}%) · NEXT ★ IN ${toNext} XP`;
   }
-  setText(el.upXp, "upXp", xpText);
+  setText(el.upXp, "upXp", `${dpsText} · ${xpText}`);
 
   // Button: what's between this tower and its next level?
   let label, sub, disabled;

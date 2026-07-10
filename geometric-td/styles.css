@@ -535,6 +535,10 @@ button.hud-item {
   align-items: center;
   gap: 10px;
   flex: 1 1 auto;
+  /* Without this, being itself a flex container makes its automatic
+     min-width the max-content size of its nowrap text children, which
+     overflows the action bar and pushes the wave button off-screen. */
+  min-width: 0;
 }
 
 #upgrade-panel.hidden { display: none; }

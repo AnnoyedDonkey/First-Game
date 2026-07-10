@@ -82,6 +82,10 @@ mix, 900 cap), SELL button (50% of build+upgrade cost, roster record kept),
 skill tree reworked to 5 tiers per skill (costs 1/1/2/2/3 pts, +10%/tier;
 old boolean saves migrate automatically), skill overlay z-index bug fixed.
 
+Later still: tower selection panel reworked — fixed the bottom bar
+resizing per tower state, shrank upgrade/sell/wave buttons to a two-row
+label+cost layout, added a live DPS readout next to the mastery star.
+
 **Phase 1 complete** (July 2026). Roster rules implemented: veterans auto-deploy
 (best maxLevel first) when placing their type; they re-enter battle at level 1
 and can be RESTOREd to their unlocked level with money alone; beyond that, XP

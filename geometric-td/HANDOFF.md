@@ -12,6 +12,13 @@ deployed and playable at the GitHub Pages URL below. Everything committed
 and pushed through `65cb098`. No known bugs. Next up: the backlog at the
 bottom of this file, and whatever the user asks for.
 
+**Since then (July 2026, Claude Sonnet 5 session):** polished the bottom
+action bar shown when a tower is selected — fixed it resizing/reflowing
+per tower state, shrank the upgrade/sell/wave buttons into a two-row
+label+cost layout, and added a live DPS readout. See "Tower panel /
+bottom action bar" under Key mechanics below for the details and a real
+flexbox gotcha worth knowing before touching that markup again.
+
 ## What this is
 
 A portrait, mobile-browser tower defense game inspired by geoDefense /
@@ -113,6 +120,25 @@ src/
 - **Splitter** spawns 2 splitlings on death (children inherit the wave's
   mods). **Regenerator** heals `regenRate` (5%) of max HP per second.
 - **1 skill point per win** — awarded in `recordBattleEnd`.
+- **Tower panel / bottom action bar** (`#upgrade-panel` in index.html,
+  `updateUpgradePanel` in ui.js): tapping a placed tower swaps the tower
+  tray for a compact 2-row info block (name + ★mastery on row 1; DPS +
+  XP/mastery status, dim grey, on row 2) plus narrow two-row UPGRADE/SELL
+  buttons (label on top, cost below via `.stack-button`/`.stack-button-sub`
+  — the wave button uses the same pattern). DPS is computed live as
+  `tower.damage / tower.fireInterval`, no cached field.
+  Deliberately fixed-size: `.upgrade-row span` is `white-space: nowrap` +
+  `text-overflow: ellipsis` so long text (mastery strings especially)
+  truncates instead of wrapping and growing the bar — the bar height must
+  stay constant whether or not a tower is selected.
+  **Flexbox gotcha (bit us once, don't repeat it):** `#upgrade-panel` is
+  itself a flex container nested inside `#action-bar`'s flex row. A
+  nested flex container's default `min-width: auto` makes it claim its
+  full content width when shrinking, ignoring siblings — it pushed the
+  `#wave-button` completely off the right edge of the screen once the
+  name/DPS text got long. Fix was `min-width: 0` on `#upgrade-panel`
+  itself, not just on the leaf spans. Any new nested flex row added to
+  the action bar needs the same treatment.
 
 ## Balance & difficulty philosophy (user's words)
 
