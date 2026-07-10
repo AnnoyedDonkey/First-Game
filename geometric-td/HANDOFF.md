@@ -4,28 +4,27 @@ Read this first if you are an AI assistant (or human) picking up this project.
 Companion docs: `GAME_BRIEF.md` (original spec + feature history). The user's
 design taste and workflow preferences are at the bottom — follow them.
 
-**State at handoff (July 2026, end of the Claude Fable 5 sessions):**
-10-level campaign, 4 towers (Railgun unlocks after level 5), 7 enemy types,
-5-tier skill tree, permanent per-class specialties, post-level-5 Mastery
-ranks, per-level palettes, GeoDefense-style VFX, ¼x–4x speed controls,
-deployed and playable at the GitHub Pages URL below. Everything committed
-and pushed through `65cb098`. No known bugs. Next up: the backlog at the
+**State at handoff (July 2026, latest Claude Sonnet 5 session, commit
+`1e95074`):** 10-level campaign, 4 towers (Railgun unlocks after level 5),
+7 enemy types, 5-tier skill tree, permanent per-class specialties,
+post-level-5 Mastery ranks, per-level palettes, GeoDefense-style VFX,
+¼x–4x speed controls, **Endless mode** per level (unlocked once beaten,
+waves escalate forever, tracked as best-wave-reached), and a **forfeit
+button** to abandon a battle mid-run — all deployed and playable at the
+GitHub Pages URL below. No known bugs. Next up: the backlog at the
 bottom of this file, and whatever the user asks for.
 
-**Since then (July 2026, Claude Sonnet 5 sessions):** polished the bottom
-action bar shown when a tower is selected — fixed it resizing/reflowing
-per tower state, shrank the upgrade/sell/wave buttons into a two-row
-label+cost layout, and added a live DPS readout. See "Tower panel /
-bottom action bar" under Key mechanics below for the details and a real
-flexbox gotcha worth knowing before touching that markup again. Also
-added **Endless mode** per level (unlocked once that level is beaten,
-waves escalate forever) — see "Endless mode" under Key mechanics. Also
-added a **forfeit button** (✕, top-right next to the speed controls)
-with a confirm prompt that freezes the sim — see "Forfeit button" under
-Key mechanics. Adding it forced the top HUD row's sizing to be trimmed
-(4 hud-items + 4 speed buttons doesn't fit a 375px screen at the old
-sizes) — same class of overflow issue as the bottom action bar, fixed
-the same way (shrink the fixed-size elements, not just hope it fits).
+Everything below in "Key mechanics" is current and was expanded across
+the last few sessions (bottom action bar rework + live DPS readout,
+Endless mode, the forfeit button). Two real gotchas worth reading before
+touching related code: a **nested-flexbox min-width bug** that pushed a
+button off-screen (see "Tower panel / bottom action bar" below), and a
+**GitHub Pages multi-file deploy-propagation** issue that briefly
+soft-locked the main menu (see "Running it" below) — both bit us once
+each and are now guarded against, but the underlying causes (this
+project's flexbox-heavy layout with no build step, and no build
+step/hashed filenames on a static host) aren't going away, so new
+features in the same areas can hit them again.
 
 ## What this is
 
@@ -287,6 +286,8 @@ in levels 3-10 were scaled x1.2 (levels 1-2 intentionally untouched).
 
 - Split XP among damage contributors (fixes Slow towers never leveling).
 - Possibly stiffen level 6 if real play finds it too easy.
-- Ideas floated but unscheduled: endless mode, save export/import (iOS
-  Safari evicts localStorage after ~7 days unused), sound, more levels/
-  towers (Tesla chain-lightning was the runner-up), pre-battle loadouts.
+- Retune Endless mode's difficulty ramp (`config.js ENDLESS`) once there's
+  real play data beyond the one bot-simulated run (see calibration note above).
+- Ideas floated but unscheduled: save export/import (iOS Safari evicts
+  localStorage after ~7 days unused), sound, more levels/towers (Tesla
+  chain-lightning was the runner-up), pre-battle loadouts.
