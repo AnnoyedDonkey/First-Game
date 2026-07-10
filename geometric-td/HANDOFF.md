@@ -71,6 +71,39 @@ and kills, and lives in a permanent roster across battles. A persistent
   a real bug.
 - Git: repo root is `First Game/` (one level above this folder). Commit
   after each verified feature; the user expects push-to-play.
+- **DEPLOY RULE: bump `APP_VERSION` in `src/version.js` on every push** the
+  player should pick up. It drives the home-screen update nudge (see
+  "Post-campaign systems" below); a stale string means no nudge fires.
+
+## Post-campaign systems (added July 2026, Opus session)
+
+Three features layered on after the 10-level campaign + Endless. All keep
+the hard constraints (vanilla JS, no build, no deps):
+
+- **World-paged main menu.** `showLevelSelect` (ui.js) pages the mission
+  list by WORLD (levels.js `WORLDS`): INNER GRID (levels 1-5) and OUTER
+  VOID (6-10), one page each, navigated by ◀ ▶ arrows or horizontal
+  swipe (`bindWorldSwipe`; horizontal-dominant drag only, so vertical
+  list-scroll never flips worlds). A world is locked until every level of
+  the previous world is in `completedLevels`; a locked world can still be
+  previewed (greyed rows + banner). Add a world = one data edit in WORLDS.
+- **Shared leaderboard.** Per-level Endless best-wave, published to a
+  Supabase table via plain `fetch` (leaderboard.js). Own localStorage key
+  (`geometric-td-leaderboard-v1`: nickname + a per-browser clientId +
+  published map) — deliberately NOT in the game save. New bests
+  auto-publish (silent, best-effort, only with a nickname set); a
+  LEADERBOARD menu page + RUN OVER button let players view/publish.
+  Dormant until `config.js LEADERBOARD.url`/`anonKey` are set (they are,
+  pointing at the user's project — publishable key, safe to ship;
+  moderate trolls in the Supabase Table Editor). Setup + SQL in
+  `SUPABASE_SETUP.md`. Other players' nicknames are HTML-escaped on render.
+- **Update nudge (update.js + version.js).** Exists because iPhone
+  home-screen (standalone) launches have no reload button and resume
+  backgrounded sessions instead of reloading. On load + every
+  `visibilitychange`, re-fetches version.js with `cache:no-store` and
+  compares to the baked `APP_VERSION`; on mismatch shows a tap-to-reload
+  banner. Reload still respects GitHub Pages' ~10-min cache, so right
+  after a push the banner may reappear until the CDN propagates.
 
 ## File map
 
@@ -82,6 +115,7 @@ src/
                   VFX (particles + grid warp), skills. START HERE for balance.
   levels.js       10 levels, pure data: pathCorners, blockedTiles, waves,
                   per-level palette. Header comment documents the format.
+                  Also exports WORLDS (the main-menu world grouping).
   endless.js      procedural wave generator for Endless mode (past the
                   end of a level's authored waves)
   main.js         entry: canvas sizing, game loop (rAF), input wiring,
@@ -102,6 +136,12 @@ src/
                   level select, overlays, speed buttons, wheel forwarding
   progression.js  persistent layer: roster, skill tiers, unlocks
   save.js         localStorage read/write/reset (key: geometric-td-save-v1)
+  leaderboard.js  shared online board (Supabase REST via fetch); own
+                  localStorage key (nickname + clientId), never touches
+                  the game save. Config in config.js LEADERBOARD.
+  version.js      APP_VERSION build stamp — BUMP THIS every deploy.
+  update.js       home-screen "update available" nudge (compares baked
+                  APP_VERSION to a no-store re-fetch of version.js).
 ```
 
 ## Key mechanics (the rules that aren't obvious from code skimming)
