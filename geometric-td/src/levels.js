@@ -783,3 +783,22 @@ export const LEVELS = [
   level001, level002, level003, level004, level005,
   level006, level007, level008, level009, level010,
 ];
+
+// ---------- Worlds ----------
+// The main menu groups levels into worlds (one page each, navigated by
+// swipe / arrows). A world stays LOCKED until every level id in the
+// PREVIOUS world is in completedLevels. Add a world here (name + its
+// level ids) to grow the campaign — order matters: worlds unlock in
+// sequence. Endless mode is still per-level and unchanged.
+export const WORLDS = [
+  {
+    id: "world_1",
+    name: "INNER GRID",
+    levelIds: ["level_001", "level_002", "level_003", "level_004", "level_005"],
+  },
+  {
+    id: "world_2",
+    name: "OUTER VOID",
+    levelIds: ["level_006", "level_007", "level_008", "level_009", "level_010"],
+  },
+];

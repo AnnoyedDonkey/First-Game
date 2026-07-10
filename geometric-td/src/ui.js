@@ -17,6 +17,7 @@ import {
   isEnabled as lbEnabled, getNickname, setNickname,
   fetchAllBoards, publishAllLocalBests,
 } from "./leaderboard.js";
+import { WORLDS } from "./levels.js";
 
 const el = {
   towerButtons: document.getElementById("tower-buttons"),
@@ -38,6 +39,10 @@ const el = {
   resetSave: document.getElementById("reset-save"),
   levelOverlay: document.getElementById("level-overlay"),
   levelList: document.getElementById("level-list"),
+  worldPrev: document.getElementById("world-prev"),
+  worldNext: document.getElementById("world-next"),
+  worldName: document.getElementById("world-name"),
+  worldDots: document.getElementById("world-dots"),
   actionBar: document.getElementById("action-bar"),
   towerOverlay: document.getElementById("tower-overlay"),
   towerList: document.getElementById("tower-list"),
@@ -258,34 +263,105 @@ export function onSellButtonTap(handler) {
 }
 
 // ---------- Level select ----------
+//
+// The mission list is paged by WORLD (levels.js WORLDS): one world per
+// page, navigated with the ◀ ▶ arrows or a horizontal swipe. A world is
+// LOCKED until every level of the previous world is cleared; a locked
+// world can still be PREVIEWED (greyed rows + an unlock banner) so the
+// player can see what's ahead. The global menu entries (skill tree,
+// towers, leaderboard, reset) live below the levels on every page.
 
-// Shows the mission list; completed levels get a check. onPick(level)
-// fires when the player chooses one.
+// Set by showLevelSelect; read by the module-level nav handlers so the
+// arrow/swipe listeners can stay bound once instead of per-open.
+let menuCtx = null; // { levelById, completedIds, pick }
+let currentWorld = 0;
+
+// Shows the mission list. onPick(level, endless) fires when a playable
+// level (or its Endless mode) is chosen.
 export function showLevelSelect(levels, completedIds, onPick) {
   el.actionBar.classList.add("hidden"); // no tower tray on the menu
-  el.levelList.innerHTML = "";
-  const pick = (level, endless) => {
-    el.levelOverlay.classList.add("hidden");
-    el.actionBar.classList.remove("hidden");
-    onPick(level, endless);
+  menuCtx = {
+    levelById: new Map(levels.map((l) => [l.id, l])),
+    levels,
+    completedIds,
+    pick: (level, endless) => {
+      el.levelOverlay.classList.add("hidden");
+      el.actionBar.classList.remove("hidden");
+      onPick(level, endless);
+    },
   };
+  currentWorld = 0; // always open on the first world
+  renderWorld();
+  el.levelOverlay.classList.remove("hidden");
+}
 
-  for (const level of levels) {
+// World i is unlocked when every level of world i-1 has been cleared.
+function isWorldUnlocked(i) {
+  if (i === 0) return true;
+  return WORLDS[i - 1].levelIds.every((id) => menuCtx.completedIds.includes(id));
+}
+
+function navigateWorld(delta) {
+  if (!menuCtx) return;
+  const target = currentWorld + delta;
+  if (target < 0 || target >= WORLDS.length) return; // clamp at the ends
+  currentWorld = target;
+  renderWorld();
+}
+
+function renderWorld() {
+  const world = WORLDS[currentWorld];
+  const unlocked = isWorldUnlocked(currentWorld);
+  const { completedIds, levelById, pick } = menuCtx;
+
+  // --- Header: name (+ lock accent), page dots, arrow states ---
+  el.worldName.textContent = world.name;
+  el.worldName.classList.toggle("locked", !unlocked);
+  el.worldDots.innerHTML = WORLDS.map(
+    (_, i) => `<span class="dot${i === currentWorld ? " active" : ""}"></span>`
+  ).join("");
+
+  el.worldPrev.disabled = currentWorld === 0;
+  const hasNext = currentWorld < WORLDS.length - 1;
+  el.worldNext.disabled = !hasNext;
+  // A next world that's still gated gets the gold "locked" arrow accent
+  // (it's tappable — tapping previews it).
+  el.worldNext.classList.toggle("locked", hasNext && !isWorldUnlocked(currentWorld + 1));
+
+  // --- Level rows for this world ---
+  el.levelList.innerHTML = "";
+
+  if (!unlocked) {
+    const note = document.createElement("div");
+    note.className = "world-locked-note";
+    note.textContent =
+      `LOCKED — clear all of ${WORLDS[currentWorld - 1].name} to unlock ${world.name}.`;
+    el.levelList.appendChild(note);
+  }
+
+  for (const id of world.levelIds) {
+    const level = levelById.get(id);
+    if (!level) continue;
     const done = completedIds.includes(level.id);
+
     const row = document.createElement("div");
     row.className = "level-row";
 
     const btn = document.createElement("button");
-    btn.className = "level-button";
-    btn.innerHTML =
-      `<span>${level.name.toUpperCase()}</span>` +
-      (done ? `<span class="level-done">✓ CLEARED</span>` : `<span></span>`);
-    btn.addEventListener("click", () => pick(level, false));
+    btn.className = "level-button" + (unlocked ? "" : " locked");
+    const tag = done
+      ? `<span class="level-done">✓ CLEARED</span>`
+      : unlocked
+        ? `<span></span>`
+        : `<span class="level-done">🔒</span>`;
+    btn.innerHTML = `<span>${level.name.toUpperCase()}</span>` + tag;
+    if (unlocked) btn.addEventListener("click", () => pick(level, false));
+    else btn.disabled = true;
     row.appendChild(btn);
 
-    // Endless mode: unlocked once the campaign is beaten. Waves never
-    // stop and escalate fast — see endless.js.
-    if (done) {
+    // Endless mode: unlocked once the campaign level is beaten. Waves
+    // never stop and escalate fast — see endless.js.
+    if (unlocked && done) {
       const best = getBestEndlessWave(level.id);
       const endlessBtn = document.createElement("button");
       endlessBtn.className = "level-button endless-button";
@@ -299,8 +375,12 @@ export function showLevelSelect(levels, completedIds, onPick) {
     el.levelList.appendChild(row);
   }
 
-  // Skill tree entry point on the main menu — with a point count so
-  // unspent points are impossible to miss.
+  appendGlobalMenuButtons();
+}
+
+// The account-wide entries shown under the levels on every world page.
+function appendGlobalMenuButtons() {
+  // Skill tree — with a point count so unspent points can't be missed.
   const points = getSkillPoints();
   const skillBtn = document.createElement("button");
   skillBtn.className = "level-button skill-entry";
@@ -312,20 +392,20 @@ export function showLevelSelect(levels, completedIds, onPick) {
   skillBtn.addEventListener("click", openSkillTree);
   el.levelList.appendChild(skillBtn);
 
-  // Tower guide entry: class specialties + the player's roster.
+  // Tower guide: class specialties + the player's roster.
   const towersBtn = document.createElement("button");
   towersBtn.className = "level-button skill-entry";
   towersBtn.innerHTML = `<span>TOWERS</span><span class="level-done">—</span>`;
   towersBtn.addEventListener("click", openTowerGuide);
   el.levelList.appendChild(towersBtn);
 
-  // Leaderboard entry — only when a backend is configured (config.js
-  // LEADERBOARD). Kept hidden otherwise so we never ship a dead button.
+  // Leaderboard — only when a backend is configured (config.js
+  // LEADERBOARD). Hidden otherwise so we never ship a dead button.
   if (lbEnabled()) {
     const lbBtn = document.createElement("button");
     lbBtn.className = "level-button skill-entry";
     lbBtn.innerHTML = `<span>LEADERBOARD</span><span class="level-done">🏆</span>`;
-    lbBtn.addEventListener("click", () => openLeaderboard(levels));
+    lbBtn.addEventListener("click", () => openLeaderboard(menuCtx.levels));
     el.levelList.appendChild(lbBtn);
   }
 
@@ -347,9 +427,42 @@ export function showLevelSelect(levels, completedIds, onPick) {
     }
   });
   el.levelList.appendChild(resetBtn);
-
-  el.levelOverlay.classList.remove("hidden");
 }
+
+// Arrow + swipe navigation, bound once (state lives in menuCtx/currentWorld).
+el.worldPrev.addEventListener("click", () => navigateWorld(-1));
+el.worldNext.addEventListener("click", () => navigateWorld(1));
+
+// Horizontal swipe on the overlay pages between worlds. Kept distinct
+// from the level list's vertical scroll: only a clearly-horizontal drag
+// counts, so scrolling the list never accidentally flips the world.
+(function bindWorldSwipe() {
+  let x0 = null;
+  let y0 = null;
+  el.levelOverlay.addEventListener(
+    "touchstart",
+    (e) => {
+      if (e.touches.length !== 1) { x0 = null; return; }
+      x0 = e.touches[0].clientX;
+      y0 = e.touches[0].clientY;
+    },
+    { passive: true }
+  );
+  el.levelOverlay.addEventListener(
+    "touchend",
+    (e) => {
+      if (x0 === null) return;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - x0;
+      const dy = t.clientY - y0;
+      x0 = null;
+      if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+        navigateWorld(dx < 0 ? 1 : -1); // swipe left → next, right → prev
+      }
+    },
+    { passive: true }
+  );
+})();
 
 // ---------- Speed controls ----------
 // Half / pause / double. Tapping an active speed button returns to 1x;

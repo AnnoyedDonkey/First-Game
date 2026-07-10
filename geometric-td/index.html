@@ -52,7 +52,15 @@
       <!-- Level select overlay (shown at startup) -->
       <div id="level-overlay" class="hidden">
         <h1>GEOMETRIC TD</h1>
-        <p>SELECT MISSION</p>
+        <!-- World pager: prev / world name + dots / next. Populated by ui.js -->
+        <div id="world-nav">
+          <button id="world-prev" class="world-arrow" aria-label="Previous world">&#9664;</button>
+          <div id="world-heading">
+            <span id="world-name">INNER GRID</span>
+            <span id="world-dots"></span>
+          </div>
+          <button id="world-next" class="world-arrow" aria-label="Next world">&#9654;</button>
+        </div>
         <div id="level-list"></div>
       </div>
 
