@@ -44,6 +44,7 @@ const el = {
   waveButton: document.getElementById("wave-button"),
   waveBtnLabel: document.getElementById("wave-btn-label"),
   waveBtnSub: document.getElementById("wave-btn-sub"),
+  exitButton: document.getElementById("exit-button"),
   overlay: document.getElementById("overlay"),
   overlayTitle: document.getElementById("overlay-title"),
   overlaySubtitle: document.getElementById("overlay-subtitle"),
@@ -541,6 +542,10 @@ function renderSkillList(onSkillBought) {
 
 export function onWaveButtonTap(handler) {
   el.waveButton.addEventListener("click", handler);
+}
+
+export function onExitButtonTap(handler) {
+  el.exitButton.addEventListener("click", handler);
 }
 
 // buttons: [{ text, onTap, secondary }] — first button is the primary

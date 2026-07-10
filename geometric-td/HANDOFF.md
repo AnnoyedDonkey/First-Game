@@ -19,7 +19,13 @@ label+cost layout, and added a live DPS readout. See "Tower panel /
 bottom action bar" under Key mechanics below for the details and a real
 flexbox gotcha worth knowing before touching that markup again. Also
 added **Endless mode** per level (unlocked once that level is beaten,
-waves escalate forever) — see "Endless mode" under Key mechanics.
+waves escalate forever) — see "Endless mode" under Key mechanics. Also
+added a **forfeit button** (✕, top-right next to the speed controls)
+with a confirm prompt that freezes the sim — see "Forfeit button" under
+Key mechanics. Adding it forced the top HUD row's sizing to be trimmed
+(4 hud-items + 4 speed buttons doesn't fit a 375px screen at the old
+sizes) — same class of overflow issue as the bottom action bar, fixed
+the same way (shrink the fixed-size elements, not just hope it fits).
 
 ## What this is
 
@@ -177,6 +183,18 @@ src/
   vs CORE DESTROYED / RETRY). HUD wave counter drops the `/total` ceiling
   in endless (`${wave} ∞` instead of `${wave}/${totalWaves}`), since
   `totalWaves` isn't a meaningful cap once waves are generated.
+- **Forfeit button:** the ✕ in the top HUD (`#exit-button`, next to the
+  speed controls, wired via `onExitButtonTap` in ui.js). Tapping it while
+  a battle is active shows a confirm overlay (reuses `showOverlay`, type
+  `"loss"`) explaining the battle ends with no win/completion credit;
+  FORFEIT calls `forfeitBattle(game)` (progression.js — syncs roster XP
+  only, no `completedLevels`/`wins`/`skillPoints`/`endlessBest` change)
+  then returns to the main menu, CANCEL just closes the prompt. While the
+  prompt is up the sim is frozen via a module-level `exitConfirming` flag
+  in main.js, ORed into the same `dt = 0` check the pause button uses —
+  it does NOT touch the pause button's own state, so canceling leaves
+  speed/pause exactly as it was. No-ops (does nothing) if tapped from
+  the main menu (`game` is null) or while another overlay is already up.
 
 ## Balance & difficulty philosophy (user's words)
 

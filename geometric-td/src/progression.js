@@ -143,6 +143,14 @@ export function recordBattleEnd(game, won) {
   writeSave(state);
 }
 
+// Player-initiated exit mid-battle (the X button + confirm). No win/loss
+// is recorded either way — just walking away — but towers keep the XP
+// they earned so far, same philosophy as an actual loss.
+export function forfeitBattle(game) {
+  syncRoster(game);
+  writeSave(state);
+}
+
 // ---------- Endless mode ----------
 // No "win" — a run only ends when the core falls. Roster XP still
 // carries over like any battle; the score is the wave reached.

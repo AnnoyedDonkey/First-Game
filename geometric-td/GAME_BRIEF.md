@@ -92,6 +92,9 @@ plays the level's own 10 waves, then generates waves forever past that,
 escalating fast (deterministic, not random). No "win"; tracks best wave
 reached per level. See `endless.js` and HANDOFF.md for the design.
 
+Later still: forfeit button (✕ next to the speed controls) — confirm
+prompt, freezes the sim, syncs roster XP but no win credit on exit.
+
 **Phase 1 complete** (July 2026). Roster rules implemented: veterans auto-deploy
 (best maxLevel first) when placing their type; they re-enter battle at level 1
 and can be RESTOREd to their unlocked level with money alone; beyond that, XP

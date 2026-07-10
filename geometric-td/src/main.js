@@ -10,7 +10,7 @@ import {
   seedRosterCounters, refreshTowerStats,
 } from "./towers.js";
 import {
-  getProgress, shouldShowTowerGuide, markTowerGuideSeen,
+  getProgress, shouldShowTowerGuide, markTowerGuideSeen, forfeitBattle,
 } from "./progression.js";
 import { render } from "./renderer.js";
 import { bindCanvasInput } from "./input.js";
@@ -19,7 +19,7 @@ import {
   initTowerButtons, updateTowerButtons,
   updateUpgradePanel, onUpgradeButtonTap, onSellButtonTap,
   initSkillTree, showLevelSelect, openSkillTree, hideOverlay,
-  initSpeedControls, openTowerGuide,
+  initSpeedControls, openTowerGuide, onExitButtonTap,
 } from "./ui.js";
 
 const TILE_SIZE = 64; // internal render resolution per tile
@@ -165,6 +165,38 @@ function goToMainMenu() {
   showLevelSelect(LEVELS, getProgress().completedLevels, startLevel);
 }
 
+// The X button: confirm before abandoning a battle in progress. The
+// sim is frozen (via exitConfirming, see frame()) while the prompt is up.
+let exitConfirming = false;
+
+onExitButtonTap(() => {
+  if (!game || overlayShown || exitConfirming) return;
+  exitConfirming = true;
+  showOverlay({
+    title: "FORFEIT BATTLE?",
+    subtitle:
+      "You'll return to the main menu and this battle ends early — no " +
+      "win, no completion credit. Your towers keep the XP they've " +
+      "earned so far.",
+    type: "loss",
+    buttons: [
+      {
+        text: "FORFEIT",
+        onTap: () => {
+          exitConfirming = false;
+          forfeitBattle(game);
+          goToMainMenu();
+        },
+      },
+      {
+        text: "CANCEL",
+        onTap: () => { exitConfirming = false; hideOverlay(); },
+        secondary: true,
+      },
+    ],
+  });
+});
+
 function checkEndState() {
   if (overlayShown) return;
 
@@ -229,9 +261,10 @@ let lastTime = performance.now();
 function frame(now) {
   // Clamp dt so a backgrounded tab doesn't cause a huge jump.
   // Paused = zero-length ticks: the world freezes but still renders.
+  // Also freezes while the forfeit-confirm prompt is up.
   const dt =
     Math.min((now - lastTime) / 1000, 0.05) *
-    DEBUG.gameSpeed * (gamePaused ? 0 : speedFactor);
+    DEBUG.gameSpeed * (gamePaused || exitConfirming ? 0 : speedFactor);
   lastTime = now;
 
   if (game) {
