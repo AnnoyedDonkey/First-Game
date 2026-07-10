@@ -30,8 +30,8 @@ const ctx = canvas.getContext("2d");
 let game = null;
 let overlayShown = false;
 
-function startLevel(level) {
-  game = createGame(level, TILE_SIZE);
+function startLevel(level, endless = false) {
+  game = createGame(level, TILE_SIZE, endless);
   overlayShown = false;
   hideOverlay();
   // Clear any leftover selection from the previous battle.
@@ -191,18 +191,35 @@ function checkEndState() {
   } else if (game.phase === "lost") {
     overlayShown = true;
     const level = game.level;
-    showOverlay({
-      title: "CORE DESTROYED",
-      subtitle:
-        `The core fell on wave ${game.waveIndex + 1}. Your towers kept ` +
-        `their XP — spend skill points, redeploy veterans, try new spots.`,
-      type: "loss",
-      buttons: [
-        { text: "RETRY", onTap: () => startLevel(level) },
-        { text: "ASSIGN SKILL POINTS", onTap: openSkillTree, secondary: true },
-        { text: "MAIN MENU", onTap: goToMainMenu, secondary: true },
-      ],
-    });
+    if (game.endless) {
+      const { waveReached, isNewBest, bestWave } = game.endlessResult;
+      showOverlay({
+        title: "RUN OVER",
+        subtitle:
+          `${level.name.toUpperCase()} ENDLESS — reached wave ${waveReached}` +
+          (isNewBest ? ", a NEW BEST!" : ` (best: wave ${bestWave})`) +
+          ` Your towers kept their XP.`,
+        type: "loss",
+        buttons: [
+          { text: "RETRY ENDLESS", onTap: () => startLevel(level, true) },
+          { text: "ASSIGN SKILL POINTS", onTap: openSkillTree, secondary: true },
+          { text: "MAIN MENU", onTap: goToMainMenu, secondary: true },
+        ],
+      });
+    } else {
+      showOverlay({
+        title: "CORE DESTROYED",
+        subtitle:
+          `The core fell on wave ${game.waveIndex + 1}. Your towers kept ` +
+          `their XP — spend skill points, redeploy veterans, try new spots.`,
+        type: "loss",
+        buttons: [
+          { text: "RETRY", onTap: () => startLevel(level) },
+          { text: "ASSIGN SKILL POINTS", onTap: openSkillTree, secondary: true },
+          { text: "MAIN MENU", onTap: goToMainMenu, secondary: true },
+        ],
+      });
+    }
   }
 }
 

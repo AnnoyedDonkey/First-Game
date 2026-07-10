@@ -107,6 +107,25 @@ export const WAVE_DEFAULTS = {
   spawnInterval: 0.8,      // default seconds between enemies in a group
 };
 
+// ---------- Endless mode ----------
+// Unlocked per level once its campaign is beaten. Reuses the level's own
+// 10 authored waves unchanged, then generates waves procedurally past
+// that (see endless.js), anchored to the difficulty of the level's own
+// final wave. Everything compounds per "extra" wave k (k=1 is the wave
+// right after the campaign ends), so this ramps up FAST — only a
+// heavily-upgraded/high-Mastery roster should push deep into it.
+export const ENDLESS = {
+  healthGrowthPerWave: 0.16,     // enemy health compounds +16% per wave
+  countGrowthPerWave: 0.05,      // enemy count grows +5% per wave...
+  maxCountMult: 3,               // ...capped at 3x the seed wave's count
+  speedGrowthPerWave: 0.012,     // +1.2% enemy speed per wave...
+  maxSpeedMult: 1.6,             // ...capped at 1.6x
+  intervalShrinkPerWave: 0.985,  // spawns get denser over time...
+  minSpawnIntervalMult: 0.4,     // ...never denser than 40% of the base interval
+  bossEvery: 5,                  // an extra boss group every N endless waves
+  bossHealthGrowthPerWave: 0.20, // bosses scale even faster than the swarm
+};
+
 // ---------- Towers ----------
 // (Used from Checkpoint B onward — defined now so all knobs live together.)
 export const TOWERS = {

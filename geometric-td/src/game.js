@@ -13,12 +13,13 @@ import { createGridModel } from "./grid.js";
 import { createEnemy, updateEnemies } from "./enemies.js";
 import { updateTowers } from "./towers.js";
 import { updateProjectiles, updateEffects } from "./projectiles.js";
-import { getCoreBonus, recordBattleEnd } from "./progression.js";
+import { getCoreBonus, recordBattleEnd, recordEndlessResult } from "./progression.js";
 import { updateParticles } from "./particles.js";
 import { createSpringGrid } from "./springgrid.js";
 import { VFX } from "./config.js";
+import { generateEndlessWave } from "./endless.js";
 
-export function createGame(level, tileSize) {
+export function createGame(level, tileSize, endless = false) {
   const grid = createGridModel(level, tileSize);
 
   const game = {
@@ -26,6 +27,7 @@ export function createGame(level, tileSize) {
     grid,
     time: 0,                       // total game time in seconds
     phase: "ready",
+    endless,                       // true = waves never stop (see endless.js)
     money: level.startingMoney,
     coreHealth: level.coreHealth + getCoreBonus(),
     maxCoreHealth: level.coreHealth + getCoreBonus(),
@@ -81,9 +83,13 @@ function buildSpawnQueue(wave) {
 
 export function startNextWave(game) {
   if (game.phase !== "ready" && game.phase !== "countdown") return;
-  if (game.waveIndex >= game.totalWaves) return;
+  if (!game.endless && game.waveIndex >= game.totalWaves) return;
 
-  game.spawnQueue = buildSpawnQueue(game.level.waves[game.waveIndex]);
+  const authored = game.level.waves;
+  const waveDef = game.waveIndex < authored.length
+    ? authored[game.waveIndex]
+    : generateEndlessWave(game.level, game.waveIndex);
+  game.spawnQueue = buildSpawnQueue(waveDef);
   game.waveClock = 0;
   game.phase = "wave";
 }
@@ -127,7 +133,14 @@ export function updateGame(game, dt) {
   if (game.coreHealth <= 0) {
     game.coreHealth = 0;
     game.phase = "lost";
-    recordBattleEnd(game, false); // towers keep their XP even in defeat
+    if (game.endless) {
+      // No "win" in endless — just how far you got. Stashed on the game
+      // object so main.js's end-of-battle overlay can read it without
+      // calling this (save-writing) function a second time.
+      game.endlessResult = recordEndlessResult(game);
+    } else {
+      recordBattleEnd(game, false); // towers keep their XP even in defeat
+    }
     return;
   }
 
@@ -137,7 +150,7 @@ export function updateGame(game, dt) {
   // Wave cleared?
   if (game.phase === "wave" && game.spawnQueue.length === 0 && game.enemies.length === 0) {
     game.waveIndex += 1;
-    if (game.waveIndex >= game.totalWaves) {
+    if (!game.endless && game.waveIndex >= game.totalWaves) {
       game.phase = "won";
       recordBattleEnd(game, true); // roster + 1 skill point, saved
     } else if (game.autoStartNextWave) {

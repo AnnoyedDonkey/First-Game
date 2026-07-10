@@ -11,7 +11,7 @@ import {
 } from "./towers.js";
 import {
   getSkillTier, nextTierCost, getSkillPoints, buySkill, resetProgress,
-  isTowerUnlocked, getProgress,
+  isTowerUnlocked, getProgress, getBestEndlessWave,
 } from "./progression.js";
 
 const el = {
@@ -78,8 +78,11 @@ function setText(node, key, value) {
 export function updateHUD(game) {
   setText(el.money, "money", String(game.money));
 
-  const waveNum = Math.min(game.waveIndex + 1, game.totalWaves);
-  setText(el.wave, "wave", `${waveNum}/${game.totalWaves}`);
+  const waveNum = game.waveIndex + 1;
+  const waveText = game.endless
+    ? `${waveNum} ∞`
+    : `${Math.min(waveNum, game.totalWaves)}/${game.totalWaves}`;
+  setText(el.wave, "wave", waveText);
 
   setText(el.core, "core", `${game.coreHealth}/${game.maxCoreHealth}`);
   el.core.classList.toggle("danger", game.coreHealth <= game.maxCoreHealth * 0.3);
@@ -248,19 +251,39 @@ export function onSellButtonTap(handler) {
 export function showLevelSelect(levels, completedIds, onPick) {
   el.actionBar.classList.add("hidden"); // no tower tray on the menu
   el.levelList.innerHTML = "";
+  const pick = (level, endless) => {
+    el.levelOverlay.classList.add("hidden");
+    el.actionBar.classList.remove("hidden");
+    onPick(level, endless);
+  };
+
   for (const level of levels) {
     const done = completedIds.includes(level.id);
+    const row = document.createElement("div");
+    row.className = "level-row";
+
     const btn = document.createElement("button");
     btn.className = "level-button";
     btn.innerHTML =
       `<span>${level.name.toUpperCase()}</span>` +
       (done ? `<span class="level-done">✓ CLEARED</span>` : `<span></span>`);
-    btn.addEventListener("click", () => {
-      el.levelOverlay.classList.add("hidden");
-      el.actionBar.classList.remove("hidden");
-      onPick(level);
-    });
-    el.levelList.appendChild(btn);
+    btn.addEventListener("click", () => pick(level, false));
+    row.appendChild(btn);
+
+    // Endless mode: unlocked once the campaign is beaten. Waves never
+    // stop and escalate fast — see endless.js.
+    if (done) {
+      const best = getBestEndlessWave(level.id);
+      const endlessBtn = document.createElement("button");
+      endlessBtn.className = "level-button endless-button";
+      endlessBtn.innerHTML =
+        `<span>∞ ENDLESS</span>` +
+        `<span class="level-done">${best > 0 ? `BEST W${best}` : "NEW"}</span>`;
+      endlessBtn.addEventListener("click", () => pick(level, true));
+      row.appendChild(endlessBtn);
+    }
+
+    el.levelList.appendChild(row);
   }
 
   // Skill tree entry point on the main menu — with a point count so

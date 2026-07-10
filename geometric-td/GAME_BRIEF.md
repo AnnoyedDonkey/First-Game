@@ -73,6 +73,7 @@ tile radius); enemy health is an arc, not a bar; HUD/tray compacted.
 ## Backlog (user-requested)
 - Split XP among damage contributors so Slow towers can level (currently final-hit only)
 - Possibly stiffen level 6 if real play finds it too easy
+- Retune Endless mode's difficulty ramp (`config.js ENDLESS`) after real play
 
 Done from backlog: speed controls (0.5x/pause/2x in HUD), VFX raised from
 "subtle" to "pizzazz" tuning + effects scale with the firing tower's level,
@@ -85,6 +86,11 @@ old boolean saves migrate automatically), skill overlay z-index bug fixed.
 Later still: tower selection panel reworked — fixed the bottom bar
 resizing per tower state, shrank upgrade/sell/wave buttons to a two-row
 label+cost layout, added a live DPS readout next to the mastery star.
+
+Later still: **Endless mode**, unlocked per level once it's beaten —
+plays the level's own 10 waves, then generates waves forever past that,
+escalating fast (deterministic, not random). No "win"; tracks best wave
+reached per level. See `endless.js` and HANDOFF.md for the design.
 
 **Phase 1 complete** (July 2026). Roster rules implemented: veterans auto-deploy
 (best maxLevel first) when placing their type; they re-enter battle at level 1

@@ -201,6 +201,22 @@ button.hud-item {
 
 .level-button.skill-entry { border-color: var(--neon-magenta); }
 
+/* Groups a level's campaign button with its (optional) Endless button */
+.level-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.level-button.endless-button {
+  min-height: 40px;
+  font-size: 12px;
+  border-color: var(--neon-yellow);
+  color: var(--neon-yellow);
+}
+.level-button.endless-button .level-done { color: var(--neon-yellow); opacity: 0.8; }
+
 .menu-reset {
   font-family: inherit;
   font-size: 10px;

@@ -14,6 +14,7 @@ const DEFAULT_SAVE = {
   completedLevels: [],  // level ids won at least once
   wins: 0,
   seenTowerGuide: false, // tower guide auto-opens once at level 2
+  endlessBest: {},       // { levelId: bestWaveReached } in Endless mode
 };
 
 export function loadSave() {

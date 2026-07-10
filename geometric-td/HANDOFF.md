@@ -12,12 +12,14 @@ deployed and playable at the GitHub Pages URL below. Everything committed
 and pushed through `65cb098`. No known bugs. Next up: the backlog at the
 bottom of this file, and whatever the user asks for.
 
-**Since then (July 2026, Claude Sonnet 5 session):** polished the bottom
+**Since then (July 2026, Claude Sonnet 5 sessions):** polished the bottom
 action bar shown when a tower is selected — fixed it resizing/reflowing
 per tower state, shrank the upgrade/sell/wave buttons into a two-row
 label+cost layout, and added a live DPS readout. See "Tower panel /
 bottom action bar" under Key mechanics below for the details and a real
-flexbox gotcha worth knowing before touching that markup again.
+flexbox gotcha worth knowing before touching that markup again. Also
+added **Endless mode** per level (unlocked once that level is beaten,
+waves escalate forever) — see "Endless mode" under Key mechanics.
 
 ## What this is
 
@@ -63,6 +65,8 @@ src/
                   VFX (particles + grid warp), skills. START HERE for balance.
   levels.js       10 levels, pure data: pathCorners, blockedTiles, waves,
                   per-level palette. Header comment documents the format.
+  endless.js      procedural wave generator for Endless mode (past the
+                  end of a level's authored waves)
   main.js         entry: canvas sizing, game loop (rAF), input wiring,
                   end-of-battle flow, speed controls, debug helpers
   game.js         state machine: waves, spawn queue, money, core HP, win/loss
@@ -139,6 +143,28 @@ src/
   name/DPS text got long. Fix was `min-width: 0` on `#upgrade-panel`
   itself, not just on the leaf spans. Any new nested flex row added to
   the action bar needs the same treatment.
+- **Endless mode:** unlocked per level once `completedLevels` includes
+  that level's id (main menu shows a second `∞ ENDLESS` row under any
+  cleared level, via `showLevelSelect` in ui.js). `createGame(level,
+  tileSize, endless)` sets `game.endless = true`; `startNextWave` in
+  game.js plays the level's own 10 authored waves unchanged, then calls
+  `generateEndlessWave(level, waveIndex)` (endless.js) once `waveIndex`
+  runs past `level.waves.length`. Generation is a **deterministic**
+  function of `waveIndex` (no RNG) so it stays reproducible with the
+  `step()` bot-testing recipe below. Difficulty is anchored to the
+  level's own final wave and compounds every extra wave — knobs in
+  `config.js ENDLESS` (health/count/speed growth rates, boss cadence).
+  Endless runs never hit `"won"` (that branch is guarded with
+  `!game.endless` in both places in `updateGame`) — they only end in
+  `"lost"`, which calls `recordEndlessResult` (progression.js) instead of
+  `recordBattleEnd`: roster/XP still syncs the same way, but instead of
+  `completedLevels`/`wins`/`skillPoints` it records the best wave reached
+  per level (`save.js endlessBest: { levelId: waveNumber }`, shown on the
+  main menu button and in the "RUN OVER" overlay). Loss overlay branches
+  on `game.endless` in main.js `checkEndState` (RUN OVER / RETRY ENDLESS
+  vs CORE DESTROYED / RETRY). HUD wave counter drops the `/total` ceiling
+  in endless (`${wave} ∞` instead of `${wave}/${totalWaves}`), since
+  `totalWaves` isn't a meaningful cap once waves are generated.
 
 ## Balance & difficulty philosophy (user's words)
 
@@ -155,6 +181,12 @@ Calibration targets used so far:
 - **Bankroll rule:** wave 1 of every level must be survivable with starting
   money. Two levels shipped broken this way (economy death-spiral: leaks pay
   no bounty -> no money -> more leaks). Check openers first when tuning.
+- **Endless mode (first-pass calibration, untuned by real play yet):** an
+  8-tower level-1 laser wall with fresh (non-veteran, no Mastery) towers,
+  continuously upgrading, died on endless wave 18 (8 waves past the
+  10-wave campaign). That's the rough bar — a genuinely strong/high-Mastery
+  roster should push well past that. `ENDLESS` knobs in config.js are a
+  first pass; retune after real play.
 
 ## How to verify changes (no test framework — use the browser)
 

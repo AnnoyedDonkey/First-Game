@@ -107,9 +107,9 @@ export function takeRosterUnit(type, deployedNames) {
   return candidates[0] || null;
 }
 
-// Called once when a battle ends (win or lose): every tower that
-// fought joins/updates the roster, and wins earn a skill point.
-export function recordBattleEnd(game, won) {
+// Shared by recordBattleEnd and recordEndlessResult: every tower that
+// fought joins/updates the persistent roster.
+function syncRoster(game) {
   for (const t of game.towers) {
     let rec = state.roster.find((r) => r.name === t.name);
     if (!rec) {
@@ -120,6 +120,12 @@ export function recordBattleEnd(game, won) {
     rec.xp = t.xp;      // XP carries across battles
     rec.kills = t.kills;
   }
+}
+
+// Called once when a campaign battle ends (win or lose); wins earn a
+// skill point and mark the level cleared (which unlocks its Endless mode).
+export function recordBattleEnd(game, won) {
+  syncRoster(game);
 
   if (won) {
     state.skillPoints += 1;
@@ -129,6 +135,24 @@ export function recordBattleEnd(game, won) {
     }
   }
   writeSave(state);
+}
+
+// ---------- Endless mode ----------
+// No "win" — a run only ends when the core falls. Roster XP still
+// carries over like any battle; the score is the wave reached.
+
+export function recordEndlessResult(game) {
+  syncRoster(game);
+  const waveReached = game.waveIndex + 1;
+  const prevBest = state.endlessBest[game.level.id] || 0;
+  const isNewBest = waveReached > prevBest;
+  if (isNewBest) state.endlessBest[game.level.id] = waveReached;
+  writeSave(state);
+  return { waveReached, isNewBest, bestWave: state.endlessBest[game.level.id] };
+}
+
+export function getBestEndlessWave(levelId) {
+  return state.endlessBest[levelId] || 0;
 }
 
 export function resetProgress() {
