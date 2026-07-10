@@ -13,6 +13,12 @@ import { loadSave, writeSave, clearSave } from "./save.js";
 
 let state = loadSave();
 migrateSkills();
+// Belt-and-suspenders alongside save.js's DEFAULT_SAVE merge: GitHub
+// Pages can briefly serve a stale save.js from one file while ui.js/
+// progression.js are already the new version (multi-file CDN
+// propagation lag right after a deploy), so don't trust every new
+// field to exist yet even right after loadSave().
+state.endlessBest ||= {};
 
 // Older saves stored skills as an array of owned ids; tiers store
 // them as { id: tierNumber }. Convert once on load.

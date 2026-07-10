@@ -52,6 +52,18 @@ and kills, and lives in a permanent roster across battles. A persistent
   GitHub Pages serves the `main` branch of github.com/AnnoyedDonkey/First-Game
   (public repo). **Pushing to main deploys automatically** (~1 min delay).
   The user plays on iPhone via this URL (added to home screen).
+  **Gotcha:** there's no build step / hashed filenames, so a deploy can
+  briefly leave different static files (e.g. `save.js` vs `ui.js`) served
+  from different CDN edge versions for a minute or two. Hit this once: a
+  new save field (`endlessBest`) existed in the fresh `progression.js`
+  but a save loaded via a momentarily-stale `save.js` lacked it, throwing
+  and soft-locking the main menu. Fix pattern: don't rely SOLELY on
+  `save.js`'s `DEFAULT_SAVE` merge for a new field — also backfill it
+  right after `loadSave()` in `progression.js` (see `state.endlessBest
+  ||= {}` there) so it's safe even if `save.js` itself is momentarily
+  behind. If the user reports something broken right after you tell them
+  to test, ask them to hard-refresh / wait a minute before assuming it's
+  a real bug.
 - Git: repo root is `First Game/` (one level above this folder). Commit
   after each verified feature; the user expects push-to-play.
 
