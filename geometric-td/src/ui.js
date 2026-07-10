@@ -328,10 +328,10 @@ export function initSpeedControls(onChange) {
 // reachable from the main menu.
 
 const SPECIALTY_TEXT = {
-  laser: "Specialty: extra RANGE with every level",
-  pulse: "Specialty: bigger EXPLOSIONS with every level",
-  slow: "Specialty: FASTER FIRING with every level",
-  railgun: "Specialty: extra DAMAGE with every level",
+  laser: "Specialty: extra RANGE for every level ever reached",
+  pulse: "Specialty: bigger EXPLOSIONS for every level ever reached",
+  slow: "Specialty: FASTER FIRING for every level ever reached",
+  railgun: "Specialty: extra DAMAGE for every level ever reached",
 };
 
 export function openTowerGuide() {

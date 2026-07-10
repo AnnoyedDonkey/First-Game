@@ -74,9 +74,12 @@ src/
   for the upgrade. Thresholds/costs in `config.js TOWER_UPGRADES`.
 - **Level-up specialties:** all towers share base growth per level, but each
   class gets an extra specialty (TOWER_UPGRADES.specialties): laser +range,
-  pulse +splash radius, slow +fire speed, railgun +damage. Explained in the
-  Tower Guide overlay (auto-opens once at level 2 via save flag
-  `seenTowerGuide`; always reachable from the main menu TOWERS entry).
+  pulse +splash radius, slow +fire speed, railgun +damage. Specialties are
+  PERMANENT — they follow the tower's career-best level (maxUnlockedLevel),
+  so a maxed veteran keeps its full specialty while re-leveling from 1
+  (user-specified rule). Base growth follows current in-battle level.
+  Explained in the Tower Guide overlay (auto-opens once at level 2 via save
+  flag `seenTowerGuide`; always reachable from the main menu TOWERS entry).
 - **Final-hit XP:** only the killing tower gets XP. Known consequence: Slow
   towers never level (backlog item: split XP among contributors).
 - **Veterans:** placing a tower type auto-deploys your best not-yet-deployed
@@ -174,8 +177,8 @@ Gotchas when testing:
 
 Other UI facts: speed controls cycle ◀ 1x->½x->¼x->1x and ▶ 1x->2x->4x->1x
 (pause in the middle); the bottom action bar is hidden while the mission
-selector is open. Note: specialties slightly buffed player power after the
-level calibrations were done — if real play gets easier, that's why.
+selector is open. To offset the specialty power gain, all healthMult values
+in levels 3-10 were scaled x1.2 (levels 1-2 intentionally untouched).
 
 ## Backlog (user-approved, not yet built)
 

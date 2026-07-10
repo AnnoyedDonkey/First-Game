@@ -66,26 +66,35 @@ export function refreshTowerStats(game) {
 }
 
 // Live stats = base stats scaled by level (compound growth per level).
-// Each class also gets its specialty bonus (TOWER_UPGRADES.specialties).
+// SPECIALTY bonuses are PERMANENT: they follow the highest level the
+// tower has EVER reached (maxUnlockedLevel), so a maxed veteran keeps
+// its full specialty even while re-leveling from 1 in a new battle.
 function recomputeStats(tower, grid) {
   const def = tower.def;
   const g = TOWER_UPGRADES;
   const spec = g.specialties[tower.type] || {};
   const lv = tower.level - 1; // level 1 = base stats
+  // Career-best level drives the specialty (in-battle level can
+  // temporarily exceed maxUnlockedLevel before the battle ends).
+  const specLv = Math.max(tower.level, tower.maxUnlockedLevel || 1) - 1;
 
   tower.damage =
     def.baseDamage *
-    Math.pow(1 + g.damageGrowth + (spec.damageGrowth || 0), lv) *
+    Math.pow(1 + g.damageGrowth, lv) *
+    Math.pow(1 + (spec.damageGrowth || 0), specLv) *
     getTowerDamageMult(tower.type);
   tower.range =
     def.baseRange * grid.tileSize *
-    Math.pow(1 + g.rangeGrowth + (spec.rangeGrowth || 0), lv);
+    Math.pow(1 + g.rangeGrowth, lv) *
+    Math.pow(1 + (spec.rangeGrowth || 0), specLv);
   tower.fireInterval =
-    def.baseFireRate / Math.pow(1 + g.fireRateGrowth + (spec.fireRateGrowth || 0), lv);
+    def.baseFireRate /
+    (Math.pow(1 + g.fireRateGrowth, lv) * Math.pow(1 + (spec.fireRateGrowth || 0), specLv));
   if (def.splashRadius) {
     tower.splashRadius =
       def.splashRadius * grid.tileSize *
-      Math.pow(1 + g.splashGrowth + (spec.splashGrowth || 0), lv);
+      Math.pow(1 + g.splashGrowth, lv) *
+      Math.pow(1 + (spec.splashGrowth || 0), specLv);
   }
   if (def.slowPercent) {
     tower.slowPercent = def.slowPercent;
