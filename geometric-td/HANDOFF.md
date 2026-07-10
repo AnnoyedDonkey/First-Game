@@ -4,6 +4,14 @@ Read this first if you are an AI assistant (or human) picking up this project.
 Companion docs: `GAME_BRIEF.md` (original spec + feature history). The user's
 design taste and workflow preferences are at the bottom — follow them.
 
+**State at handoff (July 2026, end of the Claude Fable 5 sessions):**
+10-level campaign, 4 towers (Railgun unlocks after level 5), 7 enemy types,
+5-tier skill tree, permanent per-class specialties, post-level-5 Mastery
+ranks, per-level palettes, GeoDefense-style VFX, ¼x–4x speed controls,
+deployed and playable at the GitHub Pages URL below. Everything committed
+and pushed through `65cb098`. No known bugs. Next up: the backlog at the
+bottom of this file, and whatever the user asks for.
+
 ## What this is
 
 A portrait, mobile-browser tower defense game inspired by geoDefense /
