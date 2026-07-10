@@ -104,6 +104,7 @@ function recomputeStats(tower, grid) {
     tower.slowPercent = def.slowPercent;
     tower.slowDuration =
       def.slowDuration * Math.pow(1 + g.slowGrowth, lv) * getSlowDurationMult();
+    tower.vulnerability = def.vulnerability || 0;
   }
   if (def.pierceWidth) {
     tower.pierceWidth = def.pierceWidth * grid.tileSize;
@@ -139,7 +140,9 @@ export function xpThresholdFor(tower) {
 export function upgradeCostFor(tower) {
   if (tower.level >= TOWER_UPGRADES.maxLevel) return null;
   const c = TOWER_UPGRADES.upgradeCosts;
-  return c[Math.min(tower.level - 1, c.length - 1)];
+  const base = c[Math.min(tower.level - 1, c.length - 1)];
+  // Each tower type can scale its own upgrade cost (Pulse pricier, etc.).
+  return Math.round(base * (tower.def.upgradeCostMult || 1));
 }
 
 export function isUpgradeEligible(tower) {
@@ -241,6 +244,43 @@ function findTarget(game, tower) {
   return best;
 }
 
+// Railgun aiming: pick the firing LINE (through some in-range enemy) that
+// pierces the MOST enemies, so lining the tower up with a straight run of
+// the path clears the whole lane. Ties break toward the enemy furthest
+// along the path. Returns { angle, target } or null.
+function findRailgunAim(game, tower) {
+  const r2 = tower.range * tower.range;
+  const inRange = [];
+  for (const e of game.enemies) {
+    if (!e.alive) continue;
+    const pos = enemyPosition(e, game.grid);
+    const dx = pos.x - tower.pos.x;
+    const dy = pos.y - tower.pos.y;
+    if (dx * dx + dy * dy > r2) continue;
+    inRange.push({ e, dx, dy });
+  }
+  if (!inRange.length) return null;
+
+  let best = null;
+  for (const c of inRange) {
+    const len = Math.hypot(c.dx, c.dy) || 1;
+    const dirX = c.dx / len;
+    const dirY = c.dy / len;
+    let count = 0;
+    for (const o of inRange) {
+      const along = o.dx * dirX + o.dy * dirY;
+      if (along < 0 || along > tower.range) continue;
+      const perp = Math.abs(o.dx * dirY - o.dy * dirX);
+      if (perp <= tower.pierceWidth + game.grid.tileSize * o.e.def.size) count++;
+    }
+    if (!best || count > best.count ||
+        (count === best.count && c.e.distance > best.target.distance)) {
+      best = { angle: Math.atan2(c.dy, c.dx), count, target: c.e };
+    }
+  }
+  return best;
+}
+
 export function updateTowers(game, dt) {
   for (const tower of game.towers) {
     // Rank up live: kills mid-battle can push a tower over its next
@@ -255,6 +295,17 @@ export function updateTowers(game, dt) {
 
     tower.cooldown -= dt;
     if (tower.cooldown > 0) continue;
+
+    // Railgun aims down the line that pierces the most enemies (placement
+    // matters); every other tower shoots the enemy furthest along the path.
+    if (tower.type === "railgun") {
+      const aim = findRailgunAim(game, tower);
+      if (!aim) continue;
+      tower.aimAngle = aim.angle;
+      tower.cooldown = tower.fireInterval;
+      fire(game, tower, aim.target, enemyPosition(aim.target, game.grid));
+      continue;
+    }
 
     const target = findTarget(game, tower);
     if (!target) continue;
@@ -356,7 +407,7 @@ function fire(game, tower, target, targetPos) {
       width: 1.2 + tower.level * 0.4,
       ttl: 0.12, maxTtl: 0.12,
     });
-    slowEnemy(game, target, tower.slowPercent, tower.slowDuration);
+    slowEnemy(game, target, tower.slowPercent, tower.slowDuration, tower.vulnerability);
     damageEnemy(game, target, tower, tower.damage);
   }
 }

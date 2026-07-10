@@ -3,7 +3,7 @@
 // ============================================================
 
 import {
-  TOWERS, SKILLS, SKILL_VALUES, SKILL_TIERS, TOWER_UPGRADES,
+  TOWERS, ENEMIES, SKILLS, SKILL_VALUES, SKILL_TIERS, TOWER_UPGRADES,
 } from "./config.js";
 import {
   xpThresholdFor, upgradeCostFor, isUpgradeEligible, sellValueOf,
@@ -518,6 +518,35 @@ const SPECIALTY_TEXT = {
   railgun: "Specialty: extra DAMAGE for every level ever reached",
 };
 
+// One-line role hint per class — what each tower is FOR.
+const ROLE_TEXT = {
+  laser: "Role: cheap, fast single-target. Great vs Fast; weak vs Armored.",
+  pulse: "Role: splash damage — clears Splitters & swarms. Pricey to level.",
+  slow: "Role: support — slows enemies AND makes them take +30% damage.",
+  railgun: "Role: piercing line-shot. Aim it down a straight lane. Beats Armored & Regenerators.",
+};
+
+// Damage-type label per tower, for the enemy cheat-sheet.
+const TYPE_LABEL = {
+  energy: "Laser", pulse: "Pulse", control: "Slow", rail: "Railgun",
+};
+
+// Build "weak to / resists" text for an enemy from its damageMult map.
+function counterText(def) {
+  const m = def.damageMult;
+  if (!m) return "No special weaknesses.";
+  const weak = [], resist = [];
+  for (const [dtype, mult] of Object.entries(m)) {
+    const label = TYPE_LABEL[dtype] || dtype;
+    if (mult > 1) weak.push(label);
+    else if (mult < 1) resist.push(label);
+  }
+  const parts = [];
+  if (weak.length) parts.push(`Weak to ${weak.join(", ")}`);
+  if (resist.length) parts.push(`resists ${resist.join(", ")}`);
+  return parts.length ? parts.join(" · ") : "No special weaknesses.";
+}
+
 export function openTowerGuide() {
   el.towerList.innerHTML = "";
 
@@ -538,7 +567,26 @@ export function openTowerGuide() {
       `<div class="skill-text">` +
       `<span class="skill-name" style="color:${def.color}">${def.name.toUpperCase()}</span>` +
       `<span class="skill-desc">${stats}</span>` +
+      `<span class="skill-desc">${ROLE_TEXT[type] || ""}</span>` +
       `<span class="skill-desc">${SPECIALTY_TEXT[type] || ""}</span>` +
+      `</div>`;
+    el.towerList.appendChild(row);
+  }
+
+  // Enemy cheat-sheet: what beats what (drives combo choices per level).
+  const enemyHeader = document.createElement("div");
+  enemyHeader.className = "tower-section";
+  enemyHeader.textContent = "KNOW YOUR ENEMY";
+  el.towerList.appendChild(enemyHeader);
+
+  for (const [, edef] of Object.entries(ENEMIES)) {
+    if (edef.name === "Splitling") continue; // covered by Splitter
+    const row = document.createElement("div");
+    row.className = "skill-row";
+    row.innerHTML =
+      `<div class="skill-text">` +
+      `<span class="skill-name" style="color:${edef.color}">${edef.name.toUpperCase()}</span>` +
+      `<span class="skill-desc">${counterText(edef)}</span>` +
       `</div>`;
     el.towerList.appendChild(row);
   }

@@ -5,7 +5,9 @@
 # *Phone access requires listening on all interfaces, which Windows only
 #  allows with admin rights. Without admin, this serves localhost only.
 
-param([int]$Port = 8420)
+# Port precedence: explicit -Port arg, else the PORT env var (used by the
+# preview harness to assign a free port), else 8420.
+param([int]$Port = $(if ($env:PORT) { [int]$env:PORT } else { 8420 }))
 
 $root = $PSScriptRoot
 $mime = @{

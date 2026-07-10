@@ -31,6 +31,8 @@ export function createEnemy(type, mods = {}) {
     distance: 0,        // pixels traveled along the path
     slowUntil: 0,       // game-time until which the enemy is slowed
     slowFactor: 1,      // current speed multiplier from slow towers
+    vulnUntil: 0,       // game-time until which +damage debuff applies
+    vulnMult: 1,        // damage multiplier while vulnerable (Slow debuff)
     hitFlash: 0,        // seconds remaining of the "just hit" flash
     healPulse: 0,       // regenerator visual timer
     alive: true,
@@ -80,7 +82,18 @@ export function enemyPosition(enemy, grid) {
 export function damageEnemy(game, enemy, sourceTower, amount) {
   if (!enemy.alive) return;
 
-  enemy.health -= amount;
+  // Damage-type counters: enemies resist / are weak to specific towers
+  // (ENEMIES[type].damageMult keyed by the tower's damageType).
+  let dmg = amount;
+  if (sourceTower) {
+    const mult = enemy.def.damageMult && enemy.def.damageMult[sourceTower.def.damageType];
+    if (mult != null) dmg *= mult;
+  }
+  // Slow-tower vulnerability debuff: slowed enemies take extra damage
+  // from EVERY source while the debuff lasts.
+  if (game.time < enemy.vulnUntil) dmg *= enemy.vulnMult;
+
+  enemy.health -= dmg;
   enemy.hitFlash = 0.1;
 
   if (enemy.health > 0) {
@@ -134,8 +147,13 @@ export function damageEnemy(game, enemy, sourceTower, amount) {
   }
 }
 
-// Apply a slow debuff (from Slow Towers).
-export function slowEnemy(game, enemy, slowPercent, duration) {
+// Apply a slow debuff (from Slow Towers). `vulnerability` (optional) also
+// marks the enemy to take extra damage from all sources for `duration`.
+export function slowEnemy(game, enemy, slowPercent, duration, vulnerability = 0) {
   enemy.slowFactor = 1 - slowPercent;
   enemy.slowUntil = game.time + duration;
+  if (vulnerability > 0) {
+    enemy.vulnMult = 1 + vulnerability;
+    enemy.vulnUntil = game.time + duration;
+  }
 }

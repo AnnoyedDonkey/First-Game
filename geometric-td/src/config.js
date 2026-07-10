@@ -15,6 +15,15 @@ export const DEBUG = {
 // bounty  = money awarded on kill.
 // xp      = tower XP awarded on kill.
 // coreDamage = AI Core damage if the enemy leaks through.
+//
+// COUNTERS (damageMult): each enemy can resist or be weak to specific
+// tower damage types. The key is the tower's `damageType`:
+//   energy = Laser, pulse = Pulse, control = Slow, rail = Railgun.
+// A value < 1 RESISTS that type (takes less); > 1 is WEAK to it (takes
+// more); any type not listed defaults to 1.0 (normal). This is THE knob
+// that lets a level demand a specific tower combo — e.g. Armored shrugs
+// off lasers but folds to a Railgun. Tune freely; applied in enemies.js
+// damageEnemy(). Damage numbers all live here + in TOWER_UPGRADES.
 export const ENEMIES = {
   basic: {
     name: "Basic",
@@ -26,6 +35,7 @@ export const ENEMIES = {
     xp: 10,
     size: 0.28,          // radius as a fraction of tile size
     color: "#35e0ff",    // neon cyan
+    // Neutral to everything — the baseline enemy.
   },
   fast: {
     name: "Fast",
@@ -37,6 +47,9 @@ export const ENEMIES = {
     xp: 12,
     size: 0.22,
     color: "#ffe24a",    // neon yellow
+    // Fragile flyers — Lasers (fast fire) shred them; Pulse orbs are too
+    // slow to reliably catch them.
+    damageMult: { energy: 1.3, pulse: 0.8 },
   },
   armored: {
     name: "Armored",
@@ -48,6 +61,8 @@ export const ENEMIES = {
     xp: 25,
     size: 0.32,
     color: "#ff3fd4",    // neon magenta
+    // Plated: lasers & slow-zaps chip harmlessly; a Railgun punches through.
+    damageMult: { energy: 0.55, control: 0.6, rail: 1.6 },
   },
   boss: {
     name: "Boss",
@@ -59,6 +74,9 @@ export const ENEMIES = {
     xp: 150,
     size: 0.42,
     color: "#ff4a5e",    // neon red
+    // Massive: hard to keep slowed, and splash is inefficient on a lone
+    // target — focus it down with direct fire.
+    damageMult: { control: 0.5, pulse: 0.8 },
   },
   // Splits into 2 splitlings on death — punishes single-target builds.
   splitter: {
@@ -72,6 +90,9 @@ export const ENEMIES = {
     size: 0.28,
     color: "#ff7a2f",    // neon orange
     splitInto: { type: "splitling", count: 2 },
+    // Pulse splash hits the parent AND both children; a single-line
+    // Railgun wastes most of its shot on one body.
+    damageMult: { pulse: 1.5, rail: 0.7 },
   },
   splitling: {
     name: "Splitling",
@@ -83,6 +104,7 @@ export const ENEMIES = {
     xp: 5,
     size: 0.16,
     color: "#ff7a2f",
+    damageMult: { pulse: 1.5 },
   },
   // Heals itself while alive — punishes chip damage, rewards burst.
   regenerator: {
@@ -96,6 +118,8 @@ export const ENEMIES = {
     size: 0.30,
     color: "#7dff4a",    // acid green
     regenRate: 0.05,     // heals 5% of max health per second
+    // Out-heals steady laser chip; a Railgun's burst outruns the regen.
+    damageMult: { energy: 0.65, rail: 1.6 },
   },
 };
 
@@ -149,6 +173,10 @@ export const TOWERS = {
     baseFireRate: 1.1,
     damageType: "pulse",
     color: "#ff3fd4",
+    // Expensive to level, but scales into a swarm-clearing monster (see
+    // its bigger splash specialty in TOWER_UPGRADES). Costs 60% more per
+    // upgrade than the shared table.
+    upgradeCostMult: 1.6,
   },
   slow: {
     name: "Slow Tower",
@@ -159,8 +187,14 @@ export const TOWERS = {
     baseFireRate: 0.8,
     slowPercent: 0.35,     // 0.35 = enemies move 35% slower
     slowDuration: 1.5,     // seconds
+    // FORCE MULTIPLIER: a slowed enemy also takes extra damage from ALL
+    // sources for the slow's duration. This is the Slow Tower's real job —
+    // it makes every other tower hit harder, so it earns a slot in a combo.
+    vulnerability: 0.30,   // +30% damage taken while slowed
     damageType: "control",
     color: "#4affa1",
+    // Cheap to level (it's support, not DPS).
+    upgradeCostMult: 0.8,
   },
   // Unlocked by clearing Core Siege (level 5). Slow, long-ranged,
   // devastating — the shot PIERCES every enemy along the beam line.
@@ -188,7 +222,9 @@ export const TOWER_UPGRADES = {
   slowGrowth: 0.12,        // slow: +12% slow duration per level
   // XP needed to become ELIGIBLE for each level (index 0 = level 2)
   xpThresholds: [100, 250, 450, 700],
-  // Money cost to actually buy each level (index 0 = level 2)
+  // Money cost to actually buy each level (index 0 = level 2).
+  // A tower can scale this with its own `upgradeCostMult` (see TOWERS) —
+  // e.g. Pulse pays 1.6x, Slow pays 0.8x.
   upgradeCosts: [75, 125, 200, 300],
 
   // MASTERY — progression beyond level 5. XP earned past the level-5
@@ -207,7 +243,7 @@ export const TOWER_UPGRADES = {
   // Guide (shown at level 2, and from the main menu).
   specialties: {
     laser:   { rangeGrowth: 0.07,    label: "+ extra range per level" },
-    pulse:   { splashGrowth: 0.10,   label: "+ bigger explosions per level" },
+    pulse:   { splashGrowth: 0.16,   label: "+ bigger explosions per level" },
     slow:    { fireRateGrowth: 0.10, label: "+ faster firing per level" },
     railgun: { damageGrowth: 0.10,   label: "+ extra damage per level" },
   },
