@@ -20,9 +20,11 @@ const el = {
   upName: document.getElementById("up-name"),
   upLevel: document.getElementById("up-level"),
   upXp: document.getElementById("up-xp"),
-  upKills: document.getElementById("up-kills"),
   upgradeButton: document.getElementById("upgrade-button"),
+  upgradeBtnLabel: document.getElementById("upgrade-btn-label"),
+  upgradeBtnSub: document.getElementById("upgrade-btn-sub"),
   sellButton: document.getElementById("sell-button"),
+  sellBtnSub: document.getElementById("sell-btn-sub"),
   skillsButton: document.getElementById("skills-button"),
   skillPoints: document.getElementById("skill-points-value"),
   skillOverlay: document.getElementById("skill-overlay"),
@@ -40,6 +42,8 @@ const el = {
   wave: document.getElementById("wave-value"),
   core: document.getElementById("core-value"),
   waveButton: document.getElementById("wave-button"),
+  waveBtnLabel: document.getElementById("wave-btn-label"),
+  waveBtnSub: document.getElementById("wave-btn-sub"),
   overlay: document.getElementById("overlay"),
   overlayTitle: document.getElementById("overlay-title"),
   overlaySubtitle: document.getElementById("overlay-subtitle"),
@@ -87,27 +91,33 @@ export function updateHUD(game) {
 
 function updateWaveButton(game) {
   let label;
+  let sub;
   let disabled;
 
   switch (game.phase) {
     case "ready":
-      label = `START WAVE ${game.waveIndex + 1}`;
+      label = "START WAVE";
+      sub = String(game.waveIndex + 1);
       disabled = false;
       break;
     case "countdown":
-      label = `NEXT IN ${Math.ceil(game.countdown)}s`;
+      label = "NEXT IN";
+      sub = `${Math.ceil(game.countdown)}s`;
       disabled = false; // tapping starts the wave early
       break;
     case "wave":
-      label = `WAVE ${game.waveIndex + 1} ACTIVE`;
+      label = `WAVE ${game.waveIndex + 1}`;
+      sub = "ACTIVE";
       disabled = true;
       break;
     default:
       label = "—";
+      sub = "";
       disabled = true;
   }
 
-  setText(el.waveButton, "waveButton", label);
+  setText(el.waveBtnLabel, "waveBtnLabel", label);
+  setText(el.waveBtnSub, "waveBtnSub", sub);
   if (last.waveButtonDisabled !== disabled) {
     last.waveButtonDisabled = disabled;
     el.waveButton.disabled = disabled;
@@ -169,13 +179,15 @@ export function updateUpgradePanel(game, tower) {
   const eligible = isUpgradeEligible(tower);
 
   const rank = masteryRankFor(tower.xp);
-  setText(el.upName, "upName", tower.name + (rank > 0 ? ` ★${rank}` : ""));
+  const dps = tower.damage / tower.fireInterval;
+  const dpsText = `${dps >= 100 ? Math.round(dps) : dps.toFixed(1)} DPS`;
+  const nameText = `${tower.name}${rank > 0 ? ` ★${rank}` : ""} · ${dpsText}`;
+  setText(el.upName, "upName", nameText);
   // Veterans show their unlocked potential, e.g. "LV 1/3".
   const lvText = tower.maxUnlockedLevel > tower.level
     ? `LV ${tower.level}/${tower.maxUnlockedLevel}`
     : `LV ${tower.level}`;
   setText(el.upLevel, "upLevel", lvText);
-  setText(el.upKills, "upKills", `${tower.kills} KILLS`);
   // Past level 5, the XP line tracks mastery progress instead.
   let xpText;
   if (threshold !== null && tower.xp < threshold) {
@@ -193,23 +205,24 @@ export function updateUpgradePanel(game, tower) {
   setText(el.upXp, "upXp", xpText);
 
   // Button: what's between this tower and its next level?
-  let label, disabled;
+  let label, sub, disabled;
   if (threshold === null) {
-    label = "MAX LEVEL";
+    label = "MAX";
+    sub = "LEVEL";
     disabled = true;
   } else if (!eligible) {
-    label = "NEED XP";
-    disabled = true;
-  } else if (game.money < cost) {
-    label = `$${cost}`;
+    label = "NEED";
+    sub = "XP";
     disabled = true;
   } else {
-    label = `UPGRADE $${cost}`;
-    disabled = false;
+    label = "UPGRADE";
+    sub = `$${cost}`;
+    disabled = game.money < cost;
   }
 
-  setText(el.upgradeButton, "upBtn", label);
-  setText(el.sellButton, "sellBtn", `SELL $${sellValueOf(tower)}`);
+  setText(el.upgradeBtnLabel, "upBtnLabel", label);
+  setText(el.upgradeBtnSub, "upBtnSub", sub);
+  setText(el.sellBtnSub, "sellBtnSub", `$${sellValueOf(tower)}`);
   if (last.upBtnDisabled !== disabled) {
     last.upBtnDisabled = disabled;
     el.upgradeButton.disabled = disabled;

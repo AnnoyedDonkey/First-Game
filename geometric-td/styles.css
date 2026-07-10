@@ -550,8 +550,17 @@ button.hud-item {
 .upgrade-row {
   display: flex;
   justify-content: space-between;
+  gap: 6px;
   font-size: 13px;
   letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.upgrade-row span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .upgrade-row.dim { color: var(--text-dim); font-size: 11px; }
@@ -573,7 +582,7 @@ button.hud-item {
 }
 
 #sell-button {
-  min-width: 78px;
+  min-width: 58px;
   font-size: 11px;
   color: var(--neon-yellow);
   border-color: var(--neon-yellow);
@@ -582,11 +591,35 @@ button.hud-item {
 
 .big-button {
   flex: 0 0 auto;
-  min-width: 116px;
+  min-width: 80px;
   font-size: 12px;
   color: var(--neon-magenta);
   border-color: var(--neon-magenta);
   text-shadow: 0 0 6px rgba(255, 63, 212, 0.5);
+}
+
+/* Two-row buttons: main label on top, cost/detail below */
+.stack-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 4px 6px;
+  line-height: 1.2;
+}
+
+.stack-button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.stack-button-sub {
+  font-size: 10px;
+  opacity: 0.8;
+  letter-spacing: 0.5px;
 }
 
 .big-button:disabled {
