@@ -112,9 +112,9 @@ const level001 = {
   ],
 };
 
-// Level 2 — harder: a SHORTER path (less time to shoot), blocked
-// tiles denying the prime inner-corner spots, tighter money, a more
-// fragile core, and 12 waves that ramp faster and end with two bosses.
+// Level 2 — "Signal Breach": a top-to-bottom CHEVRON ZIGZAG. Enemies
+// carve three big Z's down the board, opening interior pockets that two
+// passes cover at once. Fragile core, tight money.
 const level002 = {
   id: "level_002",
   name: "Signal Breach",
@@ -125,23 +125,23 @@ const level002 = {
   timeBetweenWaves: 5,
 
   pathCorners: [
-    { x: 0, y: 2 },
-    { x: 5, y: 2 },
-    { x: 5, y: 6 },
-    { x: 2, y: 6 },
+    { x: 4, y: 0 },
+    { x: 4, y: 3 },
+    { x: 1, y: 3 },
+    { x: 1, y: 6 },
+    { x: 6, y: 6 },
+    { x: 6, y: 9 },
     { x: 2, y: 9 },
-    { x: 7, y: 9 },
+    { x: 2, y: 11 },
   ],
 
   blockedTiles: [
-    { x: 1, y: 1 },
-    { x: 4, y: 4 },   // denies the prime inner-corner spot...
-    { x: 4, y: 5 },   // ...and its neighbor
+    { x: 5, y: 2 },
+    { x: 0, y: 4 },
     { x: 3, y: 7 },
-    { x: 6, y: 8 },
-    { x: 0, y: 6 },
-    { x: 7, y: 3 },
-    { x: 2, y: 10 },
+    { x: 5, y: 7 },
+    { x: 7, y: 7 },
+    { x: 0, y: 8 },
   ],
 
   waves: [
@@ -204,9 +204,9 @@ const level002 = {
   ],
 };
 
-// Level 3 — "Dark Relay": the path hugs the map edges, so towers only
-// cover it from one side; the juicy center is mostly walled off.
-// Waves lean on armor. Designed for players with a leveled roster.
+// Level 3 — "Dark Relay": a PERIMETER GRAND-TOUR. Enemies run the full
+// outer border, then spiral inward to a central core. Long sight-lines
+// down the edges reward Railguns; the interior pockets are prime but few.
 const level003 = {
   id: "level_003",
   name: "Dark Relay",
@@ -217,19 +217,20 @@ const level003 = {
   timeBetweenWaves: 5,
 
   pathCorners: [
-    { x: 7, y: 1 },
-    { x: 1, y: 1 },
-    { x: 1, y: 10 },
-    { x: 6, y: 10 },
-    { x: 6, y: 5 },
+    { x: 0, y: 0 },
+    { x: 7, y: 0 },
+    { x: 7, y: 9 },
+    { x: 1, y: 9 },
+    { x: 1, y: 3 },
+    { x: 5, y: 3 },
+    { x: 5, y: 6 },
   ],
 
   blockedTiles: [
-    { x: 3, y: 4 }, { x: 4, y: 4 },
-    { x: 4, y: 5 }, { x: 3, y: 6 },
-    { x: 4, y: 6 }, { x: 2, y: 3 },
-    { x: 5, y: 8 }, { x: 7, y: 7 },
-    { x: 0, y: 11 },
+    { x: 3, y: 5 }, { x: 3, y: 6 },
+    { x: 2, y: 6 }, { x: 4, y: 7 },
+    { x: 0, y: 11 }, { x: 7, y: 11 },
+    { x: 3, y: 1 },
   ],
 
   waves: [
@@ -279,9 +280,10 @@ const level003 = {
   ],
 };
 
-// Level 4 — "Split Second": a brutally SHORT path. Towers get very
-// little time per enemy; slow towers and kill-zone stacking are
-// almost mandatory. Fast enemies everywhere.
+// Level 4 — "Split Second": a tight STAIRCASE. The path steps down in
+// short 2-tile hops with a turn at every landing, so each tower gets an
+// enemy for only a heartbeat — Slow towers (and stacked kill-zones on
+// the inner corners) are almost mandatory. Fast enemies everywhere.
 const level004 = {
   id: "level_004",
   name: "Split Second",
@@ -293,19 +295,23 @@ const level004 = {
   timeBetweenWaves: 5,
 
   pathCorners: [
-    { x: 3, y: 0 },
-    { x: 3, y: 4 },
-    { x: 5, y: 4 },
-    { x: 5, y: 8 },
-    { x: 2, y: 8 },
+    { x: 0, y: 1 },
+    { x: 2, y: 1 },
+    { x: 2, y: 3 },
+    { x: 4, y: 3 },
+    { x: 4, y: 5 },
+    { x: 2, y: 5 },
+    { x: 2, y: 7 },
+    { x: 5, y: 7 },
+    { x: 5, y: 9 },
+    { x: 2, y: 9 },
     { x: 2, y: 11 },
   ],
 
   blockedTiles: [
-    { x: 4, y: 3 }, { x: 4, y: 5 },
-    { x: 4, y: 6 }, { x: 3, y: 9 },
-    { x: 1, y: 5 }, { x: 6, y: 6 },
-    { x: 0, y: 9 }, { x: 6, y: 1 },
+    { x: 1, y: 5 }, { x: 6, y: 8 },
+    { x: 0, y: 9 }, { x: 4, y: 8 },
+    { x: 1, y: 3 }, { x: 6, y: 2 },
   ],
 
   waves: [
@@ -463,13 +469,16 @@ const level006 = {
     pathEdge: "rgba(255, 122, 47, 0.55)",
     pathFlow: "rgba(255, 170, 90, 0.7)",
   },
+  // VERTICAL COMB: three parallel down-lanes joined at top and bottom.
+  // The narrow alleys between lanes are covered from both sides at once —
+  // ideal Pulse kill-alleys for the splitter swarms.
   pathCorners: [
-    { x: 0, y: 1 }, { x: 5, y: 1 }, { x: 5, y: 5 },
-    { x: 1, y: 5 }, { x: 1, y: 9 }, { x: 6, y: 9 }, { x: 6, y: 11 },
+    { x: 1, y: 0 }, { x: 1, y: 8 }, { x: 3, y: 8 }, { x: 3, y: 1 },
+    { x: 5, y: 1 }, { x: 5, y: 9 }, { x: 6, y: 9 }, { x: 6, y: 11 },
   ],
   blockedTiles: [
-    { x: 2, y: 3 }, { x: 6, y: 2 }, { x: 3, y: 6 },
-    { x: 0, y: 7 }, { x: 4, y: 8 }, { x: 2, y: 10 }, { x: 7, y: 7 },
+    { x: 4, y: 2 }, { x: 2, y: 5 }, { x: 4, y: 7 },
+    { x: 0, y: 9 }, { x: 7, y: 4 }, { x: 2, y: 10 },
   ],
   waves: [
     { groups: [{ type: "basic", count: 14, spawnInterval: 0.5, healthMult: 3 }] },
@@ -529,13 +538,17 @@ const level007 = {
     pathEdge: "rgba(150, 255, 60, 0.5)",
     pathFlow: "rgba(190, 255, 120, 0.65)",
   },
+  // BIG DIAGONAL SWITCHBACKS: wide sweeps march from the top-right down
+  // to the bottom-left, each long leg giving focused fire time to out-burst
+  // the regenerators' healing.
   pathCorners: [
-    { x: 7, y: 2 }, { x: 2, y: 2 }, { x: 2, y: 6 },
-    { x: 6, y: 6 }, { x: 6, y: 10 }, { x: 0, y: 10 },
+    { x: 7, y: 1 }, { x: 2, y: 1 }, { x: 2, y: 4 }, { x: 6, y: 4 },
+    { x: 6, y: 7 }, { x: 1, y: 7 }, { x: 1, y: 10 }, { x: 5, y: 10 },
+    { x: 5, y: 11 },
   ],
   blockedTiles: [
-    { x: 4, y: 3 }, { x: 1, y: 4 }, { x: 5, y: 7 },
-    { x: 3, y: 8 }, { x: 7, y: 8 }, { x: 4, y: 11 }, { x: 0, y: 3 },
+    { x: 4, y: 2 }, { x: 3, y: 5 }, { x: 4, y: 6 },
+    { x: 3, y: 8 }, { x: 0, y: 4 }, { x: 7, y: 8 }, { x: 6, y: 9 },
   ],
   waves: [
     { groups: [{ type: "basic", count: 14, spawnInterval: 0.5, healthMult: 3.4 }] },
@@ -595,13 +608,16 @@ const level008 = {
     pathEdge: "rgba(190, 110, 255, 0.55)",
     pathFlow: "rgba(220, 160, 255, 0.7)",
   },
+  // FULL-WIDTH MAZE SWEEPS: the path lunges wall-to-wall across the board,
+  // and dense blocked "walls" between the sweeps carve the buildable space
+  // into a maze — prime spots exist, but you thread towers in to reach them.
   pathCorners: [
-    { x: 3, y: 0 }, { x: 3, y: 3 }, { x: 6, y: 3 },
-    { x: 6, y: 7 }, { x: 1, y: 7 }, { x: 1, y: 11 },
+    { x: 3, y: 0 }, { x: 3, y: 2 }, { x: 0, y: 2 }, { x: 0, y: 5 },
+    { x: 7, y: 5 }, { x: 7, y: 8 }, { x: 1, y: 8 }, { x: 1, y: 11 },
   ],
   blockedTiles: [
-    { x: 2, y: 2 }, { x: 4, y: 4 }, { x: 5, y: 5 },
-    { x: 4, y: 6 }, { x: 2, y: 8 }, { x: 2, y: 5 }, { x: 7, y: 9 },
+    { x: 2, y: 3 }, { x: 5, y: 3 }, { x: 3, y: 4 }, { x: 5, y: 6 },
+    { x: 2, y: 6 }, { x: 4, y: 7 }, { x: 5, y: 9 }, { x: 3, y: 10 },
   ],
   waves: [
     { groups: [
