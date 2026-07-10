@@ -78,10 +78,14 @@ function recomputeStats(tower, grid) {
   // temporarily exceed maxUnlockedLevel before the battle ends).
   const specLv = Math.max(tower.level, tower.maxUnlockedLevel || 1) - 1;
 
+  // Mastery: permanent damage from banked XP (see masteryRankFor).
+  tower._masteryRank = masteryRankFor(tower.xp);
+
   tower.damage =
     def.baseDamage *
     Math.pow(1 + g.damageGrowth, lv) *
     Math.pow(1 + (spec.damageGrowth || 0), specLv) *
+    (1 + g.mastery.damagePerRank * tower._masteryRank) *
     getTowerDamageMult(tower.type);
   tower.range =
     def.baseRange * grid.tileSize *
@@ -104,6 +108,22 @@ function recomputeStats(tower, grid) {
   if (def.pierceWidth) {
     tower.pierceWidth = def.pierceWidth * grid.tileSize;
   }
+}
+
+// ---------- Mastery ----------
+// XP beyond the level-5 threshold converts to permanent damage ranks.
+
+export function masteryRankFor(xp) {
+  const m = TOWER_UPGRADES.mastery;
+  return Math.max(0, Math.min(m.maxRanks, Math.floor((xp - m.xpStart) / m.xpPerRank)));
+}
+
+// XP still needed for the next rank (null when capped).
+export function xpToNextMastery(xp) {
+  const m = TOWER_UPGRADES.mastery;
+  const rank = masteryRankFor(xp);
+  if (rank >= m.maxRanks) return null;
+  return m.xpStart + (rank + 1) * m.xpPerRank - xp;
 }
 
 // ---------- Upgrades ----------
@@ -223,6 +243,16 @@ function findTarget(game, tower) {
 
 export function updateTowers(game, dt) {
   for (const tower of game.towers) {
+    // Rank up live: kills mid-battle can push a tower over its next
+    // mastery threshold, buffing its damage on the spot.
+    if (masteryRankFor(tower.xp) !== tower._masteryRank) {
+      recomputeStats(tower, game.grid);
+      game.effects.push({
+        kind: "ring", x: tower.pos.x, y: tower.pos.y, color: "#ffe24a",
+        radius: game.grid.tileSize * 0.55, ttl: 0.5, maxTtl: 0.5,
+      });
+    }
+
     tower.cooldown -= dt;
     if (tower.cooldown > 0) continue;
 

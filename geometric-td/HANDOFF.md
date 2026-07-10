@@ -91,6 +91,13 @@ src/
   record survives; XP earned during the current battle by a sold tower is lost.
 - **Roster recording:** `recordBattleEnd` runs inside game.js at the moment
   of win/loss (NOT in the render loop — background tabs pause rAF).
+- **Mastery (post-level-5 progression):** XP past the level-5 threshold
+  converts to permanent damage ranks: +2%/rank, 600 XP/rank, capped at 25
+  (+50%). Derived purely from saved `xp` (retroactive, no new save fields);
+  follows the tower forever like specialties. Ranks up live mid-battle
+  (checked in `updateTowers`). Shown as ★N in the panel and Tower Guide.
+  Knobs: `TOWER_UPGRADES.mastery`. This exists so grinding earlier levels
+  pays off (user-requested loop).
 - **Skill tree:** 7 skills x 5 tiers, +10%/tier (core: +5HP/tier), tier costs
   1/1/2/2/3 points. 1 point per battle won (replays farmable by design).
 - **Railgun:** unlocked when `level_005` is in completedLevels. Pierces all

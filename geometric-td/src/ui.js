@@ -7,6 +7,7 @@ import {
 } from "./config.js";
 import {
   xpThresholdFor, upgradeCostFor, isUpgradeEligible, sellValueOf,
+  masteryRankFor, xpToNextMastery,
 } from "./towers.js";
 import {
   getSkillTier, nextTierCost, getSkillPoints, buySkill, resetProgress,
@@ -167,17 +168,29 @@ export function updateUpgradePanel(game, tower) {
   const cost = upgradeCostFor(tower);
   const eligible = isUpgradeEligible(tower);
 
-  setText(el.upName, "upName", tower.name);
+  const rank = masteryRankFor(tower.xp);
+  setText(el.upName, "upName", tower.name + (rank > 0 ? ` ★${rank}` : ""));
   // Veterans show their unlocked potential, e.g. "LV 1/3".
   const lvText = tower.maxUnlockedLevel > tower.level
     ? `LV ${tower.level}/${tower.maxUnlockedLevel}`
     : `LV ${tower.level}`;
   setText(el.upLevel, "upLevel", lvText);
   setText(el.upKills, "upKills", `${tower.kills} KILLS`);
-  setText(
-    el.upXp, "upXp",
-    threshold === null ? `XP ${tower.xp}` : `XP ${tower.xp}/${threshold}`
-  );
+  // Past level 5, the XP line tracks mastery progress instead.
+  let xpText;
+  if (threshold !== null && tower.xp < threshold) {
+    xpText = `XP ${tower.xp}/${threshold}`;
+  } else if (threshold !== null) {
+    // Eligible (or a veteran re-leveling): no confusing 99999/100.
+    xpText = rank > 0 ? `★${rank} · XP READY` : `XP READY`;
+  } else {
+    const toNext = xpToNextMastery(tower.xp);
+    const pct = Math.round(rank * TOWER_UPGRADES.mastery.damagePerRank * 100);
+    xpText = toNext === null
+      ? `★${rank} MAX · +${pct}% DMG`
+      : `★${rank} (+${pct}%) · NEXT ★ IN ${toNext} XP`;
+  }
+  setText(el.upXp, "upXp", xpText);
 
   // Button: what's between this tower and its next level?
   let label, disabled;
@@ -378,13 +391,18 @@ export function openTowerGuide() {
   }
   for (const rec of roster) {
     const def = TOWERS[rec.type];
+    const rank = masteryRankFor(rec.xp);
+    const pct = Math.round(rank * TOWER_UPGRADES.mastery.damagePerRank * 100);
     const row = document.createElement("div");
     row.className = "skill-row";
     row.innerHTML =
       `<div class="skill-text">` +
-      `<span class="skill-name" style="color:${def.color}">${rec.name}</span>` +
-      `<span class="skill-desc">${def.name} · MAX LV ${rec.maxLevel} · ` +
-      `${rec.xp} XP · ${rec.kills} kills</span>` +
+      `<span class="skill-name" style="color:${def.color}">${rec.name}` +
+      (rank > 0 ? ` <span class="skill-pips">★${rank}</span>` : "") +
+      `</span>` +
+      `<span class="skill-desc">${def.name} · MAX LV ${rec.maxLevel}` +
+      (rank > 0 ? ` · MASTERY +${pct}% DMG` : "") +
+      ` · ${rec.xp} XP · ${rec.kills} kills</span>` +
       `</div>`;
     el.towerList.appendChild(row);
   }

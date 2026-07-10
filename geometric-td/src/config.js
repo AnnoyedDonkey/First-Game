@@ -172,6 +172,17 @@ export const TOWER_UPGRADES = {
   // Money cost to actually buy each level (index 0 = level 2)
   upgradeCosts: [75, 125, 200, 300],
 
+  // MASTERY — progression beyond level 5. XP earned past the level-5
+  // threshold converts into permanent damage ranks (no money cost,
+  // follows the tower forever like specialties). Makes grinding
+  // earlier levels pay off.
+  mastery: {
+    xpStart: 700,        // XP where mastery begins (= level-5 threshold)
+    xpPerRank: 600,      // XP needed per rank
+    damagePerRank: 0.02, // +2% damage per rank
+    maxRanks: 25,        // soft cap: +50% damage
+  },
+
   // Each tower class gains an EXTRA specialty bonus per level, on top
   // of the shared growth above. Explained to the player in the Tower
   // Guide (shown at level 2, and from the main menu).
