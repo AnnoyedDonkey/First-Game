@@ -281,3 +281,25 @@ export const SKILL_VALUES = {
   xpGain: 0.10,
   coreHealth: 5,       // +5 HP per tier
 };
+
+// ---------- Shared leaderboard (Supabase) ----------
+// A common online high-score board: per-level Endless BEST WAVE reached.
+// Reached with plain fetch() against Supabase's auto-generated REST API,
+// so it adds NO build step and NO dependency — see leaderboard.js.
+//
+// SETUP: create a free Supabase project, run the SQL in SUPABASE_SETUP.md,
+// then paste your Project URL + anon public key below. The whole feature
+// stays dormant (menu button hidden, zero network calls) until BOTH are
+// filled in, so the game runs fine with these blank.
+//
+// Heads-up: the anon key ships in the page source (unavoidable for a
+// static site), so this is a FRIENDLY board, not cheat-proof. maxWave is
+// a light client-side sanity cap that mirrors the DB CHECK constraint.
+export const LEADERBOARD = {
+  url: "https://rzwyqvjpjypmiodoojjb.supabase.co", // Project URL (code adds /rest/v1)
+  anonKey: "sb_publishable_sorZ1umgv9Jq8Iw3yw5Hqg_aoS_morg", // PUBLISHABLE key, NOT the secret one
+  table: "scores",     // table name created by SUPABASE_SETUP.md
+  topN: 10,            // rows shown per level on the board
+  maxWave: 1000,       // reject absurd waves (matches the DB CHECK)
+  maxNickLength: 16,   // nickname is trimmed to this many chars
+};

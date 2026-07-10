@@ -68,6 +68,22 @@
         <button id="tower-close" class="big-button">CLOSE</button>
       </div>
 
+      <!-- Leaderboard overlay: shared online best-wave scores by level -->
+      <div id="leaderboard-overlay" class="hidden">
+        <h1>LEADERBOARD</h1>
+        <p>ENDLESS BEST WAVE, BY LEVEL</p>
+        <div id="nickname-bar">
+          <input id="nickname-input" type="text" maxlength="16"
+                 placeholder="YOUR NICKNAME" autocomplete="off"
+                 autocapitalize="characters" spellcheck="false">
+          <button id="nickname-save" class="lb-action">SAVE</button>
+        </div>
+        <button id="publish-scores" class="lb-action lb-publish">PUBLISH MY SCORES</button>
+        <div id="leaderboard-msg"></div>
+        <div id="leaderboard-list"></div>
+        <button id="leaderboard-close" class="big-button">CLOSE</button>
+      </div>
+
       <!-- Skill tree overlay -->
       <div id="skill-overlay" class="hidden">
         <h1>SKILL TREE</h1>

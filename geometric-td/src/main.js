@@ -19,8 +19,9 @@ import {
   initTowerButtons, updateTowerButtons,
   updateUpgradePanel, onUpgradeButtonTap, onSellButtonTap,
   initSkillTree, showLevelSelect, openSkillTree, hideOverlay,
-  initSpeedControls, openTowerGuide, onExitButtonTap,
+  initSpeedControls, openTowerGuide, onExitButtonTap, openLeaderboard,
 } from "./ui.js";
+import { submitScore, isEnabled as lbEnabled } from "./leaderboard.js";
 
 const TILE_SIZE = 64; // internal render resolution per tile
 
@@ -225,6 +226,20 @@ function checkEndState() {
     const level = game.level;
     if (game.endless) {
       const { waveReached, isNewBest, bestWave } = game.endlessResult;
+      // Auto-publish a new best to the shared board (best-effort, silent;
+      // only fires if a nickname is set — see leaderboard.js). A failed
+      // network call can't affect the overlay below.
+      if (isNewBest) submitScore(level.id, waveReached);
+      const buttons = [
+        { text: "RETRY ENDLESS", onTap: () => startLevel(level, true) },
+      ];
+      if (lbEnabled()) {
+        buttons.push({ text: "LEADERBOARD", onTap: () => openLeaderboard(LEVELS), secondary: true });
+      }
+      buttons.push(
+        { text: "ASSIGN SKILL POINTS", onTap: openSkillTree, secondary: true },
+        { text: "MAIN MENU", onTap: goToMainMenu, secondary: true },
+      );
       showOverlay({
         title: "RUN OVER",
         subtitle:
@@ -232,11 +247,7 @@ function checkEndState() {
           (isNewBest ? ", a NEW BEST!" : ` (best: wave ${bestWave})`) +
           ` Your towers kept their XP.`,
         type: "loss",
-        buttons: [
-          { text: "RETRY ENDLESS", onTap: () => startLevel(level, true) },
-          { text: "ASSIGN SKILL POINTS", onTap: openSkillTree, secondary: true },
-          { text: "MAIN MENU", onTap: goToMainMenu, secondary: true },
-        ],
+        buttons,
       });
     } else {
       showOverlay({

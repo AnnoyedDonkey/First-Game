@@ -13,6 +13,10 @@ import {
   getSkillTier, nextTierCost, getSkillPoints, buySkill, resetProgress,
   isTowerUnlocked, getProgress, getBestEndlessWave,
 } from "./progression.js";
+import {
+  isEnabled as lbEnabled, getNickname, setNickname,
+  fetchAllBoards, publishAllLocalBests,
+} from "./leaderboard.js";
 
 const el = {
   towerButtons: document.getElementById("tower-buttons"),
@@ -49,6 +53,13 @@ const el = {
   overlayTitle: document.getElementById("overlay-title"),
   overlaySubtitle: document.getElementById("overlay-subtitle"),
   overlayButtons: document.getElementById("overlay-buttons"),
+  leaderboardOverlay: document.getElementById("leaderboard-overlay"),
+  leaderboardList: document.getElementById("leaderboard-list"),
+  leaderboardMsg: document.getElementById("leaderboard-msg"),
+  leaderboardClose: document.getElementById("leaderboard-close"),
+  nicknameInput: document.getElementById("nickname-input"),
+  nicknameSave: document.getElementById("nickname-save"),
+  publishScores: document.getElementById("publish-scores"),
 };
 
 // Cache last-drawn values so we only touch the DOM when they change.
@@ -69,6 +80,7 @@ function forwardWheel(overlay, list) {
 }
 forwardWheel(el.levelOverlay, el.levelList);
 forwardWheel(el.skillOverlay, el.skillList);
+forwardWheel(el.leaderboardOverlay, el.leaderboardList);
 
 function setText(node, key, value) {
   if (last[key] === value) return;
@@ -307,6 +319,16 @@ export function showLevelSelect(levels, completedIds, onPick) {
   towersBtn.addEventListener("click", openTowerGuide);
   el.levelList.appendChild(towersBtn);
 
+  // Leaderboard entry — only when a backend is configured (config.js
+  // LEADERBOARD). Kept hidden otherwise so we never ship a dead button.
+  if (lbEnabled()) {
+    const lbBtn = document.createElement("button");
+    lbBtn.className = "level-button skill-entry";
+    lbBtn.innerHTML = `<span>LEADERBOARD</span><span class="level-done">🏆</span>`;
+    lbBtn.addEventListener("click", () => openLeaderboard(levels));
+    el.levelList.appendChild(lbBtn);
+  }
+
   // Reset all progress — two-tap confirm, then reload clean.
   const resetBtn = document.createElement("button");
   resetBtn.className = "menu-reset";
@@ -539,6 +561,103 @@ function renderSkillList(onSkillBought) {
     el.skillList.appendChild(row);
   }
 }
+
+// ---------- Leaderboard overlay ----------
+// Shared online best-wave board, grouped by level. Opened from the main
+// menu and from the Endless RUN OVER overlay. Read-only fetch here; the
+// submit path lives in leaderboard.js (auto on new best) plus the
+// "PUBLISH MY SCORES" button below.
+
+let lbLevels = []; // levels list, for id -> display-name lookup
+
+export function openLeaderboard(levels) {
+  lbLevels = levels;
+  el.nicknameInput.value = getNickname();
+  el.leaderboardMsg.textContent = "";
+  renderLeaderboard();
+  el.leaderboardOverlay.classList.remove("hidden");
+}
+
+async function renderLeaderboard() {
+  el.leaderboardList.innerHTML = `<div class="lb-status">Loading…</div>`;
+
+  let boards;
+  try {
+    boards = await fetchAllBoards();
+  } catch (err) {
+    console.warn("Leaderboard fetch failed:", err);
+    el.leaderboardList.innerHTML =
+      `<div class="lb-status">Couldn't reach the leaderboard.<br>` +
+      `Check your connection and try again.</div>`;
+    return;
+  }
+
+  const withScores = lbLevels.filter((lv) => boards[lv.id] && boards[lv.id].length);
+  if (!withScores.length) {
+    el.leaderboardList.innerHTML =
+      `<div class="lb-status">No scores yet.<br>` +
+      `Play an Endless run and publish your best wave to claim the top spot.</div>`;
+    return;
+  }
+
+  const me = getNickname();
+  let html = "";
+  for (const lv of withScores) {
+    html += `<div class="lb-section">${escapeHtml(lv.name.toUpperCase())}</div>`;
+    boards[lv.id].forEach((row, i) => {
+      const mine = me && row.nickname === me ? " lb-me" : "";
+      html +=
+        `<div class="lb-row${mine}">` +
+        `<span class="lb-rank">#${i + 1}</span>` +
+        `<span class="lb-nick">${escapeHtml(row.nickname)}</span>` +
+        `<span class="lb-wave">W${row.wave}</span>` +
+        `</div>`;
+    });
+  }
+  el.leaderboardList.innerHTML = html;
+}
+
+// Nicknames come from other players — always escape before innerHTML.
+function escapeHtml(s) {
+  return String(s).replace(
+    /[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
+  );
+}
+
+function flashLbMsg(text) {
+  el.leaderboardMsg.textContent = text;
+}
+
+el.leaderboardClose.addEventListener("click", () => {
+  el.leaderboardOverlay.classList.add("hidden");
+});
+
+el.nicknameSave.addEventListener("click", () => {
+  const val = setNickname(el.nicknameInput.value);
+  el.nicknameInput.value = val;
+  flashLbMsg(val ? `Nickname set to ${val}.` : "Nickname cleared.");
+});
+
+el.publishScores.addEventListener("click", async () => {
+  if (!getNickname()) {
+    flashLbMsg("Enter a nickname first, then Save.");
+    return;
+  }
+  el.publishScores.disabled = true;
+  el.publishScores.textContent = "PUBLISHING…";
+  const { ok, fail } = await publishAllLocalBests(getProgress().endlessBest || {});
+  el.publishScores.disabled = false;
+  el.publishScores.textContent = "PUBLISH MY SCORES";
+  flashLbMsg(
+    ok
+      ? `Published ${ok} score${ok === 1 ? "" : "s"}.` + (fail ? ` (${fail} failed)` : "")
+      : fail
+        ? "Publish failed — check your connection."
+        : "No Endless bests yet — set one first."
+  );
+  renderLeaderboard();
+});
 
 export function onWaveButtonTap(handler) {
   el.waveButton.addEventListener("click", handler);

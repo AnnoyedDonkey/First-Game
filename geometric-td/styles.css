@@ -411,6 +411,143 @@ button.hud-item {
   color: var(--neon-red);
 }
 
+/* ---------- Leaderboard overlay ---------- */
+/* Gold theme (matches Endless mode's yellow), same z-order as the skill
+   tree / tower guide so it sits above the level-select overlay. */
+
+#leaderboard-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: rgba(5, 6, 15, 0.94);
+  padding: 20px;
+  z-index: 40;
+}
+
+#leaderboard-overlay.hidden { display: none; }
+
+#leaderboard-overlay h1 {
+  font-size: 24px;
+  letter-spacing: 4px;
+  color: var(--neon-yellow);
+  text-shadow: 0 0 16px rgba(255, 226, 74, 0.6);
+}
+
+#leaderboard-overlay p { color: var(--text-dim); font-size: 12px; letter-spacing: 2px; }
+
+#nickname-bar {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  max-width: 420px;
+}
+
+#nickname-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: inherit;
+  font-size: 16px; /* >=16px stops iOS Safari from zooming on focus */
+  letter-spacing: 1px;
+  padding: 0 12px;
+  min-height: 44px;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--neon-yellow);
+  border-radius: 6px;
+  text-transform: uppercase;
+}
+#nickname-input::placeholder { color: var(--text-dim); }
+
+.lb-action {
+  font-family: inherit;
+  font-size: 12px;
+  letter-spacing: 1px;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 6px;
+  border: 1px solid var(--neon-yellow);
+  color: var(--neon-yellow);
+  background: none;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.lb-action:disabled { border-color: var(--panel-border); color: var(--text-dim); cursor: default; }
+.lb-action.lb-publish { width: 100%; max-width: 420px; }
+
+#leaderboard-msg {
+  color: var(--neon-green);
+  font-size: 11px;
+  letter-spacing: 1px;
+  min-height: 14px; /* reserve space so the list doesn't jump */
+  text-align: center;
+}
+
+#leaderboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  max-width: 420px;
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  scrollbar-width: thin;
+  scrollbar-color: var(--panel-border) transparent;
+}
+#leaderboard-list::-webkit-scrollbar { width: 4px; }
+#leaderboard-list::-webkit-scrollbar-thumb { background: var(--panel-border); border-radius: 2px; }
+
+.lb-status {
+  color: var(--text-dim);
+  font-size: 12px;
+  line-height: 1.6;
+  text-align: center;
+  padding: 20px 8px;
+}
+
+.lb-section {
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--neon-yellow);
+  margin-top: 10px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid var(--panel-border);
+  flex-shrink: 0;
+}
+
+.lb-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+.lb-row .lb-rank { color: var(--text-dim); font-size: 12px; min-width: 28px; }
+.lb-row .lb-nick {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--text);
+  font-size: 13px;
+  letter-spacing: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lb-row .lb-wave { color: var(--neon-yellow); font-size: 13px; flex-shrink: 0; }
+
+/* The player's own rows stand out. */
+.lb-row.lb-me { border-color: var(--neon-yellow); }
+.lb-row.lb-me .lb-nick { color: var(--neon-yellow); }
+
 /* ---------- Game area ---------- */
 
 #game-area {
