@@ -11,6 +11,12 @@
 <body>
   <div id="app">
 
+    <!-- Update nudge: shown by update.js when a newer build is deployed -->
+    <div id="update-banner" class="hidden" role="button" tabindex="0">
+      <span class="update-text">&#8635; UPDATE AVAILABLE — TAP TO RELOAD</span>
+      <button class="update-dismiss" aria-label="Dismiss">&#10005;</button>
+    </div>
+
     <!-- Top HUD: money / wave / core health -->
     <header id="hud">
       <div class="hud-item" id="hud-money">

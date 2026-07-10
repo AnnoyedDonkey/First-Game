@@ -22,6 +22,7 @@ import {
   initSpeedControls, openTowerGuide, onExitButtonTap, openLeaderboard,
 } from "./ui.js";
 import { submitScore, isEnabled as lbEnabled } from "./leaderboard.js";
+import { initUpdateCheck } from "./update.js";
 
 const TILE_SIZE = 64; // internal render resolution per tile
 
@@ -296,3 +297,6 @@ function frame(now) {
 // Boot into the mission list; the loop starts once a level is picked.
 showLevelSelect(LEVELS, getProgress().completedLevels, startLevel);
 requestAnimationFrame(frame);
+
+// Watch for newer deploys (matters most for iPhone home-screen installs).
+initUpdateCheck();
