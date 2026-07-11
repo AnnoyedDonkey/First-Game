@@ -205,6 +205,17 @@ src/
   record survives; XP earned during the current battle by a sold tower is lost.
 - **Roster recording:** `recordBattleEnd` runs inside game.js at the moment
   of win/loss (NOT in the render loop — background tabs pause rAF).
+- **Shards ◆ (loot P1, shipped):** persistent meta-currency, no gear yet.
+  Earned per kill — win, lose, OR forfeit — as `round(LOOT.shards.perKillBase
+  * enemy.def.shardTier)` (`shardTier` is a new per-enemy field, 1/2/4 for
+  grunt/heavy/boss). Banked live on `game.shardsEarned` (enemies.js
+  `damageEnemy`), synced into the persistent `state.shards` wallet inside
+  `progression.js syncRoster` — the function already shared by
+  `recordBattleEnd`/`recordEndlessResult`/`forfeitBattle`, so every exit
+  path pays out the same way. Save field `shards` (default 0), migrated
+  with the usual belt-and-suspenders backfill pattern. Shown as `◆ N` under
+  the main-menu title (`#shards-readout` in index.html), refreshed in
+  `ui.js renderWorld`. Read via `progression.js getShards()`.
 - **Mastery (post-level-5 progression):** XP past the level-5 threshold
   converts to permanent damage ranks on a **50-rank escalating curve** (loot
   P0): rank *n* costs `baseXpPerRank + xpRankIncrement*(n-1)` XP (400 + 80·…),
@@ -431,10 +442,13 @@ as the source of truth, not that old ×1.2 rule.)
     contributor-weighted XP (both described under "Key mechanics" above).
     §2b retroactive-nerf decision resolved (accepted). Config knobs live in
     `TOWER_UPGRADES.mastery` and the new `LOOT.xp` block in config.js.
-  - **Next: P1** — Shards currency + save schema/migration (Sonnet/Medium
-    per the doc's phase table). Build one phase per fresh session (`/clear`
-    between); the handoff is the committed files + LOOT_DESIGN checkboxes,
-    not the conversation.
+  - **P1 DONE (2026-07-11):** Shards ◆ currency + save schema/migration
+    (described under "Key mechanics" above). No gear yet.
+  - **Next: P2** — Item generator (pure module: affixes, rarity,
+    restriction, constraints; console-testable, no UI; Opus/High per the
+    doc's phase table — the one tricky module). Build one phase per fresh
+    session (`/clear` between); the handoff is the committed files +
+    LOOT_DESIGN checkboxes, not the conversation.
 
 
 - **PLAYTEST-PENDING:** the counter re-tune + visible feedback + Rocket +
