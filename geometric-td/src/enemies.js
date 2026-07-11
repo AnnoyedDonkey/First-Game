@@ -2,7 +2,7 @@
 // ENEMIES — creation and movement.
 // ============================================================
 
-import { ENEMIES, ECONOMY, VFX } from "./config.js";
+import { ENEMIES, ECONOMY, VFX, LOOT } from "./config.js";
 import { getMoneyMult, getXpMult } from "./progression.js";
 import { emitHitSparks, emitDeathShards } from "./particles.js";
 
@@ -77,8 +77,56 @@ export function enemyPosition(enemy, grid) {
   return grid.positionOnPath(enemy.distance);
 }
 
+// Contributor-weighted XP (loot spec §3): every tower that damages or
+// slows an enemy banks "weight" on it; at death the kill's XP pool is
+// split by weight instead of all going to the final-hit tower. This is
+// what finally levels Slow towers. Stored on the enemy as
+// _contrib[towerName] = { tower, weight }; consumed once, at death.
+function addContribution(enemy, tower, weight) {
+  if (!tower || weight <= 0) return;
+  if (!enemy._contrib) enemy._contrib = {};
+  const entry = enemy._contrib[tower.name];
+  if (entry) entry.weight += weight;
+  else enemy._contrib[tower.name] = { tower, weight };
+}
+
+// Split a dead enemy's XP pool among its contributors by weight. The
+// killer always gets the kill count and any flooring remainder; if there
+// were somehow no tracked contributors, the killer takes the whole pool.
+function awardKillXp(enemy, killer, pool) {
+  if (killer) killer.kills += 1;
+  if (pool <= 0) return;
+
+  const contrib = enemy._contrib;
+  let total = 0;
+  if (contrib) for (const name in contrib) total += contrib[name].weight;
+
+  if (!contrib || total <= 0) {
+    if (killer) killer.xp += pool;
+    return;
+  }
+
+  let distributed = 0;
+  for (const name in contrib) {
+    const { tower, weight } = contrib[name];
+    const share = Math.floor(pool * (weight / total));
+    tower.xp += share;
+    distributed += share;
+  }
+  // Hand the flooring remainder to the killer (a contributor) if there is
+  // one, else to any tracked contributor so no XP is silently dropped.
+  const remainder = pool - distributed;
+  if (remainder > 0) {
+    if (killer && contrib[killer.name]) killer.xp += remainder;
+    else {
+      const first = contrib[Object.keys(contrib)[0]];
+      if (first) first.tower.xp += remainder;
+    }
+  }
+}
+
 // Apply damage from a tower (or splash). Handles death: bounty money,
-// XP to the source tower (final-hit rule), kill count, and a death burst.
+// contributor-weighted XP, kill count, and a death burst.
 export function damageEnemy(game, enemy, sourceTower, amount) {
   if (!enemy.alive) return;
 
@@ -96,6 +144,10 @@ export function damageEnemy(game, enemy, sourceTower, amount) {
 
   enemy.health -= dmg;
   enemy.hitFlash = 0.1;
+
+  // Bank this hit's damage as XP-contribution weight (1 per point of
+  // damage dealt). Runs before the death check so the killing blow counts.
+  addContribution(enemy, sourceTower, dmg);
 
   if (enemy.health > 0) {
     // Impact feedback that TEACHES the counter: a wrong-tower hit clangs
@@ -125,10 +177,9 @@ export function damageEnemy(game, enemy, sourceTower, amount) {
   enemy.alive = false;
   game.money += Math.round(enemy.bounty * ECONOMY.moneyPerKillMultiplier * getMoneyMult());
 
-  if (sourceTower) {
-    sourceTower.xp += Math.round(enemy.xp * ECONOMY.xpPerKillMultiplier * getXpMult());
-    sourceTower.kills += 1;
-  }
+  // XP pool is unchanged (no inflation) but split among all contributors.
+  const killXp = Math.round(enemy.xp * ECONOMY.xpPerKillMultiplier * getXpMult());
+  awardKillXp(enemy, sourceTower, killXp);
 
   const pos = enemyPosition(enemy, game.grid);
   const ts = game.grid.tileSize;
@@ -167,11 +218,14 @@ export function damageEnemy(game, enemy, sourceTower, amount) {
 
 // Apply a slow debuff (from Slow Towers). `vulnerability` (optional) also
 // marks the enemy to take extra damage from all sources for `duration`.
-export function slowEnemy(game, enemy, slowPercent, duration, vulnerability = 0) {
+// `sourceTower` (optional) banks XP-contribution weight for the slow so
+// Slow towers earn XP even when they never land the killing blow.
+export function slowEnemy(game, enemy, slowPercent, duration, vulnerability = 0, sourceTower = null) {
   enemy.slowFactor = 1 - slowPercent;
   enemy.slowUntil = game.time + duration;
   if (vulnerability > 0) {
     enemy.vulnMult = 1 + vulnerability;
     enemy.vulnUntil = game.time + duration;
   }
+  addContribution(enemy, sourceTower, duration * LOOT.xp.slowWeightPerSec);
 }

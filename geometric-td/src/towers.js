@@ -113,10 +113,31 @@ function recomputeStats(tower, grid) {
 
 // ---------- Mastery ----------
 // XP beyond the level-5 threshold converts to permanent damage ranks.
+// Escalating 50-rank curve (config mastery): rank n costs
+// baseXpPerRank + xpRankIncrement*(n-1) XP. Cumulative XP to REACH rank N
+// past xpStart is  E(N) = b*N + k*N*(N-1)/2  (b = baseXpPerRank,
+// k = xpRankIncrement). Rank is derived purely from `xp`, so it stays
+// retroactive with no new save field.
+
+// Cumulative XP (beyond xpStart) needed to reach mastery rank N.
+function masteryCumulativeXp(n, m) {
+  return m.baseXpPerRank * n + m.xpRankIncrement * n * (n - 1) / 2;
+}
 
 export function masteryRankFor(xp) {
   const m = TOWER_UPGRADES.mastery;
-  return Math.max(0, Math.min(m.maxRanks, Math.floor((xp - m.xpStart) / m.xpPerRank)));
+  const x = xp - m.xpStart;
+  if (x <= 0) return 0;
+  const b = m.baseXpPerRank;
+  const k = m.xpRankIncrement;
+  // Invert E(N) <= x for the largest integer N.
+  let rank;
+  if (k === 0) {
+    rank = Math.floor(x / b);
+  } else {
+    rank = Math.floor((-(b - k / 2) + Math.sqrt((b - k / 2) ** 2 + 2 * k * x)) / k);
+  }
+  return Math.max(0, Math.min(m.maxRanks, rank));
 }
 
 // XP still needed for the next rank (null when capped).
@@ -124,7 +145,7 @@ export function xpToNextMastery(xp) {
   const m = TOWER_UPGRADES.mastery;
   const rank = masteryRankFor(xp);
   if (rank >= m.maxRanks) return null;
-  return m.xpStart + (rank + 1) * m.xpPerRank - xp;
+  return m.xpStart + masteryCumulativeXp(rank + 1, m) - xp;
 }
 
 // ---------- Upgrades ----------
@@ -411,7 +432,7 @@ function fire(game, tower, target, targetPos) {
       width: 1.2 + tower.level * 0.4,
       ttl: 0.12, maxTtl: 0.12,
     });
-    slowEnemy(game, target, tower.slowPercent, tower.slowDuration, tower.vulnerability);
+    slowEnemy(game, target, tower.slowPercent, tower.slowDuration, tower.vulnerability, tower);
     damageEnemy(game, target, tower, tower.damage);
   }
 }

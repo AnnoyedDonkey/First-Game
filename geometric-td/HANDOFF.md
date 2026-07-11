@@ -408,6 +408,15 @@ as the source of truth, not that old ×1.2 rule.)
 
 ## Backlog (user-approved, not yet built)
 
+- **LOOT & EQUIPMENT SYSTEM (designed, not built):** full build spec in
+  `LOOT_DESIGN.md` — per-tower Diablo-style gear (4 typed slots, 5 rarities,
+  affixes + Singularity uniques, Shards currency, store, stash+triage),
+  plus the changes it forces (50-rank escalating Mastery curve,
+  contributor-weighted XP that finally levels Slow towers, Endless reward
+  tracks). Has a phased build order (P0–P7) and a knobs list. One open
+  decision flagged in §2b (retroactive Mastery nerf) before P0 ships.
+
+
 - **PLAYTEST-PENDING:** the counter re-tune + visible feedback + Rocket +
   World 3 all shipped but the difficulty is calibrated only by bot sims
   (superhuman placement → flawless bot wins are a WEAK signal). The user's

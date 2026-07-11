@@ -256,11 +256,21 @@ export const TOWER_UPGRADES = {
   // threshold converts into permanent damage ranks (no money cost,
   // follows the tower forever like specialties). Makes grinding
   // earlier levels pay off.
+  //
+  // 50-rank ESCALATING curve (loot spec §2a): rank n costs
+  // baseXpPerRank + xpRankIncrement*(n-1) XP, so each rank costs a bit
+  // more than the last (cumulative XP is quadratic). Rank is derived
+  // purely from `xp` in masteryRankFor() — no save field — so it stays
+  // retroactive. The steeper curve intentionally lowers existing
+  // veterans' ranks (loot spec §2b, decision: ACCEPT the nerf).
+  // Reference (base 400, inc 80): rank 1 = 1,100 XP total ·
+  // rank 10 = 8,300 · rank 20 = 23,900 · rank 50 = 118,700.
   mastery: {
-    xpStart: 700,        // XP where mastery begins (= level-5 threshold)
-    xpPerRank: 600,      // XP needed per rank
-    damagePerRank: 0.02, // +2% damage per rank
-    maxRanks: 25,        // soft cap: +50% damage
+    xpStart: 700,          // XP where mastery begins (= level-5 threshold)
+    baseXpPerRank: 400,    // XP cost of rank 1
+    xpRankIncrement: 80,   // each rank costs this much more than the last
+    damagePerRank: 0.015,  // +1.5% damage per rank (+75% at rank 50)
+    maxRanks: 50,          // hard cap
   },
 
   // Each tower class gains an EXTRA specialty bonus per level, on top
@@ -279,6 +289,22 @@ export const TOWER_UPGRADES = {
 export const ECONOMY = {
   moneyPerKillMultiplier: 1.0,  // global multiplier on all bounties
   xpPerKillMultiplier: 1.0,     // global multiplier on all XP gains
+};
+
+// ---------- Loot & equipment (see LOOT_DESIGN.md) ----------
+// Home for every loot/gear tunable. Only the `xp` block is used so far
+// (P0 — contributor-weighted XP). Later phases (shards, generator,
+// drops, store, stash) add their subsections here — keep every number
+// in this object, never hardcode one in logic.
+export const LOOT = {
+  // XP redistribution: a kill's XP pool is split among every tower that
+  // contributed to that enemy, by weight, instead of all going to the
+  // final-hit tower. Damage dealt = 1 weight per point of damage; slow
+  // applied = slowSecondsApplied * slowWeightPerSec. This is what finally
+  // pays Slow towers (they rarely land the killing blow).
+  xp: {
+    slowWeightPerSec: 8,   // weight per second of slow applied
+  },
 };
 
 // ---------- Visual effects (GeoDefense-inspired) ----------
