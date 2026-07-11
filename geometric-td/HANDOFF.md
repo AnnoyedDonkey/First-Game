@@ -507,6 +507,13 @@ as the source of truth, not that old ×1.2 rule.)
     committed files + LOOT_DESIGN checkboxes, not the conversation.
 
 
+- **GEAR UI REDESIGN (approved, not started):** full spec + phase plan
+  (U0–U5, with model/effort per phase) in `GEAR_UI_DESIGN.md`; approved
+  interactive mockup at `mockups/gear-ui-mockup.html`. Replaces the flat P4
+  GEAR panel with a tower-first two-tab screen (TOWERS/STASH, icon tiles,
+  filters), adds a Mastery-1 equip gate + auto-equip-on-earn rules (U0,
+  game logic), merges the Tower Guide menu entry away, renames roster units
+  to long names (Laser-01), and later restyles the STORE the same way.
 - **PLAYTEST-PENDING:** the counter re-tune + visible feedback + Rocket +
   World 3 all shipped but the difficulty is calibrated only by bot sims
   (superhuman placement → flawless bot wins are a WEAK signal). The user's

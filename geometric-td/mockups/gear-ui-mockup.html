@@ -1,0 +1,833 @@
+<title>Gear UI Mockup — Geometric TD</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<style>
+  :root {
+    --bg: #05060f;
+    --panel: #0b0e1e;
+    --panel-border: #1c2340;
+    --text: #cdd6ff;
+    --text-dim: #5a668f;
+    --neon-cyan: #35e0ff;
+    --neon-magenta: #ff3fd4;
+    --neon-yellow: #ffe24a;
+    --neon-red: #ff4a5e;
+    --neon-green: #4affa1;
+    --r-common: #b7c0d5;
+    --r-enhanced: #4affa1;
+    --r-rare: #35e0ff;
+    --r-prismatic: #ff3fd4;
+    --r-singularity: #ffe24a;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+    display: flex;
+    justify-content: center;
+    overflow: hidden;
+  }
+  /* phone frame on desktop, full-bleed on mobile */
+  #phone {
+    width: 100%;
+    max-width: 430px;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    background:
+      radial-gradient(120% 60% at 50% -10%, rgba(53, 224, 255, 0.07), transparent 60%),
+      var(--bg);
+    position: relative;
+    overflow: hidden;
+  }
+  @media (min-width: 500px) {
+    #phone { margin: 16px 0; height: calc(100dvh - 32px); border: 1px solid var(--panel-border); border-radius: 24px; }
+  }
+
+  /* ---------- header ---------- */
+  header {
+    padding: 14px 16px 10px;
+    text-align: center;
+    flex: none;
+  }
+  header h1 {
+    font-size: 20px;
+    letter-spacing: 6px;
+    color: var(--neon-cyan);
+    text-shadow: 0 0 12px rgba(53, 224, 255, 0.55);
+    font-weight: 600;
+  }
+  #wallet {
+    margin-top: 6px;
+    font-size: 12px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+  }
+  #wallet b { color: var(--neon-yellow); font-weight: 600; text-shadow: 0 0 8px rgba(255, 226, 74, 0.4); }
+
+  /* ---------- tabs ---------- */
+  #tabs {
+    display: flex;
+    gap: 8px;
+    padding: 0 16px 10px;
+    flex: none;
+  }
+  .tab {
+    flex: 1;
+    padding: 10px 0;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    color: var(--text-dim);
+    font: inherit;
+    font-size: 13px;
+    letter-spacing: 3px;
+    cursor: pointer;
+    position: relative;
+  }
+  .tab.active {
+    color: var(--neon-cyan);
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 14px rgba(53, 224, 255, 0.25), inset 0 0 10px rgba(53, 224, 255, 0.08);
+    text-shadow: 0 0 8px rgba(53, 224, 255, 0.6);
+  }
+  .tab .badge {
+    position: absolute;
+    top: -7px; right: -4px;
+    background: var(--neon-magenta);
+    color: #fff;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 9px;
+    letter-spacing: 1px;
+    box-shadow: 0 0 10px rgba(255, 63, 212, 0.7);
+  }
+
+  /* ---------- scroll area ---------- */
+  #scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 2px 16px 24px;
+    overscroll-behavior: contain;
+  }
+  #scroll::-webkit-scrollbar { width: 4px; }
+  #scroll::-webkit-scrollbar-thumb { background: var(--panel-border); border-radius: 2px; }
+
+  /* ---------- tower cards ---------- */
+  .tower-card {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    padding: 10px 12px 12px;
+    margin-bottom: 10px;
+  }
+  .tower-head {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 9px;
+    width: 100%;
+    background: none;
+    border: none;
+    font: inherit;
+    color: inherit;
+    padding: 0;
+    cursor: pointer;
+    text-align: left;
+  }
+  .tower-head .chev { color: var(--text-dim); font-size: 11px; }
+  .stat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+  .stat-box {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--panel-border);
+    border-radius: 7px;
+    padding: 8px 11px;
+  }
+  .stat-box .k { font-size: 9px; letter-spacing: 1.5px; color: var(--text-dim); }
+  .stat-box .v { font-size: 15px; font-weight: 600; margin-top: 3px; font-variant-numeric: tabular-nums; }
+  .stat-box .v small { font-size: 10px; font-weight: 400; color: var(--neon-green); margin-left: 4px; }
+  .bonus-line {
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    padding: 6px 11px;
+    border-left: 2px solid var(--panel-border);
+    margin-bottom: 6px;
+    color: var(--text);
+    line-height: 1.5;
+  }
+  .bonus-line .src { color: var(--text-dim); font-size: 9px; letter-spacing: 1.5px; display: block; }
+  .tower-name {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 1px;
+  }
+  .tower-meta {
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    margin-left: auto;
+    white-space: nowrap;
+  }
+  .tower-meta .star { color: var(--neon-yellow); }
+  .slot-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+  .slot {
+    aspect-ratio: 1;
+    border-radius: 9px;
+    border: 1px solid var(--panel-border);
+    background: rgba(255, 255, 255, 0.02);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    cursor: pointer;
+    position: relative;
+    font: inherit;
+    color: inherit;
+    padding: 0;
+  }
+  .slot .glyph { width: 46%; height: 46%; }
+  .slot .slot-label {
+    font-size: 8px;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+  }
+  .slot.empty { border-style: dashed; opacity: 0.55; }
+  .slot.empty .glyph { opacity: 0.35; }
+  .slot.filled { background: rgba(255, 255, 255, 0.03); }
+  .slot.filled.rc { border-color: var(--r-common); box-shadow: inset 0 0 10px rgba(183,192,213,0.12); }
+  .slot.filled.re { border-color: var(--r-enhanced); box-shadow: inset 0 0 10px rgba(74,255,161,0.15), 0 0 8px rgba(74,255,161,0.15); }
+  .slot.filled.rr { border-color: var(--r-rare); box-shadow: inset 0 0 10px rgba(53,224,255,0.16), 0 0 8px rgba(53,224,255,0.18); }
+  .slot.filled.rp { border-color: var(--r-prismatic); box-shadow: inset 0 0 12px rgba(255,63,212,0.2), 0 0 10px rgba(255,63,212,0.25); }
+  .slot.filled.rs {
+    border-color: var(--r-singularity);
+    box-shadow: inset 0 0 14px rgba(255,226,74,0.25), 0 0 14px rgba(255,226,74,0.35);
+    animation: singPulse 2.2s ease-in-out infinite;
+  }
+  @keyframes singPulse {
+    0%, 100% { box-shadow: inset 0 0 14px rgba(255,226,74,0.25), 0 0 12px rgba(255,226,74,0.3); }
+    50% { box-shadow: inset 0 0 18px rgba(255,226,74,0.4), 0 0 20px rgba(255,226,74,0.55); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .slot.filled.rs, .reveal-card, .reveal-burst { animation: none !important; }
+  }
+  .locked-note {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 11px;
+    letter-spacing: 1px;
+    padding: 12px 8px 4px;
+    line-height: 1.6;
+  }
+  .locked-note b { color: var(--neon-yellow); font-weight: 600; }
+
+  /* ---------- filter chips ---------- */
+  #filters {
+    display: flex;
+    gap: 6px;
+    padding-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  .chip {
+    font: inherit;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 20px;
+    padding: 6px 11px;
+    cursor: pointer;
+  }
+  .chip.on {
+    color: var(--neon-cyan);
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 8px rgba(53, 224, 255, 0.25);
+  }
+
+  /* ---------- stash grid ---------- */
+  #stash-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+  }
+  .item-tile {
+    aspect-ratio: 1;
+    border-radius: 9px;
+    border: 1px solid var(--panel-border);
+    background: rgba(255, 255, 255, 0.02);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+    font: inherit;
+    color: inherit;
+    padding: 0;
+  }
+  .item-tile .glyph { width: 52%; height: 52%; }
+  .item-tile .lock-dot {
+    position: absolute;
+    bottom: 3px; right: 5px;
+    font-size: 8px;
+    letter-spacing: 0;
+    color: var(--text-dim);
+  }
+  .item-tile .new-tag {
+    position: absolute;
+    top: -6px; right: -4px;
+    font-size: 8px;
+    background: var(--neon-magenta);
+    color: #fff;
+    border-radius: 8px;
+    padding: 1px 5px;
+    letter-spacing: 1px;
+    box-shadow: 0 0 8px rgba(255, 63, 212, 0.7);
+  }
+  .item-tile.rc { border-color: var(--r-common); }
+  .item-tile.re { border-color: var(--r-enhanced); box-shadow: inset 0 0 8px rgba(74,255,161,0.14), 0 0 6px rgba(74,255,161,0.12); }
+  .item-tile.rr { border-color: var(--r-rare); box-shadow: inset 0 0 8px rgba(53,224,255,0.15), 0 0 7px rgba(53,224,255,0.16); }
+  .item-tile.rp { border-color: var(--r-prismatic); box-shadow: inset 0 0 10px rgba(255,63,212,0.18), 0 0 9px rgba(255,63,212,0.22); }
+  .item-tile.rs {
+    border-color: var(--r-singularity);
+    box-shadow: inset 0 0 12px rgba(255,226,74,0.22), 0 0 12px rgba(255,226,74,0.3);
+    animation: singPulse 2.2s ease-in-out infinite;
+  }
+  .stash-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding-bottom: 8px;
+  }
+  .stash-count { font-size: 11px; color: var(--text-dim); letter-spacing: 2px; }
+  .sort-note { font-size: 9px; color: var(--text-dim); letter-spacing: 1px; }
+  .grid-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 11px;
+    letter-spacing: 1px;
+    padding: 30px 0;
+  }
+
+  /* ---------- popups ---------- */
+  #overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(5, 6, 15, 0.82);
+    display: none;
+    align-items: flex-end;
+    justify-content: center;
+    z-index: 50;
+    backdrop-filter: blur(2px);
+  }
+  #overlay.open { display: flex; }
+  #sheet {
+    width: 100%;
+    max-height: 78%;
+    overflow-y: auto;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-bottom: none;
+    border-radius: 18px 18px 0 0;
+    padding: 16px 16px 26px;
+    animation: sheetUp 0.22s ease-out;
+  }
+  @keyframes sheetUp { from { transform: translateY(30px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .sheet-title {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .sheet-title .glyph { width: 26px; height: 26px; flex: none; }
+  .sheet-sub {
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 1.5px;
+    margin: 6px 0 12px;
+  }
+  .affix-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+  .affix {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--panel-border);
+    border-radius: 7px;
+    padding: 8px 11px;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .affix .val { color: var(--neon-green); }
+  .affix.unique { border-color: var(--r-singularity); }
+  .affix.unique .val { color: var(--r-singularity); }
+  .affix.uniqueP { border-color: var(--r-prismatic); }
+  .affix.uniqueP .val { color: var(--r-prismatic); }
+  .sheet-actions { display: flex; gap: 8px; }
+  .action {
+    flex: 1;
+    font: inherit;
+    font-size: 13px;
+    letter-spacing: 2px;
+    padding: 12px 0;
+    border-radius: 8px;
+    border: 1px solid var(--neon-cyan);
+    background: rgba(53, 224, 255, 0.08);
+    color: var(--neon-cyan);
+    cursor: pointer;
+  }
+  .action.sell { border-color: var(--neon-yellow); background: rgba(255, 226, 74, 0.06); color: var(--neon-yellow); }
+  .action.danger { border-color: var(--neon-red); background: rgba(255, 74, 94, 0.08); color: var(--neon-red); }
+  .action:disabled { opacity: 0.35; cursor: default; }
+  .picker-row {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--panel-border);
+    border-radius: 9px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+  }
+  .picker-row .glyph { width: 30px; height: 30px; flex: none; }
+  .picker-row .pr-main { flex: 1; min-width: 0; }
+  .picker-row .pr-name { font-size: 12px; font-weight: 600; letter-spacing: 1px; }
+  .picker-row .pr-sub { font-size: 10px; color: var(--text-dim); letter-spacing: 0.5px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .picker-row .pr-tag { font-size: 9px; letter-spacing: 1px; color: var(--text-dim); flex: none; }
+  .picker-row.current { border-color: var(--text-dim); background: rgba(255, 255, 255, 0.05); }
+  .picker-label { font-size: 10px; letter-spacing: 2px; color: var(--text-dim); margin: 4px 0 8px; }
+  .delta-up { color: var(--neon-green); }
+  .delta-dn { color: var(--neon-red); }
+
+  /* ---------- drop reveal ---------- */
+  #reveal {
+    position: absolute;
+    inset: 0;
+    background: rgba(5, 6, 15, 0.9);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 60;
+    flex-direction: column;
+    gap: 18px;
+  }
+  #reveal.open { display: flex; }
+  .reveal-burst {
+    position: absolute;
+    width: 240px; height: 240px;
+    border-radius: 50%;
+    animation: burst 0.9s ease-out forwards;
+    pointer-events: none;
+  }
+  @keyframes burst {
+    from { transform: scale(0.2); opacity: 0.9; }
+    to { transform: scale(2.2); opacity: 0; }
+  }
+  .reveal-card {
+    width: 130px; height: 130px;
+    border-radius: 16px;
+    background: var(--panel);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: cardIn 0.5s cubic-bezier(0.2, 1.6, 0.4, 1);
+  }
+  @keyframes cardIn { from { transform: scale(0.3) rotate(-8deg); opacity: 0; } to { transform: none; opacity: 1; } }
+  .reveal-card .glyph { width: 60%; height: 60%; }
+  #reveal-name { font-size: 15px; font-weight: 600; letter-spacing: 3px; text-align: center; }
+  #reveal-dest { font-size: 11px; color: var(--text-dim); letter-spacing: 1.5px; text-align: center; line-height: 1.7; }
+  #reveal-dest b { color: var(--neon-green); font-weight: 600; }
+  #reveal-tap { font-size: 9px; letter-spacing: 2px; color: var(--text-dim); margin-top: 10px; }
+
+  /* ---------- demo bar ---------- */
+  #demo-bar {
+    flex: none;
+    padding: 10px 16px calc(12px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--panel-border);
+    display: flex;
+    gap: 8px;
+  }
+  #demo-bar button {
+    flex: 1;
+    font: inherit;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    padding: 10px 0;
+    border-radius: 7px;
+    border: 1px solid var(--panel-border);
+    background: var(--panel);
+    color: var(--text-dim);
+    cursor: pointer;
+  }
+</style>
+
+<div id="phone">
+  <header>
+    <h1>GEAR</h1>
+    <div id="wallet"><b>◆ 1,284</b> &nbsp;·&nbsp; STASH <span id="stash-cap">—</span>/50</div>
+  </header>
+
+  <div id="tabs">
+    <button class="tab active" id="tab-towers" onclick="setTab('towers')">TOWERS</button>
+    <button class="tab" id="tab-stash" onclick="setTab('stash')">STASH<span class="badge" id="new-badge" hidden>3 NEW</span></button>
+  </div>
+
+  <div id="scroll">
+    <div id="view-towers"></div>
+    <div id="view-stash" hidden>
+      <div class="stash-header">
+        <span class="stash-count" id="stash-count"></span>
+        <span class="sort-note">SORTED: RARITY ▾</span>
+      </div>
+      <div id="filters"></div>
+      <div id="stash-grid"></div>
+    </div>
+  </div>
+
+  <div id="demo-bar">
+    <button onclick="demoDrop('rare')">DEMO: RARE DROP</button>
+    <button onclick="demoDrop('singularity')">DEMO: SINGULARITY DROP</button>
+  </div>
+
+  <div id="overlay" onclick="if (event.target === this) closeSheet()">
+    <div id="sheet"></div>
+  </div>
+
+  <div id="reveal" onclick="closeReveal()"></div>
+</div>
+
+<script>
+// ------------------------------------------------------------------ data
+const RAR = {
+  common:      { key: "rc", color: "#b7c0d5", label: "COMMON" },
+  enhanced:    { key: "re", color: "#4affa1", label: "ENHANCED" },
+  rare:        { key: "rr", color: "#35e0ff", label: "RARE" },
+  prismatic:   { key: "rp", color: "#ff3fd4", label: "PRISMATIC" },
+  singularity: { key: "rs", color: "#ffe24a", label: "SINGULARITY" },
+};
+const RAR_ORDER = ["singularity", "prismatic", "rare", "enhanced", "common"];
+const SLOTS = ["optic", "emitter", "capacitor", "frame"];
+
+// neon slot glyphs, drawn as SVG strokes (no fills = vector look)
+function glyph(slot, color, extra = "") {
+  const c = color, s = `stroke="${c}" fill="none" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"`;
+  const glow = `<filter id="g"><feGaussianBlur stdDeviation="3.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`;
+  let body = "";
+  if (slot === "optic")     body = `<circle cx="50" cy="50" r="26" ${s}/><circle cx="50" cy="50" r="6" fill="${c}" stroke="none"/><line x1="50" y1="10" x2="50" y2="24" ${s}/><line x1="50" y1="76" x2="50" y2="90" ${s}/><line x1="10" y1="50" x2="24" y2="50" ${s}/><line x1="76" y1="50" x2="90" y2="50" ${s}/>`;
+  if (slot === "emitter")   body = `<polygon points="50,14 86,80 14,80" ${s}/><circle cx="50" cy="62" r="7" fill="${c}" stroke="none"/>`;
+  if (slot === "capacitor") body = `<polyline points="56,10 30,54 50,54 42,90 72,42 52,42 62,10" ${s}/>`;
+  if (slot === "frame")     body = `<polygon points="50,10 85,30 85,70 50,90 15,70 15,30" ${s}/><polygon points="50,32 68,42 68,60 50,70 32,60 32,42" ${s}/>`;
+  return `<svg class="glyph ${extra}" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs>${glow}</defs><g filter="url(#g)">${body}</g></svg>`;
+}
+
+// towers: only Mastery >= 1 shown (the new rule)
+const TOWERS = [
+  { name: "Laser-01",   color: "#35e0ff", lv: 5, star: 22, kills: 1841, dmg: 34, rate: 4.8, range: 3.4, spec: "Focused Optics: +18% range", gear: { optic: null, emitter: "i9", capacitor: "i3", frame: "i7" } },
+  { name: "Railgun-01", color: "#ff9d3f", lv: 5, star: 18, kills: 1204, dmg: 160, rate: 0.7, range: 9.9, spec: "Coil Tuning: +24% damage", gear: { optic: "i12", emitter: "i1", capacitor: null, frame: null } },
+  { name: "Pulse-01",   color: "#ff3fd4", lv: 5, star: 12, kills: 986,  dmg: 52, rate: 1.6, range: 2.6, spec: "Wide Resonator: +22% splash", gear: { optic: "i5", emitter: null, capacitor: null, frame: "i8" } },
+  { name: "Slow-01",    color: "#4affa1", lv: 4, star: 9,  kills: 122,  dmg: 8,  rate: 2.4, range: 2.9, spec: "Chill Cycler: +16% fire speed", gear: { optic: null, emitter: null, capacitor: "i4", frame: null } },
+  { name: "Rocket-01",  color: "#ff5e3a", lv: 4, star: 6,  kills: 611,  dmg: 210, rate: 0.4, range: Infinity, spec: "Payload Shaping: +14% blast", gear: { optic: null, emitter: "i10", capacitor: null, frame: null } },
+  { name: "Laser-02",   color: "#35e0ff", lv: 3, star: 3,  kills: 402,  dmg: 24, rate: 4.2, range: 3.0, spec: "Focused Optics: +6% range", gear: { optic: null, emitter: null, capacitor: null, frame: null } },
+  { name: "Slow-02",    color: "#4affa1", lv: 3, star: 1,  kills: 38,   dmg: 6,  rate: 2.2, range: 2.7, spec: "Chill Cycler: +4% fire speed", gear: { optic: null, emitter: null, capacitor: null, frame: null } },
+];
+const LOCKED_COUNT = 23; // towers below Mastery 1
+
+const ITEMS = {
+  i1:  { slot: "emitter",   rarity: "singularity", name: "CASCADE RAIL", lock: "Railgun", req: "★20", ilvl: 30, affixes: [["UNIQUE: +2 pierce, each pierced enemy +15% dmg to next", "", "unique"], ["Damage", "+28%"], ["Projectile Speed", "+31%"]] },
+  i2:  { slot: "optic",     rarity: "prismatic",   name: "PRISMATIC OPTIC", lock: null, req: "★10", ilvl: 24, affixes: [["MINOR: +6% double-shot chance", "", "uniqueP"], ["Range", "+17%"], ["Crit Chance", "+9%"]] },
+  i3:  { slot: "capacitor", rarity: "rare",        name: "RARE CAPACITOR", lock: null, req: "★1", ilvl: 18, affixes: [["Fire Rate", "+11%"], ["Overcharge", "+4%"]] },
+  i4:  { slot: "capacitor", rarity: "rare",        name: "RARE CAPACITOR", lock: "Slow", req: "★1", ilvl: 16, affixes: [["Slow Potency", "+16%"], ["Slow Duration", "+19%"]] },
+  i5:  { slot: "optic",     rarity: "enhanced",    name: "ENHANCED OPTIC", lock: null, req: "LV 3", ilvl: 12, affixes: [["Range", "+8%"]] },
+  i6:  { slot: "frame",     rarity: "common",      name: "COMMON FRAME", lock: null, req: "LV 1", ilvl: 6, affixes: [["Bounty", "+5%"]] },
+  i7:  { slot: "frame",     rarity: "rare",        name: "RARE FRAME", lock: null, req: "★1", ilvl: 19, affixes: [["XP Gain", "+18%"], ["Shard-Find", "+15%"]] },
+  i8:  { slot: "frame",     rarity: "enhanced",    name: "ENHANCED FRAME", lock: null, req: "LV 2", ilvl: 10, affixes: [["Shard-Find", "+12%"]] },
+  i9:  { slot: "emitter",   rarity: "prismatic",   name: "PRISMATIC EMITTER", lock: "Laser", req: "★10", ilvl: 25, affixes: [["MINOR: +1 pierce", "", "uniqueP"], ["Damage", "+21%"], ["Projectile Speed", "+24%"]] },
+  i10: { slot: "emitter",   rarity: "rare",        name: "RARE EMITTER", lock: "Rocket", req: "★1", ilvl: 17, affixes: [["Damage", "+14%"], ["Splash Radius", "+15%"]] },
+  i11: { slot: "optic",     rarity: "common",      name: "COMMON OPTIC", lock: null, req: "LV 1", ilvl: 4, affixes: [["Range", "+4%"]] },
+  i12: { slot: "optic",     rarity: "rare",        name: "RARE OPTIC", lock: null, req: "★1", ilvl: 20, affixes: [["Crit Chance", "+7%"], ["Crit Damage", "+38%"]] },
+};
+// stash = unequipped items
+let stash = [
+  { id: "i2", isNew: true },
+  { id: "i6" }, { id: "i11" },
+  ...["common","common","enhanced","enhanced","rare","common","enhanced","rare","common","prismatic","common","enhanced","rare","common","enhanced"].map((r, n) => {
+    const slot = SLOTS[n % 4];
+    const id = "gen" + n;
+    ITEMS[id] = { slot, rarity: r, name: RAR[r].label + " " + slot.toUpperCase(), lock: n % 5 === 0 ? ["Laser","Pulse","Slow","Railgun","Rocket"][n % 5] : null,
+      req: r === "rare" ? "★1" : r === "prismatic" ? "★10" : "LV " + (1 + n % 4), ilvl: 4 + n,
+      affixes: r === "prismatic" ? [["MINOR: +5% crit chance", "", "uniqueP"], ["Damage", "+16%"], ["Range", "+14%"]]
+             : r === "rare" ? [["Fire Rate", "+" + (9 + n % 4) + "%"], ["Range", "+" + (10 + n % 5) + "%"]]
+             : [["Damage", "+" + (4 + n % 6) + "%"]] };
+    return { id, isNew: n < 2 };
+  }),
+];
+
+// ------------------------------------------------------------------ render
+let tab = "towers";
+let filterSlot = null, filterRarity = null;
+
+function setTab(t) {
+  tab = t;
+  document.getElementById("tab-towers").classList.toggle("active", t === "towers");
+  document.getElementById("tab-stash").classList.toggle("active", t === "stash");
+  document.getElementById("view-towers").hidden = t !== "towers";
+  document.getElementById("view-stash").hidden = t !== "stash";
+  render();
+}
+
+function render() {
+  // wallet + badge
+  document.getElementById("stash-cap").textContent = stash.length;
+  const newCount = stash.filter(s => s.isNew).length;
+  const badge = document.getElementById("new-badge");
+  badge.hidden = !newCount;
+  badge.textContent = newCount + " NEW";
+
+  if (tab === "towers") renderTowers();
+  else renderStash();
+}
+
+function renderTowers() {
+  const v = document.getElementById("view-towers");
+  v.innerHTML = TOWERS.map((t, ti) => `
+    <div class="tower-card">
+      <button class="tower-head" onclick="openTowerDetail(${ti})">
+        <span class="tower-name" style="color:${t.color}; text-shadow: 0 0 8px ${t.color}66">${t.name}</span>
+        <span class="tower-meta">LV ${t.lv} · <span class="star">★${t.star}</span> <span class="chev">›</span></span>
+      </button>
+      <div class="slot-row">
+        ${SLOTS.map(slot => {
+          const itemId = t.gear[slot];
+          if (!itemId) return `
+            <button class="slot empty" onclick="openPicker(${ti}, '${slot}')">
+              ${glyph(slot, "#5a668f")}
+              <span class="slot-label">${slot.toUpperCase()}</span>
+            </button>`;
+          const it = ITEMS[itemId], r = RAR[it.rarity];
+          return `
+            <button class="slot filled ${r.key}" onclick="openItem('${itemId}', ${ti})">
+              ${glyph(slot, r.color)}
+              <span class="slot-label" style="color:${r.color}">${slot.toUpperCase()}</span>
+            </button>`;
+        }).join("")}
+      </div>
+    </div>`).join("") +
+    `<div class="locked-note">${LOCKED_COUNT} more towers unlock gear at <b>★1 MASTERY</b></div>`;
+}
+
+function buildFilters() {
+  const f = document.getElementById("filters");
+  f.innerHTML =
+    SLOTS.map(s => `<button class="chip ${filterSlot === s ? "on" : ""}" onclick="toggleFilter('slot','${s}')">${s.toUpperCase()}</button>`).join("") +
+    RAR_ORDER.slice().reverse().map(r => `<button class="chip ${filterRarity === r ? "on" : ""}" onclick="toggleFilter('rarity','${r}')" style="${filterRarity === r ? "color:" + RAR[r].color + ";border-color:" + RAR[r].color : ""}">${RAR[r].label}</button>`).join("");
+}
+function toggleFilter(kind, val) {
+  if (kind === "slot") filterSlot = filterSlot === val ? null : val;
+  else filterRarity = filterRarity === val ? null : val;
+  render();
+}
+
+function renderStash() {
+  buildFilters();
+  const grid = document.getElementById("stash-grid");
+  const sorted = stash.slice().sort((a, b) =>
+    RAR_ORDER.indexOf(ITEMS[a.id].rarity) - RAR_ORDER.indexOf(ITEMS[b.id].rarity) || ITEMS[b.id].ilvl - ITEMS[a.id].ilvl);
+  const shown = sorted.filter(s => {
+    const it = ITEMS[s.id];
+    return (!filterSlot || it.slot === filterSlot) && (!filterRarity || it.rarity === filterRarity);
+  });
+  document.getElementById("stash-count").textContent = `${shown.length} ITEM${shown.length === 1 ? "" : "S"}`;
+  grid.innerHTML = shown.length ? shown.map(s => {
+    const it = ITEMS[s.id], r = RAR[it.rarity];
+    return `
+      <button class="item-tile ${r.key}" onclick="openItem('${s.id}', null)">
+        ${glyph(it.slot, r.color)}
+        ${it.lock ? `<span class="lock-dot" style="color:${r.color}">${it.lock[0]}</span>` : ""}
+        ${s.isNew ? `<span class="new-tag">NEW</span>` : ""}
+      </button>`;
+  }).join("") : `<div class="grid-empty">NO MATCHING GEAR</div>`;
+}
+
+// ------------------------------------------------------------------ sheets
+const overlay = document.getElementById("overlay");
+const sheet = document.getElementById("sheet");
+function closeSheet() { overlay.classList.remove("open"); }
+
+function affixRows(it) {
+  return `<div class="affix-list">${it.affixes.map(([k, v, cls]) =>
+    `<div class="affix ${cls || ""}"><span>${k}</span><span class="val">${v}</span></div>`).join("")}</div>`;
+}
+
+function openItem(itemId, towerIdx) {
+  const it = ITEMS[itemId], r = RAR[it.rarity];
+  const equippedOn = towerIdx !== null ? TOWERS[towerIdx] : null;
+  const mark = stash.find(s => s.id === itemId);
+  if (mark) { mark.isNew = false; render(); }
+  sheet.innerHTML = `
+    <div class="sheet-title" style="color:${r.color}; text-shadow:0 0 10px ${r.color}55">
+      ${glyph(it.slot, r.color)} ${it.name}
+    </div>
+    <div class="sheet-sub">${r.label} · ${it.slot.toUpperCase()} · ${it.lock ? it.lock.toUpperCase() + "-ONLY" : "UNIVERSAL"} · REQ ${it.req} · ILVL ${it.ilvl}
+      ${equippedOn ? `<br>EQUIPPED ON <span style="color:${equippedOn.color}">${equippedOn.name}</span>` : ""}</div>
+    ${affixRows(it)}
+    <div class="sheet-actions">
+      ${equippedOn
+        ? `<button class="action" onclick="unequip(${towerIdx}, '${it.slot}')">UNEQUIP</button>`
+        : `<button class="action" onclick="openEquipTargets('${itemId}')">EQUIP</button>
+           <button class="action sell" onclick="sellItem('${itemId}')">SELL ◆${{common:5,enhanced:15,rare:40,prismatic:100,singularity:300}[it.rarity]}</button>`}
+    </div>`;
+  overlay.classList.add("open");
+}
+
+function towerGearBonuses(t) {
+  const out = [];
+  for (const slot of SLOTS) {
+    const id = t.gear[slot];
+    if (!id) continue;
+    const it = ITEMS[id];
+    out.push({ slot, name: it.name, color: RAR[it.rarity].color,
+      text: it.affixes.map(a => a[1] ? a[0] + " " + a[1] : a[0].replace(/^(UNIQUE|MINOR): /, "◈ ")).join(" · ") });
+  }
+  return out;
+}
+
+function openTowerDetail(towerIdx) {
+  const t = TOWERS[towerIdx];
+  const dps = t.dmg * t.rate;
+  const masteryPct = (t.star * 1.5).toFixed(1);
+  const bonuses = towerGearBonuses(t);
+  sheet.innerHTML = `
+    <div class="sheet-title" style="color:${t.color}; text-shadow:0 0 10px ${t.color}55">${t.name}</div>
+    <div class="sheet-sub">LV ${t.lv} · <span style="color:var(--neon-yellow)">★${t.star} MASTERY</span> · ${t.kills.toLocaleString()} KILLS</div>
+    <div class="stat-grid">
+      <div class="stat-box"><div class="k">DAMAGE</div><div class="v">${t.dmg}<small>+${masteryPct}%</small></div></div>
+      <div class="stat-box"><div class="k">FIRE RATE</div><div class="v">${t.rate}/s</div></div>
+      <div class="stat-box"><div class="k">DPS</div><div class="v" style="color:${t.color}">${Math.round(dps)}</div></div>
+      <div class="stat-box"><div class="k">RANGE</div><div class="v">${t.range === Infinity ? "GLOBAL" : t.range}</div></div>
+    </div>
+    <div class="picker-label">PERMANENT BONUSES</div>
+    <div class="bonus-line" style="border-color:var(--neon-yellow)">
+      <span class="src">MASTERY ★${t.star}</span>+${masteryPct}% damage</div>
+    <div class="bonus-line" style="border-color:${t.color}">
+      <span class="src">SPECIALTY</span>${t.spec}</div>
+    ${bonuses.length ? `<div class="picker-label" style="margin-top:12px">GEAR BONUSES</div>` : ""}
+    ${bonuses.map(b => `
+      <div class="bonus-line" style="border-color:${b.color}">
+        <span class="src" style="color:${b.color}">${b.slot.toUpperCase()} · ${b.name}</span>${b.text}</div>`).join("")}
+    <div class="sheet-actions" style="margin-top:12px">
+      <button class="action" onclick="closeSheet()">CLOSE</button>
+    </div>`;
+  overlay.classList.add("open");
+}
+
+function openPicker(towerIdx, slot) {
+  const t = TOWERS[towerIdx];
+  const candidates = stash.filter(s => {
+    const it = ITEMS[s.id];
+    return it.slot === slot && (!it.lock || t.name.startsWith(it.lock));
+  }).sort((a, b) => RAR_ORDER.indexOf(ITEMS[a.id].rarity) - RAR_ORDER.indexOf(ITEMS[b.id].rarity));
+  sheet.innerHTML = `
+    <div class="sheet-title" style="color:${t.color}; text-shadow:0 0 10px ${t.color}55">${glyph(slot, t.color)} ${t.name} · ${slot.toUpperCase()}</div>
+    <div class="sheet-sub">EMPTY SLOT · PICK FROM STASH</div>
+    <div class="picker-label">${candidates.length ? "COMPATIBLE IN STASH" : "NOTHING COMPATIBLE IN STASH"}</div>
+    ${candidates.map(s => {
+      const it = ITEMS[s.id], r = RAR[it.rarity];
+      return `
+        <button class="picker-row" onclick="equipItem(${towerIdx}, '${s.id}')">
+          ${glyph(slot, r.color)}
+          <span class="pr-main">
+            <span class="pr-name" style="color:${r.color}">${it.name}</span>
+            <span class="pr-sub">${it.affixes.map(a => a[0].startsWith("UNIQUE") || a[0].startsWith("MINOR") ? "◈" : a[0] + " " + a[1]).join(" · ")}</span>
+          </span>
+          <span class="pr-tag">${it.lock ? it.lock.toUpperCase() : "UNIV"}</span>
+        </button>`;
+    }).join("")}
+    <div class="sheet-actions" style="margin-top:6px">
+      <button class="action danger" onclick="closeSheet()">CANCEL</button>
+    </div>`;
+  overlay.classList.add("open");
+}
+
+function openEquipTargets(itemId) {
+  const it = ITEMS[itemId], r = RAR[it.rarity];
+  const targets = TOWERS.map((t, ti) => ({ t, ti }))
+    .filter(({ t }) => !it.lock || t.name.startsWith(it.lock));
+  sheet.innerHTML = `
+    <div class="sheet-title" style="color:${r.color}">${glyph(it.slot, r.color)} EQUIP ${it.name}</div>
+    <div class="sheet-sub">PICK A TOWER — CURRENT ${it.slot.toUpperCase()} SHOWN</div>
+    ${targets.map(({ t, ti }) => {
+      const curId = t.gear[it.slot];
+      const cur = curId ? ITEMS[curId] : null;
+      return `
+        <button class="picker-row ${cur ? "current" : ""}" onclick="equipItem(${ti}, '${itemId}')">
+          <span class="pr-main">
+            <span class="pr-name" style="color:${t.color}">${t.name} <span style="color:var(--text-dim); font-weight:400">LV ${t.lv} · ★${t.star}</span></span>
+            <span class="pr-sub">${cur ? `swaps out: <span style="color:${RAR[cur.rarity].color}">${cur.name}</span>` : `<span class="delta-up">empty slot</span>`}</span>
+          </span>
+        </button>`;
+    }).join("")}
+    <div class="sheet-actions" style="margin-top:6px">
+      <button class="action danger" onclick="closeSheet()">CANCEL</button>
+    </div>`;
+  overlay.classList.add("open");
+}
+
+// ------------------------------------------------------------------ actions (mock state)
+function equipItem(towerIdx, itemId) {
+  const t = TOWERS[towerIdx], it = ITEMS[itemId];
+  const old = t.gear[it.slot];
+  t.gear[it.slot] = itemId;
+  stash = stash.filter(s => s.id !== itemId);
+  if (old) stash.push({ id: old });
+  closeSheet(); render();
+}
+function unequip(towerIdx, slot) {
+  const t = TOWERS[towerIdx];
+  stash.push({ id: t.gear[slot] });
+  t.gear[slot] = null;
+  closeSheet(); render();
+}
+function sellItem(itemId) {
+  stash = stash.filter(s => s.id !== itemId);
+  closeSheet(); render();
+}
+
+// ------------------------------------------------------------------ drop reveal demo
+function demoDrop(rarity) {
+  const r = RAR[rarity];
+  const slot = SLOTS[Math.floor(Math.random() * 4)];
+  const reveal = document.getElementById("reveal");
+  const autoTarget = rarity === "rare" ? "Rocket-01" : null; // mock: rare auto-equips, singularity has no empty compatible slot
+  reveal.innerHTML = `
+    <div class="reveal-burst" style="background: radial-gradient(circle, ${r.color}66, transparent 65%)"></div>
+    <div class="reveal-card" style="border: 1px solid ${r.color}; box-shadow: inset 0 0 24px ${r.color}44, 0 0 34px ${r.color}55">
+      ${glyph(slot, r.color)}
+    </div>
+    <div id="reveal-name" style="color:${r.color}; text-shadow: 0 0 14px ${r.color}88">${r.label}<br>${slot.toUpperCase()}</div>
+    <div id="reveal-dest">${autoTarget
+      ? `AUTO-EQUIPPED → <b>${autoTarget}</b>`
+      : `SENT TO STASH · no open ${slot.toUpperCase()} slot`}</div>
+    <div id="reveal-tap">TAP TO DISMISS</div>`;
+  reveal.classList.add("open");
+}
+function closeReveal() { document.getElementById("reveal").classList.remove("open"); }
+
+setTab("towers");
+</script>
