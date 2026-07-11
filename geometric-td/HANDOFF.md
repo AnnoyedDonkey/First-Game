@@ -95,12 +95,30 @@ Three features layered on after the 10-level campaign + Endless. All keep
 the hard constraints (vanilla JS, no build, no deps):
 
 - **World-paged main menu.** `showLevelSelect` (ui.js) pages the mission
-  list by WORLD (levels.js `WORLDS`): INNER GRID (levels 1-5) and OUTER
-  VOID (6-10), one page each, navigated by ◀ ▶ arrows or horizontal
+  list by WORLD (levels.js `WORLDS`): INNER GRID (1-5), OUTER VOID (6-10),
+  PRISM DEEP (11-15), one page each, navigated by ◀ ▶ arrows or horizontal
   swipe (`bindWorldSwipe`; horizontal-dominant drag only, so vertical
   list-scroll never flips worlds). A world is locked until every level of
   the previous world is in `completedLevels`; a locked world can still be
   previewed (greyed rows + banner). Add a world = one data edit in WORLDS.
+  **Menu layout (Opus UI-polish pass):** `#level-overlay` is a top-down
+  flex column — title, world-nav, a **scrolling `#level-list`** (flex:1,
+  the only part that scrolls), and a **pinned `#menu-actions` footer**.
+  The account-wide entries (SKILLS/TOWERS/BOARD share one row + RESET)
+  live in that footer via `appendGlobalMenuButtons` (which clears and
+  refills `el.menuActions` each render) — NOT in the level list, so they
+  never scroll out of view no matter how many Endless rows a world has.
+  Each cleared level is ONE row: `.level-row` is a horizontal flex with
+  the campaign button (flex:1) and the `∞ ENDLESS` button (fixed ~108px)
+  side by side. If you add per-level menu content, keep it in the list;
+  keep global/account actions in the footer.
+- **HUD is battle-only.** The top `#hud` (credits/wave/core/skills + speed
+  controls) is meaningless on the menu, so `showLevelSelect` adds
+  `#hud.hidden` (`display:none`) and the menu's `pick()` removes it when a
+  battle starts. Every "return to menu" path goes through
+  `showLevelSelect`, and every "menu→battle" path through `pick()`, so the
+  toggle stays consistent; post-battle NEXT/RETRY call `startLevel`
+  directly but the HUD is already visible then.
 - **Shared leaderboard.** Per-level Endless best-wave, published to a
   Supabase table via plain `fetch` (leaderboard.js). Own localStorage key
   (`geometric-td-leaderboard-v1`: nickname + a per-browser clientId +
