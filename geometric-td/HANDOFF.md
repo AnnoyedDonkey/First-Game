@@ -50,9 +50,9 @@ AI Core against waves of geometric enemies across a 15-level campaign (3
 worlds).
 
 **The core differentiator:** towers are persistent RPG-like units, not
-disposable buildings. Each tower has a name (L-01, P-02, R-01...), earns XP
-and kills, and lives in a permanent roster across battles. A persistent
-5-tier skill tree adds account-wide progression.
+disposable buildings. Each tower has a name (Laser-01, Pulse-02,
+Railgun-01...), earns XP and kills, and lives in a permanent roster across
+battles. A persistent 5-tier skill tree adds account-wide progression.
 
 ## Hard constraints (do not violate)
 
@@ -478,7 +478,7 @@ as the source of truth, not that old ×1.2 rule.)
     minor uniques, and all seven Singularity effects. Combat plumbing is in
     `equipment.js`, `towers.js`, `projectiles.js`, and `enemies.js`; tunables
     are in `config.js LOOT.combat` plus per-tower projectile speed/base pierce.
-    Temporary console bridge: `gear.grant("L-01", { unique: "prismLens" })`,
+    Temporary console bridge: `gear.grant("Laser-01", { unique: "prismLens" })`,
     `gear.equip(name, item)`, `gear.unequip(name, slot)`, and `gear.roster()`.
     Forced debug grants bypass level/Mastery gates but still enforce tower type.
   - **P4 DONE (2026-07-11):** drops, guaranteed end-drop, stash, equip UI, and
@@ -507,8 +507,8 @@ as the source of truth, not that old ×1.2 rule.)
     committed files + LOOT_DESIGN checkboxes, not the conversation.
 
 
-- **GEAR UI REDESIGN (in progress — U0+U1 shipped, U2 name migration
-  next):** full spec + phase plan (U0–U5, with model/effort per phase) in
+- **GEAR UI REDESIGN (in progress — U0, U1, and U2 shipped, U3 next):**
+  full spec + phase plan (U0–U5, with model/effort per phase) in
   `GEAR_UI_DESIGN.md`; approved interactive mockup at
   `mockups/gear-ui-mockup.html`. Replaces the flat P4 GEAR panel with a
   tower-first two-tab screen (TOWERS/STASH, icon tiles, filters), merges
@@ -521,7 +521,8 @@ as the source of truth, not that old ×1.2 rule.)
     highest-Mastery eligible tower with that slot EMPTY, else stash, else
     pendingLoot; store buys skip it). Earned loot now defaults into the
     STASH, not pendingLoot — triage only appears when the stash is full.
-    End-of-battle overlays list each item's fate ("▲ RARE EMITTER → L-01").
+    End-of-battle overlays list each item's fate ("▲ RARE EMITTER →
+    Laser-01").
     Knobs: `config.js LOOT.equipGate` + `LOOT.autoEquip`. Details in the
     GEAR_UI_DESIGN U0 checkbox.
   - **U1 DONE (2026-07-11), plus most of U2:** `#gear-overlay` rebuilt as
@@ -539,8 +540,19 @@ as the source of truth, not that old ×1.2 rule.)
     slot/tower-type combo — see the GEAR_UI_DESIGN U1 checkbox for the full
     list of what was exercised. Old GEAR panel and its CSS/JS are gone;
     STORE overlay is untouched and still reuses the shared item-row classes
-    (U5 restyles it later). Still open: roster name migration (`L-01` →
-    `Laser-01`, U2 remainder) and the menu/Tower-Guide merge (U3).
+    (U5 restyles it later).
+  - **U2 remainder DONE (2026-07-11):** roster name migration (`L-01` →
+    `Laser-01`) via a `migrateRosterNames()` pass in `progression.js`
+    (mirrors `migrateSkills`), keyed off `rec.type` so it can't confuse
+    Railgun/Rocket. New `config.js TOWERS[...].rosterPrefix` field drives it
+    plus `towers.js nextRosterName`; the old single-letter `prefix` field is
+    kept for the STASH tile's single-glyph corner "lock-dot" (must stay one
+    character and non-colliding — the approved mockup's own `lock[0]`
+    scheme actually collides Railgun/Rocket on "R"; the shipped code avoids
+    that by keeping the dedicated letters). The "-ONLY" text tags (item
+    title, item sheet, picker sheet) now show the full type name
+    ("RAILGUN-ONLY"), matching the mockup. Still open: the menu/Tower-Guide
+    merge (U3).
 - **PLAYTEST-PENDING:** the counter re-tune + visible feedback + Rocket +
   World 3 all shipped but the difficulty is calibrated only by bot sims
   (superhuman placement → flawless bot wins are a WEAK signal). The user's

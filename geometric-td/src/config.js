@@ -192,7 +192,8 @@ export const ENDLESS_REWARDS = {
 export const TOWERS = {
   laser: {
     name: "Laser Tower",
-    prefix: "L",           // roster names: L-01, L-02...
+    prefix: "L",           // single-letter gear lock-tag glyph (e.g. STASH corner dot)
+    rosterPrefix: "Laser", // roster names: Laser-01, Laser-02...
     baseCost: 50,
     baseDamage: 8,
     baseRange: 1.9,        // in tiles
@@ -203,7 +204,8 @@ export const TOWERS = {
   },
   pulse: {
     name: "Pulse Tower",
-    prefix: "P",
+    prefix: "P",           // single-letter gear lock-tag glyph
+    rosterPrefix: "Pulse",
     baseCost: 75,
     baseDamage: 14,
     splashRadius: 0.7,     // in tiles
@@ -219,7 +221,8 @@ export const TOWERS = {
   },
   slow: {
     name: "Slow Tower",
-    prefix: "S",
+    prefix: "S",           // single-letter gear lock-tag glyph
+    rosterPrefix: "Slow",
     baseCost: 60,
     baseDamage: 2,
     baseRange: 1.6,
@@ -239,7 +242,8 @@ export const TOWERS = {
   // devastating — the shot PIERCES every enemy along the beam line.
   railgun: {
     name: "Railgun Tower",
-    prefix: "R",
+    prefix: "R",           // single-letter gear lock-tag glyph
+    rosterPrefix: "Railgun",
     baseCost: 100,
     baseDamage: 48,
     baseRange: 3.5,
@@ -259,7 +263,8 @@ export const TOWERS = {
   rocket: {
     name: "Rocket Launcher",
     trayName: "ROCKET",    // tray label (name has no " Tower" to strip)
-    prefix: "K",           // roster names K-01 (R is the railgun)
+    prefix: "K",           // single-letter gear lock-tag glyph (R is the railgun)
+    rosterPrefix: "Rocket", // roster names: Rocket-01, Rocket-02...
     baseCost: 120,
     baseDamage: 44,
     splashRadius: 0.9,     // explosive AoE, in tiles

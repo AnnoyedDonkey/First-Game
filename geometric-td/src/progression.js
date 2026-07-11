@@ -8,7 +8,7 @@
 // available roster unit of that type before creating a new one.
 // ============================================================
 
-import { ENDLESS_REWARDS, LOOT, SKILLS, SKILL_VALUES, SKILL_TIERS } from "./config.js";
+import { ENDLESS_REWARDS, LOOT, SKILLS, SKILL_VALUES, SKILL_TIERS, TOWERS } from "./config.js";
 import { loadSave, writeSave, clearSave } from "./save.js";
 import { dropIlvl, generateGuaranteedDrop, generateItem, RARITIES } from "./loot.js";
 import { canEquipItem, emptyGear, masteryRankFor, normalizeGear } from "./equipment.js";
@@ -30,6 +30,7 @@ state.store.rerolls ??= 0;
 state.endlessRewards ||= {};
 state.seenLoot ||= [];
 backfillGear();
+migrateRosterNames();
 
 function backfillGear() {
   state.roster ||= [];
@@ -45,6 +46,21 @@ function migrateSkills() {
     state.skills = tiers;
     writeSave(state);
   }
+}
+
+// GEAR_UI_DESIGN.md U2: roster names moved from single-letter prefixes
+// (L-01, K-02...) to full tower names (Laser-01, Rocket-02...). Rewrite
+// once on load, keeping each tower's existing number so counters/veteran
+// identity stay stable; idempotent (already-migrated names are skipped).
+function migrateRosterNames() {
+  let changed = false;
+  for (const rec of state.roster) {
+    const def = TOWERS[rec.type];
+    if (!def || rec.name.startsWith(`${def.rosterPrefix}-`)) continue;
+    rec.name = `${def.rosterPrefix}-${rec.name.split("-").pop()}`;
+    changed = true;
+  }
+  if (changed) writeSave(state);
 }
 
 export function getProgress() {
@@ -572,4 +588,5 @@ export function resetProgress() {
   state.endlessRewards ||= {};
   state.seenLoot ||= [];
   backfillGear();
+  migrateRosterNames();
 }

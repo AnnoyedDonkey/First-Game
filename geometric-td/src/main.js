@@ -51,8 +51,8 @@ function refreshDeployedGear(towerName) {
 
 // Temporary P3 console bridge until P4 adds the stash/equip screens.
 // Examples:
-//   gear.grant("L-01", { unique: "prismLens" })
-//   gear.grant("K-01", { unique: "fractalWarhead" })
+//   gear.grant("Laser-01", { unique: "prismLens" })
+//   gear.grant("Rocket-01", { unique: "fractalWarhead" })
 window.gear = {
   roster: () => getProgress().roster,
   equip(towerName, item) {
@@ -145,7 +145,7 @@ onSellButtonTap(() => {
   uiState.selectedTower = null; // panel closes, tower tray returns
 });
 
-// Roster names continue from the saved roster (no L-01 collisions).
+// Roster names continue from the saved roster (no Laser-01 collisions).
 seedRosterCounters(getProgress().roster);
 
 // Skill purchases apply to deployed towers immediately.
@@ -208,7 +208,7 @@ function goToMainMenu() {
 }
 
 // One earned item's fate, as decided by progression.js bankEarnedItem
-// (U0 auto-equip): "▲ RARE EMITTER → L-01", "→ STASH", or "→ UNCLAIMED"
+// (U0 auto-equip): "▲ RARE EMITTER → Laser-01", "→ STASH", or "→ UNCLAIMED"
 // (pendingLoot triage, only when the stash is full). Plain text for now —
 // the U4 pizzazz pass replaces this with the drop-reveal sequence.
 function placementText(p) {

@@ -710,7 +710,7 @@ function itemUniqueName(item) {
 
 function itemTitle(item) {
   const slot = item.slot.toUpperCase();
-  const lock = item.towerType ? `${TOWERS[item.towerType].prefix}-ONLY` : "UNIVERSAL";
+  const lock = item.towerType ? `${TOWERS[item.towerType].rosterPrefix.toUpperCase()}-ONLY` : "UNIVERSAL";
   const unique = itemUniqueName(item);
   return unique ? `${unique.toUpperCase()} ${slot}` : `${item.rarity.toUpperCase()} ${slot} ${lock}`;
 }
@@ -875,7 +875,7 @@ function openItemSheet({ stashId, towerName, slot }) {
   }
 
   const color = RARITY_COLOR[item.rarity];
-  const lockTag = item.towerType ? `${TOWERS[item.towerType].prefix}-ONLY` : "UNIVERSAL";
+  const lockTag = item.towerType ? `${TOWERS[item.towerType].rosterPrefix.toUpperCase()}-ONLY` : "UNIVERSAL";
   const sub =
     `${item.rarity.toUpperCase()} &middot; ${item.slot.toUpperCase()} &middot; ${lockTag} &middot; ` +
     `${itemReqText(item)} &middot; ILVL ${item.ilvl}` +
@@ -957,7 +957,7 @@ function openPickerSheet(towerName, slot) {
           slotGlyph(slot, color) +
           `<span class="pr-main"><span class="pr-name" style="color:${color}">${escapeHtml(itemTitle(it))}</span>` +
           `<span class="pr-sub">${escapeHtml(itemAffixSummary(it))}</span></span>` +
-          `<span class="pr-tag">${it.towerType ? TOWERS[it.towerType].prefix : "UNIV"}</span></button>`;
+          `<span class="pr-tag">${it.towerType ? TOWERS[it.towerType].rosterPrefix.toUpperCase() : "UNIV"}</span></button>`;
       }).join("")
     : `<div class="gear-empty-note">Nothing compatible in the stash.</div>`;
 

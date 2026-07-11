@@ -4,8 +4,7 @@ Build spec for the redesigned tower/gear interface. **Read `HANDOFF.md` first**
 (architecture, constraints, verification recipe), and `LOOT_DESIGN.md` for the
 loot system this UI sits on top of (P0–P6 shipped).
 
-Status: **U0 + U1 shipped (U1 also folded in most of U2 — see its checkbox
-for what's covered). Remaining: the U2 roster-name migration, then U3.**
+Status: **U0, U1, and U2 shipped. Remaining: U3.**
 Update the "Build status" checkboxes as
 phases land. Token strategy is the same as LOOT_DESIGN §14: **one phase per
 fresh session, `/clear` between; the handoff is the committed files + these
@@ -252,14 +251,36 @@ plus eyeball on phone for UI phases).
       sheet mastery gating (a ★20-req Singularity correctly excluded a
       ★17 tower), tower stat sheet (gear affixes visibly changing RANGE),
       NEW-badge clearing, scroll/filter preservation across re-renders. No
-      console errors. Not yet done: roster name migration (`L-01`→
-      `Laser-01`, §1d) and the menu merge (§1c) — both still flagged below
-      as the remaining U2/U3 work.
-- [ ] **U2 remainder — name migration.** `L-01`→`Laser-01` (§1d, decide a/b,
-      prefer a — REMEMBER: gear records, veteran redeploy, leaderboard-
-      unrelated). Tower cards/sheets/picker/stat-sheet themselves are
-      already built (see U1 above); this is purely the display-name
-      migration.
+      console errors. Not yet done at the time: roster name migration
+      (§1d) and the menu merge (§1c) — the former shipped as "U2
+      remainder" below, the latter is still U3.
+- [x] **U2 remainder — name migration.** DONE (2026-07-11). Took option (a):
+      `progression.js migrateRosterNames()` (mirrors `migrateSkills`, runs
+      at module load + inside `resetProgress()`) rewrites `state.roster[i]
+      .name` from `X-NN` to `FullName-NN` by looking up `TOWERS[rec.type]
+      .rosterPrefix` — keyed off `rec.type`, not the old letter, so it's
+      immune to the L/R/K ambiguity. Idempotent (skips names already in
+      the new form) and keeps each tower's existing number, so counters
+      and veteran identity survive untouched. New `config.js TOWERS[...]
+      .rosterPrefix` field (`Laser`/`Pulse`/`Slow`/`Railgun`/`Rocket`)
+      drives both the migration and `towers.js nextRosterName`; the old
+      single-letter `prefix` field stays put — it still backs the STASH
+      tile's 1-character corner "lock-dot" glyph (`ui.js tileHtml`), which
+      must stay a single glyph and must NOT collide (Railgun/Rocket both
+      start with the same letter if naively derived from the long name —
+      the approved mockup actually has this exact collision via `lock[0]`;
+      the real game avoids it by keeping the dedicated `L/P/S/R/K` letters).
+      Also updated the three `-ONLY` text tags (item title, item-sheet sub-
+      line, picker-sheet `pr-tag`) to show the full type name
+      ("RAILGUN-ONLY" not "R-ONLY"), matching the mockup's `lock.toUpperCase()
+      + "-ONLY"` exactly — these have room for the full word and aren't the
+      cramped corner dot. Verified live in-browser: seeded an old-format
+      save (`L-01`/`K-02`/`R-01`), confirmed migration output, confirmed
+      new tower placement continues numbering with no collision
+      (`Laser-02`, `Rocket-03`), confirmed the TOWERS tab cards/STASH tiles/
+      item sheet/equip-target sheet/picker sheet all display correctly, and
+      confirmed a full equip round-trip (stash → equipped) still resolves
+      by the migrated name. No console errors.
 - [ ] **U3 — Menu merge.** Delete Tower Guide overlay + GEAR menu entry;
       single TOWERS entry with NEW badge; `?` guide sheet (reuse guide text,
       `seenTowerGuide` auto-open now opens it); locked-tower expandable list.

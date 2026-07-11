@@ -17,15 +17,15 @@ import {
 } from "./equipment.js";
 
 let nextTowerId = 1;
-const rosterCounters = {}; // per-prefix counters for names like L-01
+const rosterCounters = {}; // per-rosterPrefix counters for names like Laser-01
 
 function nextRosterName(def) {
-  rosterCounters[def.prefix] = (rosterCounters[def.prefix] || 0) + 1;
-  return `${def.prefix}-${String(rosterCounters[def.prefix]).padStart(2, "0")}`;
+  rosterCounters[def.rosterPrefix] = (rosterCounters[def.rosterPrefix] || 0) + 1;
+  return `${def.rosterPrefix}-${String(rosterCounters[def.rosterPrefix]).padStart(2, "0")}`;
 }
 
-// Continue name numbering after saved roster units (so a fresh L-03
-// can't collide with a persisted L-03).
+// Continue name numbering after saved roster units (so a fresh Laser-03
+// can't collide with a persisted Laser-03).
 export function seedRosterCounters(roster) {
   for (const rec of roster) {
     const [prefix, num] = rec.name.split("-");
