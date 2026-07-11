@@ -10,7 +10,7 @@
 
 import { ENDLESS_REWARDS, LOOT, SKILLS, SKILL_VALUES, SKILL_TIERS } from "./config.js";
 import { loadSave, writeSave, clearSave } from "./save.js";
-import { dropIlvl, generateGuaranteedDrop, generateItem } from "./loot.js";
+import { dropIlvl, generateGuaranteedDrop, generateItem, RARITIES } from "./loot.js";
 import { canEquipItem, emptyGear, masteryRankFor, normalizeGear } from "./equipment.js";
 
 let state = loadSave();
@@ -334,12 +334,57 @@ export function unequipToStash(towerName, slot) {
   return result;
 }
 
+// ---------- Auto-equip on earn (U0, GEAR_UI_DESIGN.md §1b) ----------
+// Loot EARNED in play (kill drops, guaranteed end-drop, Endless milestone
+// loot) tries to equip itself before hitting storage. Store purchases
+// deliberately skip this — buyStoreItem banks straight into the stash.
+
+// The best roster tower this item may auto-equip onto, or null. Eligible =
+// passes canEquipItem (type match, reqs, and the ★1 gate) AND the item's
+// slot is empty (with fillEmptyOnly off: occupied by strictly lower rarity).
+function autoEquipTarget(item) {
+  const candidates = state.roster.filter((rec) => {
+    if (!canEquipItem(rec, item).ok) return false;
+    const current = normalizeGear(rec.gear)[item.slot];
+    if (!current) return true;
+    if (LOOT.autoEquip?.fillEmptyOnly ?? true) return false;
+    return RARITIES.indexOf(item.rarity) > RARITIES.indexOf(current.rarity);
+  });
+  candidates.sort((a, b) =>
+    masteryRankFor(b.xp || 0) - masteryRankFor(a.xp || 0) ||
+    (b.maxLevel || 1) - (a.maxLevel || 1) ||
+    (b.xp || 0) - (a.xp || 0)
+  );
+  return candidates[0] || null;
+}
+
+// Bank one earned item: auto-equip, else stash, else pendingLoot triage.
+// Returns a placement { item, dest: "equipped"|"stash"|"pending",
+// towerName?, displaced? } for the end-of-battle summary. Callers writeSave.
+function bankEarnedItem(item) {
+  if (!(LOOT.autoEquip?.enabled ?? false)) {
+    state.pendingLoot.push(structuredClone(item));
+    return { item, dest: "pending" };
+  }
+  const rec = autoEquipTarget(item);
+  if (rec) {
+    rec.gear = normalizeGear(rec.gear);
+    const previous = rec.gear[item.slot];
+    rec.gear[item.slot] = structuredClone(item);
+    const placement = { item, dest: "equipped", towerName: rec.name };
+    if (previous) placement.displaced = addToStashOrPending(previous);
+    return placement;
+  }
+  return { item, dest: addToStashOrPending(item) };
+}
+
 export function recordRunLoot(game) {
   state.pendingLoot ||= [];
   const drops = [...(game.lootDrops || []), generateGuaranteedDrop(game)];
-  for (const item of drops) state.pendingLoot.push(structuredClone(item));
+  const placements = drops.map((item) => bankEarnedItem(item));
   game.lootResult = {
     count: drops.length,
+    placements,
     pending: state.pendingLoot.length,
     stashFree: stashSlotsFree(),
   };
@@ -450,9 +495,10 @@ function claimedEndlessIds(levelId) {
 }
 
 // Grants every milestone whose threshold is <= bestWave and isn't already
-// claimed for this level. Shards bank straight into the wallet; loot lands
-// in pendingLoot, same triage flow as any other end-of-run drop. Returns
-// the list of milestones newly granted this call (for the end-of-run UI).
+// claimed for this level. Shards bank straight into the wallet; loot goes
+// through the same earn pipeline as any other drop (auto-equip → stash →
+// pendingLoot triage, U0). Returns the list of milestones newly granted
+// this call (for the end-of-run UI), loot ones tagged with `placement`.
 function grantEndlessRewards(levelId, bestWave) {
   const claimed = claimedEndlessIds(levelId);
   const granted = [];
@@ -461,15 +507,16 @@ function grantEndlessRewards(levelId, bestWave) {
     claimed.push(m.id);
     if (m.reward.kind === "shards") {
       state.shards += m.reward.amount;
+      granted.push(m);
     } else if (m.reward.kind === "loot") {
       const levelNumber = Number(levelId.slice(-3)) || 1;
       state.pendingLoot ||= [];
-      state.pendingLoot.push(generateItem({
+      const item = generateItem({
         rarity: m.reward.rarity,
         ilvl: dropIlvl(levelNumber, m.threshold),
-      }));
+      });
+      granted.push({ ...m, placement: bankEarnedItem(item) });
     }
-    granted.push(m);
   }
   return granted;
 }

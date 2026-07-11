@@ -207,9 +207,25 @@ function goToMainMenu() {
   showLevelSelect(LEVELS, getProgress().completedLevels, startLevel);
 }
 
+// One earned item's fate, as decided by progression.js bankEarnedItem
+// (U0 auto-equip): "▲ RARE EMITTER → L-01", "→ STASH", or "→ UNCLAIMED"
+// (pendingLoot triage, only when the stash is full). Plain text for now —
+// the U4 pizzazz pass replaces this with the drop-reveal sequence.
+function placementText(p) {
+  const label = `${p.item.rarity.toUpperCase()} ${p.item.slot.toUpperCase()}`;
+  if (p.dest === "equipped") return `▲ ${label} → ${p.towerName}`;
+  if (p.dest === "stash") return `${label} → STASH`;
+  return `${label} → UNCLAIMED`;
+}
+
 function lootLine() {
-  const count = game && game.lootResult ? game.lootResult.count : 0;
-  return count ? ` Loot recovered: ${count} item${count === 1 ? "" : "s"}.` : "";
+  const placements = game && game.lootResult ? game.lootResult.placements : null;
+  if (!placements || !placements.length) {
+    // Stale-deploy fallback: an old progression.js may still report count only.
+    const count = game && game.lootResult ? game.lootResult.count : 0;
+    return count ? ` Loot recovered: ${count} item${count === 1 ? "" : "s"}.` : "";
+  }
+  return ` Loot: ${placements.map(placementText).join(" · ")}.`;
 }
 
 // Endless reward-track milestones newly crossed this run (progression.js
@@ -221,7 +237,7 @@ function endlessRewardLine() {
   const parts = rewards.map((m) => {
     const label = m.reward.kind === "shards"
       ? `+${m.reward.amount} Shards`
-      : `a ${m.reward.rarity} item`;
+      : m.placement ? placementText(m.placement) : `a ${m.reward.rarity} item`;
     return `wave ${m.threshold} (${label})`;
   });
   return ` MILESTONE${parts.length > 1 ? "S" : ""} REACHED: ${parts.join(", ")}!`;

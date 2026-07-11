@@ -503,6 +503,29 @@ export const LOOT = {
     stashSize: 50,
   },
 
+  // ---- Gear rules (U0, see GEAR_UI_DESIGN.md §1) ----
+  // equipGate: no tower can equip ANY gear until its Mastery rank reaches
+  // minMastery (rank 1 = 1,100 career XP on the current TOWER_UPGRADES
+  // .mastery curve). Grandfathered: gear equipped
+  // before the gate existed keeps working — only NEW equips are blocked
+  // (enforced in equipment.js canEquipItem, never by stripping saves).
+  equipGate: {
+    minMastery: 1,
+  },
+
+  // autoEquip: loot EARNED in play (kill drops, the guaranteed end-drop,
+  // Endless milestone loot — NOT store purchases) tries to equip itself
+  // onto the best eligible tower (highest Mastery, then career maxLevel,
+  // then XP) whose matching slot is EMPTY, before falling back to the
+  // stash (pendingLoot triage only when the stash is full).
+  //   enabled: false reverts to the old everything-into-pendingLoot flow.
+  //   fillEmptyOnly: true = never touch an occupied slot. false = may
+  //     replace strictly lower-rarity gear (displaced item goes to stash).
+  autoEquip: {
+    enabled: true,
+    fillEmptyOnly: true,
+  },
+
   // ---- Store (P5) ----
   // Stock refreshes after every completed, lost, or forfeited game. Its item
   // level follows the player's strongest career tower so the shop naturally

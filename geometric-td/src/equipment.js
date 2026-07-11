@@ -45,6 +45,12 @@ export function xpToNextMastery(xp) {
 export function canEquipItem(record, item) {
   if (!record || !item || !GEAR_SLOTS.includes(item.slot)) return { ok: false, reason: "invalid" };
   if (item.towerType && item.towerType !== record.type) return { ok: false, reason: "towerType" };
+  // U0 gate (GEAR_UI_DESIGN §1a): sub-Mastery towers can't equip anything
+  // new. Already-worn gear is grandfathered — this runs on equips only.
+  // Optional chaining guards a momentarily-stale config.js (CDN lag).
+  if (masteryRankFor(record.xp || 0) < (LOOT.equipGate?.minMastery ?? 1)) {
+    return { ok: false, reason: "masteryGate" };
+  }
   if ((record.maxLevel || 1) < (item.reqLevel || 0)) return { ok: false, reason: "level" };
   if (masteryRankFor(record.xp || 0) < (item.reqMastery || 0)) {
     return { ok: false, reason: "mastery" };

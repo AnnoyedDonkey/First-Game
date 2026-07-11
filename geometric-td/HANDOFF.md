@@ -507,13 +507,23 @@ as the source of truth, not that old ×1.2 rule.)
     committed files + LOOT_DESIGN checkboxes, not the conversation.
 
 
-- **GEAR UI REDESIGN (approved, not started):** full spec + phase plan
-  (U0–U5, with model/effort per phase) in `GEAR_UI_DESIGN.md`; approved
-  interactive mockup at `mockups/gear-ui-mockup.html`. Replaces the flat P4
-  GEAR panel with a tower-first two-tab screen (TOWERS/STASH, icon tiles,
-  filters), adds a Mastery-1 equip gate + auto-equip-on-earn rules (U0,
-  game logic), merges the Tower Guide menu entry away, renames roster units
-  to long names (Laser-01), and later restyles the STORE the same way.
+- **GEAR UI REDESIGN (in progress — U0 shipped, U1 next):** full spec +
+  phase plan (U0–U5, with model/effort per phase) in `GEAR_UI_DESIGN.md`;
+  approved interactive mockup at `mockups/gear-ui-mockup.html`. Replaces
+  the flat P4 GEAR panel with a tower-first two-tab screen (TOWERS/STASH,
+  icon tiles, filters), merges the Tower Guide menu entry away, renames
+  roster units to long names (Laser-01), and later restyles the STORE the
+  same way.
+  - **U0 DONE (2026-07-11):** Mastery-1 equip gate (`equipment.js
+    canEquipItem`, reason `"masteryGate"`, grandfathered — already-worn
+    gear never stripped) + auto-equip-on-earn (`progression.js
+    bankEarnedItem`: kill drops/end-drop/Endless milestones equip onto the
+    highest-Mastery eligible tower with that slot EMPTY, else stash, else
+    pendingLoot; store buys skip it). Earned loot now defaults into the
+    STASH, not pendingLoot — triage only appears when the stash is full.
+    End-of-battle overlays list each item's fate ("▲ RARE EMITTER → L-01").
+    Knobs: `config.js LOOT.equipGate` + `LOOT.autoEquip`. Details in the
+    GEAR_UI_DESIGN U0 checkbox.
 - **PLAYTEST-PENDING:** the counter re-tune + visible feedback + Rocket +
   World 3 all shipped but the difficulty is calibrated only by bot sims
   (superhuman placement → flawless bot wins are a WEAK signal). The user's

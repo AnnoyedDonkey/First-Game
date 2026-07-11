@@ -4,7 +4,7 @@ Build spec for the redesigned tower/gear interface. **Read `HANDOFF.md` first**
 (architecture, constraints, verification recipe), and `LOOT_DESIGN.md` for the
 loot system this UI sits on top of (P0–P6 shipped).
 
-Status: **NOT STARTED — U0 is next.** Update the "Build status" checkboxes as
+Status: **U0 shipped — U1 is next.** Update the "Build status" checkboxes as
 phases land. Token strategy is the same as LOOT_DESIGN §14: **one phase per
 fresh session, `/clear` between; the handoff is the committed files + these
 checkboxes, not the conversation. No subagents.**
@@ -189,15 +189,31 @@ plus eyeball on phone for UI phases).
 | U4 Pizzazz pass | Sonnet | Medium | CSS/canvas animation, isolated |
 | U5 STORE restyle | Sonnet | Medium | reuse U1 components, no logic change |
 
-- [ ] **U0 — Rules first (no UI).** Mastery-1 equip gate (grandfathered per
-      §1a) in `equipment.js`; auto-equip pipeline (§1b) in `progression.js`
-      where drops are banked (kill drops, end-drop, Endless milestone loot —
-      NOT store buys); battle-summary data (list of `{item, dest}`) exposed
-      for main.js overlay lines (plain text this phase). Knobs
-      `LOOT.autoEquip`. Old GEAR panel untouched and still functional.
-      Verify: scripted battles — drop lands on highest eligible tower with
-      empty slot; never replaces; stash fallback; stash-full → pendingLoot;
-      sub-★1 towers never receive; store buys unaffected.
+- [x] **U0 — Rules first (no UI).** DONE (2026-07-11). Mastery-1 equip gate
+      (grandfathered per §1a) in `equipment.js canEquipItem` (new failure
+      reason `"masteryGate"`, checked before per-item reqs — the old GEAR
+      panel's tower `<select>` filters through `canEquipItem`, so it picked
+      up the gate for free); auto-equip pipeline (§1b) in `progression.js`
+      (`bankEarnedItem` — kill drops + end-drop via `recordRunLoot`, Endless
+      milestone loot via `grantEndlessRewards`; store buys untouched);
+      summary data on `game.lootResult.placements` (`{item, dest, towerName?,
+      displaced?}`, dest = equipped/stash/pending) + `placement` on granted
+      milestones, rendered as plain text by main.js `placementText()` in
+      `lootLine`/`endlessRewardLine`. Knobs: `LOOT.equipGate.minMastery`
+      (rank 1 = 1,100 career XP on the current curve — the ~8,300 in §1a is
+      stale) and `LOOT.autoEquip { enabled, fillEmptyOnly }`;
+      `enabled: false` reverts to the old everything-into-pendingLoot flow,
+      `fillEmptyOnly: false` lets drops replace strictly lower-rarity gear
+      (displaced item → stash). Note earn destination changed: with no
+      equip taker, loot now lands in the STASH directly; pendingLoot/triage
+      only when the stash is full (per §1b.4). Verified via scripted
+      `recordRunLoot`/`recordEndlessResult` runs in the browser (all §5
+      scenarios: priority by Mastery, never-replaces, stash fallback,
+      stash-full → pending, sub-★1 excluded, store buys direct-to-stash,
+      milestone loot through the pipeline, grandfathered gear still
+      aggregates) + one real bot battle to a loss (placements correct;
+      overlay text itself not eyeballed — rAF is suspended in the test
+      pane, check on phone).
 - [ ] **U1 — Tile components + STASH tab.** New overlay shell (tabs, header,
       `?` placeholder), slot-glyph renderer (SVG strings or canvas — match
       mockup glyphs), rarity tile styles, stash grid + filters + sort + NEW
