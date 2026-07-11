@@ -11,10 +11,13 @@ level 5, **Rocket Launcher after level 10**), 7 enemy types, an
 (now 8 skills), permanent per-class specialties, post-level-5 Mastery
 ranks, per-level palettes, GeoDefense-style VFX, ¼x–4x speed controls,
 **Endless mode** per level (unlocked once beaten, waves escalate forever,
-tracked as best-wave-reached), and a **forfeit button** to abandon a
-battle mid-run — all deployed and playable at the GitHub Pages URL below.
-No known bugs. Next up: the backlog at the bottom of this file, and
-whatever the user asks for.
+tracked as best-wave-reached, and now has a **5-milestone reward track**
+per level — Shards/loot auto-granted on crossing wave thresholds), and a
+**forfeit button** to abandon a battle mid-run — plus a full **Diablo-style
+loot/equipment system** (Shards currency, per-tower gear across 4 slots,
+5 rarities, drops/stash/triage, a store) — all deployed and playable at
+the GitHub Pages URL below. No known bugs. **Loot build P0–P6 are shipped;
+P7 (balance pass) is next** — see `LOOT_DESIGN.md` and the backlog below.
 
 **Balance-pass additions (this Opus session — see "Counters &
 differentiation" below):** towers were made mechanically distinct so
@@ -279,6 +282,22 @@ src/
   vs CORE DESTROYED / RETRY). HUD wave counter drops the `/total` ceiling
   in endless (`${wave} ∞` instead of `${wave}/${totalWaves}`), since
   `totalWaves` isn't a meaningful cap once waves are generated.
+- **Endless reward tracks (loot P6, shipped):** one shared 5-milestone
+  wave-threshold list (`config.js ENDLESS_REWARDS.milestones`, waves
+  10/20/35/50/75, alternating Shards and loot up to Singularity) applies
+  to EVERY level's Endless mode; each level tracks its own claimed set in
+  `save.js endlessRewards[levelId]`. Grants are automatic — no separate
+  claim step — via `progression.js grantEndlessRewards`, called from
+  `recordEndlessResult` and keyed to the level's **best-ever** wave (not
+  just the run that just ended), so a threshold already cleared by a past
+  run grants retroactively the next time that level's Endless mode ends.
+  Shard rewards bank straight into the wallet; loot rewards use the same
+  `dropIlvl` scaling as kill/end drops and land in `pendingLoot` — same
+  GEAR-panel triage flow as any other drop. Newly-crossed milestones are
+  called out in the RUN OVER overlay subtitle (`main.js
+  endlessRewardLine()`); the level-select Endless button shows a
+  `★ claimed/total` readout (`getEndlessMilestones`, rendered in
+  `ui.js renderWorld`).
 - **Forfeit button:** the ✕ in the top HUD (`#exit-button`, next to the
   speed controls, wired via `onExitButtonTap` in ui.js). Tapping it while
   a battle is active shows a confirm overlay (reuses `showOverlay`, type
@@ -433,7 +452,7 @@ as the source of truth, not that old ×1.2 rule.)
 
 ## Backlog (user-approved, not yet built)
 
-- **LOOT & EQUIPMENT SYSTEM (in progress — P5 shipped, P6 next):** full build spec in
+- **LOOT & EQUIPMENT SYSTEM (in progress — P6 shipped, P7 next):** full build spec in
   `LOOT_DESIGN.md` — per-tower Diablo-style gear (4 typed slots, 5 rarities,
   affixes + Singularity uniques, Shards currency, store, stash+triage),
   plus the changes it forces (50-rank escalating Mastery curve,
@@ -473,7 +492,17 @@ as the source of truth, not that old ×1.2 rule.)
     rerolls for escalating Shard costs, and buys safely into the stash.
     Store prices, reroll costs, stock size, and item-level scaling are all in
     `config.js LOOT.store`; existing GEAR-panel selling remains the sell path.
-  - **Next: P6** — Endless reward tracks.
+  - **P6 — Endless reward tracks** — completed (2026-07-11). Described in
+    full under "Key mechanics" above. Verified by driving `progression.js`
+    directly with fake game objects (real combat sims were too fragile to
+    reliably push to wave 20+) — confirmed milestones grant exactly once,
+    grant retroactively off best-wave rather than the current run, and the
+    level-select ★ readout updates correctly.
+  - **Next: P7 — Balance pass.** Bot sims on geared/high-Mastery veterans
+    (the "wave-1 spike" concern in LOOT_DESIGN §15), drop-rate and Shard-
+    economy sanity checks, Mastery pacing. This is the first loot phase
+    that's pure judgment rather than a fixed spec — read LOOT_DESIGN §15
+    first.
     Build one phase per fresh session (`/clear` between); the handoff is the
     committed files + LOOT_DESIGN checkboxes, not the conversation.
 
@@ -486,7 +515,6 @@ as the source of truth, not that old ×1.2 rule.)
   too-easy/too-hard on L2/L4/L5 (he'd flagged those) and all of W3.
 - If counters still don't drive combo choices, next levers: harsher
   resist multipliers and/or waves that hard-require a specific tower.
-- Split XP among damage contributors (fixes Slow towers never leveling).
 - Retune Endless mode's difficulty ramp (`config.js ENDLESS`) — it uses
   the level's authored final wave as a seed, so the harder re-tuned waves
   feed into it; worth a fresh look.
