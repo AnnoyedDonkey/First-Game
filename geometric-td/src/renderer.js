@@ -283,7 +283,7 @@ function drawEnemies(ctx, game) {
 
 // ---------- Towers ----------
 
-const TOWER_SIDES = { laser: 4, pulse: 12, slow: 6, railgun: 3 };
+const TOWER_SIDES = { laser: 4, pulse: 12, slow: 6, railgun: 3, rocket: 5 };
 
 function drawTowerShape(ctx, tower, ts, x, y) {
   const r = ts * LOOK.towerRadius;
@@ -339,9 +339,10 @@ function drawTowers(ctx, game, uiState) {
     ctx.restore();
   }
 
-  // Range ring for the selected tower — dashes slowly rotate.
+  // Range ring for the selected tower — dashes slowly rotate. Skipped for
+  // global-range towers (Rocket), whose ring would span the whole board.
   const sel = uiState.selectedTower;
-  if (sel) {
+  if (sel && sel.range < game.grid.tileSize * (game.grid.width + game.grid.height)) {
     ctx.save();
     ctx.strokeStyle = sel.def.color;
     ctx.globalAlpha = 0.5;
@@ -378,10 +379,14 @@ function drawPlacementPreview(ctx, game, uiState) {
   drawPolygon(ctx, c.x, c.y, ts * LOOK.towerRadius, TOWER_SIDES[selectedType] ?? 4, Math.PI / 4);
   ctx.stroke();
 
-  ctx.setLineDash([6, 6]);
-  ctx.beginPath();
-  ctx.arc(c.x, c.y, def.baseRange * ts, 0, Math.PI * 2);
-  ctx.stroke();
+  // Global-range towers (Rocket) cover the whole board — no meaningful
+  // range circle to draw.
+  if (def.baseRange < 50) {
+    ctx.setLineDash([6, 6]);
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, def.baseRange * ts, 0, Math.PI * 2);
+    ctx.stroke();
+  }
   ctx.restore();
 }
 
@@ -392,6 +397,21 @@ function drawPlacementPreview(ctx, game, uiState) {
 
 function drawProjectiles(ctx, game) {
   for (const p of game.projectiles) {
+    if (p.kind === "rocket") {
+      // A fiery exhaust trail behind the warhead, pointing back along travel.
+      const dx = p.lastTargetPos.x - p.x;
+      const dy = p.lastTargetPos.y - p.y;
+      const d = Math.hypot(dx, dy) || 1;
+      const bx = p.x - (dx / d) * 14;
+      const by = p.y - (dy / d) * 14;
+      drawGlow(ctx, bx, by, 8, p.color, 0.5);
+      drawGlow(ctx, p.x, p.y, 15, p.color, 0.95);
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 2.8, 0, Math.PI * 2);
+      ctx.fill();
+      continue;
+    }
     drawGlow(ctx, p.x, p.y, 10, p.color, 0.9);
     ctx.fillStyle = "#ffffff";
     ctx.beginPath();

@@ -79,6 +79,7 @@ export function getTowerDamageMult(type) {
   if (type === "laser") return 1 + SKILL_VALUES.laserDamage * getSkillTier("laserDamage");
   if (type === "pulse") return 1 + SKILL_VALUES.pulseDamage * getSkillTier("pulseDamage");
   if (type === "railgun") return 1 + SKILL_VALUES.railDamage * getSkillTier("railDamage");
+  if (type === "rocket") return 1 + SKILL_VALUES.rocketDamage * getSkillTier("rocketDamage");
   return 1;
 }
 
@@ -92,9 +93,11 @@ export function markTowerGuideSeen() {
   writeSave(state);
 }
 
-// The Railgun is the reward for clearing the first campaign.
+// Late towers are campaign rewards: the Railgun for clearing World 1
+// (level 5), the Rocket Launcher for clearing World 2 (level 10).
 export function isTowerUnlocked(type) {
   if (type === "railgun") return state.completedLevels.includes("level_005");
+  if (type === "rocket") return state.completedLevels.includes("level_010");
   return true;
 }
 

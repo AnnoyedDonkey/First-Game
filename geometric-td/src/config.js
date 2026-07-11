@@ -47,9 +47,9 @@ export const ENEMIES = {
     xp: 12,
     size: 0.22,
     color: "#ffe24a",    // neon yellow
-    // Fragile flyers — Lasers (fast fire) shred them; slow Pulse orbs
-    // struggle to catch them. ANSWER: Laser (or Slow to pin them).
-    damageMult: { energy: 1.3, pulse: 0.7 },
+    // Fragile flyers — Lasers (fast fire) shred them; slow Pulse orbs and
+    // lobbed Rockets struggle to catch them. ANSWER: Laser (or Slow to pin).
+    damageMult: { energy: 1.3, pulse: 0.7, blast: 0.6 },
   },
   armored: {
     name: "Armored",
@@ -76,10 +76,10 @@ export const ENEMIES = {
     xp: 150,
     size: 0.42,
     color: "#ff4a5e",    // neon red
-    // Massive lone target: shrugs off slows, and splash is wasted on a
-    // single body. Focused direct fire is the answer.
-    // ANSWER: Railgun / Laser focus. NOT Pulse, NOT Slow.
-    damageMult: { control: 0.4, pulse: 0.75, rail: 1.2 },
+    // Massive lone target: shrugs off slows, and small splash is wasted on
+    // a single body — but a direct Rocket blast hits hard. Focused fire wins.
+    // ANSWER: Railgun / Rocket / Laser focus. NOT Pulse, NOT Slow.
+    damageMult: { control: 0.4, pulse: 0.75, rail: 1.2, blast: 1.3 },
   },
   // Splits into 2 splitlings on death — punishes single-target builds.
   splitter: {
@@ -93,10 +93,10 @@ export const ENEMIES = {
     size: 0.28,
     color: "#ff7a2f",    // neon orange
     splitInto: { type: "splitling", count: 2 },
-    // Pulse splash hits the parent AND both children at once; a single-line
-    // Railgun wastes most of its shot on one body.
-    // ANSWER: Pulse. NOT Railgun.
-    damageMult: { pulse: 1.5, rail: 0.6 },
+    // Pulse splash and Rocket blasts hit the parent AND both children at
+    // once; a single-line Railgun wastes most of its shot on one body.
+    // ANSWER: Pulse / Rocket. NOT Railgun.
+    damageMult: { pulse: 1.5, blast: 1.4, rail: 0.6 },
   },
   splitling: {
     name: "Splitling",
@@ -108,7 +108,7 @@ export const ENEMIES = {
     xp: 5,
     size: 0.16,
     color: "#ff7a2f",
-    damageMult: { pulse: 1.5 },
+    damageMult: { pulse: 1.5, blast: 1.4 },
   },
   // Heals itself while alive — punishes chip damage, rewards burst.
   regenerator: {
@@ -213,6 +213,26 @@ export const TOWERS = {
     pierceWidth: 0.18,     // beam corridor half-width, in tiles
     damageType: "rail",
     color: "#ff9d3f",
+    unlockLabel: "CLEAR LV 5",
+  },
+  // Unlocked by clearing World 2 (level 10). GLOBAL RANGE — lobs an
+  // explosive rocket at any enemy anywhere on the map. Very slow to
+  // reload and pricey, but each shot lands a heavy AoE blast. Its blast
+  // shreds clustered Splitters and lone Bosses; too sluggish to track
+  // Fast movers. Placement doesn't matter (it reaches everywhere), so
+  // it's the artillery you slot in for global coverage.
+  rocket: {
+    name: "Rocket Launcher",
+    trayName: "ROCKET",    // tray label (name has no " Tower" to strip)
+    prefix: "K",           // roster names K-01 (R is the railgun)
+    baseCost: 120,
+    baseDamage: 55,
+    splashRadius: 0.9,     // explosive AoE, in tiles
+    baseRange: 999,        // effectively the whole board
+    baseFireRate: 2.2,     // slow reload
+    damageType: "blast",
+    color: "#ff5e3a",      // rocket red-orange (distinct from railgun amber)
+    unlockLabel: "CLEAR LV 10",
   },
 };
 
@@ -251,6 +271,7 @@ export const TOWER_UPGRADES = {
     pulse:   { splashGrowth: 0.16,   label: "+ bigger explosions per level" },
     slow:    { fireRateGrowth: 0.10, label: "+ faster firing per level" },
     railgun: { damageGrowth: 0.10,   label: "+ extra damage per level" },
+    rocket:  { splashGrowth: 0.12,   label: "+ bigger blasts per level" },
   },
 };
 
@@ -306,6 +327,7 @@ export const SKILLS = {
   laserDamage:  { name: "Laser Calibration", desc: "Laser Tower damage" },
   pulseDamage:  { name: "Pulse Amplifier",   desc: "Pulse Tower damage" },
   railDamage:   { name: "Rail Overcharge",   desc: "Railgun Tower damage" },
+  rocketDamage: { name: "Warhead Payload",   desc: "Rocket Launcher damage" },
   slowDuration: { name: "Stasis Field",      desc: "slow effect duration" },
   moneyPerKill: { name: "Salvage Protocol",  desc: "money per kill" },
   xpGain:       { name: "Combat Learning",   desc: "tower XP gain" },
@@ -317,6 +339,7 @@ export const SKILL_VALUES = {
   laserDamage: 0.10,   // +10% per tier
   pulseDamage: 0.10,
   railDamage: 0.10,
+  rocketDamage: 0.10,
   slowDuration: 0.10,
   moneyPerKill: 0.10,
   xpGain: 0.10,

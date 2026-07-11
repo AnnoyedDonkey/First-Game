@@ -7,7 +7,7 @@
 
 import { TOWERS, TOWER_UPGRADES } from "./config.js";
 import { enemyPosition, damageEnemy, slowEnemy } from "./enemies.js";
-import { spawnPulseOrb } from "./projectiles.js";
+import { spawnPulseOrb, spawnRocket } from "./projectiles.js";
 import {
   getTowerDamageMult, getSlowDurationMult, takeRosterUnit, isTowerUnlocked,
 } from "./progression.js";
@@ -396,6 +396,10 @@ function fire(game, tower, target, targetPos) {
   } else if (tower.type === "pulse") {
     // Slow homing orb that explodes on impact (see projectiles.js).
     spawnPulseOrb(game, tower, target);
+
+  } else if (tower.type === "rocket") {
+    // Global-range artillery: lob an explosive rocket at the target.
+    spawnRocket(game, tower, target);
 
   } else if (tower.type === "slow") {
     // Instant zap: light damage + slow debuff.

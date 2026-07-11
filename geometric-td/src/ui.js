@@ -156,7 +156,7 @@ export function initTowerButtons(onSelect) {
     btn.className = "tower-button";
     btn.style.setProperty("--tower-color", def.color);
     btn.innerHTML =
-      `<span class="tower-button-name">${def.name.replace(" Tower", "").toUpperCase()}</span>` +
+      `<span class="tower-button-name">${(def.trayName || def.name.replace(" Tower", "")).toUpperCase()}</span>` +
       `<span class="tower-button-cost">$${def.baseCost}</span>`;
     btn.addEventListener("click", () => onSelect(type));
     el.towerButtons.appendChild(btn);
@@ -179,7 +179,7 @@ export function updateTowerButtons(game, selectedType) {
     const costSpan = btn.querySelector(".tower-button-cost");
     costSpan.textContent = unlocked
       ? `$${TOWERS[type].baseCost}`
-      : "CLEAR LV 5";
+      : (TOWERS[type].unlockLabel || "LOCKED");
   }
 }
 
@@ -516,6 +516,7 @@ const SPECIALTY_TEXT = {
   pulse: "Specialty: bigger EXPLOSIONS for every level ever reached",
   slow: "Specialty: FASTER FIRING for every level ever reached",
   railgun: "Specialty: extra DAMAGE for every level ever reached",
+  rocket: "Specialty: BIGGER BLASTS for every level ever reached",
 };
 
 // One-line role hint per class — what each tower is FOR.
@@ -524,11 +525,12 @@ const ROLE_TEXT = {
   pulse: "Role: splash damage — clears Splitters & swarms. Pricey to level.",
   slow: "Role: support — slows enemies AND makes them take +30% damage.",
   railgun: "Role: piercing line-shot. Aim it down a straight lane. Beats Armored & Regenerators.",
+  rocket: "Role: global-range artillery. Slow but hits anywhere; blasts Bosses & Splitter clusters. Weak vs Fast.",
 };
 
 // Damage-type label per tower, for the enemy cheat-sheet.
 const TYPE_LABEL = {
-  energy: "Laser", pulse: "Pulse", control: "Slow", rail: "Railgun",
+  energy: "Laser", pulse: "Pulse", control: "Slow", rail: "Railgun", blast: "Rocket",
 };
 
 // Build "weak to / resists" text for an enemy from its damageMult map.
@@ -559,10 +561,11 @@ export function openTowerGuide() {
     const row = document.createElement("div");
     row.className = "skill-row";
     const locked = !isTowerUnlocked(type);
+    const rangeStr = def.baseRange >= 50 ? "GLOBAL" : def.baseRange;
     const stats =
-      `DMG ${def.baseDamage} · RANGE ${def.baseRange} · ` +
+      `DMG ${def.baseDamage} · RANGE ${rangeStr} · ` +
       `${def.baseFireRate}s/shot · $${def.baseCost}` +
-      (locked ? " · LOCKED (clear level 5)" : "");
+      (locked ? ` · LOCKED (${def.unlockLabel || "locked"})` : "");
     row.innerHTML =
       `<div class="skill-text">` +
       `<span class="skill-name" style="color:${def.color}">${def.name.toUpperCase()}</span>` +

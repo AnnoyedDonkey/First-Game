@@ -29,6 +29,24 @@ export function spawnPulseOrb(game, tower, targetEnemy) {
   });
 }
 
+// A rocket: like a pulse orb but faster and launched from ANYWHERE at the
+// target (the Rocket Launcher has global range). Explodes with splash on
+// impact via the shared explode() below.
+export function spawnRocket(game, tower, targetEnemy) {
+  game.projectiles.push({
+    kind: "rocket",
+    x: tower.pos.x,
+    y: tower.pos.y,
+    target: targetEnemy,
+    lastTargetPos: enemyPosition(targetEnemy, game.grid),
+    speed: 9 * game.grid.tileSize,   // faster than a pulse orb
+    damage: tower.damage,
+    splashRadius: tower.splashRadius,
+    color: tower.def.color,
+    sourceTower: tower,
+  });
+}
+
 export function updateProjectiles(game, dt) {
   for (const p of game.projectiles) {
     // Home toward the enemy; if it died mid-flight, fly to its last spot.
@@ -51,20 +69,29 @@ export function updateProjectiles(game, dt) {
 }
 
 function explode(game, orb) {
+  const rocket = orb.kind === "rocket";
   game.effects.push({
     kind: "ring",
     x: orb.x,
     y: orb.y,
     color: orb.color,
     radius: orb.splashRadius,
-    ttl: 0.25,
-    maxTtl: 0.25,
+    ttl: rocket ? 0.35 : 0.25,
+    maxTtl: rocket ? 0.35 : 0.25,
   });
-  emitHitSparks(game, orb.x, orb.y, orb.color, 18);
+  // Rockets go off with a bigger flash, more sparks, and a heavier
+  // ground shock than a pulse orb.
+  if (rocket) {
+    game.effects.push({
+      kind: "burst", x: orb.x, y: orb.y, color: orb.color,
+      radius: orb.splashRadius * 1.1, ttl: 0.4, maxTtl: 0.4,
+    });
+  }
+  emitHitSparks(game, orb.x, orb.y, orb.color, rocket ? 34 : 18);
   game.springGrid.applyShock(
     orb.x, orb.y,
-    game.grid.tileSize * VFX.warp.shockRadiusTiles,
-    VFX.warp.hitShock * 2
+    game.grid.tileSize * VFX.warp.shockRadiusTiles * (rocket ? 1.6 : 1),
+    VFX.warp.hitShock * (rocket ? 4 : 2)
   );
 
   // Splash damage to every enemy inside the radius.
