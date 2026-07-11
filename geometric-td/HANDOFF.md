@@ -140,6 +140,42 @@ the hard constraints (vanilla JS, no build, no deps):
   banner. Reload still respects GitHub Pages' ~10-min cache, so right
   after a push the banner may reappear until the CDN propagates.
 
+## End-of-battle results screen (2026-07-11, Opus session)
+
+Rebuilt the win/loss/endless/forfeit overlay (`showOverlay` in ui.js,
+`checkEndState` + the forfeit handler in main.js). Replaced the old
+forced one-item-at-a-time drop reveal + wall-of-text subtitle with a
+single screen:
+
+- **Roast title.** The big title is now a randomly picked cheeky one-liner
+  from `config.js RESULT_ROASTS`, bucketed by outcome (`victory` / `defeat`
+  / `endless` / `forfeit`, ~40 lines total). `main.js pickRoast(bucket)`
+  chooses one. Green on wins, red on losses via the existing
+  `#overlay.win/.loss h1` CSS. Add/reword/cut freely — keep each under ~34
+  chars so it doesn't wrap past two lines (title is now 28px/2px, wraps).
+- **Loot grid, not a sequence.** `showOverlay` takes an `items` param
+  (the run's placements from `allPlacements(game)`) and renders a tappable
+  5-wide tile grid (`#overlay-items`, reusing `tileHtml`/`slotGlyph`).
+  Tapping a tile pops that item's rarity-burst card via
+  `showItemDetail` (ui.js) — the U4 reveal-card visual, now on-demand
+  (tap to close) instead of a mandatory pre-overlay walk. The old
+  `showDropReveal` sequence is no longer called by main.js (the function
+  still exists but is dead — remove if you like).
+- **Buttons per state.** Campaign win: NEXT, RETRY LEVEL, MANAGE GEAR,
+  MAIN MENU. Endless: RETRY ENDLESS, PUBLISH SCORE (leaderboard, only when
+  `lbEnabled()`), MANAGE GEAR, MAIN MENU. Loss/forfeit: RETRY LEVEL,
+  MANAGE GEAR, MAIN MENU. Built by `main.js lootTailButtons(items,
+  stashFull)` (the shared MANAGE GEAR / skill / MAIN MENU tail).
+- **MANAGE GEAR** (replaces the old CLAIM LOOT) shows whenever loot was
+  earned. When the stash overflowed (`items.some(p => p.dest ===
+  "pending")`) it gets the red `.big-button.danger` style AND `#overlay-note`
+  shows a red "stash full" line (`stashOverflowNote`). Opens the gear panel
+  in triage mode.
+- **ASSIGN SKILL POINTS** now shows ONLY when `getSkillPoints() > 0`
+  (user rule: don't offer it with nothing to spend).
+- Overlay is now `overflow-y: auto` + `justify-content: safe center` so the
+  taller content (buttons + grid) stays reachable in portrait.
+
 ## File map
 
 ```
@@ -487,11 +523,21 @@ as the source of truth, not that old ×1.2 rule.)
     GEAR panel lets the player claim, equip, unequip, sell, bulk-sell low
     rarities, or confirm-leave unclaimed drops. New save fields `stash`,
     `pendingLoot`, `store`, and `endlessRewards` are defaulted and backfilled.
-  - **P5 — Store UI** — completed (2026-07-11). Persistent five-item stock
-    scales from the best roster level + Mastery, refreshes after every battle,
-    rerolls for escalating Shard costs, and buys safely into the stash.
-    Store prices, reroll costs, stock size, and item-level scaling are all in
-    `config.js LOOT.store`; existing GEAR-panel selling remains the sell path.
+  - **P5 — Store UI** — completed (2026-07-11). Persistent stock
+    (`LOOT.store.stockSize`, now **15** — was 5) scales from the best roster
+    level + Mastery, refreshes after every battle, rerolls for escalating
+    Shard costs, and buys safely into the stash. Store prices, reroll costs,
+    stock size, and item-level scaling are all in `config.js LOOT.store`;
+    existing GEAR-panel selling remains the sell path. NOTE: reroll cost and
+    per-item prices weren't scaled up with the 5→15 stock bump, so a reroll
+    now refreshes 15 tiles for the same 30◆ — retune there if it feels cheap.
+
+  - **Loot-economy tuning (2026-07-11):** per-kill drop chance halved
+    (`LOOT.drops.dropChanceBase` 0.02 → **0.01**) so a long run yields ~10
+    items instead of ~20+ (kill drops are the dominant source; the
+    guaranteed end-drop and Endless milestones are separate and small). If
+    it's still heavy, `dropChanceTierMult` (0.6, per-shardTier bonus) is the
+    next lever. Set from a wave-31 endless report, not a fresh sim.
   - **P6 — Endless reward tracks** — completed (2026-07-11). Described in
     full under "Key mechanics" above. Verified by driving `progression.js`
     directly with fake game objects (real combat sims were too fragile to
