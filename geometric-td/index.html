@@ -85,12 +85,27 @@
         <button id="tower-close" class="big-button">CLOSE</button>
       </div>
 
-      <!-- Gear overlay: stash, equipment and end-of-run triage -->
+      <!-- Gear overlay: tower-first equipment screen (TOWERS/STASH tabs) -->
       <div id="gear-overlay" class="hidden">
-        <h1>GEAR</h1>
-        <p id="gear-line"></p>
-        <div id="gear-list"></div>
+        <div id="gear-header">
+          <h1>TOWERS</h1>
+          <button id="gear-help" aria-label="Gear guide">?</button>
+        </div>
+        <div id="gear-wallet"></div>
+        <div id="gear-tabs">
+          <button id="gear-tab-towers" class="gear-tab active">TOWERS</button>
+          <button id="gear-tab-stash" class="gear-tab">STASH<span id="gear-stash-badge" class="gear-tab-badge hidden"></span></button>
+        </div>
+        <div id="gear-scroll">
+          <div id="gear-view-towers"></div>
+          <div id="gear-view-stash" class="hidden"></div>
+        </div>
         <button id="gear-close" class="big-button">CLOSE</button>
+
+        <!-- Bottom sheet: item detail / picker / equip-target / guide -->
+        <div id="gear-sheet-overlay" class="hidden">
+          <div id="gear-sheet"></div>
+        </div>
       </div>
 
       <!-- Store overlay: persistent stock, Shard purchases and rerolls -->

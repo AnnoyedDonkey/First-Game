@@ -28,6 +28,7 @@ state.store ||= { stock: [], rerolls: 0 };
 state.store.stock ||= [];
 state.store.rerolls ??= 0;
 state.endlessRewards ||= {};
+state.seenLoot ||= [];
 backfillGear();
 
 function backfillGear() {
@@ -232,6 +233,35 @@ function refreshStoreAfterRun() {
 export function getStash() {
   state.stash ||= [];
   return state.stash;
+}
+
+// ---------- Seen-loot tracking (GEAR_UI_DESIGN.md §2b NEW badges) ----------
+// A magenta NEW tag marks stash items the player hasn't opened yet. Tracked
+// as a plain id list rather than a flag on the item object (simpler, and
+// items are structuredClone'd around a lot). Pruned to ids still actually
+// in the stash so it can't grow unbounded.
+function pruneSeenLoot() {
+  state.seenLoot ||= [];
+  const live = new Set(getStash().map((item) => item.id));
+  state.seenLoot = state.seenLoot.filter((id) => live.has(id));
+}
+
+export function isItemSeen(itemId) {
+  state.seenLoot ||= [];
+  return state.seenLoot.includes(itemId);
+}
+
+export function markItemSeen(itemId) {
+  state.seenLoot ||= [];
+  if (!state.seenLoot.includes(itemId)) {
+    state.seenLoot.push(itemId);
+    writeSave(state);
+  }
+}
+
+export function countUnseenStash() {
+  pruneSeenLoot();
+  return getStash().filter((item) => !state.seenLoot.includes(item.id)).length;
 }
 
 export function getPendingLoot() {
@@ -540,5 +570,6 @@ export function resetProgress() {
   state.store.stock ||= [];
   state.store.rerolls ??= 0;
   state.endlessRewards ||= {};
+  state.seenLoot ||= [];
   backfillGear();
 }

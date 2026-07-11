@@ -141,6 +141,52 @@ function recomputeStats(tower, grid) {
 // equipment requirement checks so both use exactly the same career-XP math.
 export { masteryRankFor, xpToNextMastery };
 
+// Career-best stats for the menu (GEAR_UI_DESIGN.md §2a tower stat sheet).
+// Same math as recomputeStats, but keyed off a roster record's maxLevel/xp/
+// gear rather than a live in-battle tower — range stays in tiles (no grid
+// to scale to pixels) and there's no in-battle "current level" to blend in
+// (a career-best veteran is always shown at its unlocked potential).
+export function careerStatsFor(rec) {
+  const def = TOWERS[rec.type];
+  const g = TOWER_UPGRADES;
+  const spec = g.specialties[rec.type] || {};
+  const lv = (rec.maxLevel || 1) - 1;
+  const gear = aggregateGear(normalizeGear(rec.gear));
+  const gs = gear.stats;
+  const masteryRank = masteryRankFor(rec.xp || 0);
+  const damage =
+    def.baseDamage *
+    Math.pow(1 + g.damageGrowth, lv) *
+    Math.pow(1 + (spec.damageGrowth || 0), lv) *
+    (1 + g.mastery.damagePerRank * masteryRank) *
+    getTowerDamageMult(rec.type) *
+    (1 + gs.damage / 100);
+  const range =
+    def.baseRange *
+    Math.pow(1 + g.rangeGrowth, lv) *
+    Math.pow(1 + (spec.rangeGrowth || 0), lv) *
+    (1 + gs.range / 100);
+  const fireInterval =
+    def.baseFireRate /
+    (Math.pow(1 + g.fireRateGrowth, lv) *
+      Math.pow(1 + (spec.fireRateGrowth || 0), lv) *
+      (1 + gs.fireRate / 100));
+  const specStat = spec.damageGrowth ? "damageGrowth"
+    : spec.rangeGrowth ? "rangeGrowth"
+    : spec.fireRateGrowth ? "fireRateGrowth"
+    : spec.splashGrowth ? "splashGrowth" : null;
+  const specialtyPct = specStat ? Math.round((Math.pow(1 + spec[specStat], lv) - 1) * 100) : 0;
+  return {
+    damage, range, fireInterval,
+    fireRate: 1 / fireInterval,
+    dps: damage / fireInterval,
+    masteryRank,
+    masteryPct: Math.round(g.mastery.damagePerRank * masteryRank * 1000) / 10,
+    specialtyLabel: spec.label || "",
+    specialtyPct,
+  };
+}
+
 // ---------- Upgrades ----------
 // XP makes a tower ELIGIBLE; money pays for the actual upgrade.
 

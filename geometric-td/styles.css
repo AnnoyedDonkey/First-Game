@@ -490,7 +490,11 @@ button.hud-item {
   flex-shrink: 0;
 }
 
-/* ---------- Gear overlay ---------- */
+/* ---------- Gear overlay (TOWERS / STASH tabs, GEAR_UI_DESIGN.md U1) ----------
+   Tile/sheet component classes below (.gear-tile, .item-tile, .gear-sheet-*,
+   .gear-chip...) are new to this screen. .gear-item / .gear-text / .gear-name
+   / .gear-desc / .rarity-* / .gear-action / .gear-actions-row / .gear-empty
+   stay shared with the STORE overlay below — don't rename those. */
 
 #gear-overlay {
   position: absolute;
@@ -498,36 +502,98 @@ button.hud-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 12px;
+  justify-content: flex-start;
+  gap: 10px;
   background: rgba(5, 6, 15, 0.94);
-  padding: 20px;
+  padding: 16px 20px;
   z-index: 40;
 }
 
 #gear-overlay.hidden { display: none; }
 
-#gear-overlay h1 {
-  font-size: 24px;
+#gear-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 420px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+#gear-header h1 {
+  font-size: 22px;
   letter-spacing: 4px;
   color: var(--neon-yellow);
   text-shadow: 0 0 16px rgba(255, 226, 74, 0.6);
 }
 
-#gear-line {
+#gear-help {
+  position: absolute;
+  right: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  font-family: inherit;
+  font-size: 12px;
+  background: none;
+  border: 1px solid var(--panel-border);
   color: var(--text-dim);
-  font-size: 11px;
-  letter-spacing: 1px;
-  text-align: center;
+  cursor: pointer;
 }
 
-#gear-list {
+#gear-wallet {
+  color: var(--text-dim);
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  flex-shrink: 0;
+}
+#gear-wallet b { color: var(--neon-yellow); font-weight: 600; }
+
+#gear-tabs {
   display: flex;
-  flex-direction: column;
   gap: 8px;
   width: 100%;
-  max-width: 440px;
-  flex: 0 1 auto;
+  max-width: 420px;
+  flex-shrink: 0;
+}
+
+.gear-tab {
+  flex: 1;
+  min-height: 40px;
+  font-family: inherit;
+  font-size: 12px;
+  letter-spacing: 2px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  color: var(--text-dim);
+  cursor: pointer;
+  position: relative;
+}
+.gear-tab.active {
+  color: var(--neon-cyan);
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 14px rgba(53, 224, 255, 0.25), inset 0 0 10px rgba(53, 224, 255, 0.08);
+  text-shadow: 0 0 8px rgba(53, 224, 255, 0.5);
+}
+.gear-tab-badge {
+  position: absolute;
+  top: -7px; right: -4px;
+  background: var(--neon-magenta);
+  color: #fff;
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 9px;
+  letter-spacing: 1px;
+  box-shadow: 0 0 10px rgba(255, 63, 212, 0.7);
+}
+.gear-tab-badge.hidden { display: none; }
+
+#gear-scroll {
+  width: 100%;
+  max-width: 420px;
+  flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
@@ -535,47 +601,201 @@ button.hud-item {
   scrollbar-width: thin;
   scrollbar-color: var(--panel-border) transparent;
 }
+#gear-scroll::-webkit-scrollbar { width: 4px; }
+#gear-scroll::-webkit-scrollbar-thumb { background: var(--panel-border); border-radius: 2px; }
 
-#gear-list::-webkit-scrollbar { width: 4px; }
-#gear-list::-webkit-scrollbar-thumb { background: var(--panel-border); border-radius: 2px; }
+#gear-view-stash.hidden, #gear-view-towers.hidden { display: none; }
 
-.gear-section { color: var(--neon-yellow); }
+/* ---- Tower cards (TOWERS tab) ---- */
+.tower-card {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 10px 12px 12px;
+  margin-bottom: 10px;
+}
+.tower-card-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 9px;
+  padding: 0;
+  background: none;
+  border: none;
+  font-family: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.tower-card-name { font-size: 14px; font-weight: 600; letter-spacing: 1px; }
+.tower-card-meta {
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+  margin-left: auto;
+  white-space: nowrap;
+}
+.tower-card-meta .star { color: var(--neon-yellow); }
+.tower-card-meta .chev { color: var(--text-dim); font-size: 11px; margin-left: 2px; }
 
-.gear-item,
-.gear-roster-row,
-.gear-empty {
+.slot-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.gear-tile {
+  aspect-ratio: 1;
+  border-radius: 9px;
+  border: 1px solid var(--panel-border);
+  background: rgba(255, 255, 255, 0.02);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  cursor: pointer;
+  position: relative;
+  font-family: inherit;
+  color: inherit;
+  padding: 0;
+}
+.gear-tile .glyph { width: 46%; height: 46%; }
+.gear-tile .tile-label { font-size: 8px; letter-spacing: 1.5px; color: var(--text-dim); }
+.gear-tile.empty { border-style: dashed; opacity: 0.55; }
+.gear-tile.empty .glyph { opacity: 0.35; }
+.gear-tile.filled { background: rgba(255, 255, 255, 0.03); }
+
+.gear-tile.rc, .item-tile.rc { border-color: #b7c0d5; }
+.gear-tile.re, .item-tile.re { border-color: var(--neon-green); box-shadow: inset 0 0 10px rgba(74,255,161,0.15), 0 0 8px rgba(74,255,161,0.15); }
+.gear-tile.rr, .item-tile.rr { border-color: var(--neon-cyan); box-shadow: inset 0 0 10px rgba(53,224,255,0.16), 0 0 8px rgba(53,224,255,0.18); }
+.gear-tile.rp, .item-tile.rp { border-color: var(--neon-magenta); box-shadow: inset 0 0 12px rgba(255,63,212,0.2), 0 0 10px rgba(255,63,212,0.25); }
+.gear-tile.rs, .item-tile.rs {
+  border-color: var(--neon-yellow);
+  box-shadow: inset 0 0 14px rgba(255,226,74,0.25), 0 0 14px rgba(255,226,74,0.35);
+  animation: gearSingPulse 2.2s ease-in-out infinite;
+}
+@keyframes gearSingPulse {
+  0%, 100% { box-shadow: inset 0 0 14px rgba(255,226,74,0.25), 0 0 12px rgba(255,226,74,0.3); }
+  50% { box-shadow: inset 0 0 18px rgba(255,226,74,0.4), 0 0 20px rgba(255,226,74,0.55); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gear-tile.rs, .item-tile.rs { animation: none !important; }
+}
+
+.gear-locked-note {
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 11px;
+  letter-spacing: 1px;
+  padding: 12px 8px 4px;
+  line-height: 1.6;
+}
+.gear-locked-note b { color: var(--neon-yellow); font-weight: 600; }
+
+/* ---- Filter chips + stash grid (STASH tab) ---- */
+#gear-filters {
+  display: flex;
+  gap: 6px;
+  padding-bottom: 10px;
+  flex-wrap: wrap;
+}
+.gear-chip {
+  font-family: inherit;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: var(--text-dim);
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 20px;
+  padding: 6px 11px;
+  cursor: pointer;
+}
+.gear-chip.on { color: var(--neon-cyan); border-color: var(--neon-cyan); box-shadow: 0 0 8px rgba(53, 224, 255, 0.25); }
+
+.gear-stash-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-bottom: 8px;
+}
+.gear-stash-count { font-size: 11px; color: var(--text-dim); letter-spacing: 2px; }
+.gear-sort-note { font-size: 9px; color: var(--text-dim); letter-spacing: 1px; }
+
+#gear-stash-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+.item-tile {
+  aspect-ratio: 1;
+  border-radius: 9px;
+  border: 1px solid var(--panel-border);
+  background: rgba(255, 255, 255, 0.02);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  font-family: inherit;
+  color: inherit;
+  padding: 0;
+}
+.item-tile .glyph { width: 52%; height: 52%; }
+.item-tile .lock-dot {
+  position: absolute;
+  bottom: 3px; right: 5px;
+  font-size: 8px;
+  color: var(--text-dim);
+}
+.item-tile .new-tag {
+  position: absolute;
+  top: -6px; right: -4px;
+  font-size: 8px;
+  background: var(--neon-magenta);
+  color: #fff;
+  border-radius: 8px;
+  padding: 1px 5px;
+  letter-spacing: 1px;
+  box-shadow: 0 0 8px rgba(255, 63, 212, 0.7);
+}
+
+.gear-grid-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 11px;
+  letter-spacing: 1px;
+  padding: 30px 0;
+}
+
+.gear-sellall-row { display: flex; gap: 8px; padding-bottom: 10px; flex-wrap: wrap; }
+
+/* ---- Triage strip (unclaimed drops when the stash was full) ---- */
+#gear-triage {
+  margin-bottom: 14px;
+  padding: 10px;
+  border: 1px solid var(--neon-red);
+  border-radius: 10px;
+  background: rgba(255, 74, 94, 0.06);
+}
+.gear-triage-title { font-size: 10px; letter-spacing: 1.5px; color: var(--neon-red); margin-bottom: 8px; }
+.gear-triage-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 10px; }
+
+/* ---- Shared classes reused from the old panel (STORE overlay still uses
+   these — see the note at the top of this section). ---- */
+.gear-item, .gear-empty {
   flex-shrink: 0;
   padding: 10px 12px;
   border: 1px solid var(--panel-border);
   border-radius: 6px;
   background: var(--panel);
 }
-
-.gear-item {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.gear-text {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  min-width: 0;
-}
-
-.gear-name {
-  font-size: 12px;
-  letter-spacing: 1px;
-  color: var(--text);
-}
-
-.gear-desc,
-.gear-empty {
-  color: var(--text-dim);
-  font-size: 10px;
-  line-height: 1.45;
-}
+.gear-item { display: flex; flex-direction: column; gap: 8px; }
+.gear-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.gear-name { font-size: 12px; letter-spacing: 1px; color: var(--text); }
+.gear-desc, .gear-empty { color: var(--text-dim); font-size: 10px; line-height: 1.45; }
 
 .rarity-common { border-color: #8a97ac; }
 .rarity-enhanced { border-color: var(--neon-green); }
@@ -589,103 +809,161 @@ button.hud-item {
 .rarity-prismatic .gear-name { color: var(--neon-magenta); }
 .rarity-singularity .gear-name { color: #ffffff; text-shadow: 0 0 8px rgba(255, 226, 74, 0.6); }
 
-.gear-actions-row,
-.gear-item-controls {
-  display: flex;
-  gap: 8px;
-  flex-shrink: 0;
-}
+.gear-actions-row { display: flex; gap: 8px; flex-shrink: 0; }
 
-.gear-action,
-.gear-mini,
-.gear-select {
+.gear-action {
   font-family: inherit;
   min-height: 38px;
   border-radius: 6px;
   background: var(--bg);
   border: 1px solid var(--panel-border);
   color: var(--text);
-}
-
-.gear-action {
   flex: 1 1 0;
   min-width: 0;
   font-size: 10px;
   letter-spacing: 1px;
 }
-
-.gear-action.danger,
-.gear-action.confirming {
-  color: var(--neon-red);
-  border-color: var(--neon-red);
-}
-
-.gear-mini {
-  flex: 0 0 auto;
-  padding: 0 10px;
-  font-size: 10px;
-  color: var(--neon-yellow);
-  border-color: var(--neon-yellow);
-}
-
-.gear-mini:disabled,
-.gear-action:disabled {
-  color: var(--text-dim);
-  border-color: var(--panel-border);
-}
-
-.gear-select {
-  flex: 1 1 auto;
-  min-width: 0;
-  padding: 0 8px;
-  font-size: 11px;
-}
-
-.gear-roster-row {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.gear-roster-title {
-  font-size: 12px;
-  letter-spacing: 1px;
-}
-
-.gear-slots {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.gear-slot {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-.gear-slot-name {
-  flex: 0 0 72px;
-  color: var(--text-dim);
-  font-size: 10px;
-}
-
-.gear-slot-item {
-  flex: 1 1 auto;
-  min-width: 0;
-  color: var(--text);
-  font-size: 10px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+.gear-action.danger, .gear-action.confirming { color: var(--neon-red); border-color: var(--neon-red); }
+.gear-action:disabled { color: var(--text-dim); border-color: var(--panel-border); }
 
 #gear-close.confirming {
   color: var(--neon-red);
   border-color: var(--neon-red);
   min-width: 220px;
 }
+
+/* ---- Bottom sheet: item detail / picker / equip-target / stat / guide ---- */
+#gear-sheet-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 6, 15, 0.82);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 5;
+  backdrop-filter: blur(2px);
+}
+#gear-sheet-overlay.hidden { display: none; }
+#gear-sheet {
+  width: 100%;
+  max-width: 420px;
+  max-height: 78%;
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-bottom: none;
+  border-radius: 18px 18px 0 0;
+  padding: 16px 16px calc(20px + env(safe-area-inset-bottom));
+  animation: gearSheetUp 0.22s ease-out;
+}
+@keyframes gearSheetUp { from { transform: translateY(30px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { #gear-sheet { animation: none; } }
+
+.gear-sheet-title {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.gear-sheet-title .glyph { width: 24px; height: 24px; flex-shrink: 0; }
+.gear-sheet-sub {
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 1.5px;
+  margin: 6px 0 12px;
+  line-height: 1.6;
+}
+.gear-affix-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.gear-affix {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--panel-border);
+  border-radius: 7px;
+  padding: 8px 11px;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.gear-affix .val { color: var(--neon-green); flex-shrink: 0; }
+.gear-affix.unique { border-color: var(--neon-yellow); }
+.gear-affix.unique .val { color: var(--neon-yellow); }
+.gear-affix.uniqueP { border-color: var(--neon-magenta); }
+.gear-affix.uniqueP .val { color: var(--neon-magenta); }
+
+.gear-sheet-actions { display: flex; gap: 8px; }
+.gear-sheet-btn {
+  flex: 1;
+  font-family: inherit;
+  font-size: 12px;
+  letter-spacing: 2px;
+  min-height: 44px;
+  border-radius: 8px;
+  border: 1px solid var(--neon-cyan);
+  background: rgba(53, 224, 255, 0.08);
+  color: var(--neon-cyan);
+  cursor: pointer;
+}
+.gear-sheet-btn.sell { border-color: var(--neon-yellow); background: rgba(255, 226, 74, 0.06); color: var(--neon-yellow); }
+.gear-sheet-btn.danger { border-color: var(--neon-red); background: rgba(255, 74, 94, 0.08); color: var(--neon-red); }
+.gear-sheet-btn:disabled { opacity: 0.35; cursor: default; }
+
+.gear-picker-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--panel-border);
+  border-radius: 9px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  font-family: inherit;
+  color: inherit;
+  text-align: left;
+}
+.gear-picker-row .glyph { width: 28px; height: 28px; flex-shrink: 0; }
+.gear-picker-row .pr-main { flex: 1; min-width: 0; }
+.gear-picker-row .pr-name { font-size: 12px; font-weight: 600; letter-spacing: 1px; }
+.gear-picker-row .pr-sub {
+  font-size: 10px; color: var(--text-dim); letter-spacing: 0.5px; margin-top: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.gear-picker-row .pr-tag { font-size: 9px; letter-spacing: 1px; color: var(--text-dim); flex-shrink: 0; }
+.gear-picker-row.current { border-color: var(--text-dim); background: rgba(255, 255, 255, 0.05); }
+.gear-picker-label { font-size: 10px; letter-spacing: 2px; color: var(--text-dim); margin: 4px 0 8px; }
+.gear-empty-note { font-size: 11px; color: var(--text-dim); letter-spacing: 1px; padding: 10px 0; }
+
+.gear-stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.gear-stat-box {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--panel-border);
+  border-radius: 7px;
+  padding: 8px 11px;
+}
+.gear-stat-box .k { font-size: 9px; letter-spacing: 1.5px; color: var(--text-dim); }
+.gear-stat-box .v { font-size: 15px; font-weight: 600; margin-top: 3px; font-variant-numeric: tabular-nums; }
+.gear-stat-box .v small { font-size: 10px; font-weight: 400; color: var(--neon-green); margin-left: 4px; }
+
+.gear-bonus-line {
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  padding: 6px 11px;
+  border-left: 2px solid var(--panel-border);
+  margin-bottom: 6px;
+  color: var(--text);
+  line-height: 1.5;
+}
+.gear-bonus-line .src { color: var(--text-dim); font-size: 9px; letter-spacing: 1.5px; display: block; }
+.gear-guide-text { font-size: 11px; color: var(--text-dim); line-height: 1.6; margin-bottom: 12px; }
 
 /* ---------- Store overlay ---------- */
 

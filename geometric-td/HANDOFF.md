@@ -507,13 +507,13 @@ as the source of truth, not that old ×1.2 rule.)
     committed files + LOOT_DESIGN checkboxes, not the conversation.
 
 
-- **GEAR UI REDESIGN (in progress — U0 shipped, U1 next):** full spec +
-  phase plan (U0–U5, with model/effort per phase) in `GEAR_UI_DESIGN.md`;
-  approved interactive mockup at `mockups/gear-ui-mockup.html`. Replaces
-  the flat P4 GEAR panel with a tower-first two-tab screen (TOWERS/STASH,
-  icon tiles, filters), merges the Tower Guide menu entry away, renames
-  roster units to long names (Laser-01), and later restyles the STORE the
-  same way.
+- **GEAR UI REDESIGN (in progress — U0+U1 shipped, U2 name migration
+  next):** full spec + phase plan (U0–U5, with model/effort per phase) in
+  `GEAR_UI_DESIGN.md`; approved interactive mockup at
+  `mockups/gear-ui-mockup.html`. Replaces the flat P4 GEAR panel with a
+  tower-first two-tab screen (TOWERS/STASH, icon tiles, filters), merges
+  the Tower Guide menu entry away, renames roster units to long names
+  (Laser-01), and later restyles the STORE the same way.
   - **U0 DONE (2026-07-11):** Mastery-1 equip gate (`equipment.js
     canEquipItem`, reason `"masteryGate"`, grandfathered — already-worn
     gear never stripped) + auto-equip-on-earn (`progression.js
@@ -524,6 +524,23 @@ as the source of truth, not that old ×1.2 rule.)
     End-of-battle overlays list each item's fate ("▲ RARE EMITTER → L-01").
     Knobs: `config.js LOOT.equipGate` + `LOOT.autoEquip`. Details in the
     GEAR_UI_DESIGN U0 checkbox.
+  - **U1 DONE (2026-07-11), plus most of U2:** `#gear-overlay` rebuilt as
+    the tower-first TOWERS/STASH tabbed screen from the mockup — SVG slot
+    glyphs, rarity-glow tiles, STASH grid with slot/rarity filters + sort +
+    tap-again SELL ALL, TOWERS tab with per-tower slot-tile cards, a shared
+    bottom sheet (item detail / stash-picker / equip-target / tower stat
+    sheet / `?` guide) with scroll position preserved across every
+    re-render (the old panel's worst bug — full rebuild resetting scroll —
+    is gone). New `state.seenLoot` id-list drives magenta NEW badges
+    (`progression.js isItemSeen/markItemSeen/countUnseenStash`); new
+    `towers.js careerStatsFor` computes menu-display stats (DPS, mastery %,
+    specialty %, range) from a roster record with no live battle tower.
+    Verified live in-browser against a seeded save covering every rarity/
+    slot/tower-type combo — see the GEAR_UI_DESIGN U1 checkbox for the full
+    list of what was exercised. Old GEAR panel and its CSS/JS are gone;
+    STORE overlay is untouched and still reuses the shared item-row classes
+    (U5 restyles it later). Still open: roster name migration (`L-01` →
+    `Laser-01`, U2 remainder) and the menu/Tower-Guide merge (U3).
 - **PLAYTEST-PENDING:** the counter re-tune + visible feedback + Rocket +
   World 3 all shipped but the difficulty is calibrated only by bot sims
   (superhuman placement → flawless bot wins are a WEAK signal). The user's
