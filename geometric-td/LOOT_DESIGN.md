@@ -5,7 +5,7 @@ the supporting changes it forces (Mastery curve rework, contributor-weighted
 XP, Endless reward tracks). Agreed in a design session; **read `HANDOFF.md`
 first** for architecture, constraints, and the balance-testing recipe.
 
-Status: **P4 COMPLETE — P5 Store UI is next.** Build order is at the bottom.
+Status: **P5 COMPLETE — P6 Endless reward tracks is next.** Build order is at the bottom.
 Update the "Build status" checkboxes as phases land.
 
 ---
@@ -421,7 +421,10 @@ starts flailing rather than defaulting everything High.)
       pending drops, and confirm-on-leave for unclaimed triage loot. Verified
       with JS syntax checks, generator/drop invariant checks, and a mocked
       persistence smoke test covering claim/equip/unequip.
-- [ ] **P5 — Store UI** (stock gen, reroll, buy/sell).
+- [x] **P5 — Store UI** (stock gen, reroll, buy/sell). Completed 2026-07-11.
+      The STORE menu has persistent five-item stock, roster-scaled item level,
+      escalating Shard rerolls, stash-cap-safe purchases, and automatic fresh
+      stock after every game. GEAR remains the sell path.
 - [ ] **P6 — Endless reward tracks.**
 - [ ] **P7 — Balance pass** (bot sims; geared-veteran wave-1 spike, drop rates,
       Shard economy, Mastery pacing).

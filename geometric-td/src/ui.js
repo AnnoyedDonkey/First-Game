@@ -15,6 +15,7 @@ import {
   getStash, getPendingLoot, stashSlotsFree, claimPendingLoot,
   discardPendingLoot, sellStashItem, sellPendingItem, sellAllStashRarity,
   equipStashItem, unequipToStash,
+  getStoreStock, storeRerollCost, rerollStore, buyStoreItem,
 } from "./progression.js";
 import { canEquipItem, GEAR_SLOTS, masteryRankFor as gearMasteryRankFor } from "./equipment.js";
 import {
@@ -58,6 +59,10 @@ const el = {
   gearList: document.getElementById("gear-list"),
   gearLine: document.getElementById("gear-line"),
   gearClose: document.getElementById("gear-close"),
+  storeOverlay: document.getElementById("store-overlay"),
+  storeList: document.getElementById("store-list"),
+  storeLine: document.getElementById("store-line"),
+  storeClose: document.getElementById("store-close"),
   money: document.getElementById("money-value"),
   wave: document.getElementById("wave-value"),
   core: document.getElementById("core-value"),
@@ -98,6 +103,7 @@ forwardWheel(el.levelOverlay, el.levelList);
 forwardWheel(el.skillOverlay, el.skillList);
 forwardWheel(el.leaderboardOverlay, el.leaderboardList);
 forwardWheel(el.gearOverlay, el.gearList);
+forwardWheel(el.storeOverlay, el.storeList);
 
 function setText(node, key, value) {
   if (last[key] === value) return;
@@ -434,6 +440,12 @@ function appendGlobalMenuButtons() {
     `</span>`;
   gearBtn.addEventListener("click", () => openGearPanel());
   topRow.appendChild(gearBtn);
+
+  const storeBtn = document.createElement("button");
+  storeBtn.className = "level-button skill-entry store-entry";
+  storeBtn.innerHTML = `<span>STORE</span><span class="level-done">◆ ${getShards()}</span>`;
+  storeBtn.addEventListener("click", openStorePanel);
+  topRow.appendChild(storeBtn);
 
   // Leaderboard — only when a backend is configured (config.js
   // LEADERBOARD). Hidden otherwise so we never ship a dead button.
@@ -922,6 +934,58 @@ function closeGearPanel() {
 }
 
 el.gearClose.addEventListener("click", closeGearPanel);
+
+// ---------- Store overlay ----------
+
+function renderStorePanel() {
+  const stock = getStoreStock();
+  const free = stashSlotsFree();
+  const rerollCost = storeRerollCost();
+  el.storeLine.textContent = `SHARDS ${getShards()} / STASH ${getStash().length}/${LOOT.stash.stashSize}`;
+  el.storeList.innerHTML = "";
+
+  const actions = document.createElement("div");
+  actions.className = "gear-actions-row";
+  const reroll = document.createElement("button");
+  reroll.className = "gear-action store-reroll";
+  reroll.textContent = `REROLL ◆ ${rerollCost}`;
+  reroll.disabled = getShards() < rerollCost;
+  reroll.addEventListener("click", () => { rerollStore(); renderStorePanel(); });
+  actions.appendChild(reroll);
+  el.storeList.appendChild(actions);
+
+  if (!stock.length) {
+    const empty = document.createElement("div");
+    empty.className = "gear-empty";
+    empty.textContent = "SOLD OUT — reroll to restock.";
+    el.storeList.appendChild(empty);
+    return;
+  }
+
+  for (const item of stock) {
+    const row = document.createElement("div");
+    row.className = itemClass(item);
+    row.appendChild(renderItemText(item));
+    const buy = document.createElement("button");
+    buy.className = "gear-action store-buy";
+    const price = LOOT.store.prices[item.rarity] || 0;
+    buy.textContent = free > 0 ? `BUY ◆ ${price}` : "STASH FULL";
+    buy.disabled = free <= 0 || getShards() < price;
+    buy.addEventListener("click", () => { buyStoreItem(item.id); renderStorePanel(); });
+    row.appendChild(buy);
+    el.storeList.appendChild(row);
+  }
+}
+
+export function openStorePanel() {
+  renderStorePanel();
+  el.storeOverlay.classList.remove("hidden");
+}
+
+el.storeClose.addEventListener("click", () => {
+  el.storeOverlay.classList.add("hidden");
+  renderWorld();
+});
 
 // ---------- Skill tree overlay ----------
 

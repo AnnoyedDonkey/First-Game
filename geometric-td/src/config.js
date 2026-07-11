@@ -480,6 +480,20 @@ export const LOOT = {
   stash: {
     stashSize: 50,
   },
+
+  // ---- Store (P5) ----
+  // Stock refreshes after every completed, lost, or forfeited game. Its item
+  // level follows the player's strongest career tower so the shop naturally
+  // grows with the roster. Prices and reroll escalation are Shards.
+  store: {
+    stockSize: 5,
+    ilvlBase: 1,
+    ilvlPerMaxLevel: 10,
+    ilvlPerMasteryRank: 1,
+    rerollCost: 30,
+    rerollCostIncrement: 15,
+    prices: { common: 25, enhanced: 70, rare: 180, prismatic: 500, singularity: 1500 },
+  },
 };
 
 // ---------- Visual effects (GeoDefense-inspired) ----------

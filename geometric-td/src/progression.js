@@ -11,7 +11,7 @@
 import { LOOT, SKILLS, SKILL_VALUES, SKILL_TIERS } from "./config.js";
 import { loadSave, writeSave, clearSave } from "./save.js";
 import { generateGuaranteedDrop, generateItem } from "./loot.js";
-import { canEquipItem, emptyGear, normalizeGear } from "./equipment.js";
+import { canEquipItem, emptyGear, masteryRankFor, normalizeGear } from "./equipment.js";
 
 let state = loadSave();
 migrateSkills();
@@ -25,6 +25,8 @@ state.shards ??= 0;
 state.stash ||= [];
 state.pendingLoot ||= [];
 state.store ||= { stock: [], rerolls: 0 };
+state.store.stock ||= [];
+state.store.rerolls ??= 0;
 state.endlessRewards ||= {};
 backfillGear();
 
@@ -152,6 +154,79 @@ function syncRoster(game) {
 
 export function getShards() {
   return state.shards;
+}
+
+// ---------- Store (P5) ----------
+
+function storeIlvlFromRoster() {
+  const store = LOOT.store;
+  let strongest = 0;
+  for (const rec of state.roster) {
+    const score = (rec.maxLevel || 1) * store.ilvlPerMaxLevel +
+      masteryRankFor(rec.xp || 0) * store.ilvlPerMasteryRank;
+    strongest = Math.max(strongest, score);
+  }
+  return Math.max(1, Math.min(LOOT.gen.ilvlMax, store.ilvlBase + strongest));
+}
+
+function generateStoreStock() {
+  const { stockSize } = LOOT.store;
+  state.store.stock = Array.from(
+    { length: stockSize },
+    () => generateItem({ ilvl: storeIlvlFromRoster() })
+  );
+}
+
+function normalizeStore() {
+  state.store ||= { stock: [], rerolls: 0 };
+  state.store.stock ||= [];
+  state.store.rerolls ??= 0;
+  if (!state.store.stock.length) {
+    generateStoreStock();
+    writeSave(state);
+  }
+}
+
+export function getStoreStock() {
+  normalizeStore();
+  return state.store.stock;
+}
+
+export function storeRerollCost() {
+  normalizeStore();
+  return LOOT.store.rerollCost + state.store.rerolls * LOOT.store.rerollCostIncrement;
+}
+
+export function rerollStore() {
+  const cost = storeRerollCost();
+  if (state.shards < cost) return { ok: false, reason: "shards", cost };
+  state.shards -= cost;
+  state.store.rerolls += 1;
+  generateStoreStock();
+  writeSave(state);
+  return { ok: true, cost, stock: state.store.stock };
+}
+
+export function buyStoreItem(itemId) {
+  normalizeStore();
+  const item = state.store.stock.find((candidate) => candidate.id === itemId);
+  if (!item) return { ok: false, reason: "missing" };
+  if (getStash().length >= LOOT.stash.stashSize) return { ok: false, reason: "stash" };
+  const cost = LOOT.store.prices[item.rarity] || 0;
+  if (state.shards < cost) return { ok: false, reason: "shards", cost };
+  state.shards -= cost;
+  state.store.stock = state.store.stock.filter((candidate) => candidate.id !== itemId);
+  state.stash.push(structuredClone(item));
+  writeSave(state);
+  return { ok: true, item, cost };
+}
+
+// Each game begins a fresh store visit: replace all remaining stock and reset
+// the escalating reroll price. Called alongside every battle-result save.
+function refreshStoreAfterRun() {
+  state.store ||= { stock: [], rerolls: 0 };
+  state.store.rerolls = 0;
+  generateStoreStock();
 }
 
 export function getStash() {
@@ -316,6 +391,7 @@ export function debugGrantGear(towerName, options = {}) {
 export function recordBattleEnd(game, won) {
   syncRoster(game);
   recordRunLoot(game);
+  refreshStoreAfterRun();
 
   if (won) {
     state.skillPoints += 1;
@@ -333,6 +409,7 @@ export function recordBattleEnd(game, won) {
 export function forfeitBattle(game) {
   syncRoster(game);
   recordRunLoot(game);
+  refreshStoreAfterRun();
   writeSave(state);
   return game.lootResult;
 }
@@ -344,6 +421,7 @@ export function forfeitBattle(game) {
 export function recordEndlessResult(game) {
   syncRoster(game);
   const lootResult = recordRunLoot(game);
+  refreshStoreAfterRun();
   const waveReached = game.waveIndex + 1;
   const prevBest = state.endlessBest[game.level.id] || 0;
   const isNewBest = waveReached > prevBest;
@@ -365,6 +443,8 @@ export function resetProgress() {
   state.stash ||= [];
   state.pendingLoot ||= [];
   state.store ||= { stock: [], rerolls: 0 };
+  state.store.stock ||= [];
+  state.store.rerolls ??= 0;
   state.endlessRewards ||= {};
   backfillGear();
 }

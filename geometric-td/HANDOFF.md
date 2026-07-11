@@ -468,7 +468,12 @@ as the source of truth, not that old ×1.2 rule.)
     GEAR panel lets the player claim, equip, unequip, sell, bulk-sell low
     rarities, or confirm-leave unclaimed drops. New save fields `stash`,
     `pendingLoot`, `store`, and `endlessRewards` are defaulted and backfilled.
-  - **Next: P5** — Store UI (stock generation, reroll, buy/sell).
+  - **P5 — Store UI** — completed (2026-07-11). Persistent five-item stock
+    scales from the best roster level + Mastery, refreshes after every battle,
+    rerolls for escalating Shard costs, and buys safely into the stash.
+    Store prices, reroll costs, stock size, and item-level scaling are all in
+    `config.js LOOT.store`; existing GEAR-panel selling remains the sell path.
+  - **Next: P6** — Endless reward tracks.
     Build one phase per fresh session (`/clear` between); the handoff is the
     committed files + LOOT_DESIGN checkboxes, not the conversation.
 
