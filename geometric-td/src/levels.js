@@ -495,41 +495,43 @@ const level006 = {
     { x: 4, y: 2 }, { x: 2, y: 5 }, { x: 4, y: 7 },
     { x: 0, y: 9 }, { x: 7, y: 4 }, { x: 2, y: 10 },
   ],
+  // PULSE SHOWCASE: dense Splitter walls that a single-line Railgun or a
+  // laser wall can't clear before the fragments swarm — you need splash.
+  // Fast/armored interludes keep Laser and burst in the mix.
   waves: [
-    { groups: [{ type: "basic", count: 14, spawnInterval: 0.5, healthMult: 3 }] },
-    { groups: [{ type: "splitter", count: 6, spawnInterval: 1.0, healthMult: 1.2 }] },
+    { groups: [{ type: "basic", count: 16, spawnInterval: 0.5, healthMult: 3.2 }] },
+    // 2 — first Splitter wall (Pulse check)
+    { groups: [{ type: "splitter", count: 10, spawnInterval: 0.7, healthMult: 1.6 }] },
     { groups: [
-      { type: "splitter", count: 8, spawnInterval: 0.8, healthMult: 1.6 },
-      { type: "fast", count: 8, spawnInterval: 0.35, startDelay: 4, healthMult: 2.9 },
+      { type: "splitter", count: 10, spawnInterval: 0.7, healthMult: 2.0 },
+      { type: "fast", count: 10, spawnInterval: 0.32, startDelay: 3, healthMult: 3.2 },
     ] },
     { groups: [
-      { type: "armored", count: 8, spawnInterval: 0.9, healthMult: 3.1 },
-      { type: "splitter", count: 6, spawnInterval: 0.9, startDelay: 4, healthMult: 1.9 },
+      { type: "armored", count: 9, spawnInterval: 0.85, healthMult: 3.4 },
+      { type: "splitter", count: 8, spawnInterval: 0.8, startDelay: 4, healthMult: 2.2 },
+    ] },
+    // 5 — big Splitter wall (real Pulse gate; Railgun wastes its shot)
+    { groups: [{ type: "splitter", count: 16, spawnInterval: 0.5, healthMult: 2.8 }] },
+    { groups: [
+      { type: "boss", count: 1, healthMult: 2.4 },
+      { type: "splitter", count: 12, spawnInterval: 0.55, startDelay: 3, healthMult: 2.8 },
     ] },
     { groups: [
-      { type: "basic", count: 20, spawnInterval: 0.35, healthMult: 4.3 },
-      { type: "splitter", count: 8, spawnInterval: 0.7, startDelay: 3, healthMult: 2.4 },
+      { type: "fast", count: 20, spawnInterval: 0.28, healthMult: 4.4, speedMult: 1.1 },
+      { type: "armored", count: 10, spawnInterval: 0.8, startDelay: 3, healthMult: 4.0 },
     ] },
     { groups: [
-      { type: "boss", count: 1, healthMult: 2.2 },
-      { type: "splitter", count: 10, spawnInterval: 0.6, startDelay: 3, healthMult: 2.6 },
+      { type: "splitter", count: 16, spawnInterval: 0.45, healthMult: 4.0 },
+      { type: "basic", count: 18, spawnInterval: 0.32, startDelay: 4, healthMult: 6.4 },
     ] },
     { groups: [
-      { type: "fast", count: 18, spawnInterval: 0.28, healthMult: 4.1, speedMult: 1.1 },
-      { type: "armored", count: 9, spawnInterval: 0.8, startDelay: 3, healthMult: 3.8 },
+      { type: "armored", count: 15, spawnInterval: 0.6, healthMult: 5.6 },
+      { type: "splitter", count: 12, spawnInterval: 0.5, startDelay: 5, healthMult: 4.4 },
     ] },
     { groups: [
-      { type: "splitter", count: 14, spawnInterval: 0.5, healthMult: 3.8 },
-      { type: "basic", count: 16, spawnInterval: 0.35, startDelay: 4, healthMult: 6.2 },
-    ] },
-    { groups: [
-      { type: "armored", count: 14, spawnInterval: 0.65, healthMult: 5.3 },
-      { type: "splitter", count: 10, spawnInterval: 0.55, startDelay: 5, healthMult: 4.3 },
-    ] },
-    { groups: [
-      { type: "boss", count: 2, spawnInterval: 6, healthMult: 3.4 },
-      { type: "splitter", count: 12, spawnInterval: 0.5, startDelay: 4, healthMult: 4.8 },
-      { type: "fast", count: 12, spawnInterval: 0.3, startDelay: 10, healthMult: 5.8 },
+      { type: "boss", count: 2, spawnInterval: 6, healthMult: 3.6 },
+      { type: "splitter", count: 14, spawnInterval: 0.45, startDelay: 4, healthMult: 5.0 },
+      { type: "fast", count: 12, spawnInterval: 0.3, startDelay: 10, healthMult: 6.0 },
     ] },
   ],
 };
@@ -565,41 +567,46 @@ const level007 = {
     { x: 4, y: 2 }, { x: 3, y: 5 }, { x: 4, y: 6 },
     { x: 3, y: 8 }, { x: 0, y: 4 }, { x: 7, y: 8 }, { x: 6, y: 9 },
   ],
+  // RAILGUN SHOWCASE: Regenerator walls out-heal any laser chip — only
+  // burst outruns their regen. Splitter escorts punish a pure-Railgun
+  // answer, so you juggle burst (Rail) with splash (Pulse).
   waves: [
-    { groups: [{ type: "basic", count: 14, spawnInterval: 0.5, healthMult: 3.4 }] },
-    { groups: [{ type: "regenerator", count: 5, spawnInterval: 1.2, healthMult: 1.2 }] },
+    { groups: [{ type: "basic", count: 16, spawnInterval: 0.5, healthMult: 3.6 }] },
+    // 2 — first Regenerator wall (Railgun check; lasers just tickle them)
+    { groups: [{ type: "regenerator", count: 6, spawnInterval: 1.1, healthMult: 1.6 }] },
     { groups: [
-      { type: "regenerator", count: 6, spawnInterval: 1.0, healthMult: 1.7 },
-      { type: "fast", count: 10, spawnInterval: 0.3, startDelay: 4, healthMult: 3.1 },
+      { type: "regenerator", count: 7, spawnInterval: 1.0, healthMult: 2.2 },
+      { type: "fast", count: 10, spawnInterval: 0.3, startDelay: 4, healthMult: 3.4 },
     ] },
     { groups: [
-      { type: "splitter", count: 8, spawnInterval: 0.8, healthMult: 2.4 },
-      { type: "regenerator", count: 6, spawnInterval: 1.0, startDelay: 5, healthMult: 2.2 },
+      { type: "splitter", count: 9, spawnInterval: 0.7, healthMult: 2.6 },
+      { type: "regenerator", count: 6, spawnInterval: 1.0, startDelay: 5, healthMult: 2.6 },
     ] },
     { groups: [
-      { type: "armored", count: 10, spawnInterval: 0.75, healthMult: 3.6 },
-      { type: "regenerator", count: 7, spawnInterval: 0.9, startDelay: 4, healthMult: 2.6 },
+      { type: "armored", count: 11, spawnInterval: 0.7, healthMult: 3.8 },
+      { type: "regenerator", count: 7, spawnInterval: 0.9, startDelay: 4, healthMult: 2.9 },
     ] },
     { groups: [
-      { type: "boss", count: 1, healthMult: 2.4 },
-      { type: "regenerator", count: 8, spawnInterval: 0.8, startDelay: 3, healthMult: 3.1 },
+      { type: "boss", count: 1, healthMult: 2.6 },
+      { type: "regenerator", count: 8, spawnInterval: 0.8, startDelay: 3, healthMult: 3.4 },
+    ] },
+    // 7 — heavy Regenerator wall (real Railgun gate)
+    { groups: [
+      { type: "regenerator", count: 12, spawnInterval: 0.7, healthMult: 3.8 },
+      { type: "fast", count: 12, spawnInterval: 0.28, startDelay: 5, healthMult: 4.6 },
     ] },
     { groups: [
-      { type: "basic", count: 24, spawnInterval: 0.3, healthMult: 5.4 },
-      { type: "splitter", count: 10, spawnInterval: 0.6, startDelay: 4, healthMult: 3.4 },
+      { type: "basic", count: 26, spawnInterval: 0.28, healthMult: 5.8 },
+      { type: "splitter", count: 10, spawnInterval: 0.55, startDelay: 4, healthMult: 3.8 },
     ] },
     { groups: [
-      { type: "regenerator", count: 12, spawnInterval: 0.6, healthMult: 3.6 },
-      { type: "fast", count: 14, spawnInterval: 0.28, startDelay: 5, healthMult: 4.6 },
+      { type: "armored", count: 16, spawnInterval: 0.6, healthMult: 5.4 },
+      { type: "regenerator", count: 10, spawnInterval: 0.7, startDelay: 4, healthMult: 4.4 },
     ] },
     { groups: [
-      { type: "armored", count: 16, spawnInterval: 0.6, healthMult: 5 },
-      { type: "regenerator", count: 10, spawnInterval: 0.7, startDelay: 4, healthMult: 4.1 },
-    ] },
-    { groups: [
-      { type: "boss", count: 2, spawnInterval: 6, healthMult: 3.4 },
-      { type: "regenerator", count: 10, spawnInterval: 0.7, startDelay: 4, healthMult: 4.6 },
-      { type: "splitter", count: 10, spawnInterval: 0.5, startDelay: 10, healthMult: 4.3 },
+      { type: "boss", count: 2, spawnInterval: 6, healthMult: 3.6 },
+      { type: "regenerator", count: 10, spawnInterval: 0.65, startDelay: 4, healthMult: 4.8 },
+      { type: "splitter", count: 12, spawnInterval: 0.5, startDelay: 10, healthMult: 4.6 },
     ] },
   ],
 };
@@ -634,40 +641,44 @@ const level008 = {
     { x: 2, y: 3 }, { x: 5, y: 3 }, { x: 3, y: 4 }, { x: 5, y: 6 },
     { x: 2, y: 6 }, { x: 4, y: 7 }, { x: 5, y: 9 }, { x: 3, y: 10 },
   ],
+  // JUGGLE EVERYTHING: Splitters (want Pulse), Regenerators (want Railgun)
+  // and fast rushes (want Laser) alternate, so no two-tower build covers
+  // it — the maze forces you to commit each prime spot to the right answer.
   waves: [
     { groups: [
-      { type: "splitter", count: 8, spawnInterval: 0.7, healthMult: 2.6 },
-      { type: "regenerator", count: 5, spawnInterval: 1.0, startDelay: 4, healthMult: 2.4 },
+      { type: "splitter", count: 8, spawnInterval: 0.7, healthMult: 2.8 },
+      { type: "regenerator", count: 5, spawnInterval: 1.0, startDelay: 4, healthMult: 2.6 },
     ] },
-    { groups: [{ type: "fast", count: 16, spawnInterval: 0.25, healthMult: 3.8, speedMult: 1.1 }] },
+    // 2 — fast wall (Laser check)
+    { groups: [{ type: "fast", count: 18, spawnInterval: 0.25, healthMult: 4.0, speedMult: 1.1 }] },
     { groups: [
-      { type: "regenerator", count: 8, spawnInterval: 0.8, healthMult: 3.1 },
-      { type: "splitter", count: 8, spawnInterval: 0.7, startDelay: 4, healthMult: 3.1 },
-    ] },
-    { groups: [
-      { type: "armored", count: 12, spawnInterval: 0.65, healthMult: 4.3 },
-      { type: "fast", count: 12, spawnInterval: 0.3, startDelay: 4, healthMult: 4.3 },
+      { type: "regenerator", count: 8, spawnInterval: 0.8, healthMult: 3.2 },
+      { type: "splitter", count: 8, spawnInterval: 0.7, startDelay: 4, healthMult: 3.2 },
     ] },
     { groups: [
-      { type: "boss", count: 1, healthMult: 2.6, speedMult: 1.2 },
-      { type: "splitter", count: 10, spawnInterval: 0.6, startDelay: 3, healthMult: 3.6 },
+      { type: "armored", count: 12, spawnInterval: 0.65, healthMult: 4.4 },
+      { type: "fast", count: 12, spawnInterval: 0.3, startDelay: 4, healthMult: 4.4 },
     ] },
     { groups: [
-      { type: "basic", count: 26, spawnInterval: 0.28, healthMult: 6.6 },
-      { type: "regenerator", count: 8, spawnInterval: 0.8, startDelay: 4, healthMult: 3.6 },
+      { type: "boss", count: 1, healthMult: 2.8, speedMult: 1.2 },
+      { type: "splitter", count: 10, spawnInterval: 0.55, startDelay: 3, healthMult: 3.8 },
     ] },
     { groups: [
-      { type: "splitter", count: 14, spawnInterval: 0.45, healthMult: 4.1 },
-      { type: "armored", count: 10, spawnInterval: 0.7, startDelay: 4, healthMult: 5.3 },
+      { type: "basic", count: 26, spawnInterval: 0.28, healthMult: 6.8 },
+      { type: "regenerator", count: 8, spawnInterval: 0.8, startDelay: 4, healthMult: 3.8 },
+    ] },
+    { groups: [
+      { type: "splitter", count: 14, spawnInterval: 0.45, healthMult: 4.2 },
+      { type: "armored", count: 10, spawnInterval: 0.7, startDelay: 4, healthMult: 5.4 },
     ] },
     { groups: [
       { type: "regenerator", count: 14, spawnInterval: 0.55, healthMult: 4.6 },
-      { type: "fast", count: 16, spawnInterval: 0.25, startDelay: 5, healthMult: 5.3, speedMult: 1.15 },
+      { type: "fast", count: 16, spawnInterval: 0.25, startDelay: 5, healthMult: 5.4, speedMult: 1.15 },
     ] },
     { groups: [
       { type: "boss", count: 2, spawnInterval: 5, healthMult: 3.6 },
       { type: "splitter", count: 12, spawnInterval: 0.5, startDelay: 5, healthMult: 4.8 },
-      { type: "regenerator", count: 8, spawnInterval: 0.7, startDelay: 12, healthMult: 5 },
+      { type: "regenerator", count: 8, spawnInterval: 0.7, startDelay: 12, healthMult: 5.2 },
     ] },
   ],
 };
@@ -699,40 +710,41 @@ const level009 = {
     { x: 3, y: 1 }, { x: 7, y: 3 }, { x: 3, y: 4 },
     { x: 0, y: 6 }, { x: 4, y: 7 }, { x: 2, y: 9 }, { x: 7, y: 10 },
   ],
+  // SLOW + LASER SHOWCASE: everything sprints, and Pulse orbs can't catch
+  // the diamonds (fast resist splash). Pin them with Slow, finish with
+  // Laser. The pure-fast blitz (wave 7) is the Slow-tower gate.
   waves: [
-    { groups: [{ type: "fast", count: 16, spawnInterval: 0.32, healthMult: 2.9 }] },
+    { groups: [{ type: "fast", count: 18, spawnInterval: 0.3, healthMult: 3.2 }] },
     { groups: [
-      { type: "fast", count: 14, spawnInterval: 0.28, healthMult: 4.1, speedMult: 1.15 },
-      { type: "splitter", count: 8, spawnInterval: 0.7, startDelay: 3, healthMult: 3.4, speedMult: 1.1 },
+      { type: "fast", count: 16, spawnInterval: 0.26, healthMult: 4.4, speedMult: 1.15 },
+      { type: "splitter", count: 8, spawnInterval: 0.7, startDelay: 3, healthMult: 3.6, speedMult: 1.1 },
     ] },
     { groups: [
-      { type: "armored", count: 12, spawnInterval: 0.6, healthMult: 4.6, speedMult: 1.15 },
-      { type: "fast", count: 12, spawnInterval: 0.28, startDelay: 4, healthMult: 4.6, speedMult: 1.2 },
+      { type: "armored", count: 12, spawnInterval: 0.6, healthMult: 4.8, speedMult: 1.15 },
+      { type: "fast", count: 12, spawnInterval: 0.28, startDelay: 4, healthMult: 4.8, speedMult: 1.2 },
     ] },
     { groups: [
-      { type: "regenerator", count: 10, spawnInterval: 0.7, healthMult: 3.8, speedMult: 1.2 },
-      { type: "splitter", count: 10, spawnInterval: 0.55, startDelay: 4, healthMult: 3.8, speedMult: 1.15 },
+      { type: "regenerator", count: 10, spawnInterval: 0.7, healthMult: 4.0, speedMult: 1.2 },
+      { type: "splitter", count: 10, spawnInterval: 0.55, startDelay: 4, healthMult: 4.0, speedMult: 1.15 },
     ] },
     { groups: [
       { type: "boss", count: 1, healthMult: 2.9, speedMult: 1.4 },
-      { type: "fast", count: 16, spawnInterval: 0.25, startDelay: 3, healthMult: 5, speedMult: 1.2 },
+      { type: "fast", count: 18, spawnInterval: 0.24, startDelay: 3, healthMult: 5.2, speedMult: 1.2 },
     ] },
     { groups: [
-      { type: "basic", count: 28, spawnInterval: 0.25, healthMult: 7.2, speedMult: 1.15 },
-      { type: "splitter", count: 12, spawnInterval: 0.5, startDelay: 4, healthMult: 4.3, speedMult: 1.15 },
+      { type: "basic", count: 28, spawnInterval: 0.24, healthMult: 7.6, speedMult: 1.15 },
+      { type: "splitter", count: 12, spawnInterval: 0.5, startDelay: 4, healthMult: 4.6, speedMult: 1.15 },
     ] },
+    // 7 — mega fast blitz (Slow gate: unpinned, they run the lanes clean)
+    { groups: [{ type: "fast", count: 30, spawnInterval: 0.17, healthMult: 6.0, speedMult: 1.3 }] },
     { groups: [
-      { type: "fast", count: 24, spawnInterval: 0.2, healthMult: 5.8, speedMult: 1.25 },
-      { type: "regenerator", count: 12, spawnInterval: 0.6, startDelay: 4, healthMult: 4.8, speedMult: 1.2 },
-    ] },
-    { groups: [
-      { type: "armored", count: 18, spawnInterval: 0.5, healthMult: 6, speedMult: 1.2 },
-      { type: "fast", count: 16, spawnInterval: 0.22, startDelay: 5, healthMult: 6.2, speedMult: 1.25 },
+      { type: "armored", count: 18, spawnInterval: 0.5, healthMult: 6.2, speedMult: 1.2 },
+      { type: "fast", count: 16, spawnInterval: 0.22, startDelay: 5, healthMult: 6.4, speedMult: 1.25 },
     ] },
     { groups: [
       { type: "boss", count: 2, spawnInterval: 5, healthMult: 3.8, speedMult: 1.35 },
-      { type: "splitter", count: 14, spawnInterval: 0.45, startDelay: 5, healthMult: 5.3, speedMult: 1.2 },
-      { type: "fast", count: 16, spawnInterval: 0.22, startDelay: 11, healthMult: 6.6, speedMult: 1.3 },
+      { type: "fast", count: 20, spawnInterval: 0.2, startDelay: 4, healthMult: 6.8, speedMult: 1.3 },
+      { type: "splitter", count: 12, spawnInterval: 0.45, startDelay: 11, healthMult: 5.6, speedMult: 1.2 },
     ] },
   ],
 };
@@ -764,48 +776,51 @@ const level010 = {
     { x: 4, y: 5 }, { x: 4, y: 7 }, { x: 2, y: 6 },
     { x: 5, y: 2 }, { x: 0, y: 5 }, { x: 7, y: 6 }, { x: 2, y: 11 }, { x: 5, y: 11 },
   ],
+  // BATCH FINALE: every enemy type, every counter tested. Armored walls
+  // (Pulse/Rail), Regenerator escorts (Rail), Splitter floods (Pulse) and
+  // fast surges (Laser/Slow) stack up — a mono build leaks somewhere.
   waves: [
     { groups: [
-      { type: "basic", count: 18, spawnInterval: 0.4, healthMult: 4.2 },
-      { type: "splitter", count: 8, spawnInterval: 0.7, startDelay: 4, healthMult: 3.1 },
+      { type: "basic", count: 20, spawnInterval: 0.38, healthMult: 4.6 },
+      { type: "splitter", count: 8, spawnInterval: 0.7, startDelay: 4, healthMult: 3.4 },
     ] },
     { groups: [
-      { type: "regenerator", count: 8, spawnInterval: 0.8, healthMult: 3.4 },
-      { type: "fast", count: 14, spawnInterval: 0.28, startDelay: 4, healthMult: 4.3 },
+      { type: "regenerator", count: 8, spawnInterval: 0.8, healthMult: 3.8 },
+      { type: "fast", count: 14, spawnInterval: 0.28, startDelay: 4, healthMult: 4.6 },
     ] },
     { groups: [
-      { type: "armored", count: 14, spawnInterval: 0.6, healthMult: 4.8 },
-      { type: "splitter", count: 10, spawnInterval: 0.55, startDelay: 4, healthMult: 3.8 },
+      { type: "armored", count: 15, spawnInterval: 0.55, healthMult: 5.2 },
+      { type: "splitter", count: 10, spawnInterval: 0.55, startDelay: 4, healthMult: 4.2 },
     ] },
     { groups: [
-      { type: "boss", count: 1, healthMult: 3.1 },
-      { type: "regenerator", count: 10, spawnInterval: 0.7, startDelay: 3, healthMult: 4.1 },
+      { type: "boss", count: 1, healthMult: 3.4 },
+      { type: "regenerator", count: 10, spawnInterval: 0.7, startDelay: 3, healthMult: 4.4 },
     ] },
     { groups: [
-      { type: "basic", count: 30, spawnInterval: 0.24, healthMult: 7.8 },
-      { type: "splitter", count: 12, spawnInterval: 0.5, startDelay: 4, healthMult: 4.6 },
+      { type: "basic", count: 32, spawnInterval: 0.22, healthMult: 8.4 },
+      { type: "splitter", count: 12, spawnInterval: 0.5, startDelay: 4, healthMult: 5.0 },
     ] },
     { groups: [
-      { type: "fast", count: 22, spawnInterval: 0.22, healthMult: 6, speedMult: 1.2 },
-      { type: "regenerator", count: 12, spawnInterval: 0.6, startDelay: 4, healthMult: 5 },
+      { type: "fast", count: 24, spawnInterval: 0.2, healthMult: 6.4, speedMult: 1.2 },
+      { type: "regenerator", count: 12, spawnInterval: 0.6, startDelay: 4, healthMult: 5.4 },
     ] },
     { groups: [
-      { type: "armored", count: 20, spawnInterval: 0.5, healthMult: 6.6 },
-      { type: "splitter", count: 12, spawnInterval: 0.5, startDelay: 6, healthMult: 5.3 },
+      { type: "armored", count: 22, spawnInterval: 0.45, healthMult: 7.2 },
+      { type: "splitter", count: 12, spawnInterval: 0.5, startDelay: 6, healthMult: 5.6 },
     ] },
     { groups: [
-      { type: "boss", count: 2, spawnInterval: 6, healthMult: 3.8 },
-      { type: "regenerator", count: 12, spawnInterval: 0.6, startDelay: 4, healthMult: 5.5 },
+      { type: "boss", count: 2, spawnInterval: 6, healthMult: 4.0 },
+      { type: "regenerator", count: 12, spawnInterval: 0.55, startDelay: 4, healthMult: 5.8 },
     ] },
     { groups: [
-      { type: "splitter", count: 18, spawnInterval: 0.4, healthMult: 6 },
-      { type: "fast", count: 18, spawnInterval: 0.22, startDelay: 5, healthMult: 7.2, speedMult: 1.25 },
-      { type: "armored", count: 12, spawnInterval: 0.55, startDelay: 10, healthMult: 7.2 },
+      { type: "splitter", count: 18, spawnInterval: 0.4, healthMult: 6.4 },
+      { type: "fast", count: 18, spawnInterval: 0.22, startDelay: 5, healthMult: 7.6, speedMult: 1.25 },
+      { type: "armored", count: 12, spawnInterval: 0.55, startDelay: 10, healthMult: 7.6 },
     ] },
     { groups: [
-      { type: "boss", count: 3, spawnInterval: 5, healthMult: 4.3, speedMult: 1.15 },
-      { type: "regenerator", count: 14, spawnInterval: 0.55, startDelay: 6, healthMult: 6.2 },
-      { type: "splitter", count: 14, spawnInterval: 0.45, startDelay: 14, healthMult: 6.6 },
+      { type: "boss", count: 3, spawnInterval: 5, healthMult: 4.6, speedMult: 1.15 },
+      { type: "regenerator", count: 14, spawnInterval: 0.5, startDelay: 6, healthMult: 6.6 },
+      { type: "splitter", count: 14, spawnInterval: 0.42, startDelay: 14, healthMult: 7.0 },
     ] },
   ],
 };
