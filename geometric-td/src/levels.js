@@ -825,9 +825,385 @@ const level010 = {
   ],
 };
 
+// ============================================================
+// WORLD 3 — "PRISM DEEP" (levels 11-15). Post-Rocket endgame: every
+// tower unlocked, so waves stack multiple bosses (Rocket food) and dense
+// Splitter/Regenerator clusters that demand the whole toolkit. New bold
+// single-hue palettes (crimson, teal, magenta, silver, radiant white) and
+// path shapes not used in W1/W2 — a bottom spiral, cascades, a plus-detour,
+// a tight switchback ladder, and a full perimeter-into-core grand finale.
+// ============================================================
+
+// Level 11 — "Crimson Vein": a spiral that enters from the BOTTOM and
+// coils up into a mid-board core. Boss-heavy — the Rocket earns its slot.
+const level011 = {
+  id: "level_011",
+  name: "Crimson Vein",
+  gridWidth: 8,
+  gridHeight: 12,
+  startingMoney: 240,
+  coreHealth: 12,
+  timeBetweenWaves: 5,
+  palette: {
+    background: "#160406",
+    gridLine: "rgba(255, 60, 80, 0.08)",
+    gridLineMajor: "rgba(255, 60, 80, 0.16)",
+    buildableDot: "rgba(255, 90, 110, 0.22)",
+    pathChannel: "rgba(46, 8, 12, 0.9)",
+    pathEdge: "rgba(255, 70, 90, 0.55)",
+    pathFlow: "rgba(255, 140, 150, 0.7)",
+  },
+  pathCorners: [
+    { x: 4, y: 11 }, { x: 4, y: 8 }, { x: 1, y: 8 }, { x: 1, y: 2 },
+    { x: 6, y: 2 }, { x: 6, y: 9 }, { x: 3, y: 9 }, { x: 3, y: 6 },
+  ],
+  blockedTiles: [
+    { x: 5, y: 5 }, { x: 2, y: 4 }, { x: 4, y: 5 },
+    { x: 6, y: 11 }, { x: 0, y: 10 }, { x: 3, y: 3 },
+  ],
+  waves: [
+    { groups: [
+      { type: "basic", count: 18, spawnInterval: 0.4, healthMult: 4.5 },
+      { type: "splitter", count: 8, spawnInterval: 0.6, startDelay: 4, healthMult: 3.6 },
+    ] },
+    { groups: [{ type: "armored", count: 12, spawnInterval: 0.6, healthMult: 5.2 }] },
+    { groups: [
+      { type: "boss", count: 1, healthMult: 3.4 },
+      { type: "basic", count: 16, spawnInterval: 0.4, startDelay: 2, healthMult: 5.2 },
+    ] },
+    { groups: [
+      { type: "fast", count: 22, spawnInterval: 0.24, healthMult: 5.6, speedMult: 1.15 },
+      { type: "armored", count: 10, spawnInterval: 0.7, startDelay: 4, healthMult: 5.4 },
+    ] },
+    { groups: [
+      { type: "splitter", count: 16, spawnInterval: 0.45, healthMult: 4.6 },
+      { type: "regenerator", count: 8, spawnInterval: 0.8, startDelay: 4, healthMult: 4.2 },
+    ] },
+    { groups: [
+      { type: "boss", count: 2, spawnInterval: 6, healthMult: 3.8 },
+      { type: "armored", count: 12, spawnInterval: 0.6, startDelay: 3, healthMult: 5.8 },
+    ] },
+    { groups: [
+      { type: "armored", count: 20, spawnInterval: 0.5, healthMult: 7.0 },
+      { type: "fast", count: 14, spawnInterval: 0.26, startDelay: 5, healthMult: 6.4 },
+    ] },
+    { groups: [
+      { type: "regenerator", count: 14, spawnInterval: 0.6, healthMult: 5.0 },
+      { type: "splitter", count: 12, spawnInterval: 0.5, startDelay: 4, healthMult: 5.0 },
+    ] },
+    { groups: [
+      { type: "boss", count: 2, spawnInterval: 5, healthMult: 4.4 },
+      { type: "basic", count: 24, spawnInterval: 0.28, startDelay: 3, healthMult: 8.4 },
+      { type: "fast", count: 16, spawnInterval: 0.24, startDelay: 10, healthMult: 7.2 },
+    ] },
+    { groups: [
+      { type: "boss", count: 3, spawnInterval: 5, healthMult: 4.8, speedMult: 1.1 },
+      { type: "armored", count: 14, spawnInterval: 0.55, startDelay: 6, healthMult: 8.0 },
+      { type: "splitter", count: 14, spawnInterval: 0.45, startDelay: 12, healthMult: 6.6 },
+    ] },
+  ],
+};
+
+// Level 12 — "Abyssal Teal": a widening cascade of steps down the board.
+// Splitter + Regenerator heavy — Pulse and Rocket for the clusters,
+// Railgun burst for the healers.
+const level012 = {
+  id: "level_012",
+  name: "Abyssal Teal",
+  gridWidth: 8,
+  gridHeight: 12,
+  startingMoney: 220,
+  coreHealth: 10,
+  timeBetweenWaves: 5,
+  palette: {
+    background: "#04140f",
+    gridLine: "rgba(40, 255, 210, 0.08)",
+    gridLineMajor: "rgba(40, 255, 210, 0.16)",
+    buildableDot: "rgba(90, 255, 225, 0.22)",
+    pathChannel: "rgba(6, 40, 34, 0.9)",
+    pathEdge: "rgba(40, 255, 210, 0.5)",
+    pathFlow: "rgba(150, 255, 235, 0.7)",
+  },
+  pathCorners: [
+    { x: 0, y: 0 }, { x: 3, y: 0 }, { x: 3, y: 3 }, { x: 0, y: 3 },
+    { x: 0, y: 6 }, { x: 4, y: 6 }, { x: 4, y: 9 }, { x: 1, y: 9 }, { x: 1, y: 11 },
+  ],
+  blockedTiles: [
+    { x: 5, y: 1 }, { x: 2, y: 5 }, { x: 5, y: 7 },
+    { x: 3, y: 10 }, { x: 6, y: 4 }, { x: 2, y: 2 },
+  ],
+  waves: [
+    { groups: [{ type: "splitter", count: 12, spawnInterval: 0.55, healthMult: 4.0 }] },
+    { groups: [
+      { type: "regenerator", count: 8, spawnInterval: 0.8, healthMult: 3.8 },
+      { type: "fast", count: 12, spawnInterval: 0.28, startDelay: 4, healthMult: 5.0 },
+    ] },
+    { groups: [
+      { type: "splitter", count: 16, spawnInterval: 0.45, healthMult: 4.6 },
+      { type: "basic", count: 18, spawnInterval: 0.32, startDelay: 4, healthMult: 6.6 },
+    ] },
+    { groups: [{ type: "armored", count: 14, spawnInterval: 0.55, healthMult: 5.6 }] },
+    { groups: [
+      { type: "regenerator", count: 12, spawnInterval: 0.6, healthMult: 4.6 },
+      { type: "splitter", count: 12, spawnInterval: 0.5, startDelay: 4, healthMult: 4.6 },
+    ] },
+    { groups: [
+      { type: "boss", count: 1, healthMult: 3.6 },
+      { type: "regenerator", count: 10, spawnInterval: 0.7, startDelay: 3, healthMult: 4.6 },
+    ] },
+    { groups: [
+      { type: "fast", count: 26, spawnInterval: 0.2, healthMult: 6.6, speedMult: 1.2 },
+      { type: "splitter", count: 14, spawnInterval: 0.45, startDelay: 4, healthMult: 5.2 },
+    ] },
+    { groups: [
+      { type: "armored", count: 18, spawnInterval: 0.5, healthMult: 7.2 },
+      { type: "regenerator", count: 10, spawnInterval: 0.65, startDelay: 4, healthMult: 5.4 },
+    ] },
+    { groups: [
+      { type: "splitter", count: 20, spawnInterval: 0.4, healthMult: 6.4 },
+      { type: "boss", count: 1, healthMult: 4.2, startDelay: 2 },
+      { type: "fast", count: 16, spawnInterval: 0.24, startDelay: 10, healthMult: 7.0 },
+    ] },
+    { groups: [
+      { type: "boss", count: 2, spawnInterval: 5, healthMult: 4.6 },
+      { type: "regenerator", count: 14, spawnInterval: 0.55, startDelay: 5, healthMult: 6.4 },
+      { type: "splitter", count: 16, spawnInterval: 0.42, startDelay: 12, healthMult: 6.8 },
+    ] },
+  ],
+};
+
+// Level 13 — "Violet Pulse": a plus-shaped detour into the center then
+// out to the edges. Everything SPRINTS — Slow + Laser, with Pulse/Rocket
+// for the splitter clusters.
+const level013 = {
+  id: "level_013",
+  name: "Violet Pulse",
+  gridWidth: 8,
+  gridHeight: 12,
+  startingMoney: 200,
+  coreHealth: 10,
+  timeBetweenWaves: 5,
+  palette: {
+    background: "#170518",
+    gridLine: "rgba(255, 60, 200, 0.08)",
+    gridLineMajor: "rgba(255, 60, 200, 0.16)",
+    buildableDot: "rgba(255, 110, 220, 0.22)",
+    pathChannel: "rgba(48, 8, 40, 0.9)",
+    pathEdge: "rgba(255, 70, 210, 0.55)",
+    pathFlow: "rgba(255, 150, 235, 0.7)",
+  },
+  pathCorners: [
+    { x: 3, y: 0 }, { x: 3, y: 5 }, { x: 0, y: 5 }, { x: 0, y: 8 },
+    { x: 7, y: 8 }, { x: 7, y: 3 }, { x: 5, y: 3 }, { x: 5, y: 11 },
+  ],
+  blockedTiles: [
+    { x: 2, y: 2 }, { x: 2, y: 6 }, { x: 4, y: 4 },
+    { x: 6, y: 10 }, { x: 1, y: 3 }, { x: 3, y: 9 },
+  ],
+  waves: [
+    { groups: [{ type: "fast", count: 20, spawnInterval: 0.28, healthMult: 4.0 }] },
+    { groups: [
+      { type: "fast", count: 18, spawnInterval: 0.24, healthMult: 5.2, speedMult: 1.2 },
+      { type: "splitter", count: 10, spawnInterval: 0.6, startDelay: 3, healthMult: 4.2 },
+    ] },
+    { groups: [
+      { type: "basic", count: 24, spawnInterval: 0.28, healthMult: 6.6 },
+      { type: "fast", count: 14, spawnInterval: 0.26, startDelay: 4, healthMult: 5.6 },
+    ] },
+    { groups: [
+      { type: "splitter", count: 16, spawnInterval: 0.45, healthMult: 4.8 },
+      { type: "regenerator", count: 8, spawnInterval: 0.8, startDelay: 4, healthMult: 4.4 },
+    ] },
+    { groups: [
+      { type: "boss", count: 1, healthMult: 3.4, speedMult: 1.25 },
+      { type: "fast", count: 20, spawnInterval: 0.24, startDelay: 3, healthMult: 5.8, speedMult: 1.2 },
+    ] },
+    // 6 — fast blitz (Slow gate)
+    { groups: [{ type: "fast", count: 30, spawnInterval: 0.16, healthMult: 6.4, speedMult: 1.3 }] },
+    { groups: [
+      { type: "armored", count: 14, spawnInterval: 0.55, healthMult: 6.4 },
+      { type: "fast", count: 16, spawnInterval: 0.24, startDelay: 4, healthMult: 6.6, speedMult: 1.2 },
+    ] },
+    { groups: [
+      { type: "splitter", count: 18, spawnInterval: 0.4, healthMult: 5.8 },
+      { type: "regenerator", count: 10, spawnInterval: 0.65, startDelay: 4, healthMult: 5.2 },
+    ] },
+    { groups: [
+      { type: "boss", count: 2, spawnInterval: 5, healthMult: 4.2, speedMult: 1.2 },
+      { type: "fast", count: 22, spawnInterval: 0.22, startDelay: 4, healthMult: 7.0, speedMult: 1.25 },
+      { type: "splitter", count: 12, spawnInterval: 0.45, startDelay: 11, healthMult: 5.6 },
+    ] },
+    { groups: [
+      { type: "boss", count: 2, spawnInterval: 5, healthMult: 4.8, speedMult: 1.25 },
+      { type: "fast", count: 26, spawnInterval: 0.2, startDelay: 4, healthMult: 7.6, speedMult: 1.3 },
+      { type: "regenerator", count: 12, spawnInterval: 0.6, startDelay: 12, healthMult: 6.0 },
+    ] },
+  ],
+};
+
+// Level 14 — "Silver Null": a tight switchback ladder (six short lanes).
+// Little dwell time per lane but heavy coverage — every tower type shows
+// up and the maze rewards committing prime tiles to the right counter.
+const level014 = {
+  id: "level_014",
+  name: "Silver Null",
+  gridWidth: 8,
+  gridHeight: 12,
+  startingMoney: 240,
+  coreHealth: 10,
+  timeBetweenWaves: 5,
+  palette: {
+    background: "#0b0d12",
+    gridLine: "rgba(200, 215, 240, 0.09)",
+    gridLineMajor: "rgba(200, 215, 240, 0.18)",
+    buildableDot: "rgba(220, 230, 255, 0.25)",
+    pathChannel: "rgba(22, 26, 34, 0.9)",
+    pathEdge: "rgba(210, 225, 250, 0.6)",
+    pathFlow: "rgba(240, 248, 255, 0.75)",
+  },
+  pathCorners: [
+    { x: 0, y: 1 }, { x: 5, y: 1 }, { x: 5, y: 3 }, { x: 1, y: 3 },
+    { x: 1, y: 5 }, { x: 6, y: 5 }, { x: 6, y: 7 }, { x: 2, y: 7 },
+    { x: 2, y: 9 }, { x: 6, y: 9 }, { x: 6, y: 11 },
+  ],
+  blockedTiles: [
+    { x: 7, y: 2 }, { x: 0, y: 4 }, { x: 7, y: 6 },
+    { x: 0, y: 8 }, { x: 4, y: 10 }, { x: 3, y: 0 },
+  ],
+  waves: [
+    { groups: [
+      { type: "basic", count: 20, spawnInterval: 0.35, healthMult: 5.0 },
+      { type: "splitter", count: 8, spawnInterval: 0.6, startDelay: 4, healthMult: 4.0 },
+    ] },
+    { groups: [
+      { type: "armored", count: 14, spawnInterval: 0.55, healthMult: 5.6 },
+      { type: "fast", count: 12, spawnInterval: 0.28, startDelay: 4, healthMult: 5.4 },
+    ] },
+    { groups: [
+      { type: "regenerator", count: 10, spawnInterval: 0.7, healthMult: 4.6 },
+      { type: "splitter", count: 12, spawnInterval: 0.5, startDelay: 4, healthMult: 4.6 },
+    ] },
+    { groups: [
+      { type: "boss", count: 1, healthMult: 3.8 },
+      { type: "regenerator", count: 10, spawnInterval: 0.7, startDelay: 3, healthMult: 4.8 },
+    ] },
+    { groups: [
+      { type: "fast", count: 26, spawnInterval: 0.2, healthMult: 6.6, speedMult: 1.2 },
+      { type: "armored", count: 12, spawnInterval: 0.6, startDelay: 4, healthMult: 6.4 },
+    ] },
+    { groups: [
+      { type: "splitter", count: 20, spawnInterval: 0.4, healthMult: 6.2 },
+      { type: "basic", count: 24, spawnInterval: 0.3, startDelay: 4, healthMult: 8.0 },
+    ] },
+    { groups: [
+      { type: "armored", count: 22, spawnInterval: 0.45, healthMult: 7.6 },
+      { type: "regenerator", count: 12, spawnInterval: 0.6, startDelay: 4, healthMult: 5.6 },
+    ] },
+    { groups: [
+      { type: "boss", count: 2, spawnInterval: 6, healthMult: 4.2 },
+      { type: "fast", count: 20, spawnInterval: 0.24, startDelay: 4, healthMult: 7.2, speedMult: 1.2 },
+    ] },
+    { groups: [
+      { type: "splitter", count: 20, spawnInterval: 0.38, healthMult: 6.6 },
+      { type: "regenerator", count: 14, spawnInterval: 0.55, startDelay: 5, healthMult: 6.0 },
+      { type: "fast", count: 18, spawnInterval: 0.24, startDelay: 11, healthMult: 7.4, speedMult: 1.25 },
+    ] },
+    { groups: [
+      { type: "boss", count: 3, spawnInterval: 5, healthMult: 4.6 },
+      { type: "armored", count: 16, spawnInterval: 0.5, startDelay: 6, healthMult: 8.4 },
+      { type: "splitter", count: 16, spawnInterval: 0.42, startDelay: 12, healthMult: 7.0 },
+    ] },
+  ],
+};
+
+// Level 15 — "Prismatic Core": the grand finale. Enemies run the full
+// perimeter, then spiral deep to a central core. Every enemy type, huge
+// counts, and a FOUR-boss climax — bring the whole arsenal.
+const level015 = {
+  id: "level_015",
+  name: "Prismatic Core",
+  gridWidth: 8,
+  gridHeight: 12,
+  startingMoney: 300,
+  coreHealth: 12,
+  timeBetweenWaves: 5,
+  palette: {
+    background: "#0b0820",
+    gridLine: "rgba(220, 220, 255, 0.10)",
+    gridLineMajor: "rgba(245, 245, 255, 0.20)",
+    buildableDot: "rgba(235, 235, 255, 0.26)",
+    pathChannel: "rgba(24, 20, 48, 0.9)",
+    pathEdge: "rgba(235, 235, 255, 0.6)",
+    pathFlow: "rgba(255, 255, 255, 0.8)",
+  },
+  pathCorners: [
+    { x: 0, y: 0 }, { x: 7, y: 0 }, { x: 7, y: 11 }, { x: 0, y: 11 },
+    { x: 0, y: 2 }, { x: 5, y: 2 }, { x: 5, y: 9 }, { x: 2, y: 9 }, { x: 2, y: 5 },
+  ],
+  blockedTiles: [
+    { x: 3, y: 4 }, { x: 4, y: 6 }, { x: 3, y: 7 },
+    { x: 6, y: 3 }, { x: 1, y: 7 }, { x: 4, y: 10 },
+  ],
+  waves: [
+    { groups: [
+      { type: "basic", count: 22, spawnInterval: 0.34, healthMult: 5.2 },
+      { type: "splitter", count: 10, spawnInterval: 0.55, startDelay: 4, healthMult: 4.2 },
+    ] },
+    { groups: [
+      { type: "armored", count: 16, spawnInterval: 0.5, healthMult: 5.8 },
+      { type: "fast", count: 14, spawnInterval: 0.26, startDelay: 4, healthMult: 5.6 },
+    ] },
+    { groups: [
+      { type: "regenerator", count: 12, spawnInterval: 0.6, healthMult: 4.8 },
+      { type: "splitter", count: 12, spawnInterval: 0.5, startDelay: 4, healthMult: 4.8 },
+    ] },
+    { groups: [
+      { type: "boss", count: 1, healthMult: 4.0 },
+      { type: "regenerator", count: 12, spawnInterval: 0.6, startDelay: 3, healthMult: 5.2 },
+    ] },
+    { groups: [
+      { type: "fast", count: 28, spawnInterval: 0.18, healthMult: 7.0, speedMult: 1.2 },
+      { type: "splitter", count: 14, spawnInterval: 0.45, startDelay: 4, healthMult: 5.6 },
+    ] },
+    { groups: [
+      { type: "armored", count: 22, spawnInterval: 0.45, healthMult: 7.6 },
+      { type: "regenerator", count: 12, spawnInterval: 0.6, startDelay: 4, healthMult: 5.8 },
+    ] },
+    { groups: [
+      { type: "boss", count: 2, spawnInterval: 6, healthMult: 4.4 },
+      { type: "basic", count: 28, spawnInterval: 0.26, startDelay: 3, healthMult: 9.0 },
+    ] },
+    { groups: [
+      { type: "splitter", count: 22, spawnInterval: 0.38, healthMult: 6.8 },
+      { type: "fast", count: 20, spawnInterval: 0.22, startDelay: 4, healthMult: 7.6, speedMult: 1.25 },
+    ] },
+    { groups: [
+      { type: "armored", count: 24, spawnInterval: 0.42, healthMult: 8.4 },
+      { type: "regenerator", count: 14, spawnInterval: 0.55, startDelay: 5, healthMult: 6.4 },
+    ] },
+    { groups: [
+      { type: "boss", count: 3, spawnInterval: 5, healthMult: 4.8 },
+      { type: "splitter", count: 18, spawnInterval: 0.42, startDelay: 5, healthMult: 7.0 },
+      { type: "fast", count: 20, spawnInterval: 0.22, startDelay: 11, healthMult: 8.0, speedMult: 1.25 },
+    ] },
+    { groups: [
+      { type: "regenerator", count: 18, spawnInterval: 0.5, healthMult: 6.8 },
+      { type: "armored", count: 18, spawnInterval: 0.48, startDelay: 4, healthMult: 8.8 },
+      { type: "splitter", count: 16, spawnInterval: 0.42, startDelay: 10, healthMult: 7.2 },
+    ] },
+    { groups: [
+      { type: "boss", count: 4, spawnInterval: 5, healthMult: 5.2, speedMult: 1.1 },
+      { type: "armored", count: 16, spawnInterval: 0.5, startDelay: 6, healthMult: 9.0 },
+      { type: "regenerator", count: 14, spawnInterval: 0.55, startDelay: 12, healthMult: 6.8 },
+      { type: "fast", count: 18, spawnInterval: 0.22, startDelay: 18, healthMult: 8.4, speedMult: 1.3 },
+    ] },
+  ],
+};
+
 export const LEVELS = [
   level001, level002, level003, level004, level005,
   level006, level007, level008, level009, level010,
+  level011, level012, level013, level014, level015,
 ];
 
 // ---------- Worlds ----------
@@ -846,5 +1222,10 @@ export const WORLDS = [
     id: "world_2",
     name: "OUTER VOID",
     levelIds: ["level_006", "level_007", "level_008", "level_009", "level_010"],
+  },
+  {
+    id: "world_3",
+    name: "PRISM DEEP",
+    levelIds: ["level_011", "level_012", "level_013", "level_014", "level_015"],
   },
 ];
