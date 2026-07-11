@@ -188,8 +188,14 @@ src/
   (user-specified rule). Base growth follows current in-battle level.
   Explained in the Tower Guide overlay (auto-opens once at level 2 via save
   flag `seenTowerGuide`; always reachable from the main menu TOWERS entry).
-- **Final-hit XP:** only the killing tower gets XP. Known consequence: Slow
-  towers never level (backlog item: split XP among contributors).
+- **Contributor-weighted XP (loot P0, shipped):** a kill's XP pool is split
+  among EVERY tower that damaged or slowed the enemy, by weight — damage
+  dealt (1/point) plus slow applied (`slowSeconds * LOOT.xp.slowWeightPerSec`).
+  Pool total is unchanged (no inflation); the kill COUNT still goes only to
+  the final-hit tower. Tracked on `enemy._contrib` (accumulated in
+  `damageEnemy`/`slowEnemy`, consumed at death in `awardKillXp`, both in
+  enemies.js). This finally levels Slow towers, which rarely land the
+  killing blow. (Was: final-hit-only, so Slow towers never leveled.)
 - **Veterans:** placing a tower type auto-deploys your best not-yet-deployed
   roster unit of that type (highest maxLevel first). Veterans re-enter at
   level 1 but re-buy up to their unlocked level with money alone (no XP
@@ -200,11 +206,17 @@ src/
 - **Roster recording:** `recordBattleEnd` runs inside game.js at the moment
   of win/loss (NOT in the render loop — background tabs pause rAF).
 - **Mastery (post-level-5 progression):** XP past the level-5 threshold
-  converts to permanent damage ranks: +2%/rank, 600 XP/rank, capped at 25
-  (+50%). Derived purely from saved `xp` (retroactive, no new save fields);
-  follows the tower forever like specialties. Ranks up live mid-battle
-  (checked in `updateTowers`). Shown as ★N in the panel and Tower Guide.
-  Knobs: `TOWER_UPGRADES.mastery`. This exists so grinding earlier levels
+  converts to permanent damage ranks on a **50-rank escalating curve** (loot
+  P0): rank *n* costs `baseXpPerRank + xpRankIncrement*(n-1)` XP (400 + 80·…),
+  +1.5%/rank, capped at 50 (+75%). `masteryRankFor` inverts the cumulative
+  sum in closed form. Derived purely from saved `xp` (retroactive, no new
+  save fields); follows the tower forever like specialties. Ranks up live
+  mid-battle (checked in `updateTowers`). Shown as ★N in the panel and Tower
+  Guide. Knobs: `TOWER_UPGRADES.mastery`. NOTE: the P0 curve is steeper than
+  the old flat 25-rank/+2% one, so it RETROACTIVELY lowered existing
+  veterans' ranks (e.g. old-cap 15,700 XP: rank 25 → rank 15) — an
+  accepted, deliberate nerf (LOOT_DESIGN §2b). This exists so grinding
+  earlier levels
   pays off (user-requested loop).
 - **Skill tree:** 7 skills x 5 tiers, +10%/tier (core: +5HP/tier), tier costs
   1/1/2/2/3 points. 1 point per battle won (replays farmable by design).
@@ -408,13 +420,21 @@ as the source of truth, not that old ×1.2 rule.)
 
 ## Backlog (user-approved, not yet built)
 
-- **LOOT & EQUIPMENT SYSTEM (designed, not built):** full build spec in
+- **LOOT & EQUIPMENT SYSTEM (in progress — P0 shipped):** full build spec in
   `LOOT_DESIGN.md` — per-tower Diablo-style gear (4 typed slots, 5 rarities,
   affixes + Singularity uniques, Shards currency, store, stash+triage),
   plus the changes it forces (50-rank escalating Mastery curve,
   contributor-weighted XP that finally levels Slow towers, Endless reward
-  tracks). Has a phased build order (P0–P7) and a knobs list. One open
-  decision flagged in §2b (retroactive Mastery nerf) before P0 ships.
+  tracks). Phased build order P0–P7 + knobs list in that doc; tick its
+  "Build status" checkboxes as phases land.
+  - **P0 DONE (2026-07-11):** 50-rank escalating Mastery curve +
+    contributor-weighted XP (both described under "Key mechanics" above).
+    §2b retroactive-nerf decision resolved (accepted). Config knobs live in
+    `TOWER_UPGRADES.mastery` and the new `LOOT.xp` block in config.js.
+  - **Next: P1** — Shards currency + save schema/migration (Sonnet/Medium
+    per the doc's phase table). Build one phase per fresh session (`/clear`
+    between); the handoff is the committed files + LOOT_DESIGN checkboxes,
+    not the conversation.
 
 
 - **PLAYTEST-PENDING:** the counter re-tune + visible feedback + Rocket +
