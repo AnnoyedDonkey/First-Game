@@ -4,15 +4,28 @@ Read this first if you are an AI assistant (or human) picking up this project.
 Companion docs: `GAME_BRIEF.md` (original spec + feature history). The user's
 design taste and workflow preferences are at the bottom — follow them.
 
-**State at handoff (July 2026, latest Claude Sonnet 5 session, commit
-`1e95074`):** 10-level campaign, 4 towers (Railgun unlocks after level 5),
-7 enemy types, 5-tier skill tree, permanent per-class specialties,
-post-level-5 Mastery ranks, per-level palettes, GeoDefense-style VFX,
-¼x–4x speed controls, **Endless mode** per level (unlocked once beaten,
-waves escalate forever, tracked as best-wave-reached), and a **forfeit
-button** to abandon a battle mid-run — all deployed and playable at the
-GitHub Pages URL below. No known bugs. Next up: the backlog at the
-bottom of this file, and whatever the user asks for.
+**State at handoff (July 2026, latest Claude Opus 4.8 session):**
+**15-level campaign across 3 worlds**, **5 towers** (Railgun unlocks after
+level 5, **Rocket Launcher after level 10**), 7 enemy types, an
+**enemy-counter system with visible hit feedback**, 5-tier skill tree
+(now 8 skills), permanent per-class specialties, post-level-5 Mastery
+ranks, per-level palettes, GeoDefense-style VFX, ¼x–4x speed controls,
+**Endless mode** per level (unlocked once beaten, waves escalate forever,
+tracked as best-wave-reached), and a **forfeit button** to abandon a
+battle mid-run — all deployed and playable at the GitHub Pages URL below.
+No known bugs. Next up: the backlog at the bottom of this file, and
+whatever the user asks for.
+
+**Balance-pass additions (this Opus session — see "Counters &
+differentiation" below):** towers were made mechanically distinct so
+levels can demand specific combos: a damage-type COUNTER system
+(enemies resist / are weak to each tower), VISIBLE feedback that teaches
+it (grey shield-clink on a resisted hit, bright colored halo on a
+super-effective one), a Slow-tower VULNERABILITY debuff (+30% damage to
+slowed enemies), Railgun MAXIMIZE-HITS aiming (place it down a lane),
+per-tower `upgradeCostMult`, the global-range Rocket Launcher, and a
+counter-gated re-tune of every level's waves. Reshaped the mid-campaign
+maps and added World 3 for path variety.
 
 Everything below in "Key mechanics" is current and was expanded across
 the last few sessions (bottom action bar rework + live DPS readout,
@@ -30,7 +43,8 @@ features in the same areas can hit them again.
 
 A portrait, mobile-browser tower defense game inspired by geoDefense /
 Geometry Wars. Neon vector visuals on a warping grid. The player defends an
-AI Core against waves of geometric enemies across a 10-level campaign.
+AI Core against waves of geometric enemies across a 15-level campaign (3
+worlds).
 
 **The core differentiator:** towers are persistent RPG-like units, not
 disposable buildings. Each tower has a name (L-01, P-02, R-01...), earns XP
@@ -235,6 +249,56 @@ src/
   speed/pause exactly as it was. No-ops (does nothing) if tapped from
   the main menu (`game` is null) or while another overlay is already up.
 
+## Counters & tower differentiation (Opus balance pass)
+
+The goal was "make the player rethink which towers they use." Towers now
+form a rock-paper-scissors:
+
+- **Counter system.** Each enemy has `ENEMIES[type].damageMult`, keyed by
+  the attacking tower's `damageType` (`energy`=Laser, `pulse`=Pulse,
+  `control`=Slow, `rail`=Railgun, `blast`=Rocket). `>1` = weak, `<1` =
+  resists, missing = 1.0. Applied in `enemies.js damageEnemy`. This is
+  THE knob that lets a level demand a combo. Current shape: Fast←Laser,
+  Armored←Pulse/Railgun (resists Laser 0.4), Regenerator←Railgun (resists
+  Laser 0.45), Splitter←Pulse/Rocket (resists Railgun 0.6), Boss←Railgun/
+  Rocket/Laser-focus (resists Pulse/Slow).
+- **Visible feedback teaches it.** In `damageEnemy`, a hit with mult ≤0.75
+  shows a dull grey spark + steel shield-ring; ≥1.2 shows a bright white
+  burst + tower-colored halo; neutral is normal. Without this the counters
+  were imperceptible (there are no damage numbers) and players never
+  adapted — this was the key fix.
+- **Slow = force multiplier.** `TOWERS.slow.vulnerability` (0.30) marks a
+  slowed enemy to take +30% from ALL sources for the slow's duration
+  (`enemies.js slowEnemy` sets `vulnMult`/`vulnUntil`). Gives Slow a real
+  combo role beyond CC.
+- **Railgun aims to maximize hits.** `towers.js findRailgunAim` picks the
+  firing line that pierces the most enemies, so aligning it with a
+  straight run of path clears the lane — placement finally matters.
+- **Rocket Launcher (`type: "rocket"`, `damageType: "blast"`).** Unlocks
+  on clearing level_010 (`progression.js isTowerUnlocked`). GLOBAL range
+  (`baseRange: 999` → skips the range ring in renderer), slow reload,
+  heavy hit + explosive splash. Fires a homing rocket
+  (`projectiles.js spawnRocket`) that explodes via the shared `explode()`
+  (bigger flash/shock for `kind:"rocket"`). Roster prefix **K**. Has its
+  own skill "Warhead Payload" (`rocketDamage`) and specialty (bigger
+  blasts). Tray auto-adds it; locked label comes from `def.unlockLabel`.
+- **Per-tower upgrade economics.** `TOWERS[type].upgradeCostMult` scales
+  the shared `TOWER_UPGRADES.upgradeCosts` (Pulse 1.6×, Slow 0.8×).
+- All wave lists were re-tuned so each level leans on its signature
+  enemy's counter (see the per-level header comments in `levels.js`).
+
+## Worlds & paths
+
+Three worlds (`levels.js WORLDS`): INNER GRID (1-5), OUTER VOID (6-10),
+PRISM DEEP (11-15). Path archetypes are now deliberately varied to fight
+sameness: serpentine, chevron zigzag, perimeter grand-tour, staircase,
+spirals, vertical comb, diagonal switchbacks, full-width maze sweeps,
+long straights, bottom-entry spiral, step cascade, plus-detour, switchback
+ladder. All maps are still 8×12, single entry→core, orthogonal segments.
+Verify a new map with the build-check recipe (construct `createGridModel`
+for every level; assert no throw, no blocked tile on the path, ample
+buildable tiles flanking the path).
+
 ## Balance & difficulty philosophy (user's words)
 
 "A game becomes addictive when it's just hard enough that you don't beat
@@ -319,15 +383,25 @@ Gotchas when testing:
 
 Other UI facts: speed controls cycle ◀ 1x->½x->¼x->1x and ▶ 1x->2x->4x->1x
 (pause in the middle); the bottom action bar is hidden while the mission
-selector is open. To offset the specialty power gain, all healthMult values
-in levels 3-10 were scaled x1.2 (levels 1-2 intentionally untouched).
+selector is open. (Historical note: an earlier pass scaled levels 3-10
+healthMult ×1.2 for the specialty power gain; the Opus balance pass has
+since rewritten every level's waves, so treat the numbers in `levels.js`
+as the source of truth, not that old ×1.2 rule.)
 
 ## Backlog (user-approved, not yet built)
 
+- **PLAYTEST-PENDING:** the counter re-tune + visible feedback + Rocket +
+  World 3 all shipped but the difficulty is calibrated only by bot sims
+  (superhuman placement → flawless bot wins are a WEAK signal). The user's
+  iPhone playtest is the real instrument — expect a follow-up tuning pass,
+  especially "do the counters make me switch towers?" and per-level
+  too-easy/too-hard on L2/L4/L5 (he'd flagged those) and all of W3.
+- If counters still don't drive combo choices, next levers: harsher
+  resist multipliers and/or waves that hard-require a specific tower.
 - Split XP among damage contributors (fixes Slow towers never leveling).
-- Possibly stiffen level 6 if real play finds it too easy.
-- Retune Endless mode's difficulty ramp (`config.js ENDLESS`) once there's
-  real play data beyond the one bot-simulated run (see calibration note above).
+- Retune Endless mode's difficulty ramp (`config.js ENDLESS`) — it uses
+  the level's authored final wave as a seed, so the harder re-tuned waves
+  feed into it; worth a fresh look.
 - Ideas floated but unscheduled: save export/import (iOS Safari evicts
-  localStorage after ~7 days unused), sound, more levels/towers (Tesla
+  localStorage after ~7 days unused), sound, more towers (Tesla
   chain-lightning was the runner-up), pre-battle loadouts.
