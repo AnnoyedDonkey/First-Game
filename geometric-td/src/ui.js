@@ -37,8 +37,10 @@ const el = {
   skillList: document.getElementById("skill-list"),
   skillClose: document.getElementById("skill-close"),
   resetSave: document.getElementById("reset-save"),
+  hud: document.getElementById("hud"),
   levelOverlay: document.getElementById("level-overlay"),
   levelList: document.getElementById("level-list"),
+  menuActions: document.getElementById("menu-actions"),
   worldPrev: document.getElementById("world-prev"),
   worldNext: document.getElementById("world-next"),
   worldName: document.getElementById("world-name"),
@@ -280,6 +282,7 @@ let currentWorld = 0;
 // level (or its Endless mode) is chosen.
 export function showLevelSelect(levels, completedIds, onPick) {
   el.actionBar.classList.add("hidden"); // no tower tray on the menu
+  el.hud.classList.add("hidden");       // top HUD is in-battle only
   menuCtx = {
     levelById: new Map(levels.map((l) => [l.id, l])),
     levels,
@@ -287,6 +290,7 @@ export function showLevelSelect(levels, completedIds, onPick) {
     pick: (level, endless) => {
       el.levelOverlay.classList.add("hidden");
       el.actionBar.classList.remove("hidden");
+      el.hud.classList.remove("hidden"); // battle starting — show the HUD
       onPick(level, endless);
     },
   };
@@ -378,36 +382,45 @@ function renderWorld() {
   appendGlobalMenuButtons();
 }
 
-// The account-wide entries shown under the levels on every world page.
+// The account-wide entries. Pinned in their own footer (#menu-actions)
+// BELOW the scrolling level list, so they stay visible no matter how many
+// Endless rows the world has.
 function appendGlobalMenuButtons() {
+  el.menuActions.innerHTML = "";
+
+  // SKILL TREE + TOWERS share a row to save vertical space.
+  const topRow = document.createElement("div");
+  topRow.className = "menu-actions-row";
+
   // Skill tree — with a point count so unspent points can't be missed.
   const points = getSkillPoints();
   const skillBtn = document.createElement("button");
   skillBtn.className = "level-button skill-entry";
   skillBtn.innerHTML =
-    `<span>SKILL TREE</span>` +
+    `<span>SKILLS</span>` +
     `<span class="${points > 0 ? "level-points" : "level-done"}">` +
-    (points > 0 ? `● ${points} POINT${points === 1 ? "" : "S"} TO SPEND` : "—") +
+    (points > 0 ? `● ${points}` : "—") +
     `</span>`;
   skillBtn.addEventListener("click", openSkillTree);
-  el.levelList.appendChild(skillBtn);
+  topRow.appendChild(skillBtn);
 
   // Tower guide: class specialties + the player's roster.
   const towersBtn = document.createElement("button");
   towersBtn.className = "level-button skill-entry";
   towersBtn.innerHTML = `<span>TOWERS</span><span class="level-done">—</span>`;
   towersBtn.addEventListener("click", openTowerGuide);
-  el.levelList.appendChild(towersBtn);
+  topRow.appendChild(towersBtn);
 
   // Leaderboard — only when a backend is configured (config.js
   // LEADERBOARD). Hidden otherwise so we never ship a dead button.
   if (lbEnabled()) {
     const lbBtn = document.createElement("button");
     lbBtn.className = "level-button skill-entry";
-    lbBtn.innerHTML = `<span>LEADERBOARD</span><span class="level-done">🏆</span>`;
+    lbBtn.innerHTML = `<span>BOARD</span><span class="level-done">🏆</span>`;
     lbBtn.addEventListener("click", () => openLeaderboard(menuCtx.levels));
-    el.levelList.appendChild(lbBtn);
+    topRow.appendChild(lbBtn);
   }
+  el.menuActions.appendChild(topRow);
 
   // Reset all progress — two-tap confirm, then reload clean.
   const resetBtn = document.createElement("button");
@@ -426,7 +439,7 @@ function appendGlobalMenuButtons() {
       }, 3000);
     }
   });
-  el.levelList.appendChild(resetBtn);
+  el.menuActions.appendChild(resetBtn);
 }
 
 // Arrow + swipe navigation, bound once (state lives in menuCtx/currentWorld).
