@@ -5,7 +5,7 @@ the supporting changes it forces (Mastery curve rework, contributor-weighted
 XP, Endless reward tracks). Agreed in a design session; **read `HANDOFF.md`
 first** for architecture, constraints, and the balance-testing recipe.
 
-Status: **DESIGN COMPLETE — not yet built.** Build order is at the bottom.
+Status: **P4 COMPLETE — P5 Store UI is next.** Build order is at the bottom.
 Update the "Build status" checkboxes as phases land.
 
 ---
@@ -406,8 +406,8 @@ starts flailing rather than defaulting everything High.)
       Completed 2026-07-11. Save-compatible roster gear slots, career
       requirement checks, every normal combat/meta affix, Prismatic minor
       uniques, and all seven Singularity effects are active. `window.gear`
-      exposes temporary `grant/equip/unequip/roster` helpers until P4 adds the
-      player-facing stash UI. All effect magnitudes live in `LOOT.combat`;
+      still exposes debug `grant/equip/unequip/roster` helpers alongside the
+      P4 player-facing stash UI. All effect magnitudes live in `LOOT.combat`;
       projectile speed and base pierce live on the tower definitions. Verified
       with syntax checks, a 10,000-item integration smoke test, and deterministic
       damage/effect checks covering crit, Overcharge, and every unique.
