@@ -401,10 +401,16 @@ starts flailing rather than defaulting everything High.)
       self-test passed all §4b/§4c/§11 invariants with rarity/slot/universal
       distributions matching config (60/25/10/4/1, 60% universal); every
       named unique produced its correct slot/type lock + compatible affixes;
-      ilvl roll-toward-top and restricted bonus both confirmed. No gameplay
-      wiring yet (that's P3).
-- [ ] **P3 — Equip + gear application in combat** incl. crit & double-shot.
-      Add a debug grant so you can see gear affect towers. Roster gear slots.
+      ilvl roll-toward-top and restricted bonus both confirmed.
+- [x] **P3 — Equip + gear application in combat** incl. crit & double-shot.
+      Completed 2026-07-11. Save-compatible roster gear slots, career
+      requirement checks, every normal combat/meta affix, Prismatic minor
+      uniques, and all seven Singularity effects are active. `window.gear`
+      exposes temporary `grant/equip/unequip/roster` helpers until P4 adds the
+      player-facing stash UI. All effect magnitudes live in `LOOT.combat`;
+      projectile speed and base pierce live on the tower definitions. Verified
+      with syntax checks, a 10,000-item integration smoke test, and deterministic
+      damage/effect checks covering crit, Overcharge, and every unique.
 - [ ] **P4 — Drops + guaranteed end-drop + stash + stash/equip UI + triage.**
 - [ ] **P5 — Store UI** (stock gen, reroll, buy/sell).
 - [ ] **P6 — Endless reward tracks.**

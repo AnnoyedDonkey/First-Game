@@ -5,13 +5,16 @@
 // that is inside their range ("first" targeting).
 // ============================================================
 
-import { TOWERS, TOWER_UPGRADES } from "./config.js";
+import { TOWERS, TOWER_UPGRADES, LOOT } from "./config.js";
 import { enemyPosition, damageEnemy, slowEnemy } from "./enemies.js";
 import { spawnPulseOrb, spawnRocket } from "./projectiles.js";
 import {
   getTowerDamageMult, getSlowDurationMult, takeRosterUnit, isTowerUnlocked,
 } from "./progression.js";
 import { emitHitSparks } from "./particles.js";
+import {
+  aggregateGear, masteryRankFor, normalizeGear, xpToNextMastery,
+} from "./equipment.js";
 
 let nextTowerId = 1;
 const rosterCounters = {}; // per-prefix counters for names like L-01
@@ -51,7 +54,9 @@ export function createTower(type, tileX, tileY, grid, rosterRecord = null) {
     maxUnlockedLevel: rosterRecord ? rosterRecord.maxLevel : 1,
     xp: rosterRecord ? rosterRecord.xp : 0,
     kills: rosterRecord ? rosterRecord.kills : 0,
+    gear: normalizeGear(rosterRecord && rosterRecord.gear),
     cooldown: 0,              // seconds until the tower may fire again
+    _shotCounter: 0,
     aimAngle: -Math.PI / 2,
     invested: def.baseCost,   // total money spent (build + upgrades)
   };
@@ -77,6 +82,10 @@ function recomputeStats(tower, grid) {
   // Career-best level drives the specialty (in-battle level can
   // temporarily exceed maxUnlockedLevel before the battle ends).
   const specLv = Math.max(tower.level, tower.maxUnlockedLevel || 1) - 1;
+  const gear = aggregateGear(tower.gear);
+  const gs = gear.stats;
+  tower.gearStats = gs;
+  tower.gearUniques = gear.uniques;
 
   // Mastery: permanent damage from banked XP (see masteryRankFor).
   tower._masteryRank = masteryRankFor(tower.xp);
@@ -86,67 +95,51 @@ function recomputeStats(tower, grid) {
     Math.pow(1 + g.damageGrowth, lv) *
     Math.pow(1 + (spec.damageGrowth || 0), specLv) *
     (1 + g.mastery.damagePerRank * tower._masteryRank) *
-    getTowerDamageMult(tower.type);
+    getTowerDamageMult(tower.type) *
+    (1 + gs.damage / 100);
   tower.range =
     def.baseRange * grid.tileSize *
     Math.pow(1 + g.rangeGrowth, lv) *
-    Math.pow(1 + (spec.rangeGrowth || 0), specLv);
+    Math.pow(1 + (spec.rangeGrowth || 0), specLv) *
+    (1 + gs.range / 100);
   tower.fireInterval =
     def.baseFireRate /
-    (Math.pow(1 + g.fireRateGrowth, lv) * Math.pow(1 + (spec.fireRateGrowth || 0), specLv));
+    (Math.pow(1 + g.fireRateGrowth, lv) *
+      Math.pow(1 + (spec.fireRateGrowth || 0), specLv) *
+      (1 + gs.fireRate / 100));
   if (def.splashRadius) {
     tower.splashRadius =
       def.splashRadius * grid.tileSize *
       Math.pow(1 + g.splashGrowth, lv) *
-      Math.pow(1 + (spec.splashGrowth || 0), specLv);
+      Math.pow(1 + (spec.splashGrowth || 0), specLv) *
+      (1 + gs.splash / 100);
   }
   if (def.slowPercent) {
-    tower.slowPercent = def.slowPercent;
+    tower.slowPercent = Math.min(
+      LOOT.combat.maxSlowPercent / 100,
+      def.slowPercent * (1 + gs.slowPotency / 100)
+    );
     tower.slowDuration =
-      def.slowDuration * Math.pow(1 + g.slowGrowth, lv) * getSlowDurationMult();
+      def.slowDuration * Math.pow(1 + g.slowGrowth, lv) *
+      getSlowDurationMult() * (1 + gs.slowDuration / 100);
     tower.vulnerability = def.vulnerability || 0;
   }
   if (def.pierceWidth) {
     tower.pierceWidth = def.pierceWidth * grid.tileSize;
   }
+  tower.pierce = Math.max(1, (def.basePierce || 1) + gs.pierce);
+  tower.projectileSpeedMult = 1 + gs.projSpeed / 100;
+  tower.critChance = Math.min(1, gs.critChance / 100);
+  tower.critDamage = (LOOT.combat.baseCritDamage + gs.critDamage) / 100;
+  tower.doubleShotChance = Math.min(1, gs.overcharge / 100);
+  tower.xpGainMult = 1 + gs.xpGain / 100;
+  tower.shardFindMult = 1 + gs.shardFind / 100;
+  tower.bountyMult = 1 + gs.bounty / 100;
 }
 
-// ---------- Mastery ----------
-// XP beyond the level-5 threshold converts to permanent damage ranks.
-// Escalating 50-rank curve (config mastery): rank n costs
-// baseXpPerRank + xpRankIncrement*(n-1) XP. Cumulative XP to REACH rank N
-// past xpStart is  E(N) = b*N + k*N*(N-1)/2  (b = baseXpPerRank,
-// k = xpRankIncrement). Rank is derived purely from `xp`, so it stays
-// retroactive with no new save field.
-
-// Cumulative XP (beyond xpStart) needed to reach mastery rank N.
-function masteryCumulativeXp(n, m) {
-  return m.baseXpPerRank * n + m.xpRankIncrement * n * (n - 1) / 2;
-}
-
-export function masteryRankFor(xp) {
-  const m = TOWER_UPGRADES.mastery;
-  const x = xp - m.xpStart;
-  if (x <= 0) return 0;
-  const b = m.baseXpPerRank;
-  const k = m.xpRankIncrement;
-  // Invert E(N) <= x for the largest integer N.
-  let rank;
-  if (k === 0) {
-    rank = Math.floor(x / b);
-  } else {
-    rank = Math.floor((-(b - k / 2) + Math.sqrt((b - k / 2) ** 2 + 2 * k * x)) / k);
-  }
-  return Math.max(0, Math.min(m.maxRanks, rank));
-}
-
-// XP still needed for the next rank (null when capped).
-export function xpToNextMastery(xp) {
-  const m = TOWER_UPGRADES.mastery;
-  const rank = masteryRankFor(xp);
-  if (rank >= m.maxRanks) return null;
-  return m.xpStart + masteryCumulativeXp(rank + 1, m) - xp;
-}
+// Re-exported for the existing UI imports; implementation lives beside the
+// equipment requirement checks so both use exactly the same career-XP math.
+export { masteryRankFor, xpToNextMastery };
 
 // ---------- Upgrades ----------
 // XP makes a tower ELIGIBLE; money pays for the actual upgrade.
@@ -252,10 +245,10 @@ export function sellTower(game, tower) {
   return refund;
 }
 
-function findTarget(game, tower) {
+function findTarget(game, tower, excluded = null) {
   let best = null;
   for (const e of game.enemies) {
-    if (!e.alive) continue;
+    if (!e.alive || e === excluded) continue;
     const pos = enemyPosition(e, game.grid);
     const dx = pos.x - tower.pos.x;
     const dy = pos.y - tower.pos.y;
@@ -294,9 +287,10 @@ function findRailgunAim(game, tower) {
       const perp = Math.abs(o.dx * dirY - o.dy * dirX);
       if (perp <= tower.pierceWidth + game.grid.tileSize * o.e.def.size) count++;
     }
-    if (!best || count > best.count ||
-        (count === best.count && c.e.distance > best.target.distance)) {
-      best = { angle: Math.atan2(c.dy, c.dx), count, target: c.e };
+    const score = Math.min(count, tower.pierce);
+    if (!best || score > best.count ||
+        (score === best.count && c.e.distance > best.target.distance)) {
+      best = { angle: Math.atan2(c.dy, c.dx), count: score, target: c.e };
     }
   }
   return best;
@@ -339,8 +333,75 @@ export function updateTowers(game, dt) {
   }
 }
 
+function hasUnique(tower, id) {
+  return tower.gearUniques && tower.gearUniques.has(id);
+}
+
+function emitCritVfx(game, tower, x, y) {
+  emitHitSparks(game, x, y, "#ffffff", 14 + tower.level * 2);
+  game.effects.push({
+    kind: "ring", x, y, color: "#ffffff",
+    radius: game.grid.tileSize * 0.38, ttl: 0.22, maxTtl: 0.22,
+  });
+}
+
+function collectLineVictims(game, tower, angle, halfWidth) {
+  const dirX = Math.cos(angle);
+  const dirY = Math.sin(angle);
+  const victims = [];
+  for (const enemy of game.enemies) {
+    if (!enemy.alive) continue;
+    const pos = enemyPosition(enemy, game.grid);
+    const relX = pos.x - tower.pos.x;
+    const relY = pos.y - tower.pos.y;
+    const along = relX * dirX + relY * dirY;
+    if (along < 0 || along > tower.range) continue;
+    const perp = Math.abs(relX * dirY - relY * dirX);
+    if (perp <= halfWidth + game.grid.tileSize * enemy.def.size) {
+      victims.push({ enemy, pos, along });
+    }
+  }
+  victims.sort((a, b) => a.along - b.along);
+  return victims.slice(0, tower.pierce);
+}
+
 function fire(game, tower, target, targetPos) {
+  tower._shotCounter += 1;
+  fireVolley(game, tower, target, targetPos);
+
+  const rng = game.rng || Math.random;
+  let bonusVolleys = rng() < tower.doubleShotChance ? 1 : 0;
+  if (hasUnique(tower, "overflowCore") &&
+      tower._shotCounter % LOOT.combat.overflowEveryShots === 0) {
+    bonusVolleys += 1;
+  }
+  for (let i = 0; i < bonusVolleys; i++) {
+    fireVolley(game, tower, target, targetPos);
+  }
+}
+
+function fireVolley(game, tower, target, targetPos) {
+  const splitTarget = hasUnique(tower, "prismLens")
+    ? findTarget(game, tower, target)
+    : null;
+  fireShot(game, tower, target, targetPos, 1);
+  if (splitTarget) {
+    fireShot(
+      game, tower, splitTarget, enemyPosition(splitTarget, game.grid),
+      LOOT.combat.prismLensDamage / 100
+    );
+  }
+}
+
+function fireShot(game, tower, target, targetPos, damageScale) {
   const def = tower.def;
+  const rng = game.rng || Math.random;
+  const crit = rng() < tower.critChance;
+  const damage = tower.damage * damageScale * (crit ? 1 + tower.critDamage : 1);
+
+  if (tower.type === "railgun") {
+    tower.aimAngle = Math.atan2(targetPos.y - tower.pos.y, targetPos.x - tower.pos.x);
+  }
 
   // Muzzle flash at the barrel — bigger on higher-level towers.
   const barrel = game.grid.tileSize * 0.22;
@@ -354,38 +415,41 @@ function fire(game, tower, target, targetPos) {
   });
 
   if (tower.type === "laser") {
+    const angle = Math.atan2(targetPos.y - tower.pos.y, targetPos.x - tower.pos.x);
+    const victims = tower.pierce > 1
+      ? collectLineVictims(
+          game, tower, angle, game.grid.tileSize * LOOT.combat.laserPierceWidthTiles
+        )
+      : [{ enemy: target, pos: targetPos }];
+    const beamEnd = tower.pierce > 1
+      ? {
+          x: tower.pos.x + Math.cos(angle) * tower.range,
+          y: tower.pos.y + Math.sin(angle) * tower.range,
+        }
+      : targetPos;
     // Instant beam — thicker as the tower levels up.
     game.effects.push({
       kind: "beam",
       x1: tower.pos.x, y1: tower.pos.y,
-      x2: targetPos.x, y2: targetPos.y,
+      x2: beamEnd.x, y2: beamEnd.y,
       color: def.color,
       width: 1.5 + tower.level * 0.5,
       ttl: 0.08, maxTtl: 0.08,
     });
-    damageEnemy(game, target, tower, tower.damage);
+    for (const victim of victims) {
+      if (crit) emitCritVfx(game, tower, victim.pos.x, victim.pos.y);
+      damageEnemy(game, victim.enemy, tower, damage);
+    }
 
   } else if (tower.type === "railgun") {
-    // The rail: a piercing shot that damages EVERY enemy along the
-    // beam corridor, out to full range.
+    // The rail damages enemies along its corridor up to its pierce limit.
     const dirX = Math.cos(tower.aimAngle);
     const dirY = Math.sin(tower.aimAngle);
     const endX = tower.pos.x + dirX * tower.range;
     const endY = tower.pos.y + dirY * tower.range;
 
     // Collect victims first (kills can spawn splitlings mid-loop).
-    const victims = [];
-    for (const e of game.enemies) {
-      if (!e.alive) continue;
-      const pos = enemyPosition(e, game.grid);
-      const relX = pos.x - tower.pos.x;
-      const relY = pos.y - tower.pos.y;
-      const along = relX * dirX + relY * dirY;        // projection on beam
-      if (along < 0 || along > tower.range) continue;
-      const perp = Math.abs(relX * dirY - relY * dirX); // distance off-axis
-      const hitWidth = tower.pierceWidth + game.grid.tileSize * e.def.size;
-      if (perp <= hitWidth) victims.push({ enemy: e, pos });
-    }
+    const victims = collectLineVictims(game, tower, tower.aimAngle, tower.pierceWidth);
 
     // White-hot rail flash + sparks at every victim.
     game.effects.push({
@@ -404,9 +468,14 @@ function fire(game, tower, target, targetPos) {
       width: 6 + tower.level * 2,
       ttl: 0.1, maxTtl: 0.1,
     });
-    for (const v of victims) {
+    for (let i = 0; i < victims.length; i++) {
+      const v = victims[i];
       emitHitSparks(game, v.pos.x, v.pos.y, def.color, 6);
-      damageEnemy(game, v.enemy, tower, tower.damage);
+      if (crit) emitCritVfx(game, tower, v.pos.x, v.pos.y);
+      const ramp = hasUnique(tower, "cascadeRail")
+        ? 1 + i * LOOT.combat.cascadeDamageRamp / 100
+        : 1;
+      damageEnemy(game, v.enemy, tower, damage * ramp);
     }
     game.springGrid.applyShock(
       tower.pos.x + dirX * tower.range * 0.5,
@@ -416,11 +485,11 @@ function fire(game, tower, target, targetPos) {
 
   } else if (tower.type === "pulse") {
     // Slow homing orb that explodes on impact (see projectiles.js).
-    spawnPulseOrb(game, tower, target);
+    spawnPulseOrb(game, tower, target, { damage, crit });
 
   } else if (tower.type === "rocket") {
     // Global-range artillery: lob an explosive rocket at the target.
-    spawnRocket(game, tower, target);
+    spawnRocket(game, tower, target, { damage, crit });
 
   } else if (tower.type === "slow") {
     // Instant zap: light damage + slow debuff.
@@ -432,7 +501,33 @@ function fire(game, tower, target, targetPos) {
       width: 1.2 + tower.level * 0.4,
       ttl: 0.12, maxTtl: 0.12,
     });
-    slowEnemy(game, target, tower.slowPercent, tower.slowDuration, tower.vulnerability, tower);
-    damageEnemy(game, target, tower, tower.damage);
+    if (hasUnique(tower, "gravityWell")) {
+      const radius = LOOT.combat.gravityRadiusTiles * game.grid.tileSize;
+      for (const enemy of game.enemies) {
+        if (!enemy.alive) continue;
+        const pos = enemyPosition(enemy, game.grid);
+        const dx = pos.x - targetPos.x;
+        const dy = pos.y - targetPos.y;
+        if (dx * dx + dy * dy > radius * radius) continue;
+        slowEnemy(
+          game, enemy, tower.slowPercent, tower.slowDuration,
+          tower.vulnerability, tower
+        );
+        enemy.distance = Math.max(
+          0, enemy.distance - LOOT.combat.gravityDragTiles * game.grid.tileSize
+        );
+      }
+      game.effects.push({
+        kind: "ring", x: targetPos.x, y: targetPos.y, color: def.color,
+        radius, ttl: 0.3, maxTtl: 0.3,
+      });
+    } else {
+      slowEnemy(
+        game, target, tower.slowPercent, tower.slowDuration,
+        tower.vulnerability, tower
+      );
+    }
+    if (crit) emitCritVfx(game, tower, targetPos.x, targetPos.y);
+    damageEnemy(game, target, tower, damage);
   }
 }

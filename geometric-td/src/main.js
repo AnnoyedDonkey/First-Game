@@ -11,6 +11,7 @@ import {
 } from "./towers.js";
 import {
   getProgress, shouldShowTowerGuide, markTowerGuideSeen, forfeitBattle,
+  equipItem, unequipItem, debugGrantGear,
 } from "./progression.js";
 import { render } from "./renderer.js";
 import { bindCanvasInput } from "./input.js";
@@ -37,6 +38,38 @@ const ctx = canvas.getContext("2d");
 
 let game = null;
 let overlayShown = false;
+
+function refreshDeployedGear(towerName) {
+  if (!game) return;
+  const rec = getProgress().roster.find((r) => r.name === towerName);
+  const tower = game.towers.find((t) => t.name === towerName);
+  if (!rec || !tower) return;
+  tower.gear = structuredClone(rec.gear);
+  refreshTowerStats(game);
+}
+
+// Temporary P3 console bridge until P4 adds the stash/equip screens.
+// Examples:
+//   gear.grant("L-01", { unique: "prismLens" })
+//   gear.grant("K-01", { unique: "fractalWarhead" })
+window.gear = {
+  roster: () => getProgress().roster,
+  equip(towerName, item) {
+    const result = equipItem(towerName, item);
+    if (result.ok) refreshDeployedGear(towerName);
+    return result;
+  },
+  unequip(towerName, slot) {
+    const result = unequipItem(towerName, slot);
+    if (result.ok) refreshDeployedGear(towerName);
+    return result;
+  },
+  grant(towerName, options = {}) {
+    const result = debugGrantGear(towerName, options);
+    if (result.ok) refreshDeployedGear(towerName);
+    return result;
+  },
+};
 
 function startLevel(level, endless = false) {
   game = createGame(level, TILE_SIZE, endless);

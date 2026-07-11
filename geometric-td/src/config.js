@@ -175,6 +175,7 @@ export const TOWERS = {
     baseDamage: 8,
     baseRange: 1.9,        // in tiles
     baseFireRate: 0.35,    // seconds between shots
+    basePierce: 1,         // max enemies hit by one beam before gear
     damageType: "energy",
     color: "#35e0ff",
   },
@@ -186,6 +187,7 @@ export const TOWERS = {
     splashRadius: 0.7,     // in tiles
     baseRange: 1.6,
     baseFireRate: 1.1,
+    projectileSpeed: 5.5,  // tiles per second
     damageType: "pulse",
     color: "#ff3fd4",
     // Expensive to level, but scales into a swarm-clearing monster (see
@@ -220,6 +222,7 @@ export const TOWERS = {
     baseDamage: 48,
     baseRange: 3.5,
     baseFireRate: 3.0,
+    basePierce: 4,         // max enemies hit by one rail before gear
     pierceWidth: 0.18,     // beam corridor half-width, in tiles
     damageType: "rail",
     color: "#ff9d3f",
@@ -240,6 +243,7 @@ export const TOWERS = {
     splashRadius: 0.9,     // explosive AoE, in tiles
     baseRange: 999,        // effectively the whole board
     baseFireRate: 2.8,     // slow reload
+    projectileSpeed: 9,    // tiles per second
     damageType: "blast",
     color: "#ff5e3a",      // rocket red-orange (distinct from railgun amber)
     unlockLabel: "CLEAR LV 10",
@@ -321,6 +325,28 @@ export const LOOT = {
   // Per-kill amount = round(perKillBase * ENEMIES[type].shardTier).
   shards: {
     perKillBase: 3,
+  },
+
+  // ---- Equipped-item combat (P3) ----
+  // Item affixes are percentages unless they are explicitly counts. These
+  // values define mechanics shared by every item and the bespoke named
+  // unique effects. Keep balance changes here rather than in combat code.
+  combat: {
+    baseCritDamage: 50,          // a crit deals +50% before critDamage affixes
+    maxSlowPercent: 85,          // hard ceiling after Slow Potency gear
+    laserPierceWidthTiles: 0.12, // half-width of a gear-piercing laser beam
+    prismLensDamage: 50,         // split shot damage dealt to the second target
+    executionHealthBelow: 20,    // target HP percentage that activates execute
+    executionDamage: 40,         // bonus damage while execute is active
+    overflowEveryShots: 5,       // every Nth trigger fires a free bonus volley
+    gravityRadiusTiles: 0.9,     // area around the Slow tower's primary target
+    gravityDragTiles: 0.22,      // path distance pulled backward per zap
+    fractalBomblets: 3,
+    fractalDamage: 35,           // each bomblet's damage as % of the main blast
+    fractalRadius: 45,           // each bomblet's radius as % of main blast
+    fractalOffsetTiles: 0.42,    // bomblet centers from the main impact
+    cascadeBonusPierce: 2,
+    cascadeDamageRamp: 15,       // added damage per victim already pierced
   },
 
   // ---- Item generator (P2, see LOOT_DESIGN.md §4-§6 + loot.js) ----

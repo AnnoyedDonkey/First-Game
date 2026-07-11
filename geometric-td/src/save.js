@@ -10,7 +10,7 @@ const DEFAULT_SAVE = {
   version: 1,
   skillPoints: 0,
   skills: {},           // { skillId: tier } — see config.js SKILLS
-  roster: [],           // [{ name, type, maxLevel, xp, kills }]
+  roster: [],           // records also gain gear: { optic, emitter, capacitor, frame }
   completedLevels: [],  // level ids won at least once
   wins: 0,
   seenTowerGuide: false, // tower guide auto-opens once at level 2

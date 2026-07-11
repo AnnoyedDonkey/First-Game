@@ -10,6 +10,8 @@
 
 import { SKILLS, SKILL_VALUES, SKILL_TIERS } from "./config.js";
 import { loadSave, writeSave, clearSave } from "./save.js";
+import { generateItem } from "./loot.js";
+import { canEquipItem, emptyGear, normalizeGear } from "./equipment.js";
 
 let state = loadSave();
 migrateSkills();
@@ -20,6 +22,12 @@ migrateSkills();
 // field to exist yet even right after loadSave().
 state.endlessBest ||= {};
 state.shards ??= 0;
+backfillGear();
+
+function backfillGear() {
+  state.roster ||= [];
+  for (const rec of state.roster) rec.gear = normalizeGear(rec.gear);
+}
 
 // Older saves stored skills as an array of owned ids; tiers store
 // them as { id: tierNumber }. Convert once on load.
@@ -125,7 +133,10 @@ function syncRoster(game) {
   for (const t of game.towers) {
     let rec = state.roster.find((r) => r.name === t.name);
     if (!rec) {
-      rec = { name: t.name, type: t.type, maxLevel: 1, xp: 0, kills: 0 };
+      rec = {
+        name: t.name, type: t.type, maxLevel: 1, xp: 0, kills: 0,
+        gear: normalizeGear(t.gear),
+      };
       state.roster.push(rec);
     }
     rec.maxLevel = Math.max(rec.maxLevel, t.level);
@@ -137,6 +148,46 @@ function syncRoster(game) {
 
 export function getShards() {
   return state.shards;
+}
+
+// Equipment writes are intentionally small and independent from the stash
+// (P4). The returned previous item lets a later UI move it back to storage.
+export function equipItem(towerName, item) {
+  const rec = state.roster.find((r) => r.name === towerName);
+  const check = canEquipItem(rec, item);
+  if (!check.ok) return check;
+  rec.gear = normalizeGear(rec.gear);
+  const previous = rec.gear[item.slot];
+  rec.gear[item.slot] = structuredClone(item);
+  writeSave(state);
+  return { ok: true, item: rec.gear[item.slot], previous };
+}
+
+export function unequipItem(towerName, slot) {
+  const rec = state.roster.find((r) => r.name === towerName);
+  if (!rec || !Object.hasOwn(emptyGear(), slot)) return { ok: false, reason: "invalid" };
+  rec.gear = normalizeGear(rec.gear);
+  const previous = rec.gear[slot];
+  rec.gear[slot] = null;
+  writeSave(state);
+  return { ok: true, previous };
+}
+
+// Console-only bridge until the stash/equip UI arrives in P4.
+export function debugGrantGear(towerName, options = {}) {
+  const { force = true, ...generatorOptions } = options;
+  const item = generateItem(generatorOptions);
+  const rec = state.roster.find((r) => r.name === towerName);
+  if (!rec) return { ok: false, reason: "invalid", generated: item };
+  if (item.towerType && item.towerType !== rec.type) {
+    return { ok: false, reason: "towerType", generated: item };
+  }
+  if (!force) return { ...equipItem(towerName, item), generated: item };
+  rec.gear = normalizeGear(rec.gear);
+  const previous = rec.gear[item.slot];
+  rec.gear[item.slot] = structuredClone(item);
+  writeSave(state);
+  return { ok: true, item: rec.gear[item.slot], previous, generated: item };
 }
 
 // Called once when a campaign battle ends (win or lose); wins earn a
@@ -183,4 +234,8 @@ export function getBestEndlessWave(levelId) {
 export function resetProgress() {
   clearSave();
   state = loadSave();
+  migrateSkills();
+  state.endlessBest ||= {};
+  state.shards ??= 0;
+  backfillGear();
 }

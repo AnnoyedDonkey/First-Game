@@ -5,15 +5,14 @@
 
 import { enemyPosition, damageEnemy } from "./enemies.js";
 import { emitHitSparks } from "./particles.js";
-import { VFX } from "./config.js";
+import { VFX, LOOT } from "./config.js";
 
 // Visual/feel tuning for projectiles.
 const ORB = {
-  speedTilesPerSec: 5.5,   // pulse orb travel speed
   hitDistance: 8,          // px from target that counts as impact
 };
 
-export function spawnPulseOrb(game, tower, targetEnemy) {
+export function spawnPulseOrb(game, tower, targetEnemy, shot) {
   const start = { x: tower.pos.x, y: tower.pos.y };
   game.projectiles.push({
     kind: "orb",
@@ -21,8 +20,9 @@ export function spawnPulseOrb(game, tower, targetEnemy) {
     y: start.y,
     target: targetEnemy,             // homes while the enemy lives
     lastTargetPos: enemyPosition(targetEnemy, game.grid),
-    speed: ORB.speedTilesPerSec * game.grid.tileSize,
-    damage: tower.damage,
+    speed: tower.def.projectileSpeed * tower.projectileSpeedMult * game.grid.tileSize,
+    damage: shot.damage,
+    crit: shot.crit,
     splashRadius: tower.splashRadius,
     color: tower.def.color,
     sourceTower: tower,
@@ -32,15 +32,16 @@ export function spawnPulseOrb(game, tower, targetEnemy) {
 // A rocket: like a pulse orb but faster and launched from ANYWHERE at the
 // target (the Rocket Launcher has global range). Explodes with splash on
 // impact via the shared explode() below.
-export function spawnRocket(game, tower, targetEnemy) {
+export function spawnRocket(game, tower, targetEnemy, shot) {
   game.projectiles.push({
     kind: "rocket",
     x: tower.pos.x,
     y: tower.pos.y,
     target: targetEnemy,
     lastTargetPos: enemyPosition(targetEnemy, game.grid),
-    speed: 9 * game.grid.tileSize,   // faster than a pulse orb
-    damage: tower.damage,
+    speed: tower.def.projectileSpeed * tower.projectileSpeedMult * game.grid.tileSize,
+    damage: shot.damage,
+    crit: shot.crit,
     splashRadius: tower.splashRadius,
     color: tower.def.color,
     sourceTower: tower,
@@ -88,6 +89,13 @@ function explode(game, orb) {
     });
   }
   emitHitSparks(game, orb.x, orb.y, orb.color, rocket ? 34 : 18);
+  if (orb.crit) {
+    emitHitSparks(game, orb.x, orb.y, "#ffffff", 18);
+    game.effects.push({
+      kind: "ring", x: orb.x, y: orb.y, color: "#ffffff",
+      radius: orb.splashRadius * 0.7, ttl: 0.22, maxTtl: 0.22,
+    });
+  }
   game.springGrid.applyShock(
     orb.x, orb.y,
     game.grid.tileSize * VFX.warp.shockRadiusTiles * (rocket ? 1.6 : 1),
@@ -102,6 +110,37 @@ function explode(game, orb) {
     const dy = pos.y - orb.y;
     if (dx * dx + dy * dy <= orb.splashRadius * orb.splashRadius) {
       damageEnemy(game, e, orb.sourceTower, orb.damage);
+    }
+  }
+
+  if (rocket && orb.sourceTower.gearUniques &&
+      orb.sourceTower.gearUniques.has("fractalWarhead")) {
+    explodeBomblets(game, orb);
+  }
+}
+
+function explodeBomblets(game, orb) {
+  const count = LOOT.combat.fractalBomblets;
+  const offset = LOOT.combat.fractalOffsetTiles * game.grid.tileSize;
+  const radius = orb.splashRadius * LOOT.combat.fractalRadius / 100;
+  const damage = orb.damage * LOOT.combat.fractalDamage / 100;
+  for (let i = 0; i < count; i++) {
+    const angle = (Math.PI * 2 * i) / count + orb.sourceTower.aimAngle;
+    const x = orb.x + Math.cos(angle) * offset;
+    const y = orb.y + Math.sin(angle) * offset;
+    game.effects.push({
+      kind: "burst", x, y, color: orb.color,
+      radius, ttl: 0.28, maxTtl: 0.28,
+    });
+    emitHitSparks(game, x, y, orb.color, 10);
+    for (const enemy of game.enemies) {
+      if (!enemy.alive) continue;
+      const pos = enemyPosition(enemy, game.grid);
+      const dx = pos.x - x;
+      const dy = pos.y - y;
+      if (dx * dx + dy * dy <= radius * radius) {
+        damageEnemy(game, enemy, orb.sourceTower, damage);
+      }
     }
   }
 }

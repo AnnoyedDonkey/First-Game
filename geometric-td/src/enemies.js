@@ -102,7 +102,7 @@ function awardKillXp(enemy, killer, pool) {
   if (contrib) for (const name in contrib) total += contrib[name].weight;
 
   if (!contrib || total <= 0) {
-    if (killer) killer.xp += pool;
+    if (killer) killer.xp += Math.round(pool * (killer.xpGainMult || 1));
     return;
   }
 
@@ -110,17 +110,19 @@ function awardKillXp(enemy, killer, pool) {
   for (const name in contrib) {
     const { tower, weight } = contrib[name];
     const share = Math.floor(pool * (weight / total));
-    tower.xp += share;
+    tower.xp += Math.round(share * (tower.xpGainMult || 1));
     distributed += share;
   }
   // Hand the flooring remainder to the killer (a contributor) if there is
   // one, else to any tracked contributor so no XP is silently dropped.
   const remainder = pool - distributed;
   if (remainder > 0) {
-    if (killer && contrib[killer.name]) killer.xp += remainder;
+    if (killer && contrib[killer.name]) {
+      killer.xp += Math.round(remainder * (killer.xpGainMult || 1));
+    }
     else {
       const first = contrib[Object.keys(contrib)[0]];
-      if (first) first.tower.xp += remainder;
+      if (first) first.tower.xp += Math.round(remainder * (first.tower.xpGainMult || 1));
     }
   }
 }
@@ -136,11 +138,28 @@ export function damageEnemy(game, enemy, sourceTower, amount) {
   if (sourceTower) {
     const m = enemy.def.damageMult && enemy.def.damageMult[sourceTower.def.damageType];
     if (m != null) typeMult = m;
+    if (typeMult < 1 && sourceTower.gearUniques &&
+        sourceTower.gearUniques.has("entropyEmitter")) {
+      typeMult = 1;
+    }
   }
   let dmg = amount * typeMult;
-  // Slow-tower vulnerability debuff: slowed enemies take extra damage
-  // from EVERY source while the debuff lasts.
-  if (game.time < enemy.vulnUntil) dmg *= enemy.vulnMult;
+  if (sourceTower && sourceTower.gearUniques &&
+      sourceTower.gearUniques.has("executionersArray") &&
+      enemy.health / enemy.maxHealth < LOOT.combat.executionHealthBelow / 100) {
+    dmg *= 1 + LOOT.combat.executionDamage / 100;
+  }
+  // Destabilizer marks a slowed target, making its bonus global for the
+  // rest of that slow. The strongest mark wins rather than stacking.
+  if (sourceTower && game.time < enemy.slowUntil &&
+      sourceTower.gearUniques && sourceTower.gearUniques.has("vulnMark")) {
+    const unique = LOOT.gen.uniques.minor.find((u) => u.id === "vulnMark");
+    enemy.gearVulnBonus = Math.max(enemy.gearVulnBonus || 0, unique.value / 100);
+    enemy.gearVulnUntil = Math.max(enemy.gearVulnUntil || 0, enemy.slowUntil);
+  }
+  let vulnMult = game.time < enemy.vulnUntil ? enemy.vulnMult : 1;
+  if (game.time < (enemy.gearVulnUntil || 0)) vulnMult += enemy.gearVulnBonus || 0;
+  dmg *= vulnMult;
 
   enemy.health -= dmg;
   enemy.hitFlash = 0.1;
@@ -175,16 +194,23 @@ export function damageEnemy(game, enemy, sourceTower, amount) {
   }
 
   enemy.alive = false;
-  game.money += Math.round(enemy.bounty * ECONOMY.moneyPerKillMultiplier * getMoneyMult());
+  game.money += Math.round(
+    enemy.bounty * ECONOMY.moneyPerKillMultiplier * getMoneyMult() *
+    (sourceTower ? sourceTower.bountyMult || 1 : 1)
+  );
 
-  // XP pool is unchanged (no inflation) but split among all contributors.
+  // The base XP pool is split without inflation; equipped XP Gain then
+  // multiplies each recipient's awarded share.
   const killXp = Math.round(enemy.xp * ECONOMY.xpPerKillMultiplier * getXpMult());
   awardKillXp(enemy, sourceTower, killXp);
 
   // Shards ◆ (loot spec §1) — persistent currency, earned per kill
   // regardless of win/loss. Banked on `game` and synced to the save at
   // battle end (progression.js syncRoster), same pattern as roster XP.
-  game.shardsEarned += Math.round(LOOT.shards.perKillBase * (enemy.def.shardTier ?? 1));
+  game.shardsEarned += Math.round(
+    LOOT.shards.perKillBase * (enemy.def.shardTier ?? 1) *
+    (sourceTower ? sourceTower.shardFindMult || 1 : 1)
+  );
 
   const pos = enemyPosition(enemy, game.grid);
   const ts = game.grid.tileSize;

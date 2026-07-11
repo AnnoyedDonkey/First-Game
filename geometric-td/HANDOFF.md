@@ -167,6 +167,7 @@ src/
   ui.js           DOM: HUD, tower tray, upgrade/sell panel, skill tree,
                   level select, overlays, speed buttons, wheel forwarding
   progression.js  persistent layer: roster, skill tiers, unlocks
+  equipment.js    gear slots, requirement gates, stat/unique aggregation
   save.js         localStorage read/write/reset (key: geometric-td-save-v1)
   leaderboard.js  shared online board (Supabase REST via fetch); own
                   localStorage key (nickname + clientId), never touches
@@ -191,8 +192,9 @@ src/
 - **Contributor-weighted XP (loot P0, shipped):** a kill's XP pool is split
   among EVERY tower that damaged or slowed the enemy, by weight — damage
   dealt (1/point) plus slow applied (`slowSeconds * LOOT.xp.slowWeightPerSec`).
-  Pool total is unchanged (no inflation); the kill COUNT still goes only to
-  the final-hit tower. Tracked on `enemy._contrib` (accumulated in
+  Base pool total is unchanged; equipped XP Gain can multiply a recipient's
+  share. The kill COUNT still goes only to the final-hit tower. Tracked on
+  `enemy._contrib` (accumulated in
   `damageEnemy`/`slowEnemy`, consumed at death in `awardKillXp`, both in
   enemies.js). This finally levels Slow towers, which rarely land the
   killing blow. (Was: final-hit-only, so Slow towers never leveled.)
@@ -205,7 +207,7 @@ src/
   record survives; XP earned during the current battle by a sold tower is lost.
 - **Roster recording:** `recordBattleEnd` runs inside game.js at the moment
   of win/loss (NOT in the render loop — background tabs pause rAF).
-- **Shards ◆ (loot P1, shipped):** persistent meta-currency, no gear yet.
+- **Shards ◆ (loot P1, shipped):** persistent meta-currency for gear/store work.
   Earned per kill — win, lose, OR forfeit — as `round(LOOT.shards.perKillBase
   * enemy.def.shardTier)` (`shardTier` is a new per-enemy field, 1/2/4 for
   grunt/heavy/boss). Banked live on `game.shardsEarned` (enemies.js
@@ -443,17 +445,24 @@ as the source of truth, not that old ×1.2 rule.)
     §2b retroactive-nerf decision resolved (accepted). Config knobs live in
     `TOWER_UPGRADES.mastery` and the new `LOOT.xp` block in config.js.
   - **P1 DONE (2026-07-11):** Shards ◆ currency + save schema/migration
-    (described under "Key mechanics" above). No gear yet.
+    (described under "Key mechanics" above).
   - **P2 DONE (2026-07-11):** Item generator — new pure module `src/loot.js`
     (`generateItem`, seedable `makeRng`, `lootSelfTest`, `itemLabel`; exposed
     as `window.loot`). All knobs in `config.js LOOT.gen` (affix table, rarity
     weights, restriction, unique pools, ilvl curve, sellValues). Restriction
     (§4c) satisfied by construction: type is fixed before affixes are sampled.
-    No gameplay wiring, no save changes yet. Verified via a 50k-item
+    Verified via a 50k-item
     console self-test (all invariants + distributions). Details under
     LOOT_DESIGN §14 P2 checkbox.
-  - **Next: P3** — Equip + gear application in combat (crit & double-shot,
-    roster gear slots, a debug grant to see gear affect towers; Opus/High).
+  - **P3 DONE (2026-07-11):** roster gear slots + migration, equip requirement
+    checks, all normal affixes, crit, Overcharge/double-shot, four Prismatic
+    minor uniques, and all seven Singularity effects. Combat plumbing is in
+    `equipment.js`, `towers.js`, `projectiles.js`, and `enemies.js`; tunables
+    are in `config.js LOOT.combat` plus per-tower projectile speed/base pierce.
+    Temporary console bridge: `gear.grant("L-01", { unique: "prismLens" })`,
+    `gear.equip(name, item)`, `gear.unequip(name, slot)`, and `gear.roster()`.
+    Forced debug grants bypass level/Mastery gates but still enforce tower type.
+  - **Next: P4** — drops, guaranteed end-drop, stash, equip UI, and triage.
     Build one phase per fresh session (`/clear` between); the handoff is the
     committed files + LOOT_DESIGN checkboxes, not the conversation.
 
