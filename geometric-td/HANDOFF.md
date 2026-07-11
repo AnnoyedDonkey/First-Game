@@ -507,13 +507,13 @@ as the source of truth, not that old ×1.2 rule.)
     committed files + LOOT_DESIGN checkboxes, not the conversation.
 
 
-- **GEAR UI REDESIGN (in progress — U0–U4 shipped, U5 next):**
-  full spec + phase plan (U0–U5, with model/effort per phase) in
-  `GEAR_UI_DESIGN.md`; approved interactive mockup at
-  `mockups/gear-ui-mockup.html`. Replaces the flat P4 GEAR panel with a
-  tower-first two-tab screen (TOWERS/STASH, icon tiles, filters), merges
-  the Tower Guide menu entry away, renames roster units to long names
-  (Laser-01), and later restyles the STORE the same way.
+- **GEAR UI REDESIGN — COMPLETE (U0–U5 all shipped):**
+  full spec + phase history in `GEAR_UI_DESIGN.md`; approved interactive
+  mockup at `mockups/gear-ui-mockup.html`. Replaced the flat P4 GEAR panel
+  with a tower-first two-tab screen (TOWERS/STASH, icon tiles, filters),
+  merged the Tower Guide menu entry away, renamed roster units to long
+  names (Laser-01), and restyled the STORE with the same tile/sheet
+  components.
   - **U0 DONE (2026-07-11):** Mastery-1 equip gate (`equipment.js
     canEquipItem`, reason `"masteryGate"`, grandfathered — already-worn
     gear never stripped) + auto-equip-on-earn (`progression.js
@@ -587,6 +587,16 @@ as the source of truth, not that old ×1.2 rule.)
     plays on the drop-reveal card. All three respect
     `prefers-reduced-motion`. Full detail + verification notes in
     `GEAR_UI_DESIGN.md`'s U4 checkbox.
+  - **U5 DONE (2026-07-11):** STORE restyle. `#store-overlay` rebuilt on
+    the same tile-grid + bottom-sheet components as the TOWERS/STASH
+    screen (green accent to stay visually distinct) — 5-wide `#store-grid`
+    of `tileHtml(...)` tiles with a Shard-price corner tag, a dedicated
+    `#store-sheet-overlay` (own ids, since the gear screen's sheet lives
+    inside `#gear-overlay` and can't render while that's hidden) showing
+    title/affixes/BUY. No store logic changed (P5's `getStoreStock`/
+    `rerollStore`/`buyStoreItem` untouched) — pure restyle, per
+    `GEAR_UI_DESIGN.md` §3. Full detail + verification notes in that doc's
+    U5 checkbox.
 - **PLAYTEST-PENDING:** the counter re-tune + visible feedback + Rocket +
   World 3 all shipped but the difficulty is calibrated only by bot sims
   (superhuman placement → flawless bot wins are a WEAK signal). The user's

@@ -100,12 +100,24 @@
         </div>
       </div>
 
-      <!-- Store overlay: persistent stock, Shard purchases and rerolls -->
+      <!-- Store overlay: persistent stock, Shard purchases and rerolls
+           (GEAR_UI_DESIGN.md U5 — restyled with the gear-screen's tile/sheet
+           components; no logic changes, P5 store logic untouched). -->
       <div id="store-overlay" class="hidden">
-        <h1>STORE</h1>
-        <p id="store-line"></p>
-        <div id="store-list"></div>
+        <div id="store-header">
+          <h1>STORE</h1>
+        </div>
+        <div id="store-wallet" class="store-wallet"></div>
+        <div id="store-scroll">
+          <div id="store-actions" class="gear-actions-row"></div>
+          <div id="store-grid"></div>
+        </div>
         <button id="store-close" class="big-button">CLOSE</button>
+
+        <!-- Bottom sheet: item detail with BUY -->
+        <div id="store-sheet-overlay" class="hidden">
+          <div id="store-sheet"></div>
+        </div>
       </div>
 
       <!-- Leaderboard overlay: shared online best-wave scores by level -->

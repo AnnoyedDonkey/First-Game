@@ -68,9 +68,13 @@ const el = {
   gearSheetOverlay: document.getElementById("gear-sheet-overlay"),
   gearSheet: document.getElementById("gear-sheet"),
   storeOverlay: document.getElementById("store-overlay"),
-  storeList: document.getElementById("store-list"),
-  storeLine: document.getElementById("store-line"),
+  storeWallet: document.getElementById("store-wallet"),
+  storeScroll: document.getElementById("store-scroll"),
+  storeActions: document.getElementById("store-actions"),
+  storeGrid: document.getElementById("store-grid"),
   storeClose: document.getElementById("store-close"),
+  storeSheetOverlay: document.getElementById("store-sheet-overlay"),
+  storeSheet: document.getElementById("store-sheet"),
   money: document.getElementById("money-value"),
   wave: document.getElementById("wave-value"),
   core: document.getElementById("core-value"),
@@ -112,7 +116,7 @@ forwardWheel(el.levelOverlay, el.levelList);
 forwardWheel(el.skillOverlay, el.skillList);
 forwardWheel(el.leaderboardOverlay, el.leaderboardList);
 forwardWheel(el.gearOverlay, el.gearScroll);
-forwardWheel(el.storeOverlay, el.storeList);
+forwardWheel(el.storeOverlay, el.storeScroll);
 
 function setText(node, key, value) {
   if (last[key] === value) return;
@@ -660,30 +664,8 @@ function itemReqText(item) {
   return item.reqMastery ? `REQ STAR ${item.reqMastery}` : `REQ LV ${item.reqLevel}`;
 }
 
-function itemAffixText(item) {
-  const affixes = (item.affixes || []).map((a) => `${a.stat} +${a.value}`).join(" / ");
-  const unique = itemUniqueName(item);
-  return `${itemReqText(item)} / ILVL ${item.ilvl}` +
-    (item.towerType ? ` / ${TOWERS[item.towerType].name}` : " / any tower") +
-    (unique ? ` / ${unique}` : "") +
-    (affixes ? ` / ${affixes}` : "");
-}
-
-function itemClass(item) {
-  return `gear-item rarity-${item.rarity}`;
-}
-
 function compatibleRoster(item) {
   return [...getProgress().roster].filter((rec) => canEquipItem(rec, item).ok);
-}
-
-function renderItemText(item) {
-  const text = document.createElement("div");
-  text.className = "gear-text";
-  text.innerHTML =
-    `<span class="gear-name">${escapeHtml(itemTitle(item))}</span>` +
-    `<span class="gear-desc">${escapeHtml(itemAffixText(item))}</span>`;
-  return text;
 }
 
 // ---- Tile components shared by both tabs + the bottom sheet ----
@@ -772,17 +754,24 @@ function itemAffixRowsHtml(item) {
   return `<div class="gear-affix-list">${rows.join("")}</div>`;
 }
 
-// A grid tile for the STASH tab (5-wide) or the triage strip. `opts.stashId`
-// or `opts.pendingId` sets the data attribute the click delegate reads.
+// A grid tile for the STASH tab (5-wide), the triage strip, or the STORE
+// grid. `opts.stashId`/`opts.pendingId`/`opts.storeId` sets the data
+// attribute the click delegate reads. `opts.priceTag` (STORE only) shows a
+// Shard price in the corner instead of the lock-dot, dimmed + red when
+// `opts.unaffordable` is set.
 function tileHtml(item, opts = {}) {
   const color = RARITY_COLOR[item.rarity];
   const lockLetter = item.towerType ? TOWERS[item.towerType].prefix : "";
   const isNew = opts.stashId && !isItemSeen(item.id);
   const dataAttr = opts.stashId ? `data-stash-item="${item.id}"`
-    : opts.pendingId ? `data-pending-item="${item.id}"` : "";
-  return `<button class="item-tile ${RARITY_CLASS[item.rarity]}" ${dataAttr}>` +
+    : opts.pendingId ? `data-pending-item="${item.id}"`
+    : opts.storeId ? `data-store-item="${item.id}"` : "";
+  const cornerTag = opts.priceTag
+    ? `<span class="price-tag">&#9670;${opts.priceTag}</span>`
+    : lockLetter ? `<span class="lock-dot" style="color:${color}">${lockLetter}</span>` : "";
+  return `<button class="item-tile ${RARITY_CLASS[item.rarity]}${opts.unaffordable ? " unaffordable" : ""}" ${dataAttr}>` +
     slotGlyph(item.slot, color) +
-    (lockLetter ? `<span class="lock-dot" style="color:${color}">${lockLetter}</span>` : "") +
+    cornerTag +
     (isNew ? `<span class="new-tag">NEW</span>` : "") +
     `</button>`;
 }
@@ -1318,46 +1307,78 @@ function closeGearPanel() {
 
 el.gearClose.addEventListener("click", closeGearPanel);
 
-// ---------- Store overlay ----------
+// ---------- Store overlay (GEAR_UI_DESIGN.md U5) ----------
+// Same tile grid + bottom-sheet components as the gear screen (tileHtml,
+// slotGlyph, itemAffixRowsHtml, itemTitle, itemReqText) — no store logic
+// changes, purely a restyle on top of the existing P5 store functions.
+
+function closeStoreSheet() {
+  el.storeSheetOverlay.classList.add("hidden");
+}
+el.storeSheetOverlay.addEventListener("click", (e) => {
+  if (e.target === el.storeSheetOverlay) closeStoreSheet();
+});
+
+function openStoreItemSheet(item) {
+  const color = RARITY_COLOR[item.rarity];
+  const lockTag = item.towerType ? `${TOWERS[item.towerType].rosterPrefix.toUpperCase()}-ONLY` : "UNIVERSAL";
+  const sub =
+    `${item.rarity.toUpperCase()} &middot; ${item.slot.toUpperCase()} &middot; ${lockTag} &middot; ` +
+    `${itemReqText(item)} &middot; ILVL ${item.ilvl}`;
+  const price = LOOT.store.prices[item.rarity] || 0;
+  const free = stashSlotsFree();
+  const buyLabel = free > 0 ? `BUY &#9670;${price}` : "STASH FULL";
+  const buyDisabled = free <= 0 || getShards() < price;
+
+  el.storeSheet.innerHTML =
+    `<div class="gear-sheet-title" style="color:${color}; text-shadow:0 0 10px ${color}55">` +
+    `${slotGlyph(item.slot, color)} ${escapeHtml(itemTitle(item))}</div>` +
+    `<div class="gear-sheet-sub">${sub}</div>` +
+    itemAffixRowsHtml(item) +
+    `<div class="gear-sheet-actions"><button class="gear-sheet-btn" id="store-sheet-buy"${buyDisabled ? " disabled" : ""}>${buyLabel}</button></div>`;
+  el.storeSheetOverlay.classList.remove("hidden");
+
+  const buyBtn = document.getElementById("store-sheet-buy");
+  if (!buyDisabled) {
+    buyBtn.addEventListener("click", () => {
+      buyStoreItem(item.id);
+      closeStoreSheet();
+      renderStorePanel();
+    });
+  }
+}
 
 function renderStorePanel() {
+  const scrollTop = el.storeScroll.scrollTop;
   const stock = getStoreStock();
   const free = stashSlotsFree();
   const rerollCost = storeRerollCost();
-  el.storeLine.textContent = `SHARDS ${getShards()} / STASH ${getStash().length}/${LOOT.stash.stashSize}`;
-  el.storeList.innerHTML = "";
+  const shards = getShards();
+  el.storeWallet.innerHTML = `<b>&#9670; ${shards}</b> &nbsp;&middot;&nbsp; STASH ${getStash().length}/${LOOT.stash.stashSize}`;
 
-  const actions = document.createElement("div");
-  actions.className = "gear-actions-row";
+  el.storeActions.innerHTML = "";
   const reroll = document.createElement("button");
   reroll.className = "gear-action store-reroll";
   reroll.textContent = `REROLL ◆ ${rerollCost}`;
-  reroll.disabled = getShards() < rerollCost;
+  reroll.disabled = shards < rerollCost;
   reroll.addEventListener("click", () => { rerollStore(); renderStorePanel(); });
-  actions.appendChild(reroll);
-  el.storeList.appendChild(actions);
+  el.storeActions.appendChild(reroll);
 
-  if (!stock.length) {
-    const empty = document.createElement("div");
-    empty.className = "gear-empty";
-    empty.textContent = "SOLD OUT — reroll to restock.";
-    el.storeList.appendChild(empty);
-    return;
-  }
+  el.storeGrid.innerHTML = stock.length
+    ? stock.map((item) => {
+      const price = LOOT.store.prices[item.rarity] || 0;
+      return tileHtml(item, { storeId: item.id, priceTag: price, unaffordable: free <= 0 || shards < price });
+    }).join("")
+    : `<div class="gear-grid-empty">SOLD OUT &mdash; reroll to restock.</div>`;
 
-  for (const item of stock) {
-    const row = document.createElement("div");
-    row.className = itemClass(item);
-    row.appendChild(renderItemText(item));
-    const buy = document.createElement("button");
-    buy.className = "gear-action store-buy";
-    const price = LOOT.store.prices[item.rarity] || 0;
-    buy.textContent = free > 0 ? `BUY ◆ ${price}` : "STASH FULL";
-    buy.disabled = free <= 0 || getShards() < price;
-    buy.addEventListener("click", () => { buyStoreItem(item.id); renderStorePanel(); });
-    row.appendChild(buy);
-    el.storeList.appendChild(row);
-  }
+  el.storeScroll.scrollTop = scrollTop;
+
+  el.storeGrid.querySelectorAll("[data-store-item]").forEach((tile) => {
+    tile.addEventListener("click", () => {
+      const item = getStoreStock().find((i) => i.id === tile.dataset.storeItem);
+      if (item) openStoreItemSheet(item);
+    });
+  });
 }
 
 export function openStorePanel() {
@@ -1366,6 +1387,7 @@ export function openStorePanel() {
 }
 
 el.storeClose.addEventListener("click", () => {
+  closeStoreSheet();
   el.storeOverlay.classList.add("hidden");
   renderWorld();
 });

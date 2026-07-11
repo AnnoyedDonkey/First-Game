@@ -4,7 +4,7 @@ Build spec for the redesigned tower/gear interface. **Read `HANDOFF.md` first**
 (architecture, constraints, verification recipe), and `LOOT_DESIGN.md` for the
 loot system this UI sits on top of (P0–P6 shipped).
 
-Status: **U0, U1, U2, U3, and U4 shipped. Remaining: U5.**
+Status: **U0-U5 all shipped. GEAR UI REDESIGN complete.**
 Update the "Build status" checkboxes as
 phases land. Token strategy is the same as LOOT_DESIGN §14: **one phase per
 fresh session, `/clear` between; the handoff is the committed files + these
@@ -365,7 +365,33 @@ plus eyeball on phone for UI phases).
       available in this session's browser tool — verification was DOM/JS
       state, not eyeballed pixels; worth a quick phone glance for the
       actual animation feel.)
-- [ ] **U5 — STORE restyle.** §3.
+- [x] **U5 — STORE restyle.** DONE (2026-07-11). `#store-overlay` rebuilt
+      to reuse the TOWERS/STASH screen's tile + bottom-sheet components:
+      header/wallet line (green accent, `#store-header`/`.store-wallet`,
+      mirrors `#gear-header`/`#gear-wallet`), a `gear-actions-row` REROLL
+      button, a 5-wide `#store-grid` of `tileHtml(...)` tiles (extended with
+      new `opts.storeId`/`opts.priceTag`/`opts.unaffordable` — a Shard-price
+      corner tag replaces the lock-dot, dimmed+red when unaffordable or the
+      stash is full), and a dedicated `#store-sheet-overlay`/`#store-sheet`
+      bottom sheet (own ids, not the gear screen's `#gear-sheet` — that
+      element lives inside `#gear-overlay` and would stay unrendered while
+      `#gear-overlay` is hidden; CSS shares the `.gear-sheet-*` classes so
+      no visual duplication) showing title/sub/affixes + a single BUY
+      action (label/disabled state from `stashSlotsFree()`/`getShards()`,
+      same as before). No store logic changed — `getStoreStock`,
+      `storeRerollCost`, `rerollStore`, `buyStoreItem` (P5) are untouched;
+      this is purely the restyle from §3. Removed the old flat-row
+      `itemClass`/`renderItemText`/`itemAffixText` helpers and the
+      `.gear-item`/`.gear-text`/`.gear-name`/`.gear-desc`/`.rarity-*` CSS
+      they were the only callers of (verified zero references left anywhere
+      in `src/` or `styles.css` before deleting). Verified live in-browser:
+      seeded `shards: 5000`, opened STORE from the main menu, confirmed the
+      5-tile grid with price tags renders, tapped a tile to open the sheet
+      (title/sub/affix row correct), tapped BUY — Shards deducted (5000 →
+      4975), STASH counter updated (0/50 → 1/50), sheet closed, and the
+      grid re-rendered to 4 remaining tiles; tapped REROLL — cost escalated
+      (30 → 45), Shards deducted again, a fresh 5-tile stock appeared; CLOSE
+      returned to the main menu. No console errors throughout.
 
 Dependencies: U0 independent (do first — it also makes the game nicer with
 the OLD UI). U1 → U2 → U3 strictly ordered. U4/U5 after U3, either order.

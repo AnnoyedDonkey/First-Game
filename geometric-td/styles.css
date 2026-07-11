@@ -444,9 +444,9 @@ button.hud-item {
 
 /* ---------- Gear overlay (TOWERS / STASH tabs, GEAR_UI_DESIGN.md U1) ----------
    Tile/sheet component classes below (.gear-tile, .item-tile, .gear-sheet-*,
-   .gear-chip...) are new to this screen. .gear-item / .gear-text / .gear-name
-   / .gear-desc / .rarity-* / .gear-action / .gear-actions-row / .gear-empty
-   stay shared with the STORE overlay below — don't rename those. */
+   .gear-chip...) are new to this screen. .gear-action / .gear-actions-row /
+   .gear-empty stay shared with the STORE overlay below (U5) — don't rename
+   those. */
 
 #gear-overlay {
   position: absolute;
@@ -758,31 +758,17 @@ button.hud-item {
 .gear-triage-title { font-size: 10px; letter-spacing: 1.5px; color: var(--neon-red); margin-bottom: 8px; }
 .gear-triage-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 10px; }
 
-/* ---- Shared classes reused from the old panel (STORE overlay still uses
-   these — see the note at the top of this section). ---- */
-.gear-item, .gear-empty {
+/* ---- Shared action-row/empty-state classes (STORE overlay reuses these). ---- */
+.gear-empty {
   flex-shrink: 0;
   padding: 10px 12px;
   border: 1px solid var(--panel-border);
   border-radius: 6px;
   background: var(--panel);
+  color: var(--text-dim);
+  font-size: 10px;
+  line-height: 1.45;
 }
-.gear-item { display: flex; flex-direction: column; gap: 8px; }
-.gear-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.gear-name { font-size: 12px; letter-spacing: 1px; color: var(--text); }
-.gear-desc, .gear-empty { color: var(--text-dim); font-size: 10px; line-height: 1.45; }
-
-.rarity-common { border-color: #8a97ac; }
-.rarity-enhanced { border-color: var(--neon-green); }
-.rarity-rare { border-color: var(--neon-cyan); }
-.rarity-prismatic { border-color: var(--neon-magenta); box-shadow: 0 0 10px rgba(255, 63, 212, 0.16); }
-.rarity-singularity { border-color: #ffffff; box-shadow: 0 0 14px rgba(255, 226, 74, 0.24); }
-
-.rarity-common .gear-name { color: #b7c0d5; }
-.rarity-enhanced .gear-name { color: var(--neon-green); }
-.rarity-rare .gear-name { color: var(--neon-cyan); }
-.rarity-prismatic .gear-name { color: var(--neon-magenta); }
-.rarity-singularity .gear-name { color: #ffffff; text-shadow: 0 0 8px rgba(255, 226, 74, 0.6); }
 
 .gear-actions-row { display: flex; gap: 8px; flex-shrink: 0; }
 
@@ -940,7 +926,12 @@ button.hud-item {
 .gear-bonus-line .src { color: var(--text-dim); font-size: 9px; letter-spacing: 1.5px; display: block; }
 .gear-guide-text { font-size: 11px; color: var(--text-dim); line-height: 1.6; margin-bottom: 12px; }
 
-/* ---------- Store overlay ---------- */
+/* ---------- Store overlay (GEAR_UI_DESIGN.md U5) ----------
+   Reuses the gear screen's tile grid + bottom-sheet components (same CSS
+   classes, new #store-* ids since the store overlay is a sibling of
+   #gear-overlay, not a child — a hidden parent would hide a nested sheet).
+   Green accent throughout (vs. the gear screen's cyan) to keep STORE
+   visually distinct at a glance. */
 
 #store-overlay {
   position: absolute;
@@ -948,36 +939,42 @@ button.hud-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 12px;
+  justify-content: flex-start;
+  gap: 10px;
   background: rgba(5, 6, 15, 0.94);
-  padding: 20px;
+  padding: 16px 20px;
   z-index: 40;
 }
 
 #store-overlay.hidden { display: none; }
 
-#store-overlay h1 {
-  font-size: 24px;
+#store-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 420px;
+  flex-shrink: 0;
+}
+#store-header h1 {
+  font-size: 22px;
   letter-spacing: 4px;
   color: var(--neon-green);
   text-shadow: 0 0 16px rgba(74, 255, 161, 0.6);
 }
 
-#store-line {
+.store-wallet {
   color: var(--text-dim);
   font-size: 11px;
-  letter-spacing: 1px;
-  text-align: center;
+  letter-spacing: 1.5px;
+  flex-shrink: 0;
 }
+.store-wallet b { color: var(--neon-yellow); font-weight: 600; }
 
-#store-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+#store-scroll {
   width: 100%;
-  max-width: 440px;
-  flex: 0 1 auto;
+  max-width: 420px;
+  flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
@@ -985,12 +982,56 @@ button.hud-item {
   scrollbar-width: thin;
   scrollbar-color: var(--panel-border) transparent;
 }
+#store-scroll::-webkit-scrollbar { width: 4px; }
+#store-scroll::-webkit-scrollbar-thumb { background: var(--panel-border); border-radius: 2px; }
 
-#store-list::-webkit-scrollbar { width: 4px; }
-#store-list::-webkit-scrollbar-thumb { background: var(--panel-border); border-radius: 2px; }
+#store-actions { margin-bottom: 10px; }
+
+#store-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
 
 .store-entry { border-color: var(--neon-green) !important; }
-.store-reroll, .store-buy { border-color: var(--neon-green); color: var(--neon-green); }
+.store-reroll { border-color: var(--neon-green); color: var(--neon-green); }
+.store-buy { border-color: var(--neon-green); background: rgba(74, 255, 161, 0.08); color: var(--neon-green); }
+
+.item-tile .price-tag {
+  position: absolute;
+  bottom: 3px; right: 5px;
+  font-size: 8px;
+  color: var(--neon-yellow);
+  letter-spacing: 0.5px;
+}
+.item-tile.unaffordable { opacity: 0.45; }
+.item-tile.unaffordable .price-tag { color: var(--neon-red); }
+
+/* ---- Bottom sheet: reuses #gear-sheet-overlay/#gear-sheet positioning ---- */
+#store-sheet-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 6, 15, 0.82);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 5;
+  backdrop-filter: blur(2px);
+}
+#store-sheet-overlay.hidden { display: none; }
+#store-sheet {
+  width: 100%;
+  max-width: 420px;
+  max-height: 78%;
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-bottom: none;
+  border-radius: 18px 18px 0 0;
+  padding: 16px 16px calc(20px + env(safe-area-inset-bottom));
+  animation: gearSheetUp 0.22s ease-out;
+}
+@media (prefers-reduced-motion: reduce) { #store-sheet { animation: none; } }
 
 /* ---------- Skill tree overlay ---------- */
 
