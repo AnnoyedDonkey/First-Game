@@ -433,7 +433,7 @@ as the source of truth, not that old ×1.2 rule.)
 
 ## Backlog (user-approved, not yet built)
 
-- **LOOT & EQUIPMENT SYSTEM (in progress — P4 shipped, P5 next):** full build spec in
+- **LOOT & EQUIPMENT SYSTEM (in progress — P5 shipped, P6 next):** full build spec in
   `LOOT_DESIGN.md` — per-tower Diablo-style gear (4 typed slots, 5 rarities,
   affixes + Singularity uniques, Shards currency, store, stash+triage),
   plus the changes it forces (50-rank escalating Mastery curve,
