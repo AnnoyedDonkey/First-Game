@@ -5,7 +5,7 @@ the supporting changes it forces (Mastery curve rework, contributor-weighted
 XP, Endless reward tracks). Agreed in a design session; **read `HANDOFF.md`
 first** for architecture, constraints, and the balance-testing recipe.
 
-Status: **P5 COMPLETE — P6 Endless reward tracks is next.** Build order is at the bottom.
+Status: **P6 COMPLETE — P7 Balance pass is next.** Build order is at the bottom.
 Update the "Build status" checkboxes as phases land.
 
 ---
@@ -425,7 +425,26 @@ starts flailing rather than defaulting everything High.)
       The STORE menu has persistent five-item stock, roster-scaled item level,
       escalating Shard rerolls, stash-cap-safe purchases, and automatic fresh
       stock after every game. GEAR remains the sell path.
-- [ ] **P6 — Endless reward tracks.**
+- [x] **P6 — Endless reward tracks.** Completed 2026-07-11. A shared
+      5-milestone wave-threshold track (`config.js ENDLESS_REWARDS`, waves
+      10/20/35/50/75) applies to every level's Endless mode; each level
+      tracks its own claimed set in `save.js endlessRewards[levelId]`
+      (field already existed from P4/P5 scaffolding). Grants are automatic —
+      `progression.js grantEndlessRewards` fires from `recordEndlessResult`
+      keyed to the level's BEST-ever wave (not just the current run), so
+      thresholds already cleared by past runs grant retroactively the next
+      time that level's Endless mode ends. Shard rewards bank immediately;
+      loot rewards use the same `dropIlvl` scaling as kill/end drops and
+      land in `pendingLoot` (existing GEAR triage flow — no new UI needed
+      to claim them). Newly-crossed milestones are called out in the RUN
+      OVER overlay subtitle; the level-select Endless button shows a
+      `★ claimed/total` progress readout (`getEndlessMilestones` in
+      progression.js, rendered in ui.js `renderWorld`). Verified in-browser:
+      scripted a level-1 Endless run to wave 20+ via `step()`, confirmed
+      both the wave-10 (Shards) and wave-20 (Rare item) milestones granted
+      exactly once, Shards balance and pendingLoot both updated, re-running
+      past the same waves granted nothing further, and the endless button's
+      ★ readout updated after returning to the menu.
 - [ ] **P7 — Balance pass** (bot sims; geared-veteran wave-1 spike, drop rates,
       Shard economy, Mastery pacing).
 

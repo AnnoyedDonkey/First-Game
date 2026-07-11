@@ -8,9 +8,9 @@
 // available roster unit of that type before creating a new one.
 // ============================================================
 
-import { LOOT, SKILLS, SKILL_VALUES, SKILL_TIERS } from "./config.js";
+import { ENDLESS_REWARDS, LOOT, SKILLS, SKILL_VALUES, SKILL_TIERS } from "./config.js";
 import { loadSave, writeSave, clearSave } from "./save.js";
-import { generateGuaranteedDrop, generateItem } from "./loot.js";
+import { dropIlvl, generateGuaranteedDrop, generateItem } from "./loot.js";
 import { canEquipItem, emptyGear, masteryRankFor, normalizeGear } from "./equipment.js";
 
 let state = loadSave();
@@ -426,12 +426,59 @@ export function recordEndlessResult(game) {
   const prevBest = state.endlessBest[game.level.id] || 0;
   const isNewBest = waveReached > prevBest;
   if (isNewBest) state.endlessBest[game.level.id] = waveReached;
+  // Milestones are keyed to the level's BEST-ever wave, not just this run,
+  // so a threshold already cleared by a past run (including ones from
+  // before this reward track existed) still grants retroactively.
+  const newRewards = grantEndlessRewards(game.level.id, state.endlessBest[game.level.id]);
   writeSave(state);
-  return { waveReached, isNewBest, bestWave: state.endlessBest[game.level.id], lootResult };
+  return {
+    waveReached, isNewBest, bestWave: state.endlessBest[game.level.id],
+    lootResult, newRewards,
+  };
 }
 
 export function getBestEndlessWave(levelId) {
   return state.endlessBest[levelId] || 0;
+}
+
+// ---------- Endless reward tracks (LOOT_DESIGN.md §10) ----------
+
+function claimedEndlessIds(levelId) {
+  state.endlessRewards ||= {};
+  state.endlessRewards[levelId] ||= [];
+  return state.endlessRewards[levelId];
+}
+
+// Grants every milestone whose threshold is <= bestWave and isn't already
+// claimed for this level. Shards bank straight into the wallet; loot lands
+// in pendingLoot, same triage flow as any other end-of-run drop. Returns
+// the list of milestones newly granted this call (for the end-of-run UI).
+function grantEndlessRewards(levelId, bestWave) {
+  const claimed = claimedEndlessIds(levelId);
+  const granted = [];
+  for (const m of ENDLESS_REWARDS.milestones) {
+    if (m.type !== "wave" || bestWave < m.threshold || claimed.includes(m.id)) continue;
+    claimed.push(m.id);
+    if (m.reward.kind === "shards") {
+      state.shards += m.reward.amount;
+    } else if (m.reward.kind === "loot") {
+      const levelNumber = Number(levelId.slice(-3)) || 1;
+      state.pendingLoot ||= [];
+      state.pendingLoot.push(generateItem({
+        rarity: m.reward.rarity,
+        ilvl: dropIlvl(levelNumber, m.threshold),
+      }));
+    }
+    granted.push(m);
+  }
+  return granted;
+}
+
+// For the level-select Endless button and any future progress display:
+// every milestone for a level, tagged with whether it's been claimed.
+export function getEndlessMilestones(levelId) {
+  const claimed = new Set(state.endlessRewards[levelId] || []);
+  return ENDLESS_REWARDS.milestones.map((m) => ({ ...m, claimed: claimed.has(m.id) }));
 }
 
 export function resetProgress() {

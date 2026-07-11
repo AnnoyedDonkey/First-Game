@@ -212,6 +212,21 @@ function lootLine() {
   return count ? ` Loot recovered: ${count} item${count === 1 ? "" : "s"}.` : "";
 }
 
+// Endless reward-track milestones newly crossed this run (progression.js
+// grantEndlessRewards) — shards are already banked, loot already sits in
+// pendingLoot, this is just telling the player what happened.
+function endlessRewardLine() {
+  const rewards = game && game.endlessResult ? game.endlessResult.newRewards : null;
+  if (!rewards || !rewards.length) return "";
+  const parts = rewards.map((m) => {
+    const label = m.reward.kind === "shards"
+      ? `+${m.reward.amount} Shards`
+      : `a ${m.reward.rarity} item`;
+    return `wave ${m.threshold} (${label})`;
+  });
+  return ` MILESTONE${parts.length > 1 ? "S" : ""} REACHED: ${parts.join(", ")}!`;
+}
+
 // The X button: confirm before abandoning a battle in progress. The
 // sim is frozen (via exitConfirming, see frame()) while the prompt is up.
 let exitConfirming = false;
@@ -305,7 +320,7 @@ function checkEndState() {
         subtitle:
           `${level.name.toUpperCase()} ENDLESS — reached wave ${waveReached}` +
           (isNewBest ? ", a NEW BEST!" : ` (best: wave ${bestWave})`) +
-          ` Your towers kept their XP.${lootLine()}`,
+          ` Your towers kept their XP.${lootLine()}${endlessRewardLine()}`,
         type: "loss",
         buttons,
       });

@@ -11,7 +11,7 @@ import {
 } from "./towers.js";
 import {
   getSkillTier, nextTierCost, getSkillPoints, buySkill, resetProgress,
-  isTowerUnlocked, getProgress, getBestEndlessWave, getShards,
+  isTowerUnlocked, getProgress, getBestEndlessWave, getShards, getEndlessMilestones,
   getStash, getPendingLoot, stashSlotsFree, claimPendingLoot,
   discardPendingLoot, sellStashItem, sellPendingItem, sellAllStashRarity,
   equipStashItem, unequipToStash,
@@ -385,11 +385,14 @@ function renderWorld() {
     // never stop and escalate fast — see endless.js.
     if (unlocked && done) {
       const best = getBestEndlessWave(level.id);
+      const milestones = getEndlessMilestones(level.id);
+      const claimedCount = milestones.filter((m) => m.claimed).length;
       const endlessBtn = document.createElement("button");
       endlessBtn.className = "level-button endless-button";
       endlessBtn.innerHTML =
         `<span>∞ ENDLESS</span>` +
-        `<span class="level-done">${best > 0 ? `BEST W${best}` : "NEW"}</span>`;
+        `<span class="level-done">${best > 0 ? `BEST W${best}` : "NEW"}</span>` +
+        `<span class="level-done endless-milestones">★ ${claimedCount}/${milestones.length}</span>`;
       endlessBtn.addEventListener("click", () => pick(level, true));
       row.appendChild(endlessBtn);
     }

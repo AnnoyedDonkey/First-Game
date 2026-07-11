@@ -165,6 +165,28 @@ export const ENDLESS = {
   bossHealthGrowthPerWave: 0.20, // bosses scale even faster than the swarm
 };
 
+// One-time-per-level Endless milestones (LOOT_DESIGN.md §10). Same
+// threshold list applies to EVERY level's Endless mode — each level
+// tracks its own claimed set (save.js endlessRewards[levelId]), so a
+// level with an easier seed wave and one with a brutal seed wave both
+// chase the same wave numbers, just at different difficulty. Grants are
+// automatic (no separate claim step) the moment a run's best-ever wave
+// for that level crosses a threshold — see progression.js
+// grantEndlessRewards(). Loot rewards land in pendingLoot (same triage
+// flow as any other drop); shard rewards bank immediately.
+// Reference: an 8-tower level-1 laser wall (fresh, no Mastery) died on
+// endless wave 18 in first-pass bot testing (HANDOFF.md) — thresholds
+// are set around and past that bar.
+export const ENDLESS_REWARDS = {
+  milestones: [
+    { id: "wave10", type: "wave", threshold: 10, reward: { kind: "shards", amount: 100 } },
+    { id: "wave20", type: "wave", threshold: 20, reward: { kind: "loot", rarity: "rare" } },
+    { id: "wave35", type: "wave", threshold: 35, reward: { kind: "shards", amount: 350 } },
+    { id: "wave50", type: "wave", threshold: 50, reward: { kind: "loot", rarity: "prismatic" } },
+    { id: "wave75", type: "wave", threshold: 75, reward: { kind: "loot", rarity: "singularity" } },
+  ],
+};
+
 // ---------- Towers ----------
 // (Used from Checkpoint B onward — defined now so all knobs live together.)
 export const TOWERS = {
