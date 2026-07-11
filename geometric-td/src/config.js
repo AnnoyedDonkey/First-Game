@@ -207,9 +207,9 @@ export const TOWERS = {
     name: "Railgun Tower",
     prefix: "R",
     baseCost: 100,
-    baseDamage: 60,
+    baseDamage: 48,
     baseRange: 3.5,
-    baseFireRate: 2.5,
+    baseFireRate: 3.0,
     pierceWidth: 0.18,     // beam corridor half-width, in tiles
     damageType: "rail",
     color: "#ff9d3f",
@@ -226,10 +226,10 @@ export const TOWERS = {
     trayName: "ROCKET",    // tray label (name has no " Tower" to strip)
     prefix: "K",           // roster names K-01 (R is the railgun)
     baseCost: 120,
-    baseDamage: 55,
+    baseDamage: 44,
     splashRadius: 0.9,     // explosive AoE, in tiles
     baseRange: 999,        // effectively the whole board
-    baseFireRate: 2.2,     // slow reload
+    baseFireRate: 2.8,     // slow reload
     damageType: "blast",
     color: "#ff5e3a",      // rocket red-orange (distinct from railgun amber)
     unlockLabel: "CLEAR LV 10",
