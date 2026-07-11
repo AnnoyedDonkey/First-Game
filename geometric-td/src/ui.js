@@ -82,6 +82,7 @@ const el = {
   overlayTitle: document.getElementById("overlay-title"),
   overlaySubtitle: document.getElementById("overlay-subtitle"),
   overlayButtons: document.getElementById("overlay-buttons"),
+  dropReveal: document.getElementById("drop-reveal"),
   leaderboardOverlay: document.getElementById("leaderboard-overlay"),
   leaderboardList: document.getElementById("leaderboard-list"),
   leaderboardMsg: document.getElementById("leaderboard-msg"),
@@ -699,6 +700,10 @@ const RARITY_ORDER = ["singularity", "prismatic", "rare", "enhanced", "common"];
 let gearTab = "towers";
 let gearFilterSlot = null;
 let gearFilterRarity = null;
+// One-shot flash target for the "brief flash on the slot tile" pizzazz
+// (U4 §4): set right before a re-render, consumed (and cleared) by the
+// next renderTowersTab() call so it only flashes once.
+let equipFlashTarget = null;
 
 // Neon slot glyph as an inline SVG string (stroke-only, no fills — matches
 // the approved mockup's vector-outline look). No glow filter here (the
@@ -780,6 +785,56 @@ function tileHtml(item, opts = {}) {
     (lockLetter ? `<span class="lock-dot" style="color:${color}">${lockLetter}</span>` : "") +
     (isNew ? `<span class="new-tag">NEW</span>` : "") +
     `</button>`;
+}
+
+// ---- Drop-reveal sequence (U4 pizzazz) ----
+// Called by main.js right before the win/loss overlay, if the battle that
+// just ended granted loot (game.lootResult.placements + any Endless
+// milestone loot). One rarity-burst card per item, tap to advance; calls
+// `onDone` once the player has stepped through all of them (or immediately
+// if there's nothing to show).
+
+function revealDestHtml(p) {
+  if (p.dest === "equipped") return `AUTO-EQUIPPED &rarr; <b>${escapeHtml(p.towerName)}</b>`;
+  if (p.dest === "stash") return "&rarr; STASH";
+  return "&rarr; UNCLAIMED (stash was full)";
+}
+
+function renderRevealCard(p, index, total) {
+  const item = p.item;
+  const color = RARITY_COLOR[item.rarity];
+  el.dropReveal.innerHTML =
+    `<div class="reveal-burst" style="background: radial-gradient(circle, ${color}66, transparent 65%)"></div>` +
+    `<div class="reveal-card ${RARITY_CLASS[item.rarity]}" style="border:1px solid ${color}; box-shadow: inset 0 0 24px ${color}44, 0 0 34px ${color}55">` +
+    slotGlyph(item.slot, color) +
+    `</div>` +
+    `<div id="reveal-name" style="color:${color}; text-shadow:0 0 14px ${color}88">${escapeHtml(itemTitle(item))}</div>` +
+    `<div id="reveal-sub">${item.rarity.toUpperCase()} &middot; ${item.slot.toUpperCase()}</div>` +
+    `<div id="reveal-dest">${revealDestHtml(p)}</div>` +
+    (total > 1 ? `<div id="reveal-progress">ITEM ${index + 1}/${total}</div>` : "") +
+    `<div id="reveal-tap">TAP TO CONTINUE</div>`;
+  el.dropReveal.classList.remove("hidden");
+}
+
+export function showDropReveal(placements, onDone) {
+  const items = (placements || []).filter(Boolean);
+  if (!items.length) {
+    onDone();
+    return;
+  }
+  let i = 0;
+  el.dropReveal.onclick = () => {
+    i += 1;
+    if (i >= items.length) {
+      el.dropReveal.classList.add("hidden");
+      el.dropReveal.innerHTML = "";
+      el.dropReveal.onclick = null;
+      onDone();
+      return;
+    }
+    renderRevealCard(items[i], i, items.length);
+  };
+  renderRevealCard(items[0], 0, items.length);
 }
 
 // ---- Bottom sheet plumbing ----
@@ -913,6 +968,7 @@ function openPickerSheet(towerName, slot) {
   el.gearSheet.querySelectorAll("[data-equip-item]").forEach((btn) => {
     btn.addEventListener("click", () => {
       equipStashItem(rec.name, btn.dataset.equipItem);
+      equipFlashTarget = { towerName: rec.name, slot };
       closeSheet();
       renderGearPanel();
     });
@@ -946,6 +1002,7 @@ function openEquipTargetSheet(item) {
   el.gearSheet.querySelectorAll("[data-target-tower]").forEach((btn) => {
     btn.addEventListener("click", () => {
       equipStashItem(btn.dataset.targetTower, item.id);
+      equipFlashTarget = { towerName: btn.dataset.targetTower, slot: item.slot };
       closeSheet();
       renderGearPanel();
     });
@@ -1044,7 +1101,9 @@ function renderTowersTab() {
               return `<button class="gear-tile empty" data-picker-tower="${escapeHtml(rec.name)}" data-picker-slot="${slot}">` +
                 slotGlyph(slot, "#5a668f") + `<span class="tile-label">${SLOT_LABEL[slot]}</span></button>`;
             }
-            return `<button class="gear-tile filled ${RARITY_CLASS[item.rarity]}" data-item-tower="${escapeHtml(rec.name)}" data-item-slot="${slot}">` +
+            const justEquipped = equipFlashTarget &&
+              equipFlashTarget.towerName === rec.name && equipFlashTarget.slot === slot;
+            return `<button class="gear-tile filled ${RARITY_CLASS[item.rarity]}${justEquipped ? " just-equipped" : ""}" data-item-tower="${escapeHtml(rec.name)}" data-item-slot="${slot}">` +
               slotGlyph(slot, RARITY_COLOR[item.rarity]) +
               `<span class="tile-label" style="color:${RARITY_COLOR[item.rarity]}">${SLOT_LABEL[slot]}</span></button>`;
           }).join("") +
@@ -1069,6 +1128,7 @@ function renderTowersTab() {
     }
   }
   el.gearViewTowers.innerHTML = html;
+  equipFlashTarget = null; // one-shot: consumed by this render
 
   const lockedToggle = document.getElementById("gear-locked-toggle");
   if (lockedToggle) {

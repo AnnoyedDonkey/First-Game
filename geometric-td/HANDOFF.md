@@ -507,7 +507,7 @@ as the source of truth, not that old ×1.2 rule.)
     committed files + LOOT_DESIGN checkboxes, not the conversation.
 
 
-- **GEAR UI REDESIGN (in progress — U0–U3 shipped, U4 next):**
+- **GEAR UI REDESIGN (in progress — U0–U4 shipped, U5 next):**
   full spec + phase plan (U0–U5, with model/effort per phase) in
   `GEAR_UI_DESIGN.md`; approved interactive mockup at
   `mockups/gear-ui-mockup.html`. Replaces the flat P4 GEAR panel with a
@@ -571,6 +571,22 @@ as the source of truth, not that old ×1.2 rule.)
     DOM; confirmed the `?` sheet contains both cheat-sheets; confirmed the
     level-2 auto-open path opens the gear overlay with the guide sheet on
     top). No console errors.
+  - **U4 DONE (2026-07-11):** pizzazz pass. New `#drop-reveal` full-screen
+    sequence (`ui.js showDropReveal`, markup in index.html, styles in
+    styles.css) plays before EVERY end-of-battle overlay (win, campaign
+    loss, Endless run-over, forfeit) when the run earned loot — one
+    rarity-burst card per item (reusing the mockup's exact burst/card
+    keyframes and the shared slot-glyph renderer), tap to advance, calls
+    back into the existing `showOverlay(...)` once done (or immediately if
+    there's nothing to show). `main.js allPlacements()` combines
+    `game.lootResult.placements` with any newly-crossed Endless milestone
+    loot. Equip flash: a one-shot `.just-equipped` CSS pulse on the gear
+    tile that was just filled (`ui.js equipFlashTarget`, set by both equip
+    paths, consumed once by the next `renderTowersTab()`). Singularity
+    shimmer (already on every filled Singularity tile since U1) now also
+    plays on the drop-reveal card. All three respect
+    `prefers-reduced-motion`. Full detail + verification notes in
+    `GEAR_UI_DESIGN.md`'s U4 checkbox.
 - **PLAYTEST-PENDING:** the counter re-tune + visible feedback + Rocket +
   World 3 all shipped but the difficulty is calibrated only by bot sims
   (superhuman placement → flawless bot wins are a WEAK signal). The user's

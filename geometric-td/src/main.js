@@ -21,7 +21,7 @@ import {
   updateUpgradePanel, onUpgradeButtonTap, onSellButtonTap,
   initSkillTree, showLevelSelect, openSkillTree, hideOverlay,
   initSpeedControls, openTowerGuide, onExitButtonTap, openLeaderboard,
-  openGearPanel,
+  openGearPanel, showDropReveal,
 } from "./ui.js";
 import { submitScore, isEnabled as lbEnabled } from "./leaderboard.js";
 import { initUpdateCheck } from "./update.js";
@@ -209,8 +209,8 @@ function goToMainMenu() {
 
 // One earned item's fate, as decided by progression.js bankEarnedItem
 // (U0 auto-equip): "▲ RARE EMITTER → Laser-01", "→ STASH", or "→ UNCLAIMED"
-// (pendingLoot triage, only when the stash is full). Plain text for now —
-// the U4 pizzazz pass replaces this with the drop-reveal sequence.
+// (pendingLoot triage, only when the stash is full). Used both as the
+// overlay subtitle's plain-text recap and to drive the U4 drop-reveal cards.
 function placementText(p) {
   const label = `${p.item.rarity.toUpperCase()} ${p.item.slot.toUpperCase()}`;
   if (p.dest === "equipped") return `▲ ${label} → ${p.towerName}`;
@@ -243,6 +243,19 @@ function endlessRewardLine() {
   return ` MILESTONE${parts.length > 1 ? "S" : ""} REACHED: ${parts.join(", ")}!`;
 }
 
+// Every item earned this run, across the base loot pipeline (kill drops +
+// guaranteed end-drop) and any Endless milestone loot just crossed — the
+// full set the U4 drop-reveal sequence steps through before the win/loss
+// overlay appears.
+function allPlacements(g) {
+  const base = (g && g.lootResult ? g.lootResult.placements : null) || [];
+  const milestoneLoot = (g && g.endlessResult && g.endlessResult.newRewards
+    ? g.endlessResult.newRewards.filter((m) => m.reward.kind === "loot" && m.placement)
+    : []
+  ).map((m) => m.placement);
+  return [...base, ...milestoneLoot];
+}
+
 // The X button: confirm before abandoning a battle in progress. The
 // sim is frozen (via exitConfirming, see frame()) while the prompt is up.
 let exitConfirming = false;
@@ -265,7 +278,7 @@ onExitButtonTap(() => {
           forfeitBattle(game);
           game.phase = "lost";
           overlayShown = true;
-          showOverlay({
+          showDropReveal(allPlacements(game), () => showOverlay({
             title: "BATTLE FORFEITED",
             subtitle:
               "You returned with no win or completion credit. Your towers kept " +
@@ -275,7 +288,7 @@ onExitButtonTap(() => {
               { text: "CLAIM LOOT", onTap: () => openGearPanel({ closeMode: "triage" }) },
               { text: "MAIN MENU", onTap: goToMainMenu, secondary: true },
             ],
-          });
+          }));
         },
       },
       {
@@ -303,14 +316,14 @@ function checkEndState() {
       { text: "ASSIGN SKILL POINTS", onTap: openSkillTree, secondary: !!next },
       { text: "MAIN MENU", onTap: goToMainMenu, secondary: true },
     );
-    showOverlay({
+    showDropReveal(allPlacements(game), () => showOverlay({
       title: "CORE DEFENDED",
       subtitle:
         `All ${game.totalWaves} waves repelled. +1 skill point earned. ` +
         `Your towers joined the roster and keep their XP.${lootLine()}`,
       type: "win",
       buttons,
-    });
+    }));
   } else if (game.phase === "lost") {
     overlayShown = true;
     const level = game.level;
@@ -331,7 +344,7 @@ function checkEndState() {
         { text: "ASSIGN SKILL POINTS", onTap: openSkillTree, secondary: true },
         { text: "MAIN MENU", onTap: goToMainMenu, secondary: true },
       );
-      showOverlay({
+      showDropReveal(allPlacements(game), () => showOverlay({
         title: "RUN OVER",
         subtitle:
           `${level.name.toUpperCase()} ENDLESS — reached wave ${waveReached}` +
@@ -339,13 +352,13 @@ function checkEndState() {
           ` Your towers kept their XP.${lootLine()}${endlessRewardLine()}`,
         type: "loss",
         buttons,
-      });
+      }));
     } else {
-      showOverlay({
+      showDropReveal(allPlacements(game), () => showOverlay({
         title: "CORE DESTROYED",
         subtitle:
           `The core fell on wave ${game.waveIndex + 1}. Your towers kept ` +
-          `their XP — spend skill points, redeploy veterans, try new spots.`,
+          `their XP — spend skill points, redeploy veterans, try new spots.${lootLine()}`,
         type: "loss",
         buttons: [
           { text: "RETRY", onTap: () => startLevel(level) },
@@ -353,7 +366,7 @@ function checkEndState() {
           { text: "ASSIGN SKILL POINTS", onTap: openSkillTree, secondary: true },
           { text: "MAIN MENU", onTap: goToMainMenu, secondary: true },
         ],
-      });
+      }));
     }
   }
 }

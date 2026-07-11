@@ -1304,6 +1304,101 @@ button.hud-item {
   text-shadow: none;
 }
 
+/* ---------- Drop-reveal sequence (U4 pizzazz) ---------- */
+/* One card per earned item, shown before the win/loss overlay. Tap
+   anywhere to advance to the next item (or dismiss on the last one). */
+#drop-reveal {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  background: rgba(5, 6, 15, 0.92);
+  z-index: 15;
+  padding: 24px;
+  text-align: center;
+}
+#drop-reveal.hidden { display: none; }
+
+.reveal-burst {
+  position: absolute;
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  animation: revealBurst 0.9s ease-out forwards;
+  pointer-events: none;
+}
+@keyframes revealBurst {
+  from { transform: scale(0.2); opacity: 0.9; }
+  to   { transform: scale(2.2); opacity: 0; }
+}
+
+.reveal-card {
+  width: 120px;
+  height: 120px;
+  border-radius: 16px;
+  background: var(--panel);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: revealCardIn 0.5s cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+.reveal-card .glyph { width: 60%; height: 60%; }
+@keyframes revealCardIn {
+  from { transform: scale(0.3) rotate(-8deg); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+.reveal-card.rs { animation: revealCardIn 0.5s cubic-bezier(0.2, 1.6, 0.4, 1), gearSingPulse 2.2s ease-in-out infinite 0.5s; }
+
+#reveal-name {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 3px;
+}
+#reveal-sub {
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 1.5px;
+}
+#reveal-dest {
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 1.5px;
+  line-height: 1.7;
+}
+#reveal-dest b { color: var(--neon-green); font-weight: 600; }
+#reveal-progress {
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--text-dim);
+}
+#reveal-tap {
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-burst, .reveal-card, .reveal-card.rs { animation: none !important; }
+}
+
+/* Equip-flash: a brief pulse on a gear-tile right after an equip action
+   lands, so the change reads even though the tile grid re-renders in
+   place (no other visual cue would otherwise mark which slot changed). */
+.gear-tile.just-equipped {
+  animation: equipFlash 0.6s ease-out;
+}
+@keyframes equipFlash {
+  0%   { box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.55), 0 0 22px rgba(255, 255, 255, 0.6); }
+  100% { box-shadow: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gear-tile.just-equipped { animation: none !important; }
+}
+
 /* ---------- Bottom action bar ---------- */
 
 #action-bar.hidden { display: none; }

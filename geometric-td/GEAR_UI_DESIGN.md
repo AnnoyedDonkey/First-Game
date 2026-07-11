@@ -4,7 +4,7 @@ Build spec for the redesigned tower/gear interface. **Read `HANDOFF.md` first**
 (architecture, constraints, verification recipe), and `LOOT_DESIGN.md` for the
 loot system this UI sits on top of (P0–P6 shipped).
 
-Status: **U0, U1, U2, and U3 shipped. Remaining: U4, U5.**
+Status: **U0, U1, U2, U3, and U4 shipped. Remaining: U5.**
 Update the "Build status" checkboxes as
 phases land. Token strategy is the same as LOOT_DESIGN §14: **one phase per
 fresh session, `/clear` between; the handoff is the committed files + these
@@ -312,8 +312,59 @@ plus eyeball on phone for UI phases).
       YOUR ENEMY text; confirmed `openTowerGuide()` (the level-2 auto-open
       path) opens the gear overlay with the guide sheet on top. No console
       errors.
-- [ ] **U4 — Pizzazz.** Drop-reveal sequence on end-of-battle, equip flash,
-      Singularity shimmer (§4).
+- [x] **U4 — Pizzazz.** DONE (2026-07-11). Drop-reveal sequence: a new
+      `#drop-reveal` overlay (`ui.js showDropReveal`, markup in
+      `index.html`, styles in `styles.css`) steps through every item
+      earned in the battle that just ended — rarity-colored radial burst +
+      card scale-in per item (reusing the mockup's exact `revealBurst`/
+      `revealCardIn` keyframes and the same slot-glyph renderer as the
+      TOWERS/STASH tiles), name + rarity/slot line + destination line
+      ("AUTO-EQUIPPED → Laser-01" / "→ STASH" / "→ UNCLAIMED"), an
+      `N/total` counter when there's more than one, tap-anywhere to
+      advance. `main.js` gathers the full item list for a run —
+      `game.lootResult.placements` (kill drops + guaranteed end-drop) plus
+      any newly-crossed Endless milestone loot
+      (`game.endlessResult.newRewards`, loot-kind only) — via a new
+      `allPlacements()` helper, and now calls `showDropReveal(placements,
+      onDone)` before EVERY end-of-battle overlay (win, campaign loss,
+      Endless run-over, and forfeit) with the existing `showOverlay(...)`
+      call moved into `onDone`; an empty placements list resolves
+      immediately so battles with nothing new to show skip straight to the
+      overlay. Fixed a pre-existing gap in passing: the campaign-loss
+      overlay subtitle never called `lootLine()` even though a guaranteed
+      end-drop is granted on loss too — added it for consistency with the
+      other three end states now that the reveal makes the drop visible.
+      Equip flash: a one-shot `equipFlashTarget` module var in `ui.js`, set
+      right before `renderGearPanel()` in both equip paths (picker-sheet
+      "compatible in stash" rows and the item-sheet "EQUIP → pick a
+      tower" flow), read once by `renderTowersTab()` to add a
+      `.just-equipped` class to the newly-filled slot tile (new
+      `equipFlash` CSS keyframe — a brief white glow ring that fades over
+      0.6s) and cleared at the end of that same render so it can't
+      re-trigger on a later unrelated re-render. Singularity shimmer
+      (`gearSingPulse`) already existed on every filled Singularity tile
+      since U1 (STASH grid, TOWERS slot tiles) — extended it to the new
+      drop-reveal card too (`.reveal-card.rs`) so a Singularity drop pulses
+      from the moment it's revealed. All three respect
+      `prefers-reduced-motion: reduce` (existing convention, matched for
+      the two new animations). Verified live in-browser: drove a real bot
+      battle to a loss with `step()` (6-item drop, all → stash since no
+      tower had reached Mastery 1 yet) and called `ui.js`'s exported
+      `showDropReveal` directly against `game.lootResult.placements` (the
+      module singleton main.js itself uses) — confirmed the first card's
+      HTML/rarity/glyph/destination text, clicked through all 6 and
+      confirmed each name updated correctly and the sequence self-hid and
+      fired `onDone` on the final tap, and confirmed an empty array calls
+      `onDone` immediately with no card shown. Verified the equip flash by
+      bumping a roster tower's XP past the Mastery-1 gate, opening the real
+      TOWERS panel through the UI, tapping an empty EMITTER slot, equipping
+      a compatible stash item through the picker sheet, and confirming the
+      slot tile carried `just-equipped` right after — then toggled the
+      locked-towers list (an unrelated re-render) and confirmed the class
+      was gone, proving the one-shot behavior. (Screenshot capture wasn't
+      available in this session's browser tool — verification was DOM/JS
+      state, not eyeballed pixels; worth a quick phone glance for the
+      actual animation feel.)
 - [ ] **U5 — STORE restyle.** §3.
 
 Dependencies: U0 independent (do first — it also makes the game nicer with
