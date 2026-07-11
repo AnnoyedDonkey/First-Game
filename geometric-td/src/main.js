@@ -23,8 +23,14 @@ import {
 } from "./ui.js";
 import { submitScore, isEnabled as lbEnabled } from "./leaderboard.js";
 import { initUpdateCheck } from "./update.js";
+import * as loot from "./loot.js";
 
 const TILE_SIZE = 64; // internal render resolution per tile
+
+// Debug handle for the loot generator (P2) — console-testable per
+// LOOT_DESIGN.md, e.g. `loot.lootSelfTest()` or
+// `loot.generateItem({ rarity: 'rare', ilvl: 60 })` in DevTools.
+window.loot = loot;
 
 const canvas = document.getElementById("game-canvas");
 const ctx = canvas.getContext("2d");

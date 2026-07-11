@@ -382,8 +382,27 @@ starts flailing rather than defaulting everything High.)
       No gear yet. Verified in-browser: a scripted battle earned 12
       Shards from kills, survived a loss + return-to-menu, and rendered
       correctly on the menu.
-- [ ] **P2 — Item generator** (pure module: affixes, rarity, restriction,
-      constraints). Console-testable; no UI.
+- [x] **P2 — Item generator.** DONE (2026-07-11). New pure module
+      `src/loot.js` — `generateItem(opts)` rolls the §11 item shape; no DOM,
+      no save writes, no game state. Every tunable lives in `config.js
+      LOOT.gen` (pUniversal/restrictedRollBonus, ilvlMax/ilvlTopBias,
+      rarityWeights, affixCounts, reqMastery, the full per-slot affix table
+      from §5, minor+named unique pools from §6, sellValues). Restriction
+      (§4c) is satisfied by construction: the tower type is fixed FIRST, then
+      affixes are only sampled from the type-compatible pool, so a
+      type-specific affix (Pierce/Splash/Slow*) can never land on a universal
+      item and the whole-item intersection is never empty. Singularity items
+      are defined by their named unique (it sets slot + optional type lock),
+      then roll 2–3 compatible normal affixes. ilvl nudges each roll toward
+      the top of its band; restricted items roll `restrictedRollBonus`×
+      higher (may exceed the band top, intended). Seedable RNG (`makeRng`) +
+      `lootSelfTest()` + `itemLabel()` for reproducible console verification;
+      `window.loot` exposed in `main.js`. Verified in-browser: 50,000-item
+      self-test passed all §4b/§4c/§11 invariants with rarity/slot/universal
+      distributions matching config (60/25/10/4/1, 60% universal); every
+      named unique produced its correct slot/type lock + compatible affixes;
+      ilvl roll-toward-top and restricted bonus both confirmed. No gameplay
+      wiring yet (that's P3).
 - [ ] **P3 — Equip + gear application in combat** incl. crit & double-shot.
       Add a debug grant so you can see gear affect towers. Roster gear slots.
 - [ ] **P4 — Drops + guaranteed end-drop + stash + stash/equip UI + triage.**

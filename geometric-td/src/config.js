@@ -322,6 +322,118 @@ export const LOOT = {
   shards: {
     perKillBase: 3,
   },
+
+  // ---- Item generator (P2, see LOOT_DESIGN.md §4-§6 + loot.js) ----
+  // Everything the pure generator rolls from. loot.js is logic only; every
+  // number a designer would tune lives here.
+  gen: {
+    // Restriction (§4c). On generation an item is either UNIVERSAL (usable
+    // by any tower) or locked to ONE tower type. Restricted items are
+    // compensated by access to type-specific affixes (Pierce/Splash/Slow*)
+    // AND a value bonus.
+    pUniversal: 0.6,          // chance an item rolls universal (else restricted)
+    restrictedRollBonus: 1.15, // restricted items roll this much higher (1.0 = off)
+
+    // Item-level → roll-toward-top (§5). A rolled affix picks a fraction of
+    // its [lo,hi] band; higher ilvl nudges that fraction up. t = ilvl/ilvlMax
+    // (clamped 0..1); frac = base + (1-base)*(t*ilvlTopBias). So ilvl never
+    // lowers a roll and at t=1,bias=1 it always maxes. Drops/store (P4/P5)
+    // choose ilvl; the generator just consumes it (default 1 = min band).
+    ilvlMax: 100,
+    ilvlTopBias: 0.6,
+
+    // Rarity roll when a caller doesn't pin one (§7 weights). Drops (P4) may
+    // pass its own biased weights; this is the generator's self-sufficient
+    // default so it's usable standalone today.
+    rarityWeights: { common: 60, enhanced: 25, rare: 10, prismatic: 4, singularity: 1 },
+
+    // Affix count per rarity (§4b). Singularity rolls a range (2 or 3) of
+    // NORMAL affixes on TOP of its named unique.
+    affixCounts: { common: 1, enhanced: 1, rare: 2, prismatic: 2, singularity: [2, 3] },
+
+    // Requirement gate by rarity (§2c). Common/Enhanced gate on career
+    // maxLevel (a per-item reqLevel derived from ilvl, 1..5); Rare+ gate on
+    // Mastery rank. Checked against a tower's CAREER stats so gear never
+    // unequips mid-battle. reqMastery here; reqLevel is derived in loot.js.
+    reqMastery: { common: 0, enhanced: 0, rare: 1, prismatic: 10, singularity: 20 },
+    reqLevelMax: 5,          // ceiling for the derived common/enhanced reqLevel
+
+    // ---- Affix pool, per slot (§5) ----
+    // Each affix: { stat, name, types, ranges[, int] }.
+    //   stat   = key P3 combat code reads.
+    //   types  = "universal" (any tower) OR a list of tower types it locks to
+    //            (a type-specific affix can ONLY appear on a restricted item
+    //            of a matching type — this is what §4c's intersection rule
+    //            enforces; the generator fixes the type first, then only
+    //            samples affixes compatible with it).
+    //   ranges = per-rarity [lo,hi] roll band (percent unless int).
+    //   int    = true for whole-number affixes (Pierce +N; lo==hi per rarity).
+    slots: {
+      optic: [
+        { stat: "range",      name: "Range %",       types: "universal",
+          ranges: { common: [3, 6], enhanced: [6, 10], rare: [9, 14], prismatic: [13, 20], singularity: [18, 28] } },
+        { stat: "critChance", name: "Crit Chance %", types: "universal",
+          ranges: { common: [2, 4], enhanced: [4, 6], rare: [5, 9], prismatic: [8, 13], singularity: [12, 18] } },
+        { stat: "critDamage", name: "Crit Damage %", types: "universal",
+          ranges: { common: [10, 20], enhanced: [20, 35], rare: [30, 50], prismatic: [45, 70], singularity: [60, 100] } },
+      ],
+      emitter: [
+        { stat: "damage",    name: "Damage %",         types: "universal",
+          ranges: { common: [4, 7], enhanced: [7, 11], rare: [10, 16], prismatic: [15, 23], singularity: [20, 32] } },
+        { stat: "projSpeed", name: "Projectile Speed %", types: "universal",
+          ranges: { common: [5, 9], enhanced: [9, 14], rare: [13, 20], prismatic: [18, 28], singularity: [25, 40] } },
+        { stat: "pierce",    name: "Pierce +N",        types: ["railgun", "laser"], int: true,
+          ranges: { common: [1, 1], enhanced: [1, 1], rare: [2, 2], prismatic: [2, 2], singularity: [3, 3] } },
+        { stat: "splash",    name: "Splash Radius %",  types: ["pulse", "rocket"],
+          ranges: { common: [4, 8], enhanced: [8, 13], rare: [12, 18], prismatic: [16, 26], singularity: [22, 35] } },
+      ],
+      capacitor: [
+        { stat: "fireRate",     name: "Fire Rate %",      types: "universal",
+          ranges: { common: [3, 6], enhanced: [6, 9], rare: [8, 13], prismatic: [12, 18], singularity: [16, 25] } },
+        { stat: "slowPotency",  name: "Slow Potency %",   types: ["slow"],
+          ranges: { common: [4, 8], enhanced: [8, 13], rare: [12, 18], prismatic: [16, 26], singularity: [22, 35] } },
+        { stat: "slowDuration", name: "Slow Duration %",  types: ["slow"],
+          ranges: { common: [5, 10], enhanced: [10, 16], rare: [14, 22], prismatic: [20, 32], singularity: [28, 45] } },
+        { stat: "overcharge",   name: "Overcharge %",     types: "universal", // double-shot chance ⚙️
+          ranges: { common: [2, 4], enhanced: [4, 6], rare: [5, 9], prismatic: [8, 13], singularity: [12, 18] } },
+      ],
+      frame: [
+        { stat: "xpGain",    name: "XP Gain %",    types: "universal",
+          ranges: { common: [5, 10], enhanced: [10, 16], rare: [14, 22], prismatic: [20, 32], singularity: [28, 45] } },
+        { stat: "shardFind", name: "Shard-Find %", types: "universal",
+          ranges: { common: [5, 10], enhanced: [10, 16], rare: [14, 22], prismatic: [20, 32], singularity: [28, 45] } },
+        { stat: "bounty",    name: "Bounty %",     types: "universal",
+          ranges: { common: [4, 8], enhanced: [8, 13], rare: [12, 18], prismatic: [16, 26], singularity: [22, 35] } },
+      ],
+    },
+
+    // ---- Uniques (§6) ----
+    // minor = Prismatic bonus (one rolled, on top of 2 normal affixes).
+    // named = Singularity chase items: each DEFINES its slot (and sometimes a
+    // tower type), then rolls 2-3 normal affixes on top. `value` is the
+    // effect magnitude P3 combat code will consume (kept here, tunable).
+    uniques: {
+      minor: [
+        { id: "doubleShot", name: "Overcharged",  value: 10 },  // +10% double-shot chance ⚙️
+        { id: "critEdge",   name: "Honed",        value: 8 },   // +8% crit chance ⚙️
+        { id: "piercer",    name: "Piercing",     value: 1 },   // +1 pierce
+        { id: "vulnMark",   name: "Destabilizer", value: 15 },  // slowed enemies take +15% from all sources
+      ],
+      named: [
+        { id: "prismLens",         name: "Prism Lens",         slot: "optic" },
+        { id: "entropyEmitter",    name: "Entropy Emitter",    slot: "emitter" },
+        { id: "executionersArray", name: "Executioner's Array", slot: "optic" },
+        { id: "overflowCore",      name: "Overflow Core",      slot: "capacitor" },
+        { id: "gravityWell",       name: "Gravity Well",       slot: "frame",   towerType: "slow" },
+        { id: "fractalWarhead",    name: "Fractal Warhead",    slot: "emitter", towerType: "rocket" },
+        { id: "cascadeRail",       name: "Cascade Rail",       slot: "emitter", towerType: "railgun" },
+      ],
+    },
+
+    // Shard sell-back value by rarity (§1). Store (P5) reads this; kept here
+    // so every loot number is in one place.
+    sellValues: { common: 5, enhanced: 15, rare: 40, prismatic: 100, singularity: 300 },
+  },
 };
 
 // ---------- Visual effects (GeoDefense-inspired) ----------

@@ -444,11 +444,18 @@ as the source of truth, not that old ×1.2 rule.)
     `TOWER_UPGRADES.mastery` and the new `LOOT.xp` block in config.js.
   - **P1 DONE (2026-07-11):** Shards ◆ currency + save schema/migration
     (described under "Key mechanics" above). No gear yet.
-  - **Next: P2** — Item generator (pure module: affixes, rarity,
-    restriction, constraints; console-testable, no UI; Opus/High per the
-    doc's phase table — the one tricky module). Build one phase per fresh
-    session (`/clear` between); the handoff is the committed files +
-    LOOT_DESIGN checkboxes, not the conversation.
+  - **P2 DONE (2026-07-11):** Item generator — new pure module `src/loot.js`
+    (`generateItem`, seedable `makeRng`, `lootSelfTest`, `itemLabel`; exposed
+    as `window.loot`). All knobs in `config.js LOOT.gen` (affix table, rarity
+    weights, restriction, unique pools, ilvl curve, sellValues). Restriction
+    (§4c) satisfied by construction: type is fixed before affixes are sampled.
+    No gameplay wiring, no save changes yet. Verified via a 50k-item
+    console self-test (all invariants + distributions). Details under
+    LOOT_DESIGN §14 P2 checkbox.
+  - **Next: P3** — Equip + gear application in combat (crit & double-shot,
+    roster gear slots, a debug grant to see gear affect towers; Opus/High).
+    Build one phase per fresh session (`/clear` between); the handoff is the
+    committed files + LOOT_DESIGN checkboxes, not the conversation.
 
 
 - **PLAYTEST-PENDING:** the counter re-tune + visible feedback + Rocket +
