@@ -24,6 +24,9 @@ export const DEBUG = {
 // that lets a level demand a specific tower combo — e.g. Armored shrugs
 // off lasers but folds to a Railgun. Tune freely; applied in enemies.js
 // damageEnemy(). Damage numbers all live here + in TOWER_UPGRADES.
+// shardTier = relative "how tough is this enemy" bucket used to scale
+// Shards earned per kill (LOOT.shards.perKillBase * shardTier). 1 = grunt,
+// 2 = heavy, 4 = boss — matches LOOT_DESIGN.md §1's grunt/heavy/boss split.
 export const ENEMIES = {
   basic: {
     name: "Basic",
@@ -33,6 +36,7 @@ export const ENEMIES = {
     coreDamage: 1,
     bounty: 5,
     xp: 10,
+    shardTier: 1,
     size: 0.28,          // radius as a fraction of tile size
     color: "#35e0ff",    // neon cyan
     // Neutral to everything — the baseline enemy.
@@ -45,6 +49,7 @@ export const ENEMIES = {
     coreDamage: 1,
     bounty: 6,
     xp: 12,
+    shardTier: 1,
     size: 0.22,
     color: "#ffe24a",    // neon yellow
     // Fragile flyers — Lasers (fast fire) shred them; slow Pulse orbs and
@@ -59,6 +64,7 @@ export const ENEMIES = {
     coreDamage: 2,
     bounty: 12,
     xp: 25,
+    shardTier: 2,
     size: 0.32,
     color: "#ff3fd4",    // neon magenta
     // Plated: lasers & slow-zaps clang off harmlessly. Concussive Pulse
@@ -74,6 +80,7 @@ export const ENEMIES = {
     coreDamage: 5,
     bounty: 100,
     xp: 150,
+    shardTier: 4,
     size: 0.42,
     color: "#ff4a5e",    // neon red
     // Massive lone target: shrugs off slows, and small splash is wasted on
@@ -90,6 +97,7 @@ export const ENEMIES = {
     coreDamage: 2,
     bounty: 10,
     xp: 20,
+    shardTier: 2,
     size: 0.28,
     color: "#ff7a2f",    // neon orange
     splitInto: { type: "splitling", count: 2 },
@@ -106,6 +114,7 @@ export const ENEMIES = {
     coreDamage: 1,
     bounty: 3,
     xp: 5,
+    shardTier: 1,
     size: 0.16,
     color: "#ff7a2f",
     damageMult: { pulse: 1.5, blast: 1.4 },
@@ -119,6 +128,7 @@ export const ENEMIES = {
     coreDamage: 2,
     bounty: 14,
     xp: 28,
+    shardTier: 2,
     size: 0.30,
     color: "#7dff4a",    // acid green
     regenRate: 0.05,     // heals 5% of max health per second
@@ -292,10 +302,10 @@ export const ECONOMY = {
 };
 
 // ---------- Loot & equipment (see LOOT_DESIGN.md) ----------
-// Home for every loot/gear tunable. Only the `xp` block is used so far
-// (P0 — contributor-weighted XP). Later phases (shards, generator,
-// drops, store, stash) add their subsections here — keep every number
-// in this object, never hardcode one in logic.
+// Home for every loot/gear tunable. `xp` (P0) and `shards` (P1) are used
+// so far. Later phases (generator, drops, store, stash) add their
+// subsections here — keep every number in this object, never hardcode
+// one in logic.
 export const LOOT = {
   // XP redistribution: a kill's XP pool is split among every tower that
   // contributed to that enemy, by weight, instead of all going to the
@@ -304,6 +314,13 @@ export const LOOT = {
   // pays Slow towers (they rarely land the killing blow).
   xp: {
     slowWeightPerSec: 8,   // weight per second of slow applied
+  },
+
+  // Shards ◆ — the persistent meta-currency for the loot store (P4+).
+  // Earned per kill, win OR lose, so grinding/forfeiting still pays.
+  // Per-kill amount = round(perKillBase * ENEMIES[type].shardTier).
+  shards: {
+    perKillBase: 3,
   },
 };
 

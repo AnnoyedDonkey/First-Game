@@ -181,6 +181,11 @@ export function damageEnemy(game, enemy, sourceTower, amount) {
   const killXp = Math.round(enemy.xp * ECONOMY.xpPerKillMultiplier * getXpMult());
   awardKillXp(enemy, sourceTower, killXp);
 
+  // Shards ◆ (loot spec §1) — persistent currency, earned per kill
+  // regardless of win/loss. Banked on `game` and synced to the save at
+  // battle end (progression.js syncRoster), same pattern as roster XP.
+  game.shardsEarned += Math.round(LOOT.shards.perKillBase * (enemy.def.shardTier ?? 1));
+
   const pos = enemyPosition(enemy, game.grid);
   const ts = game.grid.tileSize;
   game.effects.push({

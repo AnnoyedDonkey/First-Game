@@ -29,6 +29,7 @@ export function createGame(level, tileSize, endless = false) {
     phase: "ready",
     endless,                       // true = waves never stop (see endless.js)
     money: level.startingMoney,
+    shardsEarned: 0,                // Shards ◆ banked this battle; synced to the save at battle end
     coreHealth: level.coreHealth + getCoreBonus(),
     maxCoreHealth: level.coreHealth + getCoreBonus(),
     waveIndex: 0,                  // 0-based; wave 1 is index 0

@@ -368,8 +368,20 @@ starts flailing rather than defaulting everything High.)
       23,900/118,700 XP), old cap 15,700 XP → rank 15 (accepted §2b nerf),
       and a real 7-wave battle where a Slow tower earned 162 XP with 0 kills
       (was 0 before), pool conserved.
-- [ ] **P1 — Shards currency + save schema/migration.** Earn on kill, display a
-      counter, persist. No gear yet.
+- [x] **P1 — Shards currency + save schema/migration.** DONE (2026-07-11).
+      Earned per kill (win/lose/forfeit alike) via `enemy.def.shardTier`
+      (1/2/4 grunt/heavy/boss, new field on `ENEMIES`) x
+      `LOOT.shards.perKillBase`. Banked live on `game.shardsEarned`,
+      synced into the persistent `state.shards` wallet in
+      `progression.js syncRoster` (shared by recordBattleEnd/
+      recordEndlessResult/forfeitBattle, so every exit path pays out).
+      New save field `shards: 0` in `save.js DEFAULT_SAVE` +
+      belt-and-suspenders `state.shards ??= 0` backfill in progression.js
+      (deploy-propagation gotcha pattern). Displayed as `◆ N` under the
+      main-menu title (`#shards-readout`), updated in `ui.js renderWorld`.
+      No gear yet. Verified in-browser: a scripted battle earned 12
+      Shards from kills, survived a loss + return-to-menu, and rendered
+      correctly on the menu.
 - [ ] **P2 — Item generator** (pure module: affixes, rarity, restriction,
       constraints). Console-testable; no UI.
 - [ ] **P3 — Equip + gear application in combat** incl. crit & double-shot.

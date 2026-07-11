@@ -19,6 +19,7 @@ migrateSkills();
 // propagation lag right after a deploy), so don't trust every new
 // field to exist yet even right after loadSave().
 state.endlessBest ||= {};
+state.shards ??= 0;
 
 // Older saves stored skills as an array of owned ids; tiers store
 // them as { id: tierNumber }. Convert once on load.
@@ -116,8 +117,10 @@ export function takeRosterUnit(type, deployedNames) {
   return candidates[0] || null;
 }
 
-// Shared by recordBattleEnd and recordEndlessResult: every tower that
-// fought joins/updates the persistent roster.
+// Shared by recordBattleEnd, recordEndlessResult and forfeitBattle: every
+// tower that fought joins/updates the persistent roster, and Shards
+// earned this battle (win, lose, or forfeit — see enemies.js damageEnemy)
+// are banked into the wallet.
 function syncRoster(game) {
   for (const t of game.towers) {
     let rec = state.roster.find((r) => r.name === t.name);
@@ -129,6 +132,11 @@ function syncRoster(game) {
     rec.xp = t.xp;      // XP carries across battles
     rec.kills = t.kills;
   }
+  state.shards += game.shardsEarned;
+}
+
+export function getShards() {
+  return state.shards;
 }
 
 // Called once when a campaign battle ends (win or lose); wins earn a

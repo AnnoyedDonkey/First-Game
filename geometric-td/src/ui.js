@@ -11,7 +11,7 @@ import {
 } from "./towers.js";
 import {
   getSkillTier, nextTierCost, getSkillPoints, buySkill, resetProgress,
-  isTowerUnlocked, getProgress, getBestEndlessWave,
+  isTowerUnlocked, getProgress, getBestEndlessWave, getShards,
 } from "./progression.js";
 import {
   isEnabled as lbEnabled, getNickname, setNickname,
@@ -40,6 +40,7 @@ const el = {
   hud: document.getElementById("hud"),
   levelOverlay: document.getElementById("level-overlay"),
   levelList: document.getElementById("level-list"),
+  shardsValue: document.getElementById("shards-value"),
   menuActions: document.getElementById("menu-actions"),
   worldPrev: document.getElementById("world-prev"),
   worldNext: document.getElementById("world-next"),
@@ -314,6 +315,8 @@ function navigateWorld(delta) {
 }
 
 function renderWorld() {
+  el.shardsValue.textContent = String(getShards());
+
   const world = WORLDS[currentWorld];
   const unlocked = isWorldUnlocked(currentWorld);
   const { completedIds, levelById, pick } = menuCtx;
