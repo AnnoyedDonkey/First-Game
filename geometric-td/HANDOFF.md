@@ -507,7 +507,7 @@ as the source of truth, not that old ×1.2 rule.)
     committed files + LOOT_DESIGN checkboxes, not the conversation.
 
 
-- **GEAR UI REDESIGN (in progress — U0, U1, and U2 shipped, U3 next):**
+- **GEAR UI REDESIGN (in progress — U0–U3 shipped, U4 next):**
   full spec + phase plan (U0–U5, with model/effort per phase) in
   `GEAR_UI_DESIGN.md`; approved interactive mockup at
   `mockups/gear-ui-mockup.html`. Replaces the flat P4 GEAR panel with a
@@ -551,8 +551,26 @@ as the source of truth, not that old ×1.2 rule.)
     scheme actually collides Railgun/Rocket on "R"; the shipped code avoids
     that by keeping the dedicated letters). The "-ONLY" text tags (item
     title, item sheet, picker sheet) now show the full type name
-    ("RAILGUN-ONLY"), matching the mockup. Still open: the menu/Tower-Guide
-    merge (U3).
+    ("RAILGUN-ONLY"), matching the mockup.
+  - **U3 DONE (2026-07-11):** menu merge. Deleted the standalone Tower
+    Guide overlay (`#tower-overlay` in index.html, its CSS, and the old
+    `openTowerGuide` renderer in ui.js) and the separate main-menu GEAR
+    button; one **TOWERS** button now opens the gear screen directly and
+    carries the `N NEW` badge (pending + unseen stash count). The old
+    overlay's TOWER CLASSES and KNOW YOUR ENEMY cheat-sheets were folded
+    into the `?` guide sheet (`ui.js guideExtrasHtml()`) so that content
+    wasn't lost; its ROSTER listing was dropped as redundant with the
+    TOWERS tab's cards. `openTowerGuide` is kept as an exported name
+    (main.js's level-2 first-visit hook is unchanged) but now opens the
+    gear panel straight into the guide sheet. Locked (sub-★1) towers: the
+    footer note is a tap-to-expand toggle (`lockedListOpen`) into a dim
+    compact list, each row still opening the full tower stat sheet via
+    the existing `openTowerStatSheet`. Verified live in-browser (seeded
+    save with an eligible + a locked tower; toggled the list; opened the
+    locked tower's stat sheet; confirmed `#tower-overlay` is gone from the
+    DOM; confirmed the `?` sheet contains both cheat-sheets; confirmed the
+    level-2 auto-open path opens the gear overlay with the guide sheet on
+    top). No console errors.
 - **PLAYTEST-PENDING:** the counter re-tune + visible feedback + Rocket +
   World 3 all shipped but the difficulty is calibrated only by bot sims
   (superhuman placement → flawless bot wins are a WEAK signal). The user's

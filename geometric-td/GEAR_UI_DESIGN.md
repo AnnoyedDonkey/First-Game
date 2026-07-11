@@ -4,7 +4,7 @@ Build spec for the redesigned tower/gear interface. **Read `HANDOFF.md` first**
 (architecture, constraints, verification recipe), and `LOOT_DESIGN.md` for the
 loot system this UI sits on top of (P0–P6 shipped).
 
-Status: **U0, U1, and U2 shipped. Remaining: U3.**
+Status: **U0, U1, U2, and U3 shipped. Remaining: U4, U5.**
 Update the "Build status" checkboxes as
 phases land. Token strategy is the same as LOOT_DESIGN §14: **one phase per
 fresh session, `/clear` between; the handoff is the committed files + these
@@ -281,9 +281,37 @@ plus eyeball on phone for UI phases).
       item sheet/equip-target sheet/picker sheet all display correctly, and
       confirmed a full equip round-trip (stash → equipped) still resolves
       by the migrated name. No console errors.
-- [ ] **U3 — Menu merge.** Delete Tower Guide overlay + GEAR menu entry;
-      single TOWERS entry with NEW badge; `?` guide sheet (reuse guide text,
-      `seenTowerGuide` auto-open now opens it); locked-tower expandable list.
+- [x] **U3 — Menu merge.** DONE (2026-07-11). Deleted the standalone
+      `#tower-overlay` (markup in `index.html`, its CSS block, and the
+      `openTowerGuide`-as-Tower-Guide implementation in `ui.js`) and the
+      separate GEAR main-menu entry. `appendGlobalMenuButtons` now renders
+      one **TOWERS** button that opens the gear/tower screen directly and
+      carries the old GEAR button's `N NEW` badge (pending + unseen stash
+      count) / stash-size fallback. The old overlay's two cheat-sheets
+      (TOWER CLASSES stats/role/specialty per class, KNOW YOUR ENEMY
+      weak/resist text) weren't in the U0-era `?` sheet's scope but were
+      real content — folded them into `openGearHelpSheet` via a new
+      `guideExtrasHtml()` helper (reuses the shared `.tower-section`/
+      `.skill-row` classes) so nothing was lost; the old overlay's "YOUR
+      ROSTER" listing was dropped since the TOWERS tab's cards already
+      cover it. `openTowerGuide` is kept as an exported name in `ui.js`
+      (main.js's level-2 first-visit import is unchanged) but now means
+      "open the gear panel straight into its `?` guide sheet" —
+      `openGearPanel(); openGearHelpSheet();`. Locked (sub-★1) towers:
+      the footer note is now a tappable toggle (`lockedListOpen`
+      module state, reset on panel open) that expands into a dim
+      `.locked-tower-row` list — name + `LV n · ★n`, no slot row per spec
+      — each row still opens the full tower stat sheet via the existing
+      `openTowerStatSheet`, which already worked for gear-ineligible
+      towers (empty `gear` object, mastery rank just renders as ★0).
+      Verified live in-browser: seeded a save with one ★1+ tower (card)
+      and one sub-★1 tower (collapsed into the locked note), toggled the
+      list open, confirmed the locked tower's stat sheet opens with
+      correct LV/★/DPS; confirmed `#tower-overlay` no longer exists in the
+      DOM; confirmed the `?` sheet contains both TOWER CLASSES and KNOW
+      YOUR ENEMY text; confirmed `openTowerGuide()` (the level-2 auto-open
+      path) opens the gear overlay with the guide sheet on top. No console
+      errors.
 - [ ] **U4 — Pizzazz.** Drop-reveal sequence on end-of-battle, equip flash,
       Singularity shimmer (§4).
 - [ ] **U5 — STORE restyle.** §3.

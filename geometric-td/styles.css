@@ -432,55 +432,7 @@ button.hud-item {
   text-shadow: 0 0 8px rgba(255, 63, 212, 0.6);
 }
 
-/* ---------- Tower guide overlay ---------- */
-
-#tower-overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  background: rgba(5, 6, 15, 0.94);
-  padding: 20px;
-  z-index: 40; /* above the level-select overlay, like the skill tree */
-}
-
-#tower-overlay.hidden { display: none; }
-
-#tower-overlay h1 {
-  font-size: 24px;
-  letter-spacing: 4px;
-  color: var(--neon-cyan);
-  text-shadow: 0 0 16px rgba(53, 224, 255, 0.6);
-}
-
-#tower-guide-line {
-  color: var(--text-dim);
-  font-size: 11px;
-  line-height: 1.5;
-  max-width: 400px;
-  text-align: center;
-}
-
-#tower-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  width: 100%;
-  max-width: 420px;
-  flex: 0 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  touch-action: pan-y;
-  scrollbar-width: thin;
-  scrollbar-color: var(--panel-border) transparent;
-}
-
-#tower-list::-webkit-scrollbar { width: 4px; }
-#tower-list::-webkit-scrollbar-thumb { background: var(--panel-border); border-radius: 2px; }
+/* ---------- Guide sheet section headers (class list, enemy cheat sheet) ---------- */
 
 .tower-section {
   font-size: 10px;
@@ -685,6 +637,11 @@ button.hud-item {
 }
 
 .gear-locked-note {
+  display: block;
+  width: 100%;
+  font-family: inherit;
+  background: none;
+  border: none;
   text-align: center;
   color: var(--text-dim);
   font-size: 11px;
@@ -693,6 +650,24 @@ button.hud-item {
   line-height: 1.6;
 }
 .gear-locked-note b { color: var(--neon-yellow); font-weight: 600; }
+.gear-locked-note .chev { margin-left: 4px; color: var(--text-dim); }
+
+#gear-locked-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+.locked-tower-row {
+  width: 100%;
+  font-family: inherit;
+  background: var(--bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  text-align: left;
+  opacity: 0.7;
+}
 
 /* ---- Filter chips + stash grid (STASH tab) ---- */
 #gear-filters {

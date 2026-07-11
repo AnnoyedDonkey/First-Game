@@ -55,9 +55,6 @@ const el = {
   worldName: document.getElementById("world-name"),
   worldDots: document.getElementById("world-dots"),
   actionBar: document.getElementById("action-bar"),
-  towerOverlay: document.getElementById("tower-overlay"),
-  towerList: document.getElementById("tower-list"),
-  towerClose: document.getElementById("tower-close"),
   gearOverlay: document.getElementById("gear-overlay"),
   gearWallet: document.getElementById("gear-wallet"),
   gearHelp: document.getElementById("gear-help"),
@@ -436,24 +433,19 @@ function appendGlobalMenuButtons() {
   skillBtn.addEventListener("click", openSkillTree);
   topRow.appendChild(skillBtn);
 
-  // Tower guide: class specialties + the player's roster.
-  const towersBtn = document.createElement("button");
-  towersBtn.className = "level-button skill-entry";
-  towersBtn.innerHTML = `<span>TOWERS</span><span class="level-done">—</span>`;
-  towersBtn.addEventListener("click", openTowerGuide);
-  topRow.appendChild(towersBtn);
-
+  // TOWERS: merged tower guide + gear screen (GEAR_UI_DESIGN U3). One
+  // entry, NEW badge carried over from the old GEAR button.
   const newCount = getPendingLoot().length + countUnseenStash();
   const stash = getStash().length;
-  const gearBtn = document.createElement("button");
-  gearBtn.className = "level-button skill-entry gear-entry";
-  gearBtn.innerHTML =
-    `<span>GEAR</span>` +
+  const towersBtn = document.createElement("button");
+  towersBtn.className = "level-button skill-entry gear-entry";
+  towersBtn.innerHTML =
+    `<span>TOWERS</span>` +
     `<span class="${newCount ? "level-points" : "level-done"}">` +
     (newCount ? `${newCount} NEW` : `${stash}/${LOOT.stash.stashSize}`) +
     `</span>`;
-  gearBtn.addEventListener("click", () => openGearPanel());
-  topRow.appendChild(gearBtn);
+  towersBtn.addEventListener("click", () => openGearPanel());
+  topRow.appendChild(towersBtn);
 
   const storeBtn = document.createElement("button");
   storeBtn.className = "level-button skill-entry store-entry";
@@ -612,92 +604,40 @@ function counterText(def) {
   return parts.length ? parts.join(" · ") : "No special weaknesses.";
 }
 
-export function openTowerGuide() {
-  el.towerList.innerHTML = "";
-
-  const classHeader = document.createElement("div");
-  classHeader.className = "tower-section";
-  classHeader.textContent = "TOWER CLASSES";
-  el.towerList.appendChild(classHeader);
-
+// Class list + enemy cheat-sheet, folded into the `?` guide sheet (used to
+// be the standalone Tower Guide overlay — GEAR_UI_DESIGN U3 merged it away;
+// the roster listing itself is dropped here since the TOWERS tab already
+// shows every tower's card).
+function guideExtrasHtml() {
+  let html = `<div class="tower-section">TOWER CLASSES</div>`;
   for (const [type, def] of Object.entries(TOWERS)) {
-    const row = document.createElement("div");
-    row.className = "skill-row";
     const locked = !isTowerUnlocked(type);
     const rangeStr = def.baseRange >= 50 ? "GLOBAL" : def.baseRange;
     const stats =
       `DMG ${def.baseDamage} · RANGE ${rangeStr} · ` +
       `${def.baseFireRate}s/shot · $${def.baseCost}` +
       (locked ? ` · LOCKED (${def.unlockLabel || "locked"})` : "");
-    row.innerHTML =
-      `<div class="skill-text">` +
+    html +=
+      `<div class="skill-row"><div class="skill-text">` +
       `<span class="skill-name" style="color:${def.color}">${def.name.toUpperCase()}</span>` +
       `<span class="skill-desc">${stats}</span>` +
       `<span class="skill-desc">${ROLE_TEXT[type] || ""}</span>` +
       `<span class="skill-desc">${SPECIALTY_TEXT[type] || ""}</span>` +
-      `</div>`;
-    el.towerList.appendChild(row);
+      `</div></div>`;
   }
 
   // Enemy cheat-sheet: what beats what (drives combo choices per level).
-  const enemyHeader = document.createElement("div");
-  enemyHeader.className = "tower-section";
-  enemyHeader.textContent = "KNOW YOUR ENEMY";
-  el.towerList.appendChild(enemyHeader);
-
+  html += `<div class="tower-section">KNOW YOUR ENEMY</div>`;
   for (const [, edef] of Object.entries(ENEMIES)) {
     if (edef.name === "Splitling") continue; // covered by Splitter
-    const row = document.createElement("div");
-    row.className = "skill-row";
-    row.innerHTML =
-      `<div class="skill-text">` +
+    html +=
+      `<div class="skill-row"><div class="skill-text">` +
       `<span class="skill-name" style="color:${edef.color}">${edef.name.toUpperCase()}</span>` +
       `<span class="skill-desc">${counterText(edef)}</span>` +
-      `</div>`;
-    el.towerList.appendChild(row);
+      `</div></div>`;
   }
-
-  const rosterHeader = document.createElement("div");
-  rosterHeader.className = "tower-section";
-  rosterHeader.textContent = "YOUR ROSTER";
-  el.towerList.appendChild(rosterHeader);
-
-  const roster = [...getProgress().roster].sort(
-    (a, b) => b.maxLevel - a.maxLevel || b.kills - a.kills
-  );
-  if (roster.length === 0) {
-    const empty = document.createElement("div");
-    empty.className = "skill-row";
-    empty.innerHTML =
-      `<div class="skill-text"><span class="skill-desc">` +
-      `No towers yet — every tower you build joins your permanent roster ` +
-      `and keeps its XP between battles.</span></div>`;
-    el.towerList.appendChild(empty);
-  }
-  for (const rec of roster) {
-    const def = TOWERS[rec.type];
-    const rank = masteryRankFor(rec.xp);
-    const pct = Math.round(rank * TOWER_UPGRADES.mastery.damagePerRank * 100);
-    const row = document.createElement("div");
-    row.className = "skill-row";
-    row.innerHTML =
-      `<div class="skill-text">` +
-      `<span class="skill-name" style="color:${def.color}">${rec.name}` +
-      (rank > 0 ? ` <span class="skill-pips">★${rank}</span>` : "") +
-      `</span>` +
-      `<span class="skill-desc">${def.name} · MAX LV ${rec.maxLevel}` +
-      (rank > 0 ? ` · MASTERY +${pct}% DMG` : "") +
-      ` · ${rec.xp} XP · ${rec.kills} kills</span>` +
-      `</div>`;
-    el.towerList.appendChild(row);
-  }
-
-  el.towerOverlay.classList.remove("hidden");
+  return html;
 }
-
-el.towerClose.addEventListener("click", () => {
-  el.towerOverlay.classList.add("hidden");
-});
 
 // ---------- Gear overlay ----------
 
@@ -1049,9 +989,9 @@ function openTowerStatSheet(towerName) {
   document.getElementById("sheet-close").addEventListener("click", closeSheet);
 }
 
-function openGearHelpSheet() {
+export function openGearHelpSheet() {
   el.gearSheet.innerHTML =
-    `<div class="gear-sheet-title" style="color:var(--neon-yellow)">GEAR GUIDE</div>` +
+    `<div class="gear-sheet-title" style="color:var(--neon-yellow)">TOWERS &amp; GEAR GUIDE</div>` +
     `<div class="gear-guide-text">Every level-up improves damage, range and fire rate — and each ` +
     `class has a permanent SPECIALTY that follows its career-best level forever, even before ` +
     `re-upgrading a redeployed veteran. Past level 5, XP keeps counting: every &#9733; MASTERY rank ` +
@@ -1059,6 +999,7 @@ function openGearHelpSheet() {
     `can't equip anything NEW until it reaches &#9733;1 MASTERY (gear already worn before that keeps ` +
     `working). Tap a tower's name for its full stat sheet, an empty slot to equip from the stash, or ` +
     `a filled slot to inspect or unequip.</div>` +
+    guideExtrasHtml() +
     `<div class="gear-sheet-actions"><button class="gear-sheet-btn" id="sheet-close">CLOSE</button></div>`;
   openSheet();
   document.getElementById("sheet-close").addEventListener("click", closeSheet);
@@ -1073,9 +1014,18 @@ function eligibleGearTowers() {
     .sort((a, b) => gearMasteryRankFor(b.xp) - gearMasteryRankFor(a.xp) || b.maxLevel - a.maxLevel);
 }
 
+function lockedGearTowers() {
+  return [...getProgress().roster]
+    .filter((rec) => gearMasteryRankFor(rec.xp) < (LOOT.equipGate?.minMastery ?? 1))
+    .sort((a, b) => b.maxLevel - a.maxLevel || b.xp - a.xp);
+}
+
+let lockedListOpen = false;
+
 function renderTowersTab() {
   const roster = eligibleGearTowers();
-  const lockedCount = getProgress().roster.length - roster.length;
+  const locked = lockedGearTowers();
+  const lockedCount = locked.length;
 
   let html = roster.length
     ? roster.map((rec) => {
@@ -1103,10 +1053,30 @@ function renderTowersTab() {
     : `<div class="gear-empty">No towers have reached &#9733;1 MASTERY yet — keep playing to unlock gear slots.</div>`;
 
   if (lockedCount > 0) {
-    html += `<div class="gear-locked-note">${lockedCount} more tower${lockedCount === 1 ? "" : "s"} unlock gear at <b>&#9733;1 MASTERY</b></div>`;
+    html += `<button class="gear-locked-note" id="gear-locked-toggle">` +
+      `${lockedCount} more tower${lockedCount === 1 ? "" : "s"} unlock gear at <b>&#9733;1 MASTERY</b>` +
+      `<span class="chev">${lockedListOpen ? "&#9662;" : "&rsaquo;"}</span></button>`;
+    if (lockedListOpen) {
+      html += `<div id="gear-locked-list">` + locked.map((rec) => {
+        const def = TOWERS[rec.type];
+        const rank = gearMasteryRankFor(rec.xp);
+        return `<button class="skill-row locked-tower-row" data-tower="${escapeHtml(rec.name)}">` +
+          `<div class="skill-text">` +
+          `<span class="skill-name" style="color:${def.color}">${escapeHtml(rec.name)}</span>` +
+          `<span class="skill-desc">LV ${rec.maxLevel} &middot; &#9733;${rank}</span>` +
+          `</div></button>`;
+      }).join("") + `</div>`;
+    }
   }
   el.gearViewTowers.innerHTML = html;
 
+  const lockedToggle = document.getElementById("gear-locked-toggle");
+  if (lockedToggle) {
+    lockedToggle.addEventListener("click", () => {
+      lockedListOpen = !lockedListOpen;
+      renderGearPanel();
+    });
+  }
   el.gearViewTowers.querySelectorAll("[data-tower]").forEach((btn) => {
     btn.addEventListener("click", () => openTowerStatSheet(btn.dataset.tower));
   });
@@ -1256,10 +1226,19 @@ export function openGearPanel({ closeMode = "normal" } = {}) {
   gearCloseTriage = closeMode;
   gearFilterSlot = null;
   gearFilterRarity = null;
+  lockedListOpen = false;
   if (getPendingLoot().length) gearTab = "stash"; // surface triage immediately
   renderGearPanel();
   el.gearScroll.scrollTop = 0;
   el.gearOverlay.classList.remove("hidden");
+}
+
+// First visit to level 2 used to auto-open a standalone Tower Guide
+// overlay; that overlay is gone (GEAR_UI_DESIGN U3), so this opens the
+// merged TOWERS screen straight into its `?` guide sheet instead.
+export function openTowerGuide() {
+  openGearPanel();
+  openGearHelpSheet();
 }
 
 function closeGearPanel() {
