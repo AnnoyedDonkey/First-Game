@@ -16,6 +16,10 @@ const DEFAULT_SAVE = {
   seenTowerGuide: false, // tower guide auto-opens once at level 2
   endlessBest: {},       // { levelId: bestWaveReached } in Endless mode
   shards: 0,             // Shards ◆ — persistent loot-store currency (LOOT_DESIGN.md)
+  stash: [],              // owned unequipped items
+  pendingLoot: [],        // unclaimed end-of-run drops shown in triage
+  store: { stock: [], rerolls: 0 },
+  endlessRewards: {},
 };
 
 export function loadSave() {

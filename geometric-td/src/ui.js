@@ -3,7 +3,7 @@
 // ============================================================
 
 import {
-  TOWERS, ENEMIES, SKILLS, SKILL_VALUES, SKILL_TIERS, TOWER_UPGRADES,
+  TOWERS, ENEMIES, SKILLS, SKILL_VALUES, SKILL_TIERS, TOWER_UPGRADES, LOOT,
 } from "./config.js";
 import {
   xpThresholdFor, upgradeCostFor, isUpgradeEligible, sellValueOf,
@@ -12,7 +12,11 @@ import {
 import {
   getSkillTier, nextTierCost, getSkillPoints, buySkill, resetProgress,
   isTowerUnlocked, getProgress, getBestEndlessWave, getShards,
+  getStash, getPendingLoot, stashSlotsFree, claimPendingLoot,
+  discardPendingLoot, sellStashItem, sellPendingItem, sellAllStashRarity,
+  equipStashItem, unequipToStash,
 } from "./progression.js";
+import { canEquipItem, GEAR_SLOTS, masteryRankFor as gearMasteryRankFor } from "./equipment.js";
 import {
   isEnabled as lbEnabled, getNickname, setNickname,
   fetchAllBoards, publishAllLocalBests,
@@ -50,6 +54,10 @@ const el = {
   towerOverlay: document.getElementById("tower-overlay"),
   towerList: document.getElementById("tower-list"),
   towerClose: document.getElementById("tower-close"),
+  gearOverlay: document.getElementById("gear-overlay"),
+  gearList: document.getElementById("gear-list"),
+  gearLine: document.getElementById("gear-line"),
+  gearClose: document.getElementById("gear-close"),
   money: document.getElementById("money-value"),
   wave: document.getElementById("wave-value"),
   core: document.getElementById("core-value"),
@@ -89,6 +97,7 @@ function forwardWheel(overlay, list) {
 forwardWheel(el.levelOverlay, el.levelList);
 forwardWheel(el.skillOverlay, el.skillList);
 forwardWheel(el.leaderboardOverlay, el.leaderboardList);
+forwardWheel(el.gearOverlay, el.gearList);
 
 function setText(node, key, value) {
   if (last[key] === value) return;
@@ -414,6 +423,18 @@ function appendGlobalMenuButtons() {
   towersBtn.addEventListener("click", openTowerGuide);
   topRow.appendChild(towersBtn);
 
+  const pending = getPendingLoot().length;
+  const stash = getStash().length;
+  const gearBtn = document.createElement("button");
+  gearBtn.className = "level-button skill-entry gear-entry";
+  gearBtn.innerHTML =
+    `<span>GEAR</span>` +
+    `<span class="${pending ? "level-points" : "level-done"}">` +
+    (pending ? `${pending} NEW` : `${stash}/${LOOT.stash.stashSize}`) +
+    `</span>`;
+  gearBtn.addEventListener("click", () => openGearPanel());
+  topRow.appendChild(gearBtn);
+
   // Leaderboard — only when a backend is configured (config.js
   // LEADERBOARD). Hidden otherwise so we never ship a dead button.
   if (lbEnabled()) {
@@ -651,6 +672,256 @@ export function openTowerGuide() {
 el.towerClose.addEventListener("click", () => {
   el.towerOverlay.classList.add("hidden");
 });
+
+// ---------- Gear overlay ----------
+
+let gearCloseMode = "normal";
+
+function itemUniqueName(item) {
+  if (!item || !item.unique) return "";
+  const named = LOOT.gen.uniques.named.find((u) => u.id === item.unique);
+  const minor = LOOT.gen.uniques.minor.find((u) => u.id === item.unique);
+  return (named || minor || {}).name || item.unique;
+}
+
+function itemTitle(item) {
+  const slot = item.slot.toUpperCase();
+  const lock = item.towerType ? `${TOWERS[item.towerType].prefix}-ONLY` : "UNIVERSAL";
+  const unique = itemUniqueName(item);
+  return unique ? `${unique.toUpperCase()} ${slot}` : `${item.rarity.toUpperCase()} ${slot} ${lock}`;
+}
+
+function itemReqText(item) {
+  return item.reqMastery ? `REQ STAR ${item.reqMastery}` : `REQ LV ${item.reqLevel}`;
+}
+
+function itemAffixText(item) {
+  const affixes = (item.affixes || []).map((a) => `${a.stat} +${a.value}`).join(" / ");
+  const unique = itemUniqueName(item);
+  return `${itemReqText(item)} / ILVL ${item.ilvl}` +
+    (item.towerType ? ` / ${TOWERS[item.towerType].name}` : " / any tower") +
+    (unique ? ` / ${unique}` : "") +
+    (affixes ? ` / ${affixes}` : "");
+}
+
+function itemClass(item) {
+  return `gear-item rarity-${item.rarity}`;
+}
+
+function compatibleRoster(item) {
+  return [...getProgress().roster].filter((rec) => canEquipItem(rec, item).ok);
+}
+
+function renderItemText(item) {
+  const text = document.createElement("div");
+  text.className = "gear-text";
+  text.innerHTML =
+    `<span class="gear-name">${escapeHtml(itemTitle(item))}</span>` +
+    `<span class="gear-desc">${escapeHtml(itemAffixText(item))}</span>`;
+  return text;
+}
+
+function renderPendingSection() {
+  const pending = getPendingLoot();
+  if (!pending.length) return;
+
+  const header = document.createElement("div");
+  header.className = "tower-section gear-section";
+  header.textContent = "UNCLAIMED DROPS";
+  el.gearList.appendChild(header);
+
+  const actions = document.createElement("div");
+  actions.className = "gear-actions-row";
+
+  const claim = document.createElement("button");
+  claim.className = "gear-action";
+  claim.textContent = `CLAIM (${stashSlotsFree()} FREE)`;
+  claim.disabled = stashSlotsFree() <= 0;
+  claim.addEventListener("click", () => { claimPendingLoot(); renderGearPanel(); });
+  actions.appendChild(claim);
+
+  const discard = document.createElement("button");
+  discard.className = "gear-action danger";
+  discard.textContent = "LEAVE DROPS";
+  discard.addEventListener("click", () => {
+    if (discard.classList.contains("confirming")) {
+      discardPendingLoot();
+      renderGearPanel();
+    } else {
+      discard.classList.add("confirming");
+      discard.textContent = "LOSE THEM? TAP AGAIN";
+    }
+  });
+  actions.appendChild(discard);
+  el.gearList.appendChild(actions);
+
+  for (const item of pending) {
+    const row = document.createElement("div");
+    row.className = itemClass(item);
+    row.appendChild(renderItemText(item));
+    const sell = document.createElement("button");
+    sell.className = "gear-mini";
+    sell.textContent = `SELL +${LOOT.gen.sellValues[item.rarity] || 0}`;
+    sell.addEventListener("click", () => { sellPendingItem(item.id); renderGearPanel(); });
+    row.appendChild(sell);
+    el.gearList.appendChild(row);
+  }
+}
+
+function renderRosterGear() {
+  const roster = [...getProgress().roster].sort(
+    (a, b) => b.maxLevel - a.maxLevel || b.xp - a.xp
+  );
+  const header = document.createElement("div");
+  header.className = "tower-section gear-section";
+  header.textContent = "EQUIPPED";
+  el.gearList.appendChild(header);
+
+  if (!roster.length) {
+    const empty = document.createElement("div");
+    empty.className = "gear-empty";
+    empty.textContent = "Build towers in battle to create roster units that can wear gear.";
+    el.gearList.appendChild(empty);
+    return;
+  }
+
+  for (const rec of roster) {
+    const def = TOWERS[rec.type];
+    const rank = gearMasteryRankFor(rec.xp);
+    const row = document.createElement("div");
+    row.className = "gear-roster-row";
+    row.innerHTML =
+      `<div class="gear-roster-title" style="color:${def.color}">` +
+      `${escapeHtml(rec.name)} / ${escapeHtml(def.name)} / LV ${rec.maxLevel}` +
+      (rank ? ` / STAR ${rank}` : "") +
+      `</div>`;
+    const slots = document.createElement("div");
+    slots.className = "gear-slots";
+    const gear = rec.gear || {};
+    for (const slot of GEAR_SLOTS) {
+      const slotRow = document.createElement("div");
+      slotRow.className = "gear-slot";
+      const item = gear[slot];
+      slotRow.innerHTML =
+        `<span class="gear-slot-name">${slot.toUpperCase()}</span>` +
+        `<span class="gear-slot-item">${item ? escapeHtml(itemTitle(item)) : "empty"}</span>`;
+      if (item) {
+        const unequip = document.createElement("button");
+        unequip.className = "gear-mini";
+        unequip.textContent = "UNEQUIP";
+        unequip.addEventListener("click", () => { unequipToStash(rec.name, slot); renderGearPanel(); });
+        slotRow.appendChild(unequip);
+      }
+      slots.appendChild(slotRow);
+    }
+    row.appendChild(slots);
+    el.gearList.appendChild(row);
+  }
+}
+
+function renderStashSection() {
+  const stash = getStash();
+  const header = document.createElement("div");
+  header.className = "tower-section gear-section";
+  header.textContent = `STASH ${stash.length}/${LOOT.stash.stashSize}`;
+  el.gearList.appendChild(header);
+
+  const bulk = document.createElement("div");
+  bulk.className = "gear-actions-row";
+  for (const rarity of ["common", "enhanced", "rare"]) {
+    const btn = document.createElement("button");
+    btn.className = `gear-action rarity-${rarity}`;
+    btn.textContent = `SELL ${rarity.toUpperCase()}`;
+    btn.addEventListener("click", () => { sellAllStashRarity(rarity); renderGearPanel(); });
+    bulk.appendChild(btn);
+  }
+  el.gearList.appendChild(bulk);
+
+  if (!stash.length) {
+    const empty = document.createElement("div");
+    empty.className = "gear-empty";
+    empty.textContent = "No stored gear yet. Every battle now grants at least one drop.";
+    el.gearList.appendChild(empty);
+    return;
+  }
+
+  for (const item of stash) {
+    const row = document.createElement("div");
+    row.className = itemClass(item);
+    row.appendChild(renderItemText(item));
+
+    const controls = document.createElement("div");
+    controls.className = "gear-item-controls";
+    const compatible = compatibleRoster(item);
+    const select = document.createElement("select");
+    select.className = "gear-select";
+    if (compatible.length) {
+      for (const rec of compatible) {
+        const opt = document.createElement("option");
+        opt.value = rec.name;
+        opt.textContent = rec.name;
+        select.appendChild(opt);
+      }
+    } else {
+      const opt = document.createElement("option");
+      opt.textContent = "NO MATCH";
+      select.appendChild(opt);
+      select.disabled = true;
+    }
+    controls.appendChild(select);
+
+    const equip = document.createElement("button");
+    equip.className = "gear-mini";
+    equip.textContent = "EQUIP";
+    equip.disabled = !compatible.length;
+    equip.addEventListener("click", () => { equipStashItem(select.value, item.id); renderGearPanel(); });
+    controls.appendChild(equip);
+
+    const sell = document.createElement("button");
+    sell.className = "gear-mini";
+    sell.textContent = `SELL +${LOOT.gen.sellValues[item.rarity] || 0}`;
+    sell.addEventListener("click", () => { sellStashItem(item.id); renderGearPanel(); });
+    controls.appendChild(sell);
+
+    row.appendChild(controls);
+    el.gearList.appendChild(row);
+  }
+}
+
+function renderGearPanel() {
+  const pending = getPendingLoot().length;
+  el.gearClose.classList.remove("confirming");
+  el.gearClose.textContent = "CLOSE";
+  el.gearLine.textContent =
+    `SHARDS ${getShards()} / STASH ${getStash().length}/${LOOT.stash.stashSize}` +
+    (pending ? ` / ${pending} UNCLAIMED` : "");
+  el.gearList.innerHTML = "";
+  renderPendingSection();
+  renderRosterGear();
+  renderStashSection();
+}
+
+export function openGearPanel({ closeMode = "normal" } = {}) {
+  gearCloseMode = closeMode;
+  renderGearPanel();
+  el.gearOverlay.classList.remove("hidden");
+}
+
+function closeGearPanel() {
+  if (getPendingLoot().length && gearCloseMode === "triage") {
+    if (!el.gearClose.classList.contains("confirming")) {
+      el.gearClose.classList.add("confirming");
+      el.gearClose.textContent = `${getPendingLoot().length} DROPS UNCLAIMED - TAP TO LEAVE`;
+      return;
+    }
+    discardPendingLoot();
+  }
+  el.gearClose.classList.remove("confirming");
+  el.gearClose.textContent = "CLOSE";
+  el.gearOverlay.classList.add("hidden");
+}
+
+el.gearClose.addEventListener("click", closeGearPanel);
 
 // ---------- Skill tree overlay ----------
 

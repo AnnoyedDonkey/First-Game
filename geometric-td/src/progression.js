@@ -8,9 +8,9 @@
 // available roster unit of that type before creating a new one.
 // ============================================================
 
-import { SKILLS, SKILL_VALUES, SKILL_TIERS } from "./config.js";
+import { LOOT, SKILLS, SKILL_VALUES, SKILL_TIERS } from "./config.js";
 import { loadSave, writeSave, clearSave } from "./save.js";
-import { generateItem } from "./loot.js";
+import { generateGuaranteedDrop, generateItem } from "./loot.js";
 import { canEquipItem, emptyGear, normalizeGear } from "./equipment.js";
 
 let state = loadSave();
@@ -22,6 +22,10 @@ migrateSkills();
 // field to exist yet even right after loadSave().
 state.endlessBest ||= {};
 state.shards ??= 0;
+state.stash ||= [];
+state.pendingLoot ||= [];
+state.store ||= { stock: [], rerolls: 0 };
+state.endlessRewards ||= {};
 backfillGear();
 
 function backfillGear() {
@@ -150,6 +154,123 @@ export function getShards() {
   return state.shards;
 }
 
+export function getStash() {
+  state.stash ||= [];
+  return state.stash;
+}
+
+export function getPendingLoot() {
+  state.pendingLoot ||= [];
+  return state.pendingLoot;
+}
+
+export function stashSlotsFree() {
+  return Math.max(0, LOOT.stash.stashSize - getStash().length);
+}
+
+function itemSellValue(item) {
+  return LOOT.gen.sellValues[item && item.rarity] || 0;
+}
+
+function removeItemById(list, itemId) {
+  const i = list.findIndex((item) => item.id === itemId);
+  if (i < 0) return null;
+  return list.splice(i, 1)[0];
+}
+
+function addToStashOrPending(item) {
+  if (!item) return "none";
+  if (getStash().length < LOOT.stash.stashSize) {
+    state.stash.push(structuredClone(item));
+    return "stash";
+  }
+  state.pendingLoot.push(structuredClone(item));
+  return "pending";
+}
+
+export function claimPendingLoot() {
+  const moved = [];
+  while (state.pendingLoot.length && state.stash.length < LOOT.stash.stashSize) {
+    moved.push(state.pendingLoot.shift());
+    state.stash.push(moved[moved.length - 1]);
+  }
+  writeSave(state);
+  return { moved: moved.length, remaining: state.pendingLoot.length };
+}
+
+export function discardPendingLoot() {
+  const discarded = state.pendingLoot.length;
+  state.pendingLoot = [];
+  writeSave(state);
+  return discarded;
+}
+
+export function sellStashItem(itemId) {
+  const item = removeItemById(getStash(), itemId);
+  if (!item) return { ok: false, reason: "missing" };
+  const value = itemSellValue(item);
+  state.shards += value;
+  writeSave(state);
+  return { ok: true, value };
+}
+
+export function sellPendingItem(itemId) {
+  const item = removeItemById(getPendingLoot(), itemId);
+  if (!item) return { ok: false, reason: "missing" };
+  const value = itemSellValue(item);
+  state.shards += value;
+  writeSave(state);
+  return { ok: true, value };
+}
+
+export function sellAllStashRarity(rarity) {
+  let sold = 0;
+  let value = 0;
+  state.stash = getStash().filter((item) => {
+    if (item.rarity !== rarity) return true;
+    sold += 1;
+    value += itemSellValue(item);
+    return false;
+  });
+  state.shards += value;
+  writeSave(state);
+  return { sold, value };
+}
+
+export function equipStashItem(towerName, itemId) {
+  const item = removeItemById(getStash(), itemId);
+  if (!item) return { ok: false, reason: "missing" };
+  const result = equipItem(towerName, item);
+  if (!result.ok) {
+    state.stash.push(item);
+    writeSave(state);
+    return result;
+  }
+  if (result.previous) result.previousStored = addToStashOrPending(result.previous);
+  writeSave(state);
+  return result;
+}
+
+export function unequipToStash(towerName, slot) {
+  const result = unequipItem(towerName, slot);
+  if (!result.ok || !result.previous) return result;
+  result.previousStored = addToStashOrPending(result.previous);
+  writeSave(state);
+  return result;
+}
+
+export function recordRunLoot(game) {
+  state.pendingLoot ||= [];
+  const drops = [...(game.lootDrops || []), generateGuaranteedDrop(game)];
+  for (const item of drops) state.pendingLoot.push(structuredClone(item));
+  game.lootResult = {
+    count: drops.length,
+    pending: state.pendingLoot.length,
+    stashFree: stashSlotsFree(),
+  };
+  return game.lootResult;
+}
+
 // Equipment writes are intentionally small and independent from the stash
 // (P4). The returned previous item lets a later UI move it back to storage.
 export function equipItem(towerName, item) {
@@ -194,6 +315,7 @@ export function debugGrantGear(towerName, options = {}) {
 // skill point and mark the level cleared (which unlocks its Endless mode).
 export function recordBattleEnd(game, won) {
   syncRoster(game);
+  recordRunLoot(game);
 
   if (won) {
     state.skillPoints += 1;
@@ -210,7 +332,9 @@ export function recordBattleEnd(game, won) {
 // they earned so far, same philosophy as an actual loss.
 export function forfeitBattle(game) {
   syncRoster(game);
+  recordRunLoot(game);
   writeSave(state);
+  return game.lootResult;
 }
 
 // ---------- Endless mode ----------
@@ -219,12 +343,13 @@ export function forfeitBattle(game) {
 
 export function recordEndlessResult(game) {
   syncRoster(game);
+  const lootResult = recordRunLoot(game);
   const waveReached = game.waveIndex + 1;
   const prevBest = state.endlessBest[game.level.id] || 0;
   const isNewBest = waveReached > prevBest;
   if (isNewBest) state.endlessBest[game.level.id] = waveReached;
   writeSave(state);
-  return { waveReached, isNewBest, bestWave: state.endlessBest[game.level.id] };
+  return { waveReached, isNewBest, bestWave: state.endlessBest[game.level.id], lootResult };
 }
 
 export function getBestEndlessWave(levelId) {
@@ -237,5 +362,9 @@ export function resetProgress() {
   migrateSkills();
   state.endlessBest ||= {};
   state.shards ??= 0;
+  state.stash ||= [];
+  state.pendingLoot ||= [];
+  state.store ||= { stock: [], rerolls: 0 };
+  state.endlessRewards ||= {};
   backfillGear();
 }

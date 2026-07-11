@@ -21,6 +21,7 @@ import {
   updateUpgradePanel, onUpgradeButtonTap, onSellButtonTap,
   initSkillTree, showLevelSelect, openSkillTree, hideOverlay,
   initSpeedControls, openTowerGuide, onExitButtonTap, openLeaderboard,
+  openGearPanel,
 } from "./ui.js";
 import { submitScore, isEnabled as lbEnabled } from "./leaderboard.js";
 import { initUpdateCheck } from "./update.js";
@@ -206,6 +207,11 @@ function goToMainMenu() {
   showLevelSelect(LEVELS, getProgress().completedLevels, startLevel);
 }
 
+function lootLine() {
+  const count = game && game.lootResult ? game.lootResult.count : 0;
+  return count ? ` Loot recovered: ${count} item${count === 1 ? "" : "s"}.` : "";
+}
+
 // The X button: confirm before abandoning a battle in progress. The
 // sim is frozen (via exitConfirming, see frame()) while the prompt is up.
 let exitConfirming = false;
@@ -226,7 +232,19 @@ onExitButtonTap(() => {
         onTap: () => {
           exitConfirming = false;
           forfeitBattle(game);
-          goToMainMenu();
+          game.phase = "lost";
+          overlayShown = true;
+          showOverlay({
+            title: "BATTLE FORFEITED",
+            subtitle:
+              "You returned with no win or completion credit. Your towers kept " +
+              `their XP and shards earned so far.${lootLine()}`,
+            type: "loss",
+            buttons: [
+              { text: "CLAIM LOOT", onTap: () => openGearPanel({ closeMode: "triage" }) },
+              { text: "MAIN MENU", onTap: goToMainMenu, secondary: true },
+            ],
+          });
         },
       },
       {
@@ -250,6 +268,7 @@ function checkEndState() {
       buttons.push({ text: `NEXT: ${next.name.toUpperCase()}`, onTap: () => startLevel(next) });
     }
     buttons.push(
+      { text: "CLAIM LOOT", onTap: () => openGearPanel({ closeMode: "triage" }), secondary: !!next },
       { text: "ASSIGN SKILL POINTS", onTap: openSkillTree, secondary: !!next },
       { text: "MAIN MENU", onTap: goToMainMenu, secondary: true },
     );
@@ -257,7 +276,7 @@ function checkEndState() {
       title: "CORE DEFENDED",
       subtitle:
         `All ${game.totalWaves} waves repelled. +1 skill point earned. ` +
-        `Your towers joined the roster and keep their XP.`,
+        `Your towers joined the roster and keep their XP.${lootLine()}`,
       type: "win",
       buttons,
     });
@@ -277,6 +296,7 @@ function checkEndState() {
         buttons.push({ text: "LEADERBOARD", onTap: () => openLeaderboard(LEVELS), secondary: true });
       }
       buttons.push(
+        { text: "CLAIM LOOT", onTap: () => openGearPanel({ closeMode: "triage" }), secondary: true },
         { text: "ASSIGN SKILL POINTS", onTap: openSkillTree, secondary: true },
         { text: "MAIN MENU", onTap: goToMainMenu, secondary: true },
       );
@@ -285,7 +305,7 @@ function checkEndState() {
         subtitle:
           `${level.name.toUpperCase()} ENDLESS — reached wave ${waveReached}` +
           (isNewBest ? ", a NEW BEST!" : ` (best: wave ${bestWave})`) +
-          ` Your towers kept their XP.`,
+          ` Your towers kept their XP.${lootLine()}`,
         type: "loss",
         buttons,
       });
@@ -298,6 +318,7 @@ function checkEndState() {
         type: "loss",
         buttons: [
           { text: "RETRY", onTap: () => startLevel(level) },
+          { text: "CLAIM LOOT", onTap: () => openGearPanel({ closeMode: "triage" }), secondary: true },
           { text: "ASSIGN SKILL POINTS", onTap: openSkillTree, secondary: true },
           { text: "MAIN MENU", onTap: goToMainMenu, secondary: true },
         ],

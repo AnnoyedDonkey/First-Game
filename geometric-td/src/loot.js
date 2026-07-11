@@ -68,6 +68,34 @@ function weightedPick(weights, rng) {
   return Object.keys(weights)[0]; // numeric-safety fallback
 }
 
+function rarityIndex(rarity) {
+  return Math.max(0, RARITIES.indexOf(rarity));
+}
+
+function clampIlvl(ilvl) {
+  return Math.max(1, Math.min(LOOT.gen.ilvlMax, Math.round(ilvl)));
+}
+
+function weightsWithFloor(weights, floorRarity) {
+  const floor = rarityIndex(floorRarity);
+  const out = {};
+  for (const rarity of RARITIES) {
+    out[rarity] = rarityIndex(rarity) >= floor ? (weights[rarity] || 0) : 0;
+  }
+  return out;
+}
+
+function biasedRarityWeights(enemyTier = 1, floorRarity = "common") {
+  const bias = Math.max(0, enemyTier - 1) * LOOT.drops.bossRarityBias;
+  const base = weightsWithFloor(LOOT.gen.rarityWeights, floorRarity);
+  const out = {};
+  for (const rarity of RARITIES) {
+    const i = rarityIndex(rarity);
+    out[rarity] = (base[rarity] || 0) * (1 + bias * i);
+  }
+  return out;
+}
+
 let idCounter = 0;
 function makeId(rng) {
   idCounter = (idCounter + 1) % 1e9;
@@ -81,6 +109,56 @@ function makeId(rng) {
 // pin one). Drops (P4) can pass biased weights.
 export function rollRarity(rng = Math.random, weights = LOOT.gen.rarityWeights) {
   return weightedPick(weights, rng);
+}
+
+export function dropChanceForEnemy(enemy) {
+  const tier = enemy && enemy.def ? (enemy.def.shardTier ?? 1) : 1;
+  return LOOT.drops.dropChanceBase * (1 + Math.max(0, tier - 1) * LOOT.drops.dropChanceTierMult);
+}
+
+export function rollKillDrop(enemy, level, waveIndex, rng = Math.random) {
+  if (rng() >= dropChanceForEnemy(enemy)) return null;
+  return generateDrop({ enemy, level, waveIndex, rng });
+}
+
+export function guaranteedDropFloor(levelNumber, waveReached) {
+  let floor = "common";
+  for (const rule of LOOT.drops.endDropFloor) {
+    if (levelNumber >= rule.minLevel && waveReached >= rule.minWave) floor = rule.rarity;
+  }
+  return floor;
+}
+
+export function dropIlvl(levelNumber, waveReached, enemyTier = 1) {
+  return clampIlvl(
+    1 +
+    levelNumber * LOOT.drops.ilvlPerLevel +
+    Math.max(0, waveReached - 1) * LOOT.drops.ilvlPerWave +
+    Math.max(0, enemyTier - 1) * LOOT.drops.ilvlPerLevel
+  );
+}
+
+export function generateDrop({ enemy = null, level = null, waveIndex = 0, floorRarity = "common", rng = Math.random } = {}) {
+  const levelNumber = level && level.id ? Number(level.id.slice(-3)) || 1 : 1;
+  const waveReached = Math.max(1, waveIndex + 1);
+  const enemyTier = enemy && enemy.def ? (enemy.def.shardTier ?? 1) : 1;
+  const rarity = rollRarity(rng, biasedRarityWeights(enemyTier, floorRarity));
+  return generateItem({
+    rarity,
+    ilvl: dropIlvl(levelNumber, waveReached, enemyTier),
+    rng,
+  });
+}
+
+export function generateGuaranteedDrop(game, rng = Math.random) {
+  const levelNumber = game && game.level && game.level.id ? Number(game.level.id.slice(-3)) || 1 : 1;
+  const waveReached = game ? Math.max(1, game.waveIndex + 1) : 1;
+  return generateDrop({
+    level: game && game.level,
+    waveIndex: waveReached - 1,
+    floorRarity: guaranteedDropFloor(levelNumber, waveReached),
+    rng,
+  });
 }
 
 // Is this affix allowed on an item locked to `towerType` (null = universal)?

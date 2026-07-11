@@ -320,7 +320,7 @@ export const LOOT = {
     slowWeightPerSec: 8,   // weight per second of slow applied
   },
 
-  // Shards ◆ — the persistent meta-currency for the loot store (P4+).
+  // Shards ◆ — the persistent meta-currency for loot gear/store systems.
   // Earned per kill, win OR lose, so grinding/forfeiting still pays.
   // Per-kill amount = round(perKillBase * ENEMIES[type].shardTier).
   shards: {
@@ -459,6 +459,26 @@ export const LOOT = {
     // Shard sell-back value by rarity (§1). Store (P5) reads this; kept here
     // so every loot number is in one place.
     sellValues: { common: 5, enhanced: 15, rare: 40, prismatic: 100, singularity: 300 },
+  },
+
+  // ---- Drops, stash and triage (P4) ----
+  drops: {
+    dropChanceBase: 0.02,       // base per-kill item chance
+    dropChanceTierMult: 0.6,    // each shardTier above 1 adds +60% chance
+    bossRarityBias: 0.35,       // higher enemy tiers tilt weights upward
+    ilvlPerLevel: 5,            // campaign level contribution to item level
+    ilvlPerWave: 2,             // reached-wave contribution to item level
+    endDropFloor: [             // guaranteed end-drop rarity floors
+      { minLevel: 1, minWave: 0, rarity: "common" },
+      { minLevel: 6, minWave: 0, rarity: "enhanced" },
+      { minLevel: 11, minWave: 0, rarity: "rare" },
+      { minLevel: 1, minWave: 20, rarity: "rare" },
+      { minLevel: 1, minWave: 35, rarity: "prismatic" },
+    ],
+  },
+
+  stash: {
+    stashSize: 50,
   },
 };
 

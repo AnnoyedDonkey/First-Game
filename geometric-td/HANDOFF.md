@@ -462,7 +462,13 @@ as the source of truth, not that old ×1.2 rule.)
     Temporary console bridge: `gear.grant("L-01", { unique: "prismLens" })`,
     `gear.equip(name, item)`, `gear.unequip(name, slot)`, and `gear.roster()`.
     Forced debug grants bypass level/Mastery gates but still enforce tower type.
-  - **Next: P4** — drops, guaranteed end-drop, stash, equip UI, and triage.
+  - **P4 DONE (2026-07-11):** drops, guaranteed end-drop, stash, equip UI, and
+    triage. Kill drops roll from `LOOT.drops`; every win/loss/forfeit adds one
+    guaranteed end-drop; unclaimed loot goes to `pendingLoot` and the main-menu
+    GEAR panel lets the player claim, equip, unequip, sell, bulk-sell low
+    rarities, or confirm-leave unclaimed drops. New save fields `stash`,
+    `pendingLoot`, `store`, and `endlessRewards` are defaulted and backfilled.
+  - **Next: P5** — Store UI (stock generation, reroll, buy/sell).
     Build one phase per fresh session (`/clear` between); the handoff is the
     committed files + LOOT_DESIGN checkboxes, not the conversation.
 

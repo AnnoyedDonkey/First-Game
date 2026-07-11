@@ -411,7 +411,16 @@ starts flailing rather than defaulting everything High.)
       projectile speed and base pierce live on the tower definitions. Verified
       with syntax checks, a 10,000-item integration smoke test, and deterministic
       damage/effect checks covering crit, Overcharge, and every unique.
-- [ ] **P4 — Drops + guaranteed end-drop + stash + stash/equip UI + triage.**
+- [x] **P4 — Drops + guaranteed end-drop + stash + stash/equip UI + triage.**
+      Completed 2026-07-11. Kill drops now roll from `LOOT.drops`, every
+      win/loss/forfeit adds a guaranteed end-drop, and new items enter
+      `pendingLoot` for the GEAR triage strip. Save fields `stash`,
+      `pendingLoot`, `store`, and `endlessRewards` are defaulted and
+      backfilled. The main menu has a GEAR entry for stash, equipped slots,
+      equip/unequip, individual sell, sell-all Common/Enhanced/Rare, claim
+      pending drops, and confirm-on-leave for unclaimed triage loot. Verified
+      with JS syntax checks, generator/drop invariant checks, and a mocked
+      persistence smoke test covering claim/equip/unequip.
 - [ ] **P5 — Store UI** (stock gen, reroll, buy/sell).
 - [ ] **P6 — Endless reward tracks.**
 - [ ] **P7 — Balance pass** (bot sims; geared-veteran wave-1 spike, drop rates,

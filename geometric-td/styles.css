@@ -489,6 +489,203 @@ button.hud-item {
   flex-shrink: 0;
 }
 
+/* ---------- Gear overlay ---------- */
+
+#gear-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: rgba(5, 6, 15, 0.94);
+  padding: 20px;
+  z-index: 40;
+}
+
+#gear-overlay.hidden { display: none; }
+
+#gear-overlay h1 {
+  font-size: 24px;
+  letter-spacing: 4px;
+  color: var(--neon-yellow);
+  text-shadow: 0 0 16px rgba(255, 226, 74, 0.6);
+}
+
+#gear-line {
+  color: var(--text-dim);
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-align: center;
+}
+
+#gear-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 440px;
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  scrollbar-width: thin;
+  scrollbar-color: var(--panel-border) transparent;
+}
+
+#gear-list::-webkit-scrollbar { width: 4px; }
+#gear-list::-webkit-scrollbar-thumb { background: var(--panel-border); border-radius: 2px; }
+
+.gear-section { color: var(--neon-yellow); }
+
+.gear-item,
+.gear-roster-row,
+.gear-empty {
+  flex-shrink: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  background: var(--panel);
+}
+
+.gear-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gear-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.gear-name {
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: var(--text);
+}
+
+.gear-desc,
+.gear-empty {
+  color: var(--text-dim);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.rarity-common { border-color: #8a97ac; }
+.rarity-enhanced { border-color: var(--neon-green); }
+.rarity-rare { border-color: var(--neon-cyan); }
+.rarity-prismatic { border-color: var(--neon-magenta); box-shadow: 0 0 10px rgba(255, 63, 212, 0.16); }
+.rarity-singularity { border-color: #ffffff; box-shadow: 0 0 14px rgba(255, 226, 74, 0.24); }
+
+.rarity-common .gear-name { color: #b7c0d5; }
+.rarity-enhanced .gear-name { color: var(--neon-green); }
+.rarity-rare .gear-name { color: var(--neon-cyan); }
+.rarity-prismatic .gear-name { color: var(--neon-magenta); }
+.rarity-singularity .gear-name { color: #ffffff; text-shadow: 0 0 8px rgba(255, 226, 74, 0.6); }
+
+.gear-actions-row,
+.gear-item-controls {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.gear-action,
+.gear-mini,
+.gear-select {
+  font-family: inherit;
+  min-height: 38px;
+  border-radius: 6px;
+  background: var(--bg);
+  border: 1px solid var(--panel-border);
+  color: var(--text);
+}
+
+.gear-action {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+
+.gear-action.danger,
+.gear-action.confirming {
+  color: var(--neon-red);
+  border-color: var(--neon-red);
+}
+
+.gear-mini {
+  flex: 0 0 auto;
+  padding: 0 10px;
+  font-size: 10px;
+  color: var(--neon-yellow);
+  border-color: var(--neon-yellow);
+}
+
+.gear-mini:disabled,
+.gear-action:disabled {
+  color: var(--text-dim);
+  border-color: var(--panel-border);
+}
+
+.gear-select {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0 8px;
+  font-size: 11px;
+}
+
+.gear-roster-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gear-roster-title {
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+
+.gear-slots {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.gear-slot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.gear-slot-name {
+  flex: 0 0 72px;
+  color: var(--text-dim);
+  font-size: 10px;
+}
+
+.gear-slot-item {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--text);
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#gear-close.confirming {
+  color: var(--neon-red);
+  border-color: var(--neon-red);
+  min-width: 220px;
+}
+
 /* ---------- Skill tree overlay ---------- */
 
 #skill-overlay {
