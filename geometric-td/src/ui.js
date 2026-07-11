@@ -86,6 +86,8 @@ const el = {
   overlayTitle: document.getElementById("overlay-title"),
   overlaySubtitle: document.getElementById("overlay-subtitle"),
   overlayButtons: document.getElementById("overlay-buttons"),
+  overlayNote: document.getElementById("overlay-note"),
+  overlayItems: document.getElementById("overlay-items"),
   dropReveal: document.getElementById("drop-reveal"),
   leaderboardOverlay: document.getElementById("leaderboard-overlay"),
   leaderboardList: document.getElementById("leaderboard-list"),
@@ -765,11 +767,13 @@ function tileHtml(item, opts = {}) {
   const isNew = opts.stashId && !isItemSeen(item.id);
   const dataAttr = opts.stashId ? `data-stash-item="${item.id}"`
     : opts.pendingId ? `data-pending-item="${item.id}"`
-    : opts.storeId ? `data-store-item="${item.id}"` : "";
+    : opts.storeId ? `data-store-item="${item.id}"`
+    : opts.resultIndex != null ? `data-result-item="${opts.resultIndex}"` : "";
   const cornerTag = opts.priceTag
     ? `<span class="price-tag">&#9670;${opts.priceTag}</span>`
     : lockLetter ? `<span class="lock-dot" style="color:${color}">${lockLetter}</span>` : "";
-  return `<button class="item-tile ${RARITY_CLASS[item.rarity]}${opts.unaffordable ? " unaffordable" : ""}" ${dataAttr}>` +
+  const extraClass = (opts.unaffordable ? " unaffordable" : "") + (opts.tileClass ? ` ${opts.tileClass}` : "");
+  return `<button class="item-tile ${RARITY_CLASS[item.rarity]}${extraClass}" ${dataAttr}>` +
     slotGlyph(item.slot, color) +
     cornerTag +
     (isNew ? `<span class="new-tag">NEW</span>` : "") +
@@ -789,7 +793,7 @@ function revealDestHtml(p) {
   return "&rarr; UNCLAIMED (stash was full)";
 }
 
-function renderRevealCard(p, index, total) {
+function renderRevealCard(p, index, total, tapLabel = "TAP TO CONTINUE") {
   const item = p.item;
   const color = RARITY_COLOR[item.rarity];
   el.dropReveal.innerHTML =
@@ -801,8 +805,22 @@ function renderRevealCard(p, index, total) {
     `<div id="reveal-sub">${item.rarity.toUpperCase()} &middot; ${item.slot.toUpperCase()}</div>` +
     `<div id="reveal-dest">${revealDestHtml(p)}</div>` +
     (total > 1 ? `<div id="reveal-progress">ITEM ${index + 1}/${total}</div>` : "") +
-    `<div id="reveal-tap">TAP TO CONTINUE</div>`;
+    `<div id="reveal-tap">${tapLabel}</div>`;
   el.dropReveal.classList.remove("hidden");
+}
+
+// On-demand single-item viewer for the results-screen loot grid: tapping a
+// tile pops the same rarity-burst card as the old sequence, tap to dismiss
+// back to the results overlay. (The forced one-by-one sequence is gone —
+// the grid replaces it — but the card visual is reused here.)
+export function showItemDetail(placement) {
+  if (!placement) return;
+  el.dropReveal.onclick = () => {
+    el.dropReveal.classList.add("hidden");
+    el.dropReveal.innerHTML = "";
+    el.dropReveal.onclick = null;
+  };
+  renderRevealCard(placement, 0, 1, "TAP TO CLOSE");
 }
 
 export function showDropReveal(placements, onDone) {
@@ -1589,18 +1607,49 @@ export function onExitButtonTap(handler) {
 
 // buttons: [{ text, onTap, secondary }] — first button is the primary
 // action, secondary:true renders quieter (skill tree, main menu...).
-export function showOverlay({ title, subtitle, type, buttons }) {
+// Results screen. `items` (optional) is the run's loot as placement objects
+// ({ item, dest, towerName? } from bankEarnedItem) — rendered as a tappable
+// grid under the buttons, each tile opening its detail card. `note`
+// (optional) is a short red warning line (used when loot couldn't fit).
+export function showOverlay({ title, subtitle, type, buttons, items, note }) {
   el.overlayTitle.textContent = title;
-  el.overlaySubtitle.textContent = subtitle;
+  el.overlaySubtitle.textContent = subtitle || "";
   el.overlay.className = type; // "win" or "loss"
+
+  if (note) {
+    el.overlayNote.textContent = note;
+    el.overlayNote.classList.remove("hidden");
+  } else {
+    el.overlayNote.classList.add("hidden");
+  }
 
   el.overlayButtons.innerHTML = "";
   for (const spec of buttons) {
     const btn = document.createElement("button");
-    btn.className = "big-button" + (spec.secondary ? " secondary" : "");
+    btn.className = "big-button" +
+      (spec.secondary ? " secondary" : "") +
+      (spec.danger ? " danger" : "");
     btn.textContent = spec.text;
     btn.addEventListener("click", spec.onTap);
     el.overlayButtons.appendChild(btn);
+  }
+
+  const loot = (items || []).filter(Boolean);
+  if (loot.length) {
+    el.overlayItems.innerHTML = loot.map((p, i) =>
+      tileHtml(p.item, {
+        resultIndex: i,
+        tileClass: p.dest === "equipped" ? "equipped-tile" : "stashed-tile",
+      })
+    ).join("");
+    el.overlayItems.classList.remove("hidden");
+    el.overlayItems.querySelectorAll("[data-result-item]").forEach((tile) => {
+      tile.addEventListener("click", () =>
+        showItemDetail(loot[Number(tile.dataset.resultItem)]));
+    });
+  } else {
+    el.overlayItems.innerHTML = "";
+    el.overlayItems.classList.add("hidden");
   }
 }
 

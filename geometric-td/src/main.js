@@ -2,7 +2,7 @@
 // MAIN — entry point: canvas setup, game loop, wiring.
 // ============================================================
 
-import { DEBUG, TOWERS } from "./config.js";
+import { DEBUG, TOWERS, RESULT_ROASTS } from "./config.js";
 import { LEVELS } from "./levels.js";
 import { createGame, updateGame, startNextWave } from "./game.js";
 import {
@@ -10,8 +10,8 @@ import {
   seedRosterCounters, refreshTowerStats,
 } from "./towers.js";
 import {
-  getProgress, shouldShowTowerGuide, markTowerGuideSeen, forfeitBattle,
-  equipItem, unequipItem, debugGrantGear,
+  getProgress, getSkillPoints, shouldShowTowerGuide, markTowerGuideSeen,
+  forfeitBattle, equipItem, unequipItem, debugGrantGear,
 } from "./progression.js";
 import { render } from "./renderer.js";
 import { bindCanvasInput } from "./input.js";
@@ -21,7 +21,7 @@ import {
   updateUpgradePanel, onUpgradeButtonTap, onSellButtonTap,
   initSkillTree, showLevelSelect, openSkillTree, hideOverlay,
   initSpeedControls, openTowerGuide, onExitButtonTap, openLeaderboard,
-  openGearPanel, showDropReveal,
+  openGearPanel,
 } from "./ui.js";
 import { submitScore, isEnabled as lbEnabled } from "./leaderboard.js";
 import { initUpdateCheck } from "./update.js";
@@ -218,14 +218,39 @@ function placementText(p) {
   return `${label} → UNCLAIMED`;
 }
 
-function lootLine() {
-  const placements = game && game.lootResult ? game.lootResult.placements : null;
-  if (!placements || !placements.length) {
-    // Stale-deploy fallback: an old progression.js may still report count only.
-    const count = game && game.lootResult ? game.lootResult.count : 0;
-    return count ? ` Loot recovered: ${count} item${count === 1 ? "" : "s"}.` : "";
+// One of the config roast pools, picked at random for the results title.
+function pickRoast(bucket) {
+  const pool = RESULT_ROASTS[bucket] || RESULT_ROASTS.victory;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+// Red warning when the run's loot overflowed a full stash (dest "pending").
+function stashOverflowNote(items) {
+  const n = items.filter((p) => p.dest === "pending").length;
+  return n
+    ? `Stash full — ${n} item${n === 1 ? "" : "s"} couldn't be stored. ` +
+      `Manage your gear to make room.`
+    : "";
+}
+
+// Buttons shared by every results screen, appended after the state-specific
+// ones: MANAGE GEAR (red when the stash overflowed), ASSIGN SKILL POINTS
+// (only when there are unspent points), MAIN MENU.
+function lootTailButtons(items, stashFull) {
+  const tail = [];
+  if (items.length) {
+    tail.push({
+      text: "MANAGE GEAR",
+      danger: stashFull,
+      secondary: !stashFull,
+      onTap: () => openGearPanel({ closeMode: "triage" }),
+    });
   }
-  return ` Loot: ${placements.map(placementText).join(" · ")}.`;
+  if (getSkillPoints() > 0) {
+    tail.push({ text: "ASSIGN SKILL POINTS", onTap: openSkillTree, secondary: true });
+  }
+  tail.push({ text: "MAIN MENU", onTap: goToMainMenu, secondary: true });
+  return tail;
 }
 
 // Endless reward-track milestones newly crossed this run (progression.js
@@ -278,17 +303,23 @@ onExitButtonTap(() => {
           forfeitBattle(game);
           game.phase = "lost";
           overlayShown = true;
-          showDropReveal(allPlacements(game), () => showOverlay({
-            title: "BATTLE FORFEITED",
+          const level = game.level;
+          const endless = game.endless;
+          const items = allPlacements(game);
+          const stashFull = items.some((p) => p.dest === "pending");
+          showOverlay({
+            title: pickRoast("forfeit"),
             subtitle:
-              "You returned with no win or completion credit. Your towers kept " +
-              `their XP and shards earned so far.${lootLine()}`,
+              "You bailed — no win or completion credit. Towers kept the XP " +
+              "and shards they earned.",
             type: "loss",
             buttons: [
-              { text: "CLAIM LOOT", onTap: () => openGearPanel({ closeMode: "triage" }) },
-              { text: "MAIN MENU", onTap: goToMainMenu, secondary: true },
+              { text: "RETRY LEVEL", onTap: () => startLevel(level, endless) },
+              ...lootTailButtons(items, stashFull),
             ],
-          }));
+            items,
+            note: stashOverflowNote(items),
+          });
         },
       },
       {
@@ -302,72 +333,63 @@ onExitButtonTap(() => {
 
 function checkEndState() {
   if (overlayShown) return;
+  if (game.phase !== "won" && game.phase !== "lost") return;
+
+  overlayShown = true;
+  const level = game.level;
+  const items = allPlacements(game);
+  const stashFull = items.some((p) => p.dest === "pending");
+  const note = stashOverflowNote(items);
 
   if (game.phase === "won") {
-    overlayShown = true;
-    const currentIndex = LEVELS.indexOf(game.level);
-    const next = LEVELS[currentIndex + 1];
+    const next = LEVELS[LEVELS.indexOf(level) + 1];
     const buttons = [];
     if (next) {
       buttons.push({ text: `NEXT: ${next.name.toUpperCase()}`, onTap: () => startLevel(next) });
     }
-    buttons.push(
-      { text: "CLAIM LOOT", onTap: () => openGearPanel({ closeMode: "triage" }), secondary: !!next },
-      { text: "ASSIGN SKILL POINTS", onTap: openSkillTree, secondary: !!next },
-      { text: "MAIN MENU", onTap: goToMainMenu, secondary: true },
-    );
-    showDropReveal(allPlacements(game), () => showOverlay({
-      title: "CORE DEFENDED",
-      subtitle:
-        `All ${game.totalWaves} waves repelled. +1 skill point earned. ` +
-        `Your towers joined the roster and keep their XP.${lootLine()}`,
+    buttons.push({ text: "RETRY LEVEL", onTap: () => startLevel(level), secondary: !!next });
+    buttons.push(...lootTailButtons(items, stashFull));
+    showOverlay({
+      title: pickRoast("victory"),
+      subtitle: `All ${game.totalWaves} waves repelled. +1 skill point earned.`,
       type: "win",
       buttons,
-    }));
-  } else if (game.phase === "lost") {
-    overlayShown = true;
-    const level = game.level;
-    if (game.endless) {
-      const { waveReached, isNewBest, bestWave } = game.endlessResult;
-      // Auto-publish a new best to the shared board (best-effort, silent;
-      // only fires if a nickname is set — see leaderboard.js). A failed
-      // network call can't affect the overlay below.
-      if (isNewBest) submitScore(level.id, waveReached);
-      const buttons = [
-        { text: "RETRY ENDLESS", onTap: () => startLevel(level, true) },
-      ];
-      if (lbEnabled()) {
-        buttons.push({ text: "LEADERBOARD", onTap: () => openLeaderboard(LEVELS), secondary: true });
-      }
-      buttons.push(
-        { text: "CLAIM LOOT", onTap: () => openGearPanel({ closeMode: "triage" }), secondary: true },
-        { text: "ASSIGN SKILL POINTS", onTap: openSkillTree, secondary: true },
-        { text: "MAIN MENU", onTap: goToMainMenu, secondary: true },
-      );
-      showDropReveal(allPlacements(game), () => showOverlay({
-        title: "RUN OVER",
-        subtitle:
-          `${level.name.toUpperCase()} ENDLESS — reached wave ${waveReached}` +
-          (isNewBest ? ", a NEW BEST!" : ` (best: wave ${bestWave})`) +
-          ` Your towers kept their XP.${lootLine()}${endlessRewardLine()}`,
-        type: "loss",
-        buttons,
-      }));
-    } else {
-      showDropReveal(allPlacements(game), () => showOverlay({
-        title: "CORE DESTROYED",
-        subtitle:
-          `The core fell on wave ${game.waveIndex + 1}. Your towers kept ` +
-          `their XP — spend skill points, redeploy veterans, try new spots.${lootLine()}`,
-        type: "loss",
-        buttons: [
-          { text: "RETRY", onTap: () => startLevel(level) },
-          { text: "CLAIM LOOT", onTap: () => openGearPanel({ closeMode: "triage" }), secondary: true },
-          { text: "ASSIGN SKILL POINTS", onTap: openSkillTree, secondary: true },
-          { text: "MAIN MENU", onTap: goToMainMenu, secondary: true },
-        ],
-      }));
+      items,
+      note,
+    });
+  } else if (game.endless) {
+    const { waveReached, isNewBest, bestWave } = game.endlessResult;
+    // Auto-publish a new best to the shared board (best-effort, silent;
+    // only fires if a nickname is set — see leaderboard.js). A failed
+    // network call can't affect the overlay below.
+    if (isNewBest) submitScore(level.id, waveReached);
+    const buttons = [{ text: "RETRY ENDLESS", onTap: () => startLevel(level, true) }];
+    if (lbEnabled()) {
+      buttons.push({ text: "PUBLISH SCORE", onTap: () => openLeaderboard(LEVELS), secondary: true });
     }
+    buttons.push(...lootTailButtons(items, stashFull));
+    showOverlay({
+      title: pickRoast("endless"),
+      subtitle:
+        `${level.name.toUpperCase()} ENDLESS — reached wave ${waveReached}` +
+        (isNewBest ? " · NEW BEST!" : ` · best wave ${bestWave}`) +
+        endlessRewardLine(),
+      type: "loss",
+      buttons,
+      items,
+      note,
+    });
+  } else {
+    const buttons = [{ text: "RETRY LEVEL", onTap: () => startLevel(level) }];
+    buttons.push(...lootTailButtons(items, stashFull));
+    showOverlay({
+      title: pickRoast("defeat"),
+      subtitle: `The core fell on wave ${game.waveIndex + 1}.`,
+      type: "loss",
+      buttons,
+      items,
+      note,
+    });
   }
 }
 

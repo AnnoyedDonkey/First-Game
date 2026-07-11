@@ -490,7 +490,7 @@ export const LOOT = {
 
   // ---- Drops, stash and triage (P4) ----
   drops: {
-    dropChanceBase: 0.02,       // base per-kill item chance
+    dropChanceBase: 0.01,       // base per-kill item chance
     dropChanceTierMult: 0.6,    // each shardTier above 1 adds +60% chance
     bossRarityBias: 0.35,       // higher enemy tiers tilt weights upward
     ilvlPerLevel: 5,            // campaign level contribution to item level
@@ -536,7 +536,7 @@ export const LOOT = {
   // level follows the player's strongest career tower so the shop naturally
   // grows with the roster. Prices and reroll escalation are Shards.
   store: {
-    stockSize: 5,
+    stockSize: 15,
     ilvlBase: 1,
     ilvlPerMaxLevel: 10,
     ilvlPerMasteryRank: 1,
@@ -609,6 +609,63 @@ export const SKILL_VALUES = {
   moneyPerKill: 0.10,
   xpGain: 0.10,
   coreHealth: 5,       // +5 HP per tier
+};
+
+// ---------- End-of-battle roast titles ----------
+// The results screen's big title is a randomly picked cheeky one-liner,
+// bucketed by how the battle ended (win / campaign loss / endless run-over /
+// forfeit). Pure flavor — add, cut, or reword freely. Keep each under ~34
+// characters so it fits the title without wrapping past two lines. They're
+// coloured green on wins, red on losses by the overlay's own CSS.
+export const RESULT_ROASTS = {
+  victory: [
+    "WELL DONE!",
+    "SUSPICIOUSLY COMPETENT",
+    "THE CORE THANKS YOU",
+    "OKAY, SHOW-OFF",
+    "FLAWLESS. PROBABLY LUCK",
+    "GEOMETRY: DEFENDED",
+    "NOT BAD FOR A HUMAN",
+    "THE SHAPES NEVER STOOD A CHANCE",
+    "CERTIFIED CORE DEFENDER",
+    "TRIANGLES FEAR YOU NOW",
+  ],
+  defeat: [
+    "LET'S FORGET THAT HAPPENED",
+    "EVER HEARD OF BUDGETING?",
+    "THE CORE DESERVED BETTER",
+    "SKILL ISSUE, RESPECTFULLY",
+    "HAVE YOU TRIED... WINNING?",
+    "THAT WAS A CHOICE",
+    "TOWERS PRESENT, TACTICS ABSENT",
+    "OUTPLAYED BY TRIANGLES",
+    "MAYBE READ THE TOWER GUIDE?",
+    "BOLD STRATEGY. DIDN'T WORK",
+    "THE ENEMIES SEND THANKS",
+    "A MASTERCLASS IN LOSING",
+  ],
+  endless: [
+    "THAT'S AS FAR AS YOU GO",
+    "INFINITY WON THIS ROUND",
+    "THE WAVES SAY HI",
+    "MATH ALWAYS WINS EVENTUALLY",
+    "GOOD RUN. IT'S OVER NOW",
+    "ENDLESS 1, YOU 0",
+    "YOU RAN OUT OF ENDLESS",
+    "STOPPED BY ARITHMETIC",
+    "IMPRESSIVE. STILL DEAD",
+    "THE ABYSS STARED BACK",
+  ],
+  forfeit: [
+    "TACTICAL RETREAT, SURE",
+    "QUITTERS SOMETIMES PROSPER",
+    "WE'LL CALL IT STRATEGY",
+    "THE CORE FEELS ABANDONED",
+    "RAN AWAY. VALID",
+    "DISCRETION OVER VALOR",
+    "YOU CHOSE PEACE",
+    "NOBODY SAW THAT",
+  ],
 };
 
 // ---------- Shared leaderboard (Supabase) ----------
