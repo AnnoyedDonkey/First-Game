@@ -643,6 +643,13 @@ as the source of truth, not that old ×1.2 rule.)
     `rerollStore`/`buyStoreItem` untouched) — pure restyle, per
     `GEAR_UI_DESIGN.md` §3. Full detail + verification notes in that doc's
     U5 checkbox.
+- **CIRCUIT-BOARD MAIN MENU (approved, not yet built):** replace the
+  level-row list with a per-world neon circuit board (SVG nodes + traces),
+  node states readable at a glance (cleared / frontier / locked / ∞ pad /
+  milestone tick-ring), tap → bottom-sheet level detail with description,
+  endless status, and milestone list. Full phased spec (M0–M4, one phase
+  per session, model suggestions included) in `CIRCUIT_MENU_DESIGN.md`;
+  approved interactive mockup at `mockups/circuit-menu-mockup.html`.
 - **PLAYTEST-PENDING:** the counter re-tune + visible feedback + Rocket +
   World 3 all shipped but the difficulty is calibrated only by bot sims
   (superhuman placement → flawless bot wins are a WEAK signal). The user's
