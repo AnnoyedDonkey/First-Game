@@ -1200,6 +1200,73 @@ function openPendingItemSheet(itemId) {
   });
 }
 
+// Sum an item's affixes into a { stat: value } map (an affix stat can, in
+// principle, appear twice — add them).
+function itemStatMap(item) {
+  const m = {};
+  for (const a of item.affixes || []) m[a.stat] = (m[a.stat] || 0) + a.value;
+  return m;
+}
+
+// Old-vs-new comparison sheet (B4). Two columns (CURRENT / NEW), one row per
+// affix aligned by stat with green/red deltas; affixes present on only one
+// side render greyed on the other. Opened when equipping into a filled slot
+// (footer EQUIP NEW / KEEP CURRENT) or read-only for inspection (footer CLOSE).
+function openCompareSheet(current, incoming, opts = {}) {
+  const readOnly = !!opts.readOnly;
+  const slot = incoming.slot;
+  const curColor = RARITY_COLOR[current.rarity];
+  const newColor = RARITY_COLOR[incoming.rarity];
+  const curMap = itemStatMap(current);
+  const newMap = itemStatMap(incoming);
+
+  // Union of stats, keeping current's order first, then new-only stats.
+  const stats = [...Object.keys(curMap), ...Object.keys(newMap).filter((s) => !(s in curMap))];
+  const rows = stats.map((stat) => {
+    const def = affixDef(stat);
+    const suffix = def && def.int ? "" : "%";
+    const hasCur = stat in curMap, hasNew = stat in newMap;
+    const cv = curMap[stat] || 0, nv = newMap[stat] || 0;
+    const delta = nv - cv;
+    const deltaHtml = delta === 0 ? "" :
+      `<span class="cmp-delta ${delta > 0 ? "up" : "down"}">${delta > 0 ? "&#9650;" : "&#9660;"}${Math.abs(delta)}${suffix}</span>`;
+    return `<div class="cmp-row"><span class="cmp-label">${escapeHtml(affixLabel(def, stat))}</span>` +
+      `<span class="cmp-cell${hasCur ? "" : " cmp-absent"}">${hasCur ? `+${cv}${suffix}` : "&mdash;"}</span>` +
+      `<span class="cmp-cell${hasNew ? "" : " cmp-absent"}">${hasNew ? `+${nv}${suffix}` : "&mdash;"}${deltaHtml}</span></div>`;
+  }).join("");
+
+  // Uniques compared as their own row when either side carries one.
+  const curU = itemUniqueName(current), newU = itemUniqueName(incoming);
+  const uniqueRow = (curU || newU)
+    ? `<div class="cmp-row cmp-uniquerow"><span class="cmp-label">UNIQUE</span>` +
+      `<span class="cmp-cell${curU ? "" : " cmp-absent"}">${curU ? escapeHtml(curU) : "&mdash;"}</span>` +
+      `<span class="cmp-cell${newU ? "" : " cmp-absent"}">${newU ? escapeHtml(newU) : "&mdash;"}</span></div>`
+    : "";
+
+  const footer = readOnly
+    ? `<div class="gear-sheet-actions"><button class="gear-sheet-btn" id="cmp-close">CLOSE</button></div>`
+    : `<div class="gear-sheet-actions">` +
+      `<button class="gear-sheet-btn" id="cmp-equip">EQUIP NEW</button>` +
+      `<button class="gear-sheet-btn sell" id="cmp-keep">KEEP CURRENT</button></div>`;
+
+  el.gearSheet.innerHTML =
+    `<div class="gear-sheet-title">${slotGlyph(slot, "#8fa0c8")} COMPARE &middot; ${SLOT_LABEL[slot]}</div>` +
+    `<div class="cmp-head"><span class="cmp-label"></span>` +
+    `<span class="cmp-cell" style="color:${curColor}">${escapeHtml(itemTitle(current))}` +
+    `<small>${current.rarity.toUpperCase()}</small></span>` +
+    `<span class="cmp-cell" style="color:${newColor}">${escapeHtml(itemTitle(incoming))}` +
+    `<small>${incoming.rarity.toUpperCase()}</small></span></div>` +
+    rows + uniqueRow + footer;
+  openSheet();
+
+  if (readOnly) {
+    document.getElementById("cmp-close").addEventListener("click", closeSheet);
+  } else {
+    document.getElementById("cmp-equip").addEventListener("click", () => opts.onEquip());
+    document.getElementById("cmp-keep").addEventListener("click", closeSheet);
+  }
+}
+
 function openPickerSheet(towerName, slot) {
   const rec = getProgress().roster.find((r) => r.name === towerName);
   if (!rec) return;
@@ -1230,10 +1297,18 @@ function openPickerSheet(towerName, slot) {
   document.getElementById("sheet-cancel").addEventListener("click", closeSheet);
   el.gearSheet.querySelectorAll("[data-equip-item]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      equipStashItem(rec.name, btn.dataset.equipItem);
-      equipFlashTarget = { towerName: rec.name, slot };
-      closeSheet();
-      renderGearPanel();
+      const doEquip = () => {
+        equipStashItem(rec.name, btn.dataset.equipItem);
+        equipFlashTarget = { towerName: rec.name, slot };
+        closeSheet();
+        renderGearPanel();
+      };
+      // The picker only opens on empty slots today, but guard the displacing
+      // case: if this slot is already filled, compare before swapping.
+      const current = normalizeGear(rec.gear)[slot];
+      const incoming = candidates.find((c) => c.id === btn.dataset.equipItem);
+      if (current && incoming) openCompareSheet(current, incoming, { onEquip: doEquip });
+      else doEquip();
     });
   });
 }
@@ -1264,10 +1339,19 @@ function openEquipTargetSheet(item) {
   document.getElementById("sheet-cancel").addEventListener("click", closeSheet);
   el.gearSheet.querySelectorAll("[data-target-tower]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      equipStashItem(btn.dataset.targetTower, item.id);
-      equipFlashTarget = { towerName: btn.dataset.targetTower, slot: item.slot };
-      closeSheet();
-      renderGearPanel();
+      const targetName = btn.dataset.targetTower;
+      const doEquip = () => {
+        equipStashItem(targetName, item.id);
+        equipFlashTarget = { towerName: targetName, slot: item.slot };
+        closeSheet();
+        renderGearPanel();
+      };
+      // If the destination slot already holds gear, show the compare sheet
+      // (CURRENT vs NEW) instead of silently displacing it (B4).
+      const rec = getProgress().roster.find((r) => r.name === targetName);
+      const current = rec && normalizeGear(rec.gear)[item.slot];
+      if (current) openCompareSheet(current, item, { onEquip: doEquip });
+      else doEquip();
     });
   });
 }

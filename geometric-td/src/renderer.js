@@ -4,7 +4,16 @@
 
 import { enemyPosition } from "./enemies.js";
 import { isUpgradeEligible } from "./towers.js";
-import { SHAPE_SIDES } from "./config.js";
+import { SHAPE_SIDES, VFX } from "./config.js";
+import { GEAR_SLOTS } from "./equipment.js";
+
+// Rarity accent colors for in-battle gear orbitals (B4). Mirrors the
+// RARITY_COLOR map in ui.js — kept local so the renderer takes no UI import.
+const GEAR_RARITY_COLOR = {
+  common: "#b7c0d5", enhanced: "#4affa1", rare: "#35e0ff",
+  prismatic: "#ff3fd4", singularity: "#ffe24a",
+};
+const GEAR_RARITY_RANK = { common: 0, enhanced: 1, rare: 2, prismatic: 3, singularity: 4 };
 
 // Visual tuning — tweak the look here.
 const LOOK = {
@@ -90,10 +99,66 @@ export function render(ctx, game, time, uiState = {}) {
   // Additive pass: everything glowing blooms where it overlaps.
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
+  drawTowerGear(ctx, game);
   drawProjectiles(ctx, game);
   drawEffects(ctx, game);
   drawParticles(ctx, game);
   ctx.restore();
+}
+
+// Orbiting rarity diamonds + aura for towers carrying gear (B4). Runs inside
+// the additive pass so the diamonds and aura bloom. Answers "which towers
+// have gear" at a glance and rewards good equipment with pizzazz. Knobs in
+// config.js VFX.gear.
+function drawTowerGear(ctx, game) {
+  const ts = game.grid.tileSize;
+  const time = game.time;
+  const g = VFX.gear;
+  const orbitR = ts * g.orbitRadius;
+  const half = g.diamondSize / 2;
+
+  for (const tower of game.towers) {
+    const gear = tower.gear;
+    if (!gear) continue;
+
+    // Collect equipped items in a stable slot order (one orbital each).
+    const colors = [];
+    let bestColor = null, bestRank = -1, hasSingularity = false;
+    for (const slot of GEAR_SLOTS) {
+      const item = gear[slot];
+      if (!item) continue;
+      const color = GEAR_RARITY_COLOR[item.rarity] || GEAR_RARITY_COLOR.common;
+      colors.push(color);
+      const rank = GEAR_RARITY_RANK[item.rarity] ?? 0;
+      if (rank > bestRank) { bestRank = rank; bestColor = color; }
+      if (item.rarity === "singularity") hasSingularity = true;
+    }
+    if (!colors.length) continue;
+
+    const cx = tower.pos.x, cy = tower.pos.y;
+
+    // Faint aura tinted by the best rarity; singularity gear makes it shimmer.
+    let auraAlpha = g.auraAlpha;
+    if (hasSingularity) {
+      auraAlpha *= 1 + g.shimmerDepth * (0.5 + 0.5 * Math.sin(time * g.shimmerSpeed));
+    }
+    drawGlow(ctx, cx, cy, ts * g.auraRadius, bestColor, auraAlpha);
+
+    // Orbiting diamonds, evenly spaced, slow rotation.
+    const n = colors.length;
+    for (let i = 0; i < n; i++) {
+      const ang = time * g.orbitSpeed + (i / n) * Math.PI * 2;
+      const x = cx + Math.cos(ang) * orbitR;
+      const y = cy + Math.sin(ang) * orbitR;
+      drawGlow(ctx, x, y, g.orbitGlow, colors[i], g.orbitGlowAlpha);
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(Math.PI / 4); // square rotated 45° reads as a diamond
+      ctx.fillStyle = colors[i];
+      ctx.fillRect(-half, -half, g.diamondSize, g.diamondSize);
+      ctx.restore();
+    }
+  }
 }
 
 // The spring-mesh background grid — lines pass through the simulated

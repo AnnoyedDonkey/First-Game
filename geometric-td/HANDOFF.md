@@ -15,8 +15,9 @@ railgun over-penetration), permanent per-class
 specialties, post-cap Mastery ranks, per-level palettes, GeoDefense-style
 VFX, ¼x–4x speed controls, Endless mode per level with a 5-milestone reward
 track, forfeit button, a full Diablo-style loot/equipment system (Shards ◆
-currency, per-tower gear in 4 slots, 5 rarities, drops/stash/triage, store),
-a tower-first gear UI, and an SVG circuit-board main menu. All deployed and
+currency, per-tower gear in 4 slots, 5 rarities, drops/stash/triage, store,
+gear visible on towers in-battle as orbiting rarity diamonds, old-vs-new
+equip comparison), a tower-first gear UI, and an SVG circuit-board main menu. All deployed and
 playable at the GitHub Pages URL below. No known bugs.
 
 **Active work:** economy rebalance + progression expansion, phases B1–B6,
@@ -366,6 +367,32 @@ selector is open. Treat `levels.js` as the source of truth on wave numbers.
     parent-gating, cap→10 + enforcement, interest (+38 under a 50 cap on a 1000
     bank), rail reach 224→314 at ×1.4, old array-form save migrates clean
     (mastery probe unchanged at 1100). Next: B4 gear visible on towers.
+  - **DONE — B4 (2026-07-12):** gear now visible on towers in-battle + an
+    old-vs-new equip comparison sheet. **In-battle visuals:** new
+    `renderer.js drawTowerGear` (runs in the additive `lighter` pass, no
+    shadowBlur) draws one slow-orbiting rarity-colored diamond per equipped
+    item (up to 4) around each geared tower, plus a faint aura glow tinted by
+    the tower's BEST rarity; singularity gear makes the aura shimmer-pulse.
+    All knobs in `config.js VFX.gear` (orbitRadius/orbitSpeed/diamondSize/
+    orbitGlow/orbitGlowAlpha/auraRadius/auraAlpha/shimmerSpeed/shimmerDepth).
+    Rarity colors are a local `GEAR_RARITY_COLOR` map in renderer.js
+    (mirrors ui.js `RARITY_COLOR`; kept local so the renderer takes no UI
+    import); renderer now imports `VFX` from config + `GEAR_SLOTS` from
+    equipment.js. **Compare sheet:** new `ui.js openCompareSheet(current,
+    incoming, {onEquip, readOnly})` — two columns (CURRENT / NEW) with
+    title+rarity, per-affix rows aligned by stat with green up / red down
+    deltas, a UNIQUE row, and affixes present on only one side greyed
+    (`.cmp-absent`). Footer EQUIP NEW / KEEP CURRENT (or CLOSE when
+    `readOnly`). Both displacing equip paths now route through it when the
+    destination slot is filled: `openEquipTargetSheet`'s target tap (the real
+    path: stash item -> EQUIP -> pick a tower whose slot is full) and
+    `openPickerSheet`'s pick (guarded, but that picker only opens on empty
+    slots today). Styling in styles.css `.cmp-*` classes. Verified:
+    multi-frame render of 1-item and 4-item towers incl. singularity shimmer
+    throws nothing + console clean; compare sheet shows correct columns/deltas/
+    unique row; EQUIP NEW swaps and banks the displaced item to stash; KEEP
+    CURRENT is non-destructive. Next: B5 milestone toasts + recap + per-level
+    milestones.
 - **Loot P7 balance pass** — largely superseded by B1/B6; read
   `LOOT_DESIGN.md` §15 before tuning drops.
 - **PLAYTEST-PENDING:** counter re-tune + Rocket + World 3 difficulty is

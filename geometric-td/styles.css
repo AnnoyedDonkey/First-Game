@@ -1012,6 +1012,55 @@ button.hud-item {
 .gear-affix.uniqueP { border-color: var(--neon-magenta); }
 .gear-affix.uniqueP .val { color: var(--neon-magenta); }
 
+/* ---- Old-vs-new gear comparison sheet (B4) ---- */
+.cmp-head, .cmp-row {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr 1fr;
+  gap: 8px;
+  align-items: center;
+}
+.cmp-head {
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--panel-border);
+}
+.cmp-head .cmp-cell {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+.cmp-head .cmp-cell small {
+  display: block;
+  margin-top: 2px;
+  font-size: 9px;
+  letter-spacing: 1px;
+  opacity: 0.7;
+}
+.cmp-row {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--panel-border);
+  border-radius: 7px;
+  padding: 7px 10px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+}
+.cmp-row.cmp-uniquerow { border-color: var(--neon-magenta); }
+.cmp-label { color: var(--text-dim); }
+.cmp-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--neon-green);
+}
+.cmp-cell.cmp-absent { color: rgba(255, 255, 255, 0.22); }
+.cmp-delta { font-size: 10px; letter-spacing: 0; }
+.cmp-delta.up { color: var(--neon-green); }
+.cmp-delta.down { color: var(--neon-red); }
+
 .gear-sheet-actions { display: flex; gap: 8px; }
 .gear-sheet-btn {
   flex: 1;

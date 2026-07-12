@@ -631,6 +631,23 @@ export const VFX = {
   shardTtl: [0.5, 1.1],    // seconds range before a shard fades out
   powerSparkBonus: 4,      // extra death sparks per killer tower level
 
+  // In-battle gear visuals (B4): each equipped item becomes a slow-orbiting
+  // rarity-colored diamond around its tower, plus a faint aura tinted by the
+  // tower's BEST rarity. Drawn in the additive pass (glow sprites, no
+  // shadowBlur). All fractions are of a tile; a few sprites/tower, well under
+  // the particle cap.
+  gear: {
+    orbitRadius: 0.36,     // orbital distance from tower center (fraction of tile)
+    orbitSpeed: 0.55,      // base rotation, radians/sec
+    diamondSize: 4.0,      // px edge length of each orbiting diamond
+    orbitGlow: 5,          // px glow-sprite radius behind each diamond
+    orbitGlowAlpha: 0.85,  // additive alpha of each diamond's glow
+    auraRadius: 0.52,      // aura halo radius (fraction of tile)
+    auraAlpha: 0.13,       // aura halo alpha (best rarity tint)
+    shimmerSpeed: 5,       // singularity aura shimmer pulse speed
+    shimmerDepth: 0.6,     // how much the shimmer swells the aura alpha (0-1)
+  },
+
   // The warping background grid (spring mesh).
   warp: {
     spacingTiles: 0.5,     // grid node spacing as a fraction of a tile
