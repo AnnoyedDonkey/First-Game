@@ -1145,6 +1145,37 @@ button.hud-item {
 
 #store-actions { margin-bottom: 10px; }
 
+.store-unlock-row { margin-bottom: 12px; }
+.store-unlock-label {
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+.store-unlock-tiles {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.store-unlock-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 68px;
+  padding: 7px 10px;
+  background: rgba(11, 14, 30, 0.85);
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: opacity 0.15s, box-shadow 0.15s;
+}
+.store-unlock-tile:active { opacity: 0.65; }
+.unlock-padlock { font-size: 12px; opacity: 0.45; }
+.unlock-name { font-size: 8px; letter-spacing: 1.5px; }
+.unlock-price { font-size: 10px; letter-spacing: 0.5px; font-weight: 600; }
+
 #store-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);

@@ -590,9 +590,13 @@ export const LOOT = {
     ilvlBase: 1,
     ilvlPerMaxLevel: 10,
     ilvlPerMasteryRank: 1,
-    rerollCost: 30,
+    rerollCost: 25,
     rerollCostIncrement: 15,
-    prices: { common: 25, enhanced: 70, rare: 180, prismatic: 500, singularity: 1500 },
+    prices: { common: 15, enhanced: 50, rare: 140, prismatic: 450, singularity: 1400 },
+    // Shard cost to unlock each rarity for store rolls. common is always free.
+    // Sized against the B1 ~33-shards/L1 economy: enhanced after ~3 clears,
+    // prismatic needs higher-level farming.
+    rarityUnlocks: { enhanced: 100, rare: 350, prismatic: 1200, singularity: 4000 },
   },
 };
 

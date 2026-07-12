@@ -16,6 +16,7 @@ import {
   discardPendingLoot, sellStashItem, sellPendingItem, sellAllStashRarity,
   equipStashItem, unequipToStash,
   getStoreStock, storeRerollCost, rerollStore, buyStoreItem,
+  getStoreUnlocks, buyStoreUnlock,
   countUnseenStash, isItemSeen, markItemSeen,
 } from "./progression.js";
 import {
@@ -1617,15 +1618,67 @@ function openStoreItemSheet(item) {
   }
 }
 
+function openUnlockSheet(rarity) {
+  const cost = LOOT.store.rarityUnlocks[rarity];
+  const color = RARITY_COLOR[rarity];
+  const canAfford = getShards() >= cost;
+  el.storeSheet.innerHTML =
+    `<div class="gear-sheet-title" style="color:${color}; text-shadow:0 0 10px ${color}55">` +
+    `&#9632; UNLOCK ${rarity.toUpperCase()}</div>` +
+    `<div class="gear-sheet-sub">Spend &#9670;${cost} shards to add ` +
+    `${rarity.toUpperCase()} items to the store roll.</div>` +
+    `<div class="gear-sheet-actions">` +
+    `<button class="gear-sheet-btn" id="store-unlock-confirm"${canAfford ? "" : " disabled"}>` +
+    `UNLOCK &#9670;${cost}</button></div>`;
+  el.storeSheetOverlay.classList.remove("hidden");
+  if (canAfford) {
+    document.getElementById("store-unlock-confirm").addEventListener("click", () => {
+      buyStoreUnlock(rarity);
+      closeStoreSheet();
+      renderStorePanel();
+    });
+  }
+}
+
 function renderStorePanel() {
   const scrollTop = el.storeScroll.scrollTop;
   const stock = getStoreStock();
   const free = stashSlotsFree();
   const rerollCost = storeRerollCost();
   const shards = getShards();
+  const unlocks = getStoreUnlocks();
   el.storeWallet.innerHTML = `<b>&#9670; ${shards}</b> &nbsp;&middot;&nbsp; STASH ${getStash().length}/${LOOT.stash.stashSize}`;
 
   el.storeActions.innerHTML = "";
+
+  // Unlock row — shows locked rarities as tap-to-buy tiles
+  const rarityUnlocks = LOOT.store.rarityUnlocks;
+  const lockedRarities = Object.keys(rarityUnlocks).filter((r) => !unlocks.includes(r));
+  if (lockedRarities.length > 0) {
+    const row = document.createElement("div");
+    row.className = "store-unlock-row";
+    row.innerHTML =
+      `<div class="store-unlock-label">UNLOCK RARITIES</div>` +
+      `<div class="store-unlock-tiles">` +
+      lockedRarities.map((rarity) => {
+        const cost = rarityUnlocks[rarity];
+        const color = RARITY_COLOR[rarity];
+        const affordable = shards >= cost;
+        const priceColor = affordable ? "var(--neon-yellow)" : "var(--neon-red)";
+        return `<button class="store-unlock-tile" data-unlock-rarity="${rarity}" ` +
+          `style="border-color:${color}; color:${color}">` +
+          `<span class="unlock-padlock">&#9632;</span>` +
+          `<span class="unlock-name">${rarity.toUpperCase()}</span>` +
+          `<span class="unlock-price" style="color:${priceColor}">&#9670;${cost}</span>` +
+          `</button>`;
+      }).join("") +
+      `</div>`;
+    el.storeActions.appendChild(row);
+    row.querySelectorAll("[data-unlock-rarity]").forEach((tile) => {
+      tile.addEventListener("click", () => openUnlockSheet(tile.dataset.unlockRarity));
+    });
+  }
+
   const reroll = document.createElement("button");
   reroll.className = "gear-action store-reroll";
   reroll.textContent = `REROLL ◆ ${rerollCost}`;

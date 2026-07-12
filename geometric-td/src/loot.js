@@ -270,7 +270,7 @@ export function generateItem(opts = {}) {
   const ilvl = opts.ilvl ?? 1;
 
   // A pinned unique id forces a Singularity built around it.
-  let rarity = opts.unique ? "singularity" : (opts.rarity || rollRarity(rng));
+  let rarity = opts.unique ? "singularity" : (opts.rarity || rollRarity(rng, opts.weights));
 
   let slot, towerType, unique, affixes;
 

@@ -19,6 +19,7 @@ const DEFAULT_SAVE = {
   stash: [],              // owned unequipped items
   pendingLoot: [],        // unclaimed end-of-run drops shown in triage
   store: { stock: [], rerolls: 0 },
+  storeUnlocks: [],   // rarities unlocked for store rolls: ["enhanced", "rare", ...]
   endlessRewards: {},
 };
 

@@ -29,6 +29,7 @@ state.store.stock ||= [];
 state.store.rerolls ??= 0;
 state.endlessRewards ||= {};
 state.seenLoot ||= [];
+state.storeUnlocks ||= [];
 backfillGear();
 migrateRosterNames();
 
@@ -189,10 +190,16 @@ function storeIlvlFromRoster() {
 }
 
 function generateStoreStock() {
-  const { stockSize } = LOOT.store;
+  const { stockSize, rarityUnlocks } = LOOT.store;
+  const unlocks = state.storeUnlocks || [];
+  // Zero out rarities the player hasn't unlocked yet; common is always allowed.
+  const weights = {};
+  for (const [rarity, w] of Object.entries(LOOT.gen.rarityWeights)) {
+    weights[rarity] = !(rarity in rarityUnlocks) || unlocks.includes(rarity) ? w : 0;
+  }
   state.store.stock = Array.from(
     { length: stockSize },
-    () => generateItem({ ilvl: storeIlvlFromRoster() })
+    () => generateItem({ ilvl: storeIlvlFromRoster(), weights })
   );
 }
 
@@ -238,6 +245,24 @@ export function buyStoreItem(itemId) {
   state.stash.push(structuredClone(item));
   writeSave(state);
   return { ok: true, item, cost };
+}
+
+export function getStoreUnlocks() {
+  state.storeUnlocks ||= [];
+  return state.storeUnlocks;
+}
+
+export function buyStoreUnlock(rarity) {
+  const cost = LOOT.store.rarityUnlocks[rarity];
+  if (cost === undefined) return { ok: false, reason: "invalid" };
+  state.storeUnlocks ||= [];
+  if (state.storeUnlocks.includes(rarity)) return { ok: false, reason: "owned" };
+  if (state.shards < cost) return { ok: false, reason: "shards", cost };
+  state.shards -= cost;
+  state.storeUnlocks.push(rarity);
+  generateStoreStock();
+  writeSave(state);
+  return { ok: true, cost };
 }
 
 // Each game begins a fresh store visit: replace all remaining stock and reset

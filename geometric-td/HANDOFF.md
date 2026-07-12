@@ -307,8 +307,21 @@ selector is open. Treat `levels.js` as the source of truth on wave numbers.
     (`LOOT.drops.endDropCeiling` + `guaranteedDropCeiling`), floor always
     wins if higher than ceiling. Instant quits (0 waves cleared) skip the
     guaranteed end-drop (`progression.js recordRunLoot`). `ENDLESS_REWARDS`
-    shard amounts rescaled 100/350 → 40/90 to match. Next: B2 store rarity
-    unlocks.
+    shard amounts rescaled 100/350 → 40/90 to match.
+  - **DONE — B2 (2026-07-12):** store rarity unlocks. New save field
+    `state.storeUnlocks []` (backfilled in both `save.js DEFAULT_SAVE` and
+    `progression.js` top-of-module). `config.js LOOT.store.rarityUnlocks`
+    `{ enhanced:100, rare:350, prismatic:1200, singularity:4000 }` (sized for
+    ~33◆/L1 economy). `generateStoreStock` builds filtered weights — locked
+    rarities zeroed out, common always allowed — passed as `opts.weights` into
+    `generateItem` (loot.js now accepts that option). New exports
+    `getStoreUnlocks` / `buyStoreUnlock`; the latter spends shards, appends to
+    `storeUnlocks`, regenerates stock. Store prices rescaled for new economy
+    (`common:15, enhanced:50, rare:140, prismatic:450, singularity:1400`);
+    rerollCost 30→25. UI: padlock tile row in `renderStorePanel` (above reroll
+    button) showing each locked rarity with ◆ price in rarity color; tap →
+    bottom-sheet confirm (reuses `#store-sheet-overlay`). Old saves backfill
+    cleanly; console clean on load. Next: B3 branching SVG skill tree.
 - **Loot P7 balance pass** — largely superseded by B1/B6; read
   `LOOT_DESIGN.md` §15 before tuning drops.
 - **PLAYTEST-PENDING:** counter re-tune + Rocket + World 3 difficulty is
