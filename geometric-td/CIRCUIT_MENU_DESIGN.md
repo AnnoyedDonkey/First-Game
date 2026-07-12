@@ -166,7 +166,19 @@ one new sheet.
 ## 5. Build status
 
 - [x] M0 — data groundwork (`desc`, WORLDS board fields, milestone labels)
-- [ ] M1 — SVG circuit board replaces level rows
+- [x] M1 — SVG circuit board replaces level rows (2026-07-12). `renderWorld`
+  in `ui.js` now builds the mockup's board as an SVG string into `#level-list`
+  (new `.board-host` mode in styles.css: non-scrolling frame, `min-width:0`
+  safe). Ported helpers: `boardDecoTraces` (grid/diagonal/prism),
+  `boardConnector`, `boardTickRing`, `buildBoardSvg`. Node states derived from
+  progression (cleared/frontier/locked; locked-world = all-locked preview +
+  banner overlay). Hit targets painted last: node→`pick(level,false)`,
+  ∞ pad→`pick(level,true)` (M1 launches directly; the detail sheet is M2).
+  `trace-flow`/`frontier-pulse` animations gated behind
+  `prefers-reduced-motion`. Verified in-browser (mobile viewport, seeded save
+  across all three worlds): every node state, campaign + endless launch,
+  pinned footer, skill-tree z-order intact, no console errors. APP_VERSION →
+  2026.07.12-3, pushed to main.
 - [ ] M2 — level detail bottom sheet
 - [ ] M3 — pizzazz + iPhone perf pass
 - [ ] M4 — per-level milestone tracks (20-ready data shape)

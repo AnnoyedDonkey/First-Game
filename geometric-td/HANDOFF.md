@@ -643,7 +643,7 @@ as the source of truth, not that old ×1.2 rule.)
     `rerollStore`/`buyStoreItem` untouched) — pure restyle, per
     `GEAR_UI_DESIGN.md` §3. Full detail + verification notes in that doc's
     U5 checkbox.
-- **CIRCUIT-BOARD MAIN MENU (in progress — M0 shipped, M1 next):** replace
+- **CIRCUIT-BOARD MAIN MENU (in progress — M1 shipped, M2 next):** replace
   the level-row list with a per-world neon circuit board (SVG nodes +
   traces), node states readable at a glance (cleared / frontier / locked /
   ∞ pad / milestone tick-ring), tap → bottom-sheet level detail with
@@ -664,6 +664,31 @@ as the source of truth, not that old ×1.2 rule.)
     Next: **M1** (Opus/Fable recommended) — port the actual SVG board from
     the mockup and wire it to real progression, replacing `renderWorld`'s
     level-row loop.
+  - **M1 DONE (2026-07-12):** SVG circuit board replaces the level-row list.
+    `ui.js renderWorld` now derives a per-node state array (cleared/frontier/
+    locked) from real progression and builds the mockup's board as an SVG
+    string into `#level-list`, which switches to a non-scrolling `.board-host`
+    frame (still a flex:1 item between the world nav and the pinned footer).
+    New module helpers ported from the mockup: `boardDecoTraces`
+    (grid/diagonal/prism per world), `boardConnector`, `boardTickRing`
+    (cleared nodes only; gap tightens past 10 ticks so a 20-track fits),
+    `buildBoardSvg`. Cleared nodes show a milestone tick-ring (gold =
+    claimed) + an ∞ pad (hot-pink once `endlessBest>0`, else dim accent2);
+    frontier = pulsing hollow ring; locked = dashed 🔒 ring with NO hit
+    target. A locked world renders every node locked + the unlock banner
+    overlaid (`.world-locked-note.board-note`, absolute). Invisible hit
+    targets are painted LAST so taps always land: node → `pick(level,false)`,
+    ∞ pad → `pick(level,true)`. The old `.level-row`/`.endless-button` CSS is
+    now unused but left in place. World paging/swipe, `#menu-actions` footer,
+    and `appendGlobalMenuButtons` are unchanged. `trace-flow`/`frontier-pulse`
+    animations respect `prefers-reduced-motion`. Verified live (mobile
+    viewport, seeded save across all three worlds): all node states render,
+    tick-ring lit-segment count matches claimed milestones, campaign + endless
+    both launch from taps, footer stays pinned, skill tree still opens on top
+    (z40>z30), no console errors. (Browser-pane screenshots timed out at the
+    harness level, so verification was DOM-query based, not eyeballed pixels.)
+    Next: **M2** (Sonnet) — the level-detail bottom sheet; node tap opens the
+    sheet instead of launching directly.
 - **PLAYTEST-PENDING:** the counter re-tune + visible feedback + Rocket +
   World 3 all shipped but the difficulty is calibrated only by bot sims
   (superhuman placement → flawless bot wins are a WEAK signal). The user's
