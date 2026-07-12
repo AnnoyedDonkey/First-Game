@@ -643,13 +643,27 @@ as the source of truth, not that old ×1.2 rule.)
     `rerollStore`/`buyStoreItem` untouched) — pure restyle, per
     `GEAR_UI_DESIGN.md` §3. Full detail + verification notes in that doc's
     U5 checkbox.
-- **CIRCUIT-BOARD MAIN MENU (approved, not yet built):** replace the
-  level-row list with a per-world neon circuit board (SVG nodes + traces),
-  node states readable at a glance (cleared / frontier / locked / ∞ pad /
-  milestone tick-ring), tap → bottom-sheet level detail with description,
-  endless status, and milestone list. Full phased spec (M0–M4, one phase
-  per session, model suggestions included) in `CIRCUIT_MENU_DESIGN.md`;
-  approved interactive mockup at `mockups/circuit-menu-mockup.html`.
+- **CIRCUIT-BOARD MAIN MENU (in progress — M0 shipped, M1 next):** replace
+  the level-row list with a per-world neon circuit board (SVG nodes +
+  traces), node states readable at a glance (cleared / frontier / locked /
+  ∞ pad / milestone tick-ring), tap → bottom-sheet level detail with
+  description, endless status, and milestone list. Full phased spec
+  (M0–M4, one phase per session, model suggestions included) in
+  `CIRCUIT_MENU_DESIGN.md`; approved interactive mockup at
+  `mockups/circuit-menu-mockup.html`.
+  - **M0 DONE (2026-07-12):** data groundwork, no visible change. Added
+    `desc` flavor text to all 15 levels (`levels.js`); `accent`, `accent2`,
+    `boardStyle` (`"grid"|"diagonal"|"prism"`), and `nodePos` (5
+    `{x,y}` positions in the board's 0–100×130 viewBox, ported from the
+    mockup's `LAYOUTS`) added to each `WORLDS` entry; human `label` added
+    to each `ENDLESS_REWARDS` milestone (`config.js`) — reward text stays
+    derived in ui.js, never hardcoded. Verified via dynamic `import()` in
+    the browser console (no level missing `desc`, all three worlds have
+    5 `nodePos` entries + board fields, all 5 milestones have labels) plus
+    a console-clean page load; menu is visually unchanged as expected.
+    Next: **M1** (Opus/Fable recommended) — port the actual SVG board from
+    the mockup and wire it to real progression, replacing `renderWorld`'s
+    level-row loop.
 - **PLAYTEST-PENDING:** the counter re-tune + visible feedback + Rocket +
   World 3 all shipped but the difficulty is calibrated only by bot sims
   (superhuman placement → flawless bot wins are a WEAK signal). The user's
