@@ -1937,6 +1937,58 @@ function colorFill(hex, alpha) {
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;
 }
 
+// Vector skill icons, authored in a 0..100 box centered on 50,50 and drawn
+// stroke-only to match the towers-screen gear glyphs (slotGlyph). Keyed by the
+// `icon` field on each SKILLS entry (config.js) so the art stays data-driven.
+// Returned as a positioned <g> scaled/centered on the node.
+function skillIconBody(icon, color) {
+  const s = `stroke="${color}" fill="none" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"`;
+  const dot = (cx, cy, r) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${color}" stroke="none"/>`;
+  switch (icon) {
+    case "core": // shield
+      return `<path d="M50 12 L82 26 V52 C82 74 66 86 50 92 C34 86 18 74 18 52 V26 Z" ${s}/>` + dot(50, 50, 8);
+    case "level": // double up-chevron (a level gain)
+      return `<polyline points="26,52 50,30 74,52" ${s}/><polyline points="26,72 50,50 74,72" ${s}/>`;
+    case "levelMax": // star (cap crown)
+      return `<polygon points="50,12 60,40 90,40 66,58 75,88 50,70 25,88 34,58 10,40 40,40" ${s}/>`;
+    case "laser": // focusing lens + horizontal beam
+      return `<circle cx="50" cy="50" r="18" ${s}/><line x1="6" y1="50" x2="30" y2="50" ${s}/>` +
+        `<line x1="70" y1="50" x2="94" y2="50" ${s}/>` + dot(50, 50, 6);
+    case "pulse": // concentric shock rings
+      return `<circle cx="50" cy="50" r="30" ${s}/><circle cx="50" cy="50" r="16" ${s}/>` + dot(50, 50, 5);
+    case "slow": // hourglass (time / stasis)
+      return `<polygon points="26,16 74,16 54,50 74,84 26,84 46,50" ${s}/>`;
+    case "rail": // long piercing arrow
+      return `<line x1="12" y1="50" x2="78" y2="50" ${s}/><polyline points="62,32 88,50 62,68" ${s}/>`;
+    case "rocket": // blast burst
+      return `<line x1="50" y1="12" x2="50" y2="88" ${s}/><line x1="12" y1="50" x2="88" y2="50" ${s}/>` +
+        `<line x1="24" y1="24" x2="76" y2="76" ${s}/><line x1="76" y1="24" x2="24" y2="76" ${s}/>` + dot(50, 50, 8);
+    case "pierce": // arrow punching through a plate
+      return `<line x1="10" y1="50" x2="80" y2="50" ${s}/><polyline points="64,34 90,50 64,66" ${s}/>` +
+        `<line x1="46" y1="24" x2="46" y2="76" stroke="${color}" fill="none" stroke-width="5" stroke-dasharray="7 7"/>`;
+    case "coin": // coin with a value stroke
+      return `<circle cx="50" cy="50" r="30" ${s}/><line x1="50" y1="30" x2="50" y2="70" ${s}/>` +
+        `<line x1="40" y1="40" x2="60" y2="40" ${s}/><line x1="40" y1="60" x2="60" y2="60" ${s}/>`;
+    case "xp": // up arrow (growth)
+      return `<line x1="50" y1="24" x2="50" y2="82" ${s}/><polyline points="28,46 50,22 72,46" ${s}/>`;
+    case "shard": // faceted diamond
+      return `<polygon points="50,14 80,50 50,86 20,50" ${s}/><line x1="20" y1="50" x2="80" y2="50" ${s}/>`;
+    case "interest": // percent
+      return `<line x1="30" y1="72" x2="70" y2="28" ${s}/><circle cx="34" cy="34" r="9" ${s}/>` +
+        `<circle cx="66" cy="66" r="9" ${s}/>`;
+    case "cap": // capped reservoir bar
+      return `<rect x="30" y="42" width="40" height="44" rx="4" ${s}/><line x1="20" y1="30" x2="80" y2="30" ${s}/>`;
+    default:
+      return dot(50, 50, 10);
+  }
+}
+
+// Position an icon body on a node: centered on (cx,cy), scaled to `size` units.
+function skillIcon(icon, color, cx, cy, size) {
+  const k = size / 100;
+  return `<g transform="translate(${cx} ${cy}) scale(${k}) translate(-50 -50)">${skillIconBody(icon, color)}</g>`;
+}
+
 // Build the branching skill-tree SVG. Modeled on buildBoardSvg: connectors
 // under square nodes, per-branch accent color, invisible hit targets last.
 function buildSkillTreeSvg() {
@@ -1950,22 +2002,27 @@ function buildSkillTreeSvg() {
       </filter>
     </defs>`;
 
-  // Node geometry. Bigger, uniform tiles that read like the gear tiles on
-  // the towers screen: a common corner radius and a SINGLE border thickness
-  // across every state (only the color/fill/glow change), so the board no
-  // longer looks like a jumble of different-weight squares.
-  const R = 9, RX = 3, STROKE = 1.6;
+  // Node geometry. The border is a crisp 1px line via vector-effect
+  // non-scaling-stroke, so it renders the SAME thin weight as the towers-screen
+  // gear tiles no matter how far the SVG is scaled to fit the width — the old
+  // fat, blurred, blob-like squares were a scaled 1.6-unit stroke. Glow is a
+  // SEPARATE blurred rect drawn behind (like a CSS box-shadow) so filtering
+  // never fattens the crisp line on top.
+  const R = 9, RX = 3;
+  const box = (rx, ry, s, extra) => `x="${rx}" y="${ry}" width="${s}" height="${s}" rx="${RX}" ${extra}`;
 
-  // Connectors (under nodes): lit once the PARENT owns a tier. Drawn edge to
-  // edge (not center to center) so the lines meet the tiles cleanly.
+  // Connectors (under nodes): lit once the PARENT owns a tier.
   for (const node of Object.values(SKILLS)) {
     if (!node.parent) continue;
     const p = SKILLS[node.parent].pos, c = node.pos;
     const color = SKILL_BRANCH_COLORS[node.branch] || "#8aa";
     const lit = getSkillTier(node.parent) >= 1;
-    svg += lit
-      ? `<path d="M${p.x} ${p.y} L${c.x} ${c.y}" fill="none" stroke="${color}" stroke-width="1.6" opacity=".85" filter="url(#skill-glow)"/>`
-      : `<path d="M${p.x} ${p.y} L${c.x} ${c.y}" fill="none" stroke="rgba(120,140,170,.3)" stroke-width="1.2" stroke-dasharray="2.5 2.5"/>`;
+    if (lit) {
+      svg += `<path d="M${p.x} ${p.y} L${c.x} ${c.y}" fill="none" stroke="${color}" stroke-width="3" opacity=".35" filter="url(#skill-glow)"/>` +
+        `<path d="M${p.x} ${p.y} L${c.x} ${c.y}" fill="none" stroke="${color}" stroke-width="1.4" vector-effect="non-scaling-stroke" opacity=".9"/>`;
+    } else {
+      svg += `<path d="M${p.x} ${p.y} L${c.x} ${c.y}" fill="none" stroke="rgba(120,140,170,.32)" stroke-width="1" vector-effect="non-scaling-stroke" stroke-dasharray="3 3"/>`;
+    }
   }
 
   // Nodes.
@@ -1979,32 +2036,33 @@ function buildSkillTreeSvg() {
     const available = !owned && isSkillUnlocked(id);
     const affordable = available && points >= (nextTierCost(id) || Infinity);
     const rx = x - R, ry = y - R, s = R * 2;
-    const tile = (fill, stroke, opacity, glow, dash) =>
-      `<rect x="${rx}" y="${ry}" width="${s}" height="${s}" rx="${RX}" ` +
-      `fill="${fill}" stroke="${stroke}" stroke-width="${STROKE}"` +
-      (opacity != null ? ` opacity="${opacity}"` : "") +
-      (glow ? ` filter="url(#skill-glow)"` : "") +
-      (dash ? ` stroke-dasharray="${dash}"` : "") + `/>`;
+    const iconSize = 12;
+
+    // Soft outer glow behind the tile (only lit states) — mimics the gear
+    // tile's box-shadow without fattening the crisp border above.
+    if (maxed || owned || affordable) {
+      const gA = maxed ? 0.55 : affordable ? 0.5 : 0.32;
+      svg += `<rect ${box(rx, ry, s, `fill="none" stroke="${color}" stroke-width="3" opacity="${gA}" filter="url(#skill-glow)"`)}/>`;
+    }
 
     if (maxed) {
-      // Fully-owned: a solid, glowing tile with a dark glyph — the "complete"
-      // look, echoing an equipped gear tile.
-      svg += tile(color, "#fff", ".95", true) +
-        `<text x="${x}" y="${y + 3}" text-anchor="middle" font-size="8.5" fill="#04121a" font-weight="700">${node.glyph}</text>`;
+      // Fully-owned: solid tile + dark icon — the "complete" look.
+      svg += `<rect ${box(rx, ry, s, `fill="${color}" opacity=".92"`)}/>` +
+        `<rect ${box(rx, ry, s, `fill="none" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"`)}/>` +
+        skillIcon(node.icon, "#04121a", x, y, iconSize);
     } else if (owned) {
-      svg += tile(colorFill(color, 0.2), color, null, true) +
-        `<text x="${x}" y="${y + 2.8}" text-anchor="middle" font-size="8" fill="${color}">${node.glyph}</text>`;
+      svg += `<rect ${box(rx, ry, s, `fill="${colorFill(color, 0.16)}" stroke="${color}" stroke-width="1" vector-effect="non-scaling-stroke"`)}/>` +
+        skillIcon(node.icon, color, x, y, iconSize);
     } else if (available) {
-      // Pulse ring only when the player can actually afford it (perf: one
-      // animated ring per affordable node, no filter on the ring itself).
+      // Pulse ring only when the player can actually afford it.
       if (affordable) {
-        svg += `<rect x="${rx - 2.6}" y="${ry - 2.6}" width="${s + 5.2}" height="${s + 5.2}" rx="4" fill="none" stroke="${color}" stroke-width=".8" class="skill-pulse"/>`;
+        svg += `<rect x="${rx - 2.6}" y="${ry - 2.6}" width="${s + 5.2}" height="${s + 5.2}" rx="4" fill="none" stroke="${color}" stroke-width="1" vector-effect="non-scaling-stroke" class="skill-pulse"/>`;
       }
-      svg += tile("#0a1220", color, affordable ? null : ".9", affordable) +
-        `<text x="${x}" y="${y + 2.8}" text-anchor="middle" font-size="8" fill="${color}" opacity="${affordable ? 1 : 0.85}">${node.glyph}</text>`;
+      svg += `<rect ${box(rx, ry, s, `fill="#0a1220" stroke="${color}" stroke-width="1" vector-effect="non-scaling-stroke" opacity="${affordable ? 1 : 0.85}"`)}/>` +
+        skillIcon(node.icon, color, x, y, iconSize);
     } else { // locked (parent not owned)
-      svg += tile("#0a0f18", "rgba(120,140,170,.5)", null, false, "2.5 2.5") +
-        `<text x="${x}" y="${y + 2.8}" text-anchor="middle" font-size="7.5" fill="rgba(130,150,180,.55)">${node.glyph}</text>`;
+      svg += `<rect ${box(rx, ry, s, `fill="#0a0f18" stroke="rgba(120,140,170,.5)" stroke-width="1" vector-effect="non-scaling-stroke" stroke-dasharray="3 3"`)}/>` +
+        skillIcon(node.icon, "rgba(140,160,190,.5)", x, y, iconSize);
     }
 
     // Multi-tier progress badge (e.g. 3/5) below the node.

@@ -332,6 +332,20 @@ selector is open. Treat `levels.js` as the source of truth on wave numbers.
   `ui.js colorFill()` helper tints the owned-node interior. All node
   geometry knobs (`R`/`RX`/`STROKE`) live at the top of `buildSkillTreeSvg`;
   layout in `config.js SKILLS[*].pos`.
+- **Skill-tree visual match (2026-07-12, v2026.07.12-15)** — from an iPhone
+  compare vs the towers screen. Node borders are now a crisp 1px line via
+  `vector-effect="non-scaling-stroke"` (constant screen weight regardless of
+  the SVG's fit-to-width scale — the old fat "blob" squares were a scaled
+  1.6-unit stroke); the neon glow is a separate blurred rect drawn BEHIND each
+  tile (like the gear tile's box-shadow) so filtering never fattens the crisp
+  line. Single-letter glyphs replaced by data-driven vector icons: each skill
+  gained an `icon` key in `config.js SKILLS`, rendered by `ui.js
+  skillIconBody()` / `skillIcon()` (stroke-only, authored in a 0..100 box,
+  mirrors `slotGlyph`). NOTE: the per-tower branch restructure the user asked
+  for (each tower a colored root with damage + level sub-branches, tower-
+  specific unlockables like railPen) is NOT done yet — pending a decision on
+  whether tower level caps go per-tower (currently the global `towerCap6-10`
+  spine + `getTowerLevelCap()`).
 
 ## Backlog
 
