@@ -8,7 +8,7 @@
 // available roster unit of that type before creating a new one.
 // ============================================================
 
-import { ENDLESS_REWARDS, LOOT, SKILLS, SKILL_VALUES, SKILL_TIERS, TOWERS } from "./config.js";
+import { endlessTrackFor, LOOT, SKILLS, SKILL_VALUES, SKILL_TIERS, TOWERS } from "./config.js";
 import { loadSave, writeSave, clearSave } from "./save.js";
 import { dropIlvl, generateGuaranteedDrop, generateItem, RARITIES } from "./loot.js";
 import { canEquipItem, emptyGear, masteryRankFor, normalizeGear } from "./equipment.js";
@@ -548,7 +548,7 @@ function claimedEndlessIds(levelId) {
 function grantEndlessRewards(levelId, bestWave) {
   const claimed = claimedEndlessIds(levelId);
   const granted = [];
-  for (const m of ENDLESS_REWARDS.milestones) {
+  for (const m of endlessTrackFor(levelId)) {
     if (m.type !== "wave" || bestWave < m.threshold || claimed.includes(m.id)) continue;
     claimed.push(m.id);
     if (m.reward.kind === "shards") {
@@ -571,7 +571,7 @@ function grantEndlessRewards(levelId, bestWave) {
 // every milestone for a level, tagged with whether it's been claimed.
 export function getEndlessMilestones(levelId) {
   const claimed = new Set(state.endlessRewards[levelId] || []);
-  return ENDLESS_REWARDS.milestones.map((m) => ({ ...m, claimed: claimed.has(m.id) }));
+  return endlessTrackFor(levelId).map((m) => ({ ...m, claimed: claimed.has(m.id) }));
 }
 
 export function resetProgress() {

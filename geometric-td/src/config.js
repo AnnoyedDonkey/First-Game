@@ -165,30 +165,47 @@ export const ENDLESS = {
   bossHealthGrowthPerWave: 0.20, // bosses scale even faster than the swarm
 };
 
-// One-time-per-level Endless milestones (LOOT_DESIGN.md §10). Same
-// threshold list applies to EVERY level's Endless mode — each level
-// tracks its own claimed set (save.js endlessRewards[levelId]), so a
-// level with an easier seed wave and one with a brutal seed wave both
-// chase the same wave numbers, just at different difficulty. Grants are
-// automatic (no separate claim step) the moment a run's best-ever wave
-// for that level crosses a threshold — see progression.js
-// grantEndlessRewards(). Loot rewards land in pendingLoot (same triage
-// flow as any other drop); shard rewards bank immediately.
+// One-time-per-level Endless milestones (LOOT_DESIGN.md §10). Each level
+// tracks its own claimed set (save.js endlessRewards[levelId], keyed by
+// milestone `id` — ids must stay stable once shipped, since claimed sets
+// reference them by id, not index). Grants are automatic (no separate
+// claim step) the moment a run's best-ever wave for that level crosses a
+// threshold — see progression.js grantEndlessRewards(). Loot rewards land
+// in pendingLoot (same triage flow as any other drop); shard rewards bank
+// immediately.
 // Reference: an 8-tower level-1 laser wall (fresh, no Mastery) died on
 // endless wave 18 in first-pass bot testing (HANDOFF.md) — thresholds
 // are set around and past that bar.
 // label is the human-readable milestone name shown on the circuit-board
 // menu's level detail sheet (CIRCUIT_MENU_DESIGN.md M0); reward text
 // itself is derived in ui.js from `reward` so it's never hardcoded here.
+//
+// Per-level tracks (CIRCUIT_MENU_DESIGN.md M4): `defaultTrack` applies to
+// every level EXCEPT those with an entry in `tracksByLevel`, which fully
+// replaces the track for that level id (e.g. a future 20-milestone track
+// for a specific level). This is data-shape readiness only — content
+// (actually authoring per-level tracks) is a later balance pass; for now
+// every level still resolves to `defaultTrack`, so behavior is unchanged.
 export const ENDLESS_REWARDS = {
-  milestones: [
+  defaultTrack: [
     { id: "wave10", type: "wave", threshold: 10, label: "Reach wave 10", reward: { kind: "shards", amount: 100 } },
     { id: "wave20", type: "wave", threshold: 20, label: "Reach wave 20", reward: { kind: "loot", rarity: "rare" } },
     { id: "wave35", type: "wave", threshold: 35, label: "Reach wave 35", reward: { kind: "shards", amount: 350 } },
     { id: "wave50", type: "wave", threshold: 50, label: "Reach wave 50", reward: { kind: "loot", rarity: "prismatic" } },
     { id: "wave75", type: "wave", threshold: 75, label: "Reach wave 75", reward: { kind: "loot", rarity: "singularity" } },
   ],
+  // levelId -> milestone array override, e.g. "level_003": [ ... ].
+  // Empty until a per-level track is actually authored.
+  tracksByLevel: {},
 };
+
+// Resolves the milestone list for a level: its own track if one exists in
+// `tracksByLevel`, else the shared `defaultTrack`. The single read path
+// for both progression.js (grants) and ui.js (display) so they can never
+// disagree on which track a level uses.
+export function endlessTrackFor(levelId) {
+  return ENDLESS_REWARDS.tracksByLevel[levelId] ?? ENDLESS_REWARDS.defaultTrack;
+}
 
 // ---------- Towers ----------
 // (Used from Checkpoint B onward — defined now so all knobs live together.)

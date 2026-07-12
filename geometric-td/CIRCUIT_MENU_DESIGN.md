@@ -229,4 +229,27 @@ one new sheet.
   invisible). No console errors. The actual *motion feel* is unverifiable in
   this harness by design of this phase — it's the user's iPhone playtest.
   APP_VERSION → 2026.07.12-5.
-- [ ] M4 — per-level milestone tracks (20-ready data shape)
+- [x] M4 — per-level milestone tracks (2026-07-12). Restructured
+  `config.js ENDLESS_REWARDS` from a flat `milestones` array to
+  `{ defaultTrack, tracksByLevel }` + a new exported `endlessTrackFor(levelId)`
+  resolver (`tracksByLevel[levelId] ?? defaultTrack`) — the single read path
+  used by both `progression.js` (`grantEndlessRewards`, `getEndlessMilestones`)
+  and, transitively, the board/sheet UI, so grants and display can never
+  disagree on which track a level uses. `tracksByLevel` is empty for now
+  (every level still resolves to the same 5-entry `defaultTrack` — behavior
+  unchanged); a future per-level track is a one-entry data addition, no code
+  changes, and milestone `id`s stay stable so `save.js endlessRewards[levelId]`
+  claimed-sets keep working untouched. No content authored here (that's a
+  later balance pass per the spec). Verified in-browser: seeded a save with
+  `endlessRewards.level_001 = ["wave10","wave20"]` pre-restructure-shape and
+  confirmed it loads with no console errors and those two ids still read as
+  claimed (`getEndlessMilestones`); confirmed every level currently resolves
+  to the same 5-item track (`endlessTrackFor('level_001') ===
+  endlessTrackFor('level_002')`); drove `recordEndlessResult` twice with an
+  identical fake wave-35 result and confirmed the milestone grants exactly
+  once (`newRewards` has `wave35` the first call, empty the second, claimed
+  list becomes `[wave10, wave20, wave35]`); confirmed the level-detail sheet
+  still renders the milestone list with correct `.done` styling and the
+  gold `★ n/total` chip. APP_VERSION → 2026.07.12-6.
+
+CIRCUIT-BOARD MAIN MENU build complete (M0–M4 all shipped).

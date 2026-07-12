@@ -318,10 +318,14 @@ src/
   vs CORE DESTROYED / RETRY). HUD wave counter drops the `/total` ceiling
   in endless (`${wave} ∞` instead of `${wave}/${totalWaves}`), since
   `totalWaves` isn't a meaningful cap once waves are generated.
-- **Endless reward tracks (loot P6, shipped):** one shared 5-milestone
-  wave-threshold list (`config.js ENDLESS_REWARDS.milestones`, waves
-  10/20/35/50/75, alternating Shards and loot up to Singularity) applies
-  to EVERY level's Endless mode; each level tracks its own claimed set in
+- **Endless reward tracks (loot P6, shipped; per-level-ready since M4):**
+  one shared 5-milestone wave-threshold list (`config.js
+  ENDLESS_REWARDS.defaultTrack`, waves 10/20/35/50/75, alternating Shards
+  and loot up to Singularity) applies to EVERY level's Endless mode via
+  `endlessTrackFor(levelId)` (falls back to `defaultTrack` unless the level
+  has an entry in `ENDLESS_REWARDS.tracksByLevel`, which is empty until a
+  level-specific track is authored — see CIRCUIT_MENU_DESIGN.md M4); each
+  level tracks its own claimed set in
   `save.js endlessRewards[levelId]`. Grants are automatic — no separate
   claim step — via `progression.js grantEndlessRewards`, called from
   `recordEndlessResult` and keyed to the level's **best-ever** wave (not
@@ -643,7 +647,7 @@ as the source of truth, not that old ×1.2 rule.)
     `rerollStore`/`buyStoreItem` untouched) — pure restyle, per
     `GEAR_UI_DESIGN.md` §3. Full detail + verification notes in that doc's
     U5 checkbox.
-- **CIRCUIT-BOARD MAIN MENU (in progress — M3 shipped, M4 next):** replace
+- **CIRCUIT-BOARD MAIN MENU — COMPLETE (M0–M4 all shipped):** replace
   the level-row list with a per-world neon circuit board (SVG nodes +
   traces), node states readable at a glance (cleared / frontier / locked /
   ∞ pad / milestone tick-ring), tap → bottom-sheet level detail with
@@ -737,7 +741,28 @@ as the source of truth, not that old ×1.2 rule.)
     *visible*, never stuck invisible). The actual motion FEEL can't be
     eyeballed in this harness (that's this phase's whole point per the spec) —
     it's on the user's iPhone. APP_VERSION → 2026.07.12-5.
-    Next: **M4** (Sonnet) — per-level milestone tracks (20-ready data shape).
+  - **M4 DONE (2026-07-12) — CIRCUIT-BOARD MAIN MENU COMPLETE (M0-M4):**
+    per-level milestone tracks, data-shape only. `config.js ENDLESS_REWARDS`
+    is now `{ defaultTrack, tracksByLevel }` plus an exported
+    `endlessTrackFor(levelId)` resolver (`tracksByLevel[levelId] ??
+    defaultTrack`) — the one read path `progression.js`
+    (`grantEndlessRewards`/`getEndlessMilestones`) uses, so grants and the
+    board/sheet display can never disagree on which track a level uses.
+    `tracksByLevel` is empty for now — every level still resolves to the
+    same 5-entry `defaultTrack`, so behavior is unchanged; adding a
+    level-specific (e.g. 20-entry) track later is a one-line data addition
+    with no code changes, since milestone `id`s stay stable and
+    `save.js endlessRewards[levelId]` claimed-sets are keyed by id, not
+    index or position. No new milestone content authored — that's a later
+    balance pass. Verified in-browser: a save seeded with pre-existing
+    `endlessRewards.level_001 = ["wave10","wave20"]` loaded with zero
+    console errors and those claims still read correctly; confirmed
+    `endlessTrackFor` returns the same array for two different levels (no
+    accidental per-level content yet); drove `recordEndlessResult` twice
+    with an identical fake wave-35 crossing and confirmed the grant fires
+    exactly once (`newRewards` has `wave35` only on the first call);
+    confirmed the level-detail sheet's milestone rows and gold `★ n/total`
+    chip still render correctly. APP_VERSION → 2026.07.12-6.
 - **PLAYTEST-PENDING:** the counter re-tune + visible feedback + Rocket +
   World 3 all shipped but the difficulty is calibrated only by bot sims
   (superhuman placement → flawless bot wins are a WEAK signal). The user's
