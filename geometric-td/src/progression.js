@@ -166,7 +166,9 @@ function syncRoster(game) {
     rec.xp = t.xp;      // XP carries across battles
     rec.kills = t.kills;
   }
-  state.shards += game.shardsEarned;
+  // shardsEarned accumulates as a float per-kill (enemies.js damageEnemy);
+  // round once here so the wallet always holds a whole number.
+  state.shards += Math.round(game.shardsEarned || 0);
 }
 
 export function getShards() {
@@ -426,7 +428,11 @@ function bankEarnedItem(item) {
 
 export function recordRunLoot(game) {
   state.pendingLoot ||= [];
-  const drops = [...(game.lootDrops || []), generateGuaranteedDrop(game)];
+  // No wave cleared (instant quit/forfeit) = no guaranteed end-drop. Kill
+  // drops from whatever was killed still stand — they're already gated by
+  // the drop chance roll and rarity gates.
+  const guaranteed = game.waveIndex >= 1 ? [generateGuaranteedDrop(game)] : [];
+  const drops = [...(game.lootDrops || []), ...guaranteed];
   const placements = drops.map((item) => bankEarnedItem(item));
   game.lootResult = {
     count: drops.length,

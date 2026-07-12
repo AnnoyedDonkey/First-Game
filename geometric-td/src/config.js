@@ -188,9 +188,9 @@ export const ENDLESS = {
 // every level still resolves to `defaultTrack`, so behavior is unchanged.
 export const ENDLESS_REWARDS = {
   defaultTrack: [
-    { id: "wave10", type: "wave", threshold: 10, label: "Reach wave 10", reward: { kind: "shards", amount: 100 } },
+    { id: "wave10", type: "wave", threshold: 10, label: "Reach wave 10", reward: { kind: "shards", amount: 40 } },
     { id: "wave20", type: "wave", threshold: 20, label: "Reach wave 20", reward: { kind: "loot", rarity: "rare" } },
-    { id: "wave35", type: "wave", threshold: 35, label: "Reach wave 35", reward: { kind: "shards", amount: 350 } },
+    { id: "wave35", type: "wave", threshold: 35, label: "Reach wave 35", reward: { kind: "shards", amount: 90 } },
     { id: "wave50", type: "wave", threshold: 50, label: "Reach wave 50", reward: { kind: "loot", rarity: "prismatic" } },
     { id: "wave75", type: "wave", threshold: 75, label: "Reach wave 75", reward: { kind: "loot", rarity: "singularity" } },
   ],
@@ -369,9 +369,14 @@ export const LOOT = {
 
   // Shards ◆ — the persistent meta-currency for loot gear/store systems.
   // Earned per kill, win OR lose, so grinding/forfeiting still pays.
-  // Per-kill amount = round(perKillBase * ENEMIES[type].shardTier).
+  // Per-kill amount = perKillBase * ENEMIES[type].shardTier * levelMult *
+  // shardFindMult, accumulated as a float (rounded once at wallet sync —
+  // see progression.js syncRoster) so small per-kill values aren't lost to
+  // rounding. levelMult = 1 + perLevelMult*(levelNumber-1), so a full L1
+  // clear (~271 tier-units of kills) lands ~33 shards; scales up by level.
   shards: {
-    perKillBase: 3,
+    perKillBase: 0.12,
+    perLevelMult: 0.35,
   },
 
   // ---- Equipped-item combat (P3) ----
@@ -521,6 +526,31 @@ export const LOOT = {
       { minLevel: 11, minWave: 0, rarity: "rare" },
       { minLevel: 1, minWave: 20, rarity: "rare" },
       { minLevel: 1, minWave: 35, rarity: "prismatic" },
+    ],
+    // Guaranteed end-drop rarity CEILINGS, gated on waves actually cleared
+    // THIS run (not endless-scale thresholds — campaign levels only run
+    // ~10-15 waves, so these stay small): an early quit/forfeit a couple
+    // waves into a high-numbered level keeps the guaranteed drop
+    // low-rarity even though the level-based rarityLevelGate would allow
+    // higher. A full clear (10+ waves) always reaches singularity, and
+    // Endless naturally blows past every threshold here.
+    endDropCeiling: [
+      { minWave: 0, rarity: "enhanced" },
+      { minWave: 3, rarity: "rare" },
+      { minWave: 6, rarity: "prismatic" },
+      { minWave: 10, rarity: "singularity" },
+    ],
+    // Ceiling on rollable rarity by campaign level number (fixes the
+    // 2-prismatics-on-L1 bug — the roll used to be a flat weight table
+    // with no level gating at all). Highest matching rule wins. Applied
+    // on top of `LOOT.gen.rarityWeights` in loot.js biasedRarityWeights,
+    // alongside a down-weight of `enhanced` on the earliest levels so
+    // early drops skew heavily common.
+    rarityLevelGate: [
+      { minLevel: 1, maxRarity: "enhanced", enhancedWeightMult: 0.35 },
+      { minLevel: 3, maxRarity: "rare" },
+      { minLevel: 6, maxRarity: "prismatic" },
+      { minLevel: 10, maxRarity: "singularity" },
     ],
   },
 

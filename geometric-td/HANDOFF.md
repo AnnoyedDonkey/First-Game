@@ -298,6 +298,17 @@ selector is open. Treat `levels.js` as the source of truth on wave numbers.
   B4 gear visible on towers + old/new equip comparison; B5 milestone toasts,
   recap, per-level milestones (some award skill points); B6 playtest tuning.
   Mark phases done here as they land.
+  - **DONE — B1 (2026-07-12):** shards `perKillBase` 3→0.12 + `perLevelMult`
+    0.35 (float-accumulated, rounded once at wallet sync); a bot-cleared
+    full L1 nets ~32 shards. Drop rarity now level-gated
+    (`LOOT.drops.rarityLevelGate`, applied in loot.js
+    `biasedRarityWeights`/`weightsWithCeiling`) — L1-2 rolls common/enhanced
+    only. Guaranteed end-drop also wave-gated on a ceiling
+    (`LOOT.drops.endDropCeiling` + `guaranteedDropCeiling`), floor always
+    wins if higher than ceiling. Instant quits (0 waves cleared) skip the
+    guaranteed end-drop (`progression.js recordRunLoot`). `ENDLESS_REWARDS`
+    shard amounts rescaled 100/350 → 40/90 to match. Next: B2 store rarity
+    unlocks.
 - **Loot P7 balance pass** — largely superseded by B1/B6; read
   `LOOT_DESIGN.md` §15 before tuning drops.
 - **PLAYTEST-PENDING:** counter re-tune + Rocket + World 3 difficulty is

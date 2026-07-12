@@ -85,9 +85,44 @@ function weightsWithFloor(weights, floorRarity) {
   return out;
 }
 
-function biasedRarityWeights(enemyTier = 1, floorRarity = "common") {
+// Highest rarityLevelGate rule matching `levelNumber` (rules sorted
+// ascending by minLevel in config; last match wins, same pattern as
+// guaranteedDropFloor).
+function rarityGateFor(levelNumber) {
+  let rule = null;
+  for (const r of LOOT.drops.rarityLevelGate) {
+    if (levelNumber >= r.minLevel) rule = r;
+  }
+  return rule;
+}
+
+function weightsWithCeiling(weights, ceilRarity, enhancedWeightMult) {
+  const ceil = rarityIndex(ceilRarity);
+  const out = {};
+  for (const rarity of RARITIES) {
+    const i = rarityIndex(rarity);
+    let w = i <= ceil ? (weights[rarity] || 0) : 0;
+    if (rarity === "enhanced" && enhancedWeightMult != null) w *= enhancedWeightMult;
+    out[rarity] = w;
+  }
+  return out;
+}
+
+function biasedRarityWeights(enemyTier = 1, floorRarity = "common", levelNumber = 1, ceilRarity = null) {
   const bias = Math.max(0, enemyTier - 1) * LOOT.drops.bossRarityBias;
-  const base = weightsWithFloor(LOOT.gen.rarityWeights, floorRarity);
+  let weights = LOOT.gen.rarityWeights;
+  const gate = rarityGateFor(levelNumber);
+  let maxRarity = gate ? gate.maxRarity : null;
+  const enhancedWeightMult = gate ? gate.enhancedWeightMult : null;
+  if (ceilRarity && (!maxRarity || rarityIndex(ceilRarity) < rarityIndex(maxRarity))) {
+    maxRarity = ceilRarity;
+  }
+  // A floor always wins over a ceiling below it (e.g. a high-level floor
+  // guarantees rare+ even if the wave-based ceiling would otherwise cap
+  // lower) — never let the two combine into an empty weight table.
+  if (maxRarity && rarityIndex(maxRarity) < rarityIndex(floorRarity)) maxRarity = floorRarity;
+  if (maxRarity) weights = weightsWithCeiling(weights, maxRarity, enhancedWeightMult);
+  const base = weightsWithFloor(weights, floorRarity);
   const out = {};
   for (const rarity of RARITIES) {
     const i = rarityIndex(rarity);
@@ -129,6 +164,14 @@ export function guaranteedDropFloor(levelNumber, waveReached) {
   return floor;
 }
 
+export function guaranteedDropCeiling(waveReached) {
+  let ceiling = "enhanced";
+  for (const rule of LOOT.drops.endDropCeiling) {
+    if (waveReached >= rule.minWave) ceiling = rule.rarity;
+  }
+  return ceiling;
+}
+
 export function dropIlvl(levelNumber, waveReached, enemyTier = 1) {
   return clampIlvl(
     1 +
@@ -138,11 +181,11 @@ export function dropIlvl(levelNumber, waveReached, enemyTier = 1) {
   );
 }
 
-export function generateDrop({ enemy = null, level = null, waveIndex = 0, floorRarity = "common", rng = Math.random } = {}) {
+export function generateDrop({ enemy = null, level = null, waveIndex = 0, floorRarity = "common", ceilRarity = null, rng = Math.random } = {}) {
   const levelNumber = level && level.id ? Number(level.id.slice(-3)) || 1 : 1;
   const waveReached = Math.max(1, waveIndex + 1);
   const enemyTier = enemy && enemy.def ? (enemy.def.shardTier ?? 1) : 1;
-  const rarity = rollRarity(rng, biasedRarityWeights(enemyTier, floorRarity));
+  const rarity = rollRarity(rng, biasedRarityWeights(enemyTier, floorRarity, levelNumber, ceilRarity));
   return generateItem({
     rarity,
     ilvl: dropIlvl(levelNumber, waveReached, enemyTier),
@@ -157,6 +200,7 @@ export function generateGuaranteedDrop(game, rng = Math.random) {
     level: game && game.level,
     waveIndex: waveReached - 1,
     floorRarity: guaranteedDropFloor(levelNumber, waveReached),
+    ceilRarity: guaranteedDropCeiling(waveReached),
     rng,
   });
 }

@@ -208,10 +208,14 @@ export function damageEnemy(game, enemy, sourceTower, amount) {
   // Shards ◆ (loot spec §1) — persistent currency, earned per kill
   // regardless of win/loss. Banked on `game` and synced to the save at
   // battle end (progression.js syncRoster), same pattern as roster XP.
-  game.shardsEarned += Math.round(
-    LOOT.shards.perKillBase * (enemy.def.shardTier ?? 1) *
-    (sourceTower ? sourceTower.shardFindMult || 1 : 1)
-  );
+  // Accumulated as a FLOAT — per-kill values are small (perKillBase
+  // 0.12) so rounding every kill would lose most of it; round once when
+  // syncing to the wallet instead.
+  const levelNumber = game.level && game.level.id ? Number(game.level.id.slice(-3)) || 1 : 1;
+  const levelMult = 1 + LOOT.shards.perLevelMult * (levelNumber - 1);
+  game.shardsEarned +=
+    LOOT.shards.perKillBase * (enemy.def.shardTier ?? 1) * levelMult *
+    (sourceTower ? sourceTower.shardFindMult || 1 : 1);
 
   const drop = rollKillDrop(enemy, game.level, game.waveIndex);
   if (drop) game.lootDrops.push(drop);
