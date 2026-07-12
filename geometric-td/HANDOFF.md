@@ -187,6 +187,10 @@ mockups/          approved interactive HTML mockups (gear UI, circuit menu)
   bottom sheet (desc, milestones, PLAY/ENDLESS). Global actions live in the
   pinned `#menu-actions` footer (`appendGlobalMenuButtons`), never in the
   scrolling list. HUD is battle-only (`#hud.hidden` on the menu).
+  Campaign-challenge rows in that sheet are **tap-to-expand** (`.mile-desc`),
+  revealing a "how to earn this" line from `ui.js milestoneDescText(check)` —
+  derived from the challenge's `check` clauses (never hardcoded), so cryptic
+  labels like "Battle-Hardened" / "Flawless" explain themselves.
 - **End-of-battle overlay:** `showOverlay` (ui.js) — random roast title
   (`config.js RESULT_ROASTS`, keep lines under ~34 chars), tappable loot
   tile grid (tap → rarity-burst detail card), buttons per outcome via
@@ -197,7 +201,11 @@ mockups/          approved interactive HTML mockups (gear UI, circuit menu)
   **Flexbox gotcha (bit us once):** a nested flex container's default
   `min-width: auto` made `#upgrade-panel` claim full content width and push
   `#wave-button` off-screen — fix was `min-width: 0` on the container itself.
-  Any new nested flex row in the action bar needs the same.
+  Any new nested flex row in the action bar needs the same. The `#wave-button`
+  itself is capped narrow (`max-width: 58px`) with its label allowed to wrap to
+  two lines ("START WAVE" stacked), and `#tower-buttons` + `.tower-button` both
+  carry `min-width: 0` so a full 5-tower tray shrinks to equal chips and the
+  wave button always stays on-screen (verified at 375px).
 - **Leaderboard:** per-level Endless best, Supabase REST (leaderboard.js),
   own localStorage key, auto-publish on new best when a nickname is set.
   Config in `config.js LEADERBOARD`; setup in `SUPABASE_SETUP.md`. Escape
@@ -301,6 +309,14 @@ selector is open. Treat `levels.js` as the source of truth on wave numbers.
 - **End-of-battle screen rebuild**, **counter/differentiation balance pass**
   (+ Rocket, World 3), **world-paged menu**, **leaderboard**, **update
   nudge** — described under Key mechanics above.
+- **UI polish (2026-07-12, v2026.07.12-13)** — three fixes from an iPhone
+  report: (1) level-sheet campaign challenges are now tap-to-expand with a
+  data-derived description (see Main menu bullet); (2) store REROLL button no
+  longer stretches to the tall "unlock rarities" block — `#store-actions` now
+  stacks vertically (`flex-direction: column`) so reroll keeps its natural
+  38px height and sits below the unlock tiles; (3) `#wave-button` narrowed +
+  two-line label and the tower tray given `min-width: 0` so it never runs off
+  a 375px screen (see Tower panel / bottom action bar bullet).
 
 ## Backlog
 
