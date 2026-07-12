@@ -265,6 +265,7 @@ function campaignRecapEntries() {
     label: m.label,
     reward: m.reward,
     isNew: cm.newIds.has(m.id),
+    check: m.check, // drives the tap-to-expand "how to earn this" line
   }));
 }
 

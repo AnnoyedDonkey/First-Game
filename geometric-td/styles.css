@@ -288,6 +288,48 @@ button.hud-item {
 .recap-mile .recap-label { color: var(--text); text-align: left; }
 .recap-mile .recap-reward { margin-left: auto; color: var(--neon-yellow); white-space: nowrap; }
 
+/* Tap-to-expand challenge recap: the row reveals a "how to earn this" line
+   (mirrors the level-detail sheet's tap-to-learn pattern). */
+.recap-head {
+  display: flex;
+  align-items: center;
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--neon-yellow);
+  opacity: 0.85;
+}
+.recap-mile.challenge { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.recap-mile .recap-chev {
+  color: var(--text-dim);
+  font-size: 10px;
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+.recap-mile.challenge.open .recap-chev { transform: rotate(180deg); color: var(--neon-yellow); }
+.recap-desc {
+  display: none;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-dim);
+  text-align: left;
+  padding: 0 8px 6px 26px;
+}
+.recap-desc.open { display: block; }
+
+/* "LOOT EARNED" header above the end-screen loot grid, so the tile row
+   below it reads as earned rewards rather than mystery icons. */
+#overlay-loot-head {
+  width: 100%;
+  max-width: 300px;
+  margin: 2px 0 8px;
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: var(--neon-yellow);
+  text-shadow: 0 0 8px rgba(255, 226, 74, 0.4);
+  text-align: center;
+}
+#overlay-loot-head.hidden { display: none; }
+
 /* ---------- World pager ---------- */
 
 #world-nav {
@@ -1464,7 +1506,21 @@ button.hud-item {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
+  /* Framed board that echoes the towers screen's card surface, so the tree
+     reads as one panel you scroll rather than icons floating on the overlay. */
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(53, 224, 255, 0.05), transparent 60%),
+    var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  padding: 6px 4px 12px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--panel-border) transparent;
 }
+.skill-tree-scroll::-webkit-scrollbar { width: 4px; }
+.skill-tree-scroll::-webkit-scrollbar-thumb { background: var(--panel-border); border-radius: 2px; }
+/* Natural size, not squeezed to fit — the board runs taller than the pane so
+   it scrolls vertically (see SKILL_TREE_VIEWBOX in config.js to retune). */
 .skill-tree-scroll svg { width: 100%; height: auto; display: block; }
 
 .skill-legend {

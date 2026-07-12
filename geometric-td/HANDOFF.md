@@ -317,6 +317,21 @@ selector is open. Treat `levels.js` as the source of truth on wave numbers.
   38px height and sits below the unlock tiles; (3) `#wave-button` narrowed +
   two-line label and the tower tray given `min-width: 0` so it never runs off
   a 375px screen (see Tower panel / bottom action bar bullet).
+- **UI polish (2026-07-12, v2026.07.12-14)** — end-screen + skill-tree
+  clarity: (1) end-of-battle challenge recap rows that carry a `check` clause
+  are now tap-to-expand (`.recap-mile.challenge` → `.recap-desc`), reusing
+  `milestoneDescText`; `campaignRecapEntries` in main.js now passes `check`
+  through, and a "CHALLENGES · tap to learn" head appears when any recap entry
+  is expandable (Endless wave milestones have no `check`, so they stay static).
+  (2) A "LOOT EARNED" header (`#overlay-loot-head`, toggled with the loot grid)
+  now labels the end-screen tile row. (3) Skill tree restyled toward the towers
+  screen: uniform 1.6 node border across all states (was 0.7–1.3, the "different
+  thickness" complaint), bigger 9-unit rounded tiles, a taller respread
+  `SKILL_TREE_VIEWBOX` (116×208, was 120×168) so the board is roomier and
+  scrolls vertically, and the scroll area framed as a `--panel` card. New
+  `ui.js colorFill()` helper tints the owned-node interior. All node
+  geometry knobs (`R`/`RX`/`STROKE`) live at the top of `buildSkillTreeSvg`;
+  layout in `config.js SKILLS[*].pos`.
 
 ## Backlog
 

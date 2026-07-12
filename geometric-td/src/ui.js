@@ -96,6 +96,7 @@ const el = {
   overlayButtons: document.getElementById("overlay-buttons"),
   overlayNote: document.getElementById("overlay-note"),
   overlayMilestones: document.getElementById("overlay-milestones"),
+  overlayLootHead: document.getElementById("overlay-loot-head"),
   overlayItems: document.getElementById("overlay-items"),
   dropReveal: document.getElementById("drop-reveal"),
   milestoneToast: document.getElementById("milestone-toast"),
@@ -1927,6 +1928,15 @@ function skillEffectText(id, tier) {
   }
 }
 
+// Translucent fill from a #rrggbb branch color (for the "owned but not maxed"
+// tile — a tinted interior under a full-strength glowing border).
+function colorFill(hex, alpha) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return hex;
+  const n = parseInt(m[1], 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;
+}
+
 // Build the branching skill-tree SVG. Modeled on buildBoardSvg: connectors
 // under square nodes, per-branch accent color, invisible hit targets last.
 function buildSkillTreeSvg() {
@@ -1935,24 +1945,30 @@ function buildSkillTreeSvg() {
   let svg = `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
     <defs>
       <filter id="skill-glow" x="-80%" y="-80%" width="260%" height="260%">
-        <feGaussianBlur stdDeviation="1.1" result="b"/>
+        <feGaussianBlur stdDeviation="1.5" result="b"/>
         <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
       </filter>
     </defs>`;
 
-  // Connectors (under nodes): lit once the PARENT owns a tier.
+  // Node geometry. Bigger, uniform tiles that read like the gear tiles on
+  // the towers screen: a common corner radius and a SINGLE border thickness
+  // across every state (only the color/fill/glow change), so the board no
+  // longer looks like a jumble of different-weight squares.
+  const R = 9, RX = 3, STROKE = 1.6;
+
+  // Connectors (under nodes): lit once the PARENT owns a tier. Drawn edge to
+  // edge (not center to center) so the lines meet the tiles cleanly.
   for (const node of Object.values(SKILLS)) {
     if (!node.parent) continue;
     const p = SKILLS[node.parent].pos, c = node.pos;
     const color = SKILL_BRANCH_COLORS[node.branch] || "#8aa";
     const lit = getSkillTier(node.parent) >= 1;
     svg += lit
-      ? `<path d="M${p.x} ${p.y} L${c.x} ${c.y}" fill="none" stroke="${color}" stroke-width="1.4" opacity=".85" filter="url(#skill-glow)"/>`
-      : `<path d="M${p.x} ${p.y} L${c.x} ${c.y}" fill="none" stroke="rgba(120,140,170,.3)" stroke-width=".9" stroke-dasharray="2 2"/>`;
+      ? `<path d="M${p.x} ${p.y} L${c.x} ${c.y}" fill="none" stroke="${color}" stroke-width="1.6" opacity=".85" filter="url(#skill-glow)"/>`
+      : `<path d="M${p.x} ${p.y} L${c.x} ${c.y}" fill="none" stroke="rgba(120,140,170,.3)" stroke-width="1.2" stroke-dasharray="2.5 2.5"/>`;
   }
 
   // Nodes.
-  const R = 7.5;
   for (const [id, node] of Object.entries(SKILLS)) {
     const { x, y } = node.pos;
     const color = SKILL_BRANCH_COLORS[node.branch] || "#8aa";
@@ -1963,31 +1979,37 @@ function buildSkillTreeSvg() {
     const available = !owned && isSkillUnlocked(id);
     const affordable = available && points >= (nextTierCost(id) || Infinity);
     const rx = x - R, ry = y - R, s = R * 2;
+    const tile = (fill, stroke, opacity, glow, dash) =>
+      `<rect x="${rx}" y="${ry}" width="${s}" height="${s}" rx="${RX}" ` +
+      `fill="${fill}" stroke="${stroke}" stroke-width="${STROKE}"` +
+      (opacity != null ? ` opacity="${opacity}"` : "") +
+      (glow ? ` filter="url(#skill-glow)"` : "") +
+      (dash ? ` stroke-dasharray="${dash}"` : "") + `/>`;
 
     if (maxed) {
-      svg += `<rect x="${rx}" y="${ry}" width="${s}" height="${s}" rx="2" fill="${color}" opacity=".9" filter="url(#skill-glow)"/>` +
-        `<rect x="${rx}" y="${ry}" width="${s}" height="${s}" rx="2" fill="none" stroke="#fff" stroke-width=".7"/>` +
-        `<text x="${x}" y="${y + 2.6}" text-anchor="middle" font-size="7" fill="#04121a" font-weight="700">${node.glyph}</text>`;
+      // Fully-owned: a solid, glowing tile with a dark glyph — the "complete"
+      // look, echoing an equipped gear tile.
+      svg += tile(color, "#fff", ".95", true) +
+        `<text x="${x}" y="${y + 3}" text-anchor="middle" font-size="8.5" fill="#04121a" font-weight="700">${node.glyph}</text>`;
     } else if (owned) {
-      svg += `<rect x="${rx}" y="${ry}" width="${s}" height="${s}" rx="2" fill="${color}" opacity=".28"/>` +
-        `<rect x="${rx}" y="${ry}" width="${s}" height="${s}" rx="2" fill="none" stroke="${color}" stroke-width="1.3" filter="url(#skill-glow)"/>` +
-        `<text x="${x}" y="${y + 2.2}" text-anchor="middle" font-size="6.5" fill="${color}">${node.glyph}</text>`;
+      svg += tile(colorFill(color, 0.2), color, null, true) +
+        `<text x="${x}" y="${y + 2.8}" text-anchor="middle" font-size="8" fill="${color}">${node.glyph}</text>`;
     } else if (available) {
       // Pulse ring only when the player can actually afford it (perf: one
       // animated ring per affordable node, no filter on the ring itself).
       if (affordable) {
-        svg += `<rect x="${rx - 2.4}" y="${ry - 2.4}" width="${s + 4.8}" height="${s + 4.8}" rx="3" fill="none" stroke="${color}" stroke-width=".6" class="skill-pulse"/>`;
+        svg += `<rect x="${rx - 2.6}" y="${ry - 2.6}" width="${s + 5.2}" height="${s + 5.2}" rx="4" fill="none" stroke="${color}" stroke-width=".8" class="skill-pulse"/>`;
       }
-      svg += `<rect x="${rx}" y="${ry}" width="${s}" height="${s}" rx="2" fill="#0a1220" stroke="${color}" stroke-width="1.1" ${affordable ? 'filter="url(#skill-glow)"' : 'opacity=".9"'}/>` +
-        `<text x="${x}" y="${y + 2.2}" text-anchor="middle" font-size="6.5" fill="${color}" opacity="${affordable ? 1 : 0.8}">${node.glyph}</text>`;
+      svg += tile("#0a1220", color, affordable ? null : ".9", affordable) +
+        `<text x="${x}" y="${y + 2.8}" text-anchor="middle" font-size="8" fill="${color}" opacity="${affordable ? 1 : 0.85}">${node.glyph}</text>`;
     } else { // locked (parent not owned)
-      svg += `<rect x="${rx}" y="${ry}" width="${s}" height="${s}" rx="2" fill="#0a0f18" stroke="rgba(110,130,160,.45)" stroke-width=".8" stroke-dasharray="2 2"/>` +
-        `<text x="${x}" y="${y + 2.2}" text-anchor="middle" font-size="6" fill="rgba(130,150,180,.55)">${node.glyph}</text>`;
+      svg += tile("#0a0f18", "rgba(120,140,170,.5)", null, false, "2.5 2.5") +
+        `<text x="${x}" y="${y + 2.8}" text-anchor="middle" font-size="7.5" fill="rgba(130,150,180,.55)">${node.glyph}</text>`;
     }
 
     // Multi-tier progress badge (e.g. 3/5) below the node.
     if (max > 1) {
-      svg += `<text x="${x}" y="${y + R + 4.6}" text-anchor="middle" font-size="4" fill="${owned ? color : "rgba(150,170,200,.6)"}">${tier}/${max}</text>`;
+      svg += `<text x="${x}" y="${y + R + 5.4}" text-anchor="middle" font-size="4.6" fill="${owned ? color : "rgba(150,170,200,.6)"}">${tier}/${max}</text>`;
     }
   }
 
@@ -2214,16 +2236,35 @@ export function showOverlay({ title, subtitle, type, buttons, items, note, miles
   }
 
   // Milestone recap — a compact gold list above the loot grid (B5). Each
-  // entry: { label, reward, isNew }. `isNew` marks first-time attainment.
+  // entry: { label, reward, isNew, check? }. `isNew` marks first-time
+  // attainment; when a `check` clause is present the row is tap-to-expand,
+  // revealing the same data-derived "how to earn this" line the level sheet
+  // uses — so a completed challenge explains what it actually was.
   const miles = (milestones || []).filter(Boolean);
   if (miles.length) {
-    el.overlayMilestones.innerHTML = miles.map((m) =>
-      `<div class="recap-mile${m.isNew ? " new" : ""}">` +
-      `<span class="recap-star">&#9733;</span>` +
-      `<span class="recap-label">${escapeHtml(m.label)}${m.isNew ? " &mdash; NEW!" : ""}</span>` +
-      `<span class="recap-reward">${milestoneRewardText(m.reward)}</span></div>`
-    ).join("");
+    const anyDesc = miles.some((m) => m.check);
+    const head = anyDesc
+      ? `<div class="recap-head">CHALLENGES <span class="mile-hint">tap to learn</span></div>`
+      : "";
+    el.overlayMilestones.innerHTML = head + miles.map((m, i) => {
+      const desc = m.check ? milestoneDescText(m.check) : "";
+      return `<div class="recap-mile${m.isNew ? " new" : ""}${desc ? " challenge" : ""}" data-rc="${i}">` +
+        `<span class="recap-star">&#9733;</span>` +
+        `<span class="recap-label">${escapeHtml(m.label)}${m.isNew ? " &mdash; NEW!" : ""}</span>` +
+        `<span class="recap-reward">${milestoneRewardText(m.reward)}</span>` +
+        (desc ? `<span class="recap-chev">&#9662;</span>` : "") +
+        `</div>` +
+        (desc ? `<div class="recap-desc" data-rc-desc="${i}">${escapeHtml(desc)}</div>` : "");
+    }).join("");
     el.overlayMilestones.classList.remove("hidden");
+    el.overlayMilestones.querySelectorAll(".recap-mile.challenge").forEach((row) => {
+      row.addEventListener("click", () => {
+        const i = row.getAttribute("data-rc");
+        const d = el.overlayMilestones.querySelector(`.recap-desc[data-rc-desc="${i}"]`);
+        const open = row.classList.toggle("open");
+        if (d) d.classList.toggle("open", open);
+      });
+    });
   } else {
     el.overlayMilestones.innerHTML = "";
     el.overlayMilestones.classList.add("hidden");
@@ -2249,6 +2290,7 @@ export function showOverlay({ title, subtitle, type, buttons, items, note, miles
       })
     ).join("");
     el.overlayItems.classList.remove("hidden");
+    el.overlayLootHead.classList.remove("hidden");
     el.overlayItems.querySelectorAll("[data-result-item]").forEach((tile) => {
       tile.addEventListener("click", () =>
         showItemDetail(loot[Number(tile.dataset.resultItem)]));
@@ -2256,6 +2298,7 @@ export function showOverlay({ title, subtitle, type, buttons, items, note, miles
   } else {
     el.overlayItems.innerHTML = "";
     el.overlayItems.classList.add("hidden");
+    el.overlayLootHead.classList.add("hidden");
   }
 }
 

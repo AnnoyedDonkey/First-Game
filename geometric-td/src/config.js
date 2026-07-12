@@ -777,54 +777,58 @@ export const SKILL_TIERS = {
 };
 
 // SVG coordinate box the layout is authored in (portrait, iPhone-first).
-export const SKILL_TREE_VIEWBOX = { w: 120, h: 168 };
+// Deliberately taller than wide: three columns fit the phone width while the
+// board extends well below the fold, so the player scrolls it vertically like
+// the towers screen (the SVG is rendered at its natural size, not squeezed to
+// fit). Widen `w` or push `pos` values apart to loosen the spacing further.
+export const SKILL_TREE_VIEWBOX = { w: 116, h: 208 };
 
 export const SKILLS = {
   // ----- CORE branch (cyan): survivability + the tower level-cap spine -----
   coreHealth:  { name: "Core Plating", desc: "AI Core health",
-    branch: "core", parent: null, pos: { x: 60, y: 16 }, glyph: "⬛" },
+    branch: "core", parent: null, pos: { x: 58, y: 18 }, glyph: "⬛" },
   towerCap6:  { name: "Overclock VI",   desc: "raise tower level cap to 6",
-    branch: "core", parent: "coreHealth", pos: { x: 60, y: 42 }, glyph: "6",
+    branch: "core", parent: "coreHealth", pos: { x: 58, y: 50 }, glyph: "6",
     maxTier: 1, costs: [2], kind: "level" },
   towerCap7:  { name: "Overclock VII",  desc: "raise tower level cap to 7",
-    branch: "core", parent: "towerCap6", pos: { x: 60, y: 66 }, glyph: "7",
+    branch: "core", parent: "towerCap6", pos: { x: 58, y: 82 }, glyph: "7",
     maxTier: 1, costs: [2], kind: "level" },
   towerCap8:  { name: "Overclock VIII", desc: "raise tower level cap to 8",
-    branch: "core", parent: "towerCap7", pos: { x: 60, y: 90 }, glyph: "8",
+    branch: "core", parent: "towerCap7", pos: { x: 58, y: 114 }, glyph: "8",
     maxTier: 1, costs: [3], kind: "level" },
   towerCap9:  { name: "Overclock IX",   desc: "raise tower level cap to 9",
-    branch: "core", parent: "towerCap8", pos: { x: 60, y: 114 }, glyph: "9",
+    branch: "core", parent: "towerCap8", pos: { x: 58, y: 146 }, glyph: "9",
     maxTier: 1, costs: [3], kind: "level" },
   towerCap10: { name: "Overclock X",    desc: "raise tower level cap to 10",
-    branch: "core", parent: "towerCap9", pos: { x: 60, y: 138 }, glyph: "★",
+    branch: "core", parent: "towerCap9", pos: { x: 58, y: 178 }, glyph: "★",
     maxTier: 1, costs: [4], kind: "level" },
 
   // ----- COMBAT branch (per-tower damage, left column) -----
   laserDamage:  { name: "Laser Calibration", desc: "Laser Tower damage",
-    branch: "combat", parent: null, pos: { x: 24, y: 34 }, glyph: "L", kind: "pct" },
+    branch: "combat", parent: null, pos: { x: 26, y: 34 }, glyph: "L", kind: "pct" },
   pulseDamage:  { name: "Pulse Amplifier", desc: "Pulse Tower damage",
-    branch: "combat", parent: "laserDamage", pos: { x: 24, y: 58 }, glyph: "P", kind: "pct" },
+    branch: "combat", parent: "laserDamage", pos: { x: 26, y: 66 }, glyph: "P", kind: "pct" },
   slowDuration: { name: "Stasis Field", desc: "slow effect duration",
-    branch: "combat", parent: "pulseDamage", pos: { x: 24, y: 82 }, glyph: "S", kind: "pct" },
+    branch: "combat", parent: "pulseDamage", pos: { x: 26, y: 98 }, glyph: "S", kind: "pct" },
   railDamage:   { name: "Rail Overcharge", desc: "Railgun Tower damage",
-    branch: "combat", parent: "slowDuration", pos: { x: 24, y: 106 }, glyph: "R", kind: "pct" },
-  railPen:      { name: "Over-Penetration", desc: "Railgun beam length",
-    branch: "combat", parent: "railDamage", pos: { x: 8, y: 118 }, glyph: "➤",
-    kind: "mult" },
+    branch: "combat", parent: "slowDuration", pos: { x: 26, y: 130 }, glyph: "R", kind: "pct" },
   rocketDamage: { name: "Warhead Payload", desc: "Rocket Launcher damage",
-    branch: "combat", parent: "railDamage", pos: { x: 24, y: 130 }, glyph: "K", kind: "pct" },
+    branch: "combat", parent: "railDamage", pos: { x: 26, y: 162 }, glyph: "K", kind: "pct" },
+  railPen:      { name: "Over-Penetration", desc: "Railgun beam length",
+    branch: "combat", parent: "railDamage", pos: { x: 11, y: 190 }, glyph: "➤",
+    kind: "mult" },
 
   // ----- ECONOMY branch (money/XP/shards/interest, right column) -----
   moneyPerKill: { name: "Salvage Protocol", desc: "money per kill",
-    branch: "economy", parent: null, pos: { x: 96, y: 34 }, glyph: "$", kind: "pct" },
+    branch: "economy", parent: null, pos: { x: 90, y: 34 }, glyph: "$", kind: "pct" },
   xpGain:       { name: "Combat Learning", desc: "tower XP gain",
-    branch: "economy", parent: "moneyPerKill", pos: { x: 96, y: 58 }, glyph: "▲", kind: "pct" },
+    branch: "economy", parent: "moneyPerKill", pos: { x: 90, y: 66 }, glyph: "▲", kind: "pct" },
   shardFind:    { name: "Shard Magnet", desc: "shards found per kill",
-    branch: "economy", parent: "xpGain", pos: { x: 96, y: 82 }, glyph: "◆", kind: "pct" },
+    branch: "economy", parent: "xpGain", pos: { x: 90, y: 98 }, glyph: "◆", kind: "pct" },
   interestRate: { name: "Compound Yield", desc: "cash interest per wave",
-    branch: "economy", parent: "shardFind", pos: { x: 96, y: 106 }, glyph: "%", kind: "pct" },
+    branch: "economy", parent: "shardFind", pos: { x: 90, y: 130 }, glyph: "%", kind: "pct" },
   interestCap:  { name: "Reserve Cap", desc: "max interest per wave",
-    branch: "economy", parent: "interestRate", pos: { x: 112, y: 118 }, glyph: "▰", kind: "cap" },
+    branch: "economy", parent: "interestRate", pos: { x: 105, y: 158 }, glyph: "▰", kind: "cap" },
 };
 
 // Per-tier effect size (tier N = N x this value).
