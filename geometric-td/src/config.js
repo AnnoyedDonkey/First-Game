@@ -190,7 +190,7 @@ export const ENDLESS_REWARDS = {
   defaultTrack: [
     { id: "wave10", type: "wave", threshold: 10, label: "Reach wave 10", reward: { kind: "shards", amount: 40 } },
     { id: "wave20", type: "wave", threshold: 20, label: "Reach wave 20", reward: { kind: "loot", rarity: "rare" } },
-    { id: "wave35", type: "wave", threshold: 35, label: "Reach wave 35", reward: { kind: "shards", amount: 90 } },
+    { id: "wave35", type: "wave", threshold: 35, label: "Reach wave 35", reward: { kind: "shards", amount: 110 } },
     { id: "wave50", type: "wave", threshold: 50, label: "Reach wave 50", reward: { kind: "loot", rarity: "prismatic" } },
     { id: "wave75", type: "wave", threshold: 75, label: "Reach wave 75", reward: { kind: "loot", rarity: "singularity" } },
   ],
@@ -395,11 +395,11 @@ export const TOWER_UPGRADES = {
   // XP needed to become ELIGIBLE for each level (index 0 = level 2).
   // Length 9 = levels 2..10; indices 4..8 (levels 6-10) only ever apply
   // once the matching towerCap skill is unlocked. Steep on purpose.
-  xpThresholds: [100, 250, 450, 700, 1050, 1500, 2100, 2900, 3900],
+  xpThresholds: [100, 250, 450, 700, 1050, 1350, 1800, 2400, 3200],
   // Money cost to actually buy each level (index 0 = level 2).
   // A tower can scale this with its own `upgradeCostMult` (see TOWERS) —
   // e.g. Pulse pays 1.6x, Slow pays 0.8x. Levels 6-10 are pricey.
-  upgradeCosts: [75, 125, 200, 300, 450, 650, 900, 1250, 1700],
+  upgradeCosts: [75, 125, 200, 300, 450, 600, 800, 1100, 1500],
 
   // MASTERY — progression beyond level 5. XP earned past the level-5
   // threshold converts into permanent damage ranks (no money cost,
@@ -698,7 +698,7 @@ export const LOOT = {
     // Shard cost to unlock each rarity for store rolls. common is always free.
     // Sized against the B1 ~33-shards/L1 economy: enhanced after ~3 clears,
     // prismatic needs higher-level farming.
-    rarityUnlocks: { enhanced: 100, rare: 350, prismatic: 1200, singularity: 4000 },
+    rarityUnlocks: { enhanced: 80, rare: 300, prismatic: 1200, singularity: 4000 },
   },
 };
 
@@ -721,15 +721,15 @@ export const VFX = {
   // shadowBlur). All fractions are of a tile; a few sprites/tower, well under
   // the particle cap.
   gear: {
-    orbitRadius: 0.36,     // orbital distance from tower center (fraction of tile)
+    orbitRadius: 0.40,     // orbital distance from tower center (fraction of tile)
     orbitSpeed: 0.55,      // base rotation, radians/sec
-    diamondSize: 4.0,      // px edge length of each orbiting diamond
+    diamondSize: 5.0,      // px edge length of each orbiting diamond
     orbitGlow: 5,          // px glow-sprite radius behind each diamond
-    orbitGlowAlpha: 0.85,  // additive alpha of each diamond's glow
+    orbitGlowAlpha: 0.90,  // additive alpha of each diamond's glow
     auraRadius: 0.52,      // aura halo radius (fraction of tile)
-    auraAlpha: 0.13,       // aura halo alpha (best rarity tint)
+    auraAlpha: 0.18,       // aura halo alpha (best rarity tint)
     shimmerSpeed: 5,       // singularity aura shimmer pulse speed
-    shimmerDepth: 0.6,     // how much the shimmer swells the aura alpha (0-1)
+    shimmerDepth: 0.75,    // how much the shimmer swells the aura alpha (0-1)
   },
 
   // The warping background grid (spring mesh).

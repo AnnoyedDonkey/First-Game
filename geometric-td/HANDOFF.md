@@ -432,7 +432,19 @@ selector is open. Treat `levels.js` as the source of truth on wave numbers.
     lasers → both milestones latch, persist to save, grant +70◆; a loss grants
     neither win-only milestone; endless run toasts exactly once at wave 10;
     toast + recap + level-sheet DOM all render with correct reward text;
-    console clean on load. Next: B6 playtest tuning (needs iPhone play).
+    console clean on load.
+  - **DONE — B6 (2026-07-12):** playtest tuning pass (a-priori knob sweep,
+    no iPhone report yet). `config.js` changes: store rarity unlock prices
+    `enhanced 100→80, rare 350→300` (slightly more accessible first unlock);
+    L6-10 XP thresholds tightened on the steep top end
+    `[…1500,2100,2900,3900] → […1350,1800,2400,3200]`; L6-10 upgrade costs
+    similarly reduced `[…650,900,1250,1700] → […600,800,1100,1500]`; gear
+    orbital visuals bumped for more pizzazz — `orbitRadius 0.36→0.40`,
+    `diamondSize 4.0→5.0`, `orbitGlowAlpha 0.85→0.90`, `auraAlpha
+    0.13→0.18`, `shimmerDepth 0.6→0.75`; Endless wave-35 shard reward
+    `90→110`. All knobs remain in `config.js VFX.gear` / `TOWER_UPGRADES`
+    / `LOOT.store.rarityUnlocks` / `ENDLESS_REWARDS`. Next: iPhone playtest
+    → second B6 pass from user reports.
 - **Loot P7 balance pass** — largely superseded by B1/B6; read
   `LOOT_DESIGN.md` §15 before tuning drops.
 - **PLAYTEST-PENDING:** counter re-tune + Rocket + World 3 difficulty is
