@@ -643,7 +643,7 @@ as the source of truth, not that old ×1.2 rule.)
     `rerollStore`/`buyStoreItem` untouched) — pure restyle, per
     `GEAR_UI_DESIGN.md` §3. Full detail + verification notes in that doc's
     U5 checkbox.
-- **CIRCUIT-BOARD MAIN MENU (in progress — M1 shipped, M2 next):** replace
+- **CIRCUIT-BOARD MAIN MENU (in progress — M2 shipped, M3 next):** replace
   the level-row list with a per-world neon circuit board (SVG nodes +
   traces), node states readable at a glance (cleared / frontier / locked /
   ∞ pad / milestone tick-ring), tap → bottom-sheet level detail with
@@ -687,8 +687,30 @@ as the source of truth, not that old ×1.2 rule.)
     both launch from taps, footer stays pinned, skill tree still opens on top
     (z40>z30), no console errors. (Browser-pane screenshots timed out at the
     harness level, so verification was DOM-query based, not eyeballed pixels.)
-    Next: **M2** (Sonnet) — the level-detail bottom sheet; node tap opens the
-    sheet instead of launching directly.
+  - **M2 DONE (2026-07-12):** level-detail bottom sheet. New
+    `#level-sheet-overlay`/`#level-sheet` inside `#level-overlay` (same
+    sheet positioning/animation pattern as the gear/store sheets — own ids
+    so it can't fight them). Every board tap — including locked nodes,
+    which needed a hit target for the first time — now opens the sheet
+    instead of launching straight into battle: title in world accent,
+    `LEVEL n — WORLD` tag, `desc`, status chips (cleared/frontier/locked,
+    ∞ Endless state, gold ★ milestone count), full milestone list (tick +
+    label + reward, `.done` gold), PLAY/ENDLESS buttons. New
+    `milestoneRewardText(reward)` (ui.js) derives the reward string from
+    `reward.kind`/`amount`/`rarity` instead of hardcoding it, so the
+    sheet is ready for a future 20-milestone track (M4) with no changes.
+    Locked nodes show why via `nd.lockReason` (computed in `renderWorld`:
+    distinguishes "clear the previous level" within an unlocked world from
+    "clear all of \<world\>" for a fully locked world). Veil tap and
+    world-swipe/arrow nav both close the sheet so a stale one never lingers
+    behind a different world's board. Verified live via DOM/event dispatch
+    against a seeded save (screenshots still time out at the harness level,
+    same as M1): cleared/frontier/locked-in-unlocked-world/locked-world
+    sheets all showed correct content and button enablement, veil-tap
+    closed the sheet, PLAY and ENDLESS both launched the right mode
+    (`game.level.id`, `game.endless`) — no console errors.
+    Next: **M3** (Opus) — pizzazz (traveling energy pulse, entry flourish)
+    + an iPhone perf pass on the SVG glow filters.
 - **PLAYTEST-PENDING:** the counter re-tune + visible feedback + Rocket +
   World 3 all shipped but the difficulty is calibrated only by bot sims
   (superhuman placement → flawless bot wins are a WEAK signal). The user's

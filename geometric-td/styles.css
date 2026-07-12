@@ -368,6 +368,84 @@ button.hud-item {
   .trace-flow, .frontier-pulse { animation: none; }
 }
 
+/* ---------- Level detail bottom sheet (CIRCUIT_MENU_DESIGN.md M2) ----------
+   Same positioning/animation as #gear-sheet-overlay/#gear-sheet; content
+   classes below are new (mockup's .chip/.mile family, ported 1:1). */
+#level-sheet-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 6, 15, 0.82);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 5;
+  backdrop-filter: blur(2px);
+}
+#level-sheet-overlay.hidden { display: none; }
+#level-sheet {
+  width: 100%;
+  max-width: 420px;
+  max-height: 78%;
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-bottom: none;
+  border-radius: 18px 18px 0 0;
+  padding: 16px 16px calc(20px + env(safe-area-inset-bottom));
+  animation: gearSheetUp 0.22s ease-out;
+}
+@media (prefers-reduced-motion: reduce) { #level-sheet { animation: none; } }
+
+.level-sheet-tag { font-size: 10px; color: var(--text-dim); letter-spacing: 2px; margin: 2px 0 8px; }
+.level-sheet-desc { font-size: 12px; line-height: 1.5; color: var(--text-dim); margin-bottom: 12px; }
+
+.level-chip-row { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.level-chip {
+  font-size: 10px;
+  letter-spacing: 1px;
+  padding: 4px 8px;
+  border-radius: 20px;
+  border: 1px solid var(--panel-border);
+  color: var(--text-dim);
+}
+.level-chip.on { border-color: var(--neon-green); color: var(--neon-green); box-shadow: 0 0 8px rgba(74, 255, 161, 0.35); }
+.level-chip.gold { border-color: var(--neon-yellow); color: var(--neon-yellow); }
+
+.level-mile-head { font-size: 11px; letter-spacing: 2px; color: var(--neon-cyan); margin: 10px 0 6px; }
+.level-mile { display: flex; align-items: center; gap: 10px; padding: 5px 0; font-size: 11px; }
+.level-mile .tick {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 1.5px solid var(--panel-border);
+}
+.level-mile.done .tick {
+  border-color: var(--neon-yellow);
+  background: radial-gradient(circle, var(--neon-yellow) 40%, transparent 70%);
+  box-shadow: 0 0 8px rgba(255, 226, 74, 0.6);
+}
+.level-mile .m-label { color: var(--text-dim); }
+.level-mile.done .m-label { color: var(--text); }
+.level-mile .m-reward { margin-left: auto; color: var(--text-dim); }
+.level-mile.done .m-reward { color: var(--neon-yellow); }
+
+.level-sheet-actions { display: flex; gap: 10px; margin-top: 14px; }
+.level-sheet-btn {
+  flex: 1;
+  padding: 12px 0;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  letter-spacing: 2px;
+  border: 1px solid;
+  min-height: 44px;
+  cursor: pointer;
+}
+.level-sheet-btn.play { background: rgba(53, 224, 255, 0.08); border-color: var(--neon-cyan); color: var(--neon-cyan); text-shadow: 0 0 8px rgba(53, 224, 255, 0.5); }
+.level-sheet-btn.endless { background: rgba(255, 63, 212, 0.08); border-color: var(--neon-magenta); color: var(--neon-magenta); }
+.level-sheet-btn:disabled { opacity: 0.3; cursor: default; }
+
 /* Thin visible scrollbar so desktop users can see the list scrolls */
 #level-list::-webkit-scrollbar, #skill-list::-webkit-scrollbar { width: 4px; }
 #level-list::-webkit-scrollbar-thumb, #skill-list::-webkit-scrollbar-thumb {

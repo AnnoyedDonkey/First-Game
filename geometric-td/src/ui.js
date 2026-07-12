@@ -54,6 +54,8 @@ const el = {
   worldNext: document.getElementById("world-next"),
   worldName: document.getElementById("world-name"),
   worldDots: document.getElementById("world-dots"),
+  levelSheetOverlay: document.getElementById("level-sheet-overlay"),
+  levelSheet: document.getElementById("level-sheet"),
   actionBar: document.getElementById("action-bar"),
   gearOverlay: document.getElementById("gear-overlay"),
   gearWallet: document.getElementById("gear-wallet"),
@@ -314,6 +316,7 @@ let currentWorld = 0;
 export function showLevelSelect(levels, completedIds, onPick) {
   el.actionBar.classList.add("hidden"); // no tower tray on the menu
   el.hud.classList.add("hidden");       // top HUD is in-battle only
+  closeLevelSheet();
   menuCtx = {
     levelById: new Map(levels.map((l) => [l.id, l])),
     levels,
@@ -341,6 +344,7 @@ function navigateWorld(delta) {
   const target = currentWorld + delta;
   if (target < 0 || target >= WORLDS.length) return; // clamp at the ends
   currentWorld = target;
+  closeLevelSheet();
   renderWorld();
 }
 
@@ -484,18 +488,18 @@ function buildBoardSvg(world, nodes) {
   // Vignette (below the hit layer, above the art).
   svg += `<rect x="0" y="0" width="100" height="130" fill="url(#board-vign)" pointer-events="none"/>`;
 
-  // Invisible hit targets, painted last so they always receive taps. Each
-  // node gets a fat circle → PLAY; each cleared node's ∞ pad → ENDLESS.
+  // Invisible hit targets, painted last so they always receive taps. Every
+  // node (including locked ones) opens the detail sheet (M2) — the sheet's
+  // own PLAY/ENDLESS buttons decide what actually launches. Cleared nodes
+  // get a second small target over the ∞ pad since it sits outside the
+  // main node's hit radius.
   nodes.forEach((nd, i) => {
     const { x, y } = pts[i];
+    svg += `<circle cx="${x}" cy="${y}" r="13" fill="rgba(0,0,0,0)" data-hit="node" data-i="${i}" style="cursor:pointer"/>`;
     if (nd.state === "cleared") {
       const bx = x + R + 4.2, by = y + R + 2.5;
-      svg += `<circle cx="${x}" cy="${y}" r="13" fill="rgba(0,0,0,0)" data-hit="play" data-i="${i}" style="cursor:pointer"/>`;
-      svg += `<circle cx="${bx}" cy="${by}" r="5" fill="rgba(0,0,0,0)" data-hit="endless" data-i="${i}" style="cursor:pointer"/>`;
-    } else if (nd.state === "frontier") {
-      svg += `<circle cx="${x}" cy="${y}" r="13" fill="rgba(0,0,0,0)" data-hit="play" data-i="${i}" style="cursor:pointer"/>`;
+      svg += `<circle cx="${bx}" cy="${by}" r="5" fill="rgba(0,0,0,0)" data-hit="node" data-i="${i}" style="cursor:pointer"/>`;
     }
-    // Locked nodes get no hit target (nothing to launch).
   });
 
   svg += `</svg>`;
@@ -543,13 +547,20 @@ function renderWorld() {
       state = "locked";
     }
     const milestones = done ? getEndlessMilestones(id) : [];
+    const lockReason = state !== "locked"
+      ? null
+      : !unlocked
+        ? `Clear all of ${WORLDS[currentWorld - 1].name} to unlock ${world.name}.`
+        : "Clear the previous level to unlock.";
     return {
       level,
       n: level ? Number(id.slice(-3)) : "",
       state,
+      milestones,
       done: milestones.filter((m) => m.claimed).length,
       total: milestones.length,
       best: done ? getBestEndlessWave(id) : 0,
+      lockReason,
     };
   });
 
@@ -565,15 +576,84 @@ function renderWorld() {
     el.levelList.appendChild(note);
   }
 
-  // Wire taps: M1 launches directly (the detail sheet lands in M2).
+  // Wire taps: every node opens the detail sheet (M2); PLAY/ENDLESS inside
+  // the sheet decide what actually launches.
   el.levelList.querySelectorAll("[data-hit]").forEach((hit) => {
     const nd = nodes[+hit.dataset.i];
     if (!nd || !nd.level) return;
-    const endless = hit.dataset.hit === "endless";
-    hit.addEventListener("click", () => pick(nd.level, endless));
+    hit.addEventListener("click", () => openLevelSheet(nd, world, pick));
   });
 
   appendGlobalMenuButtons();
+}
+
+// Human reward text for a milestone, derived from its data (never hardcoded
+// per CIRCUIT_MENU_DESIGN.md M0 — a future 20-entry track renders the same way).
+function milestoneRewardText(reward) {
+  if (reward.kind === "shards") return `&#9670; ${reward.amount}`;
+  return reward.rarity === "singularity" ? "SINGULARITY" : `${reward.rarity.toUpperCase()} LOOT`;
+}
+
+// ---- Level detail bottom sheet (CIRCUIT_MENU_DESIGN.md M2) ----
+
+function closeLevelSheet() {
+  el.levelSheetOverlay.classList.add("hidden");
+}
+el.levelSheetOverlay.addEventListener("click", (e) => {
+  if (e.target === el.levelSheetOverlay) closeLevelSheet();
+});
+
+function openLevelSheet(nd, world, pick) {
+  const level = nd.level;
+  const cleared = nd.state === "cleared";
+  const locked = nd.state === "locked";
+
+  const chips = [
+    `<span class="level-chip ${cleared ? "on" : ""}">${cleared ? "&#10003; CLEARED" : locked ? "&#128274; LOCKED" : "NOT CLEARED"}</span>`,
+    `<span class="level-chip ${cleared ? "on" : ""}">&#8734; ENDLESS ${cleared ? (nd.best > 0 ? `&mdash; BEST W${nd.best}` : "UNLOCKED") : "LOCKED"}</span>`,
+  ];
+  if (cleared) chips.push(`<span class="level-chip gold">&#9733; ${nd.done}/${nd.total} MILESTONES</span>`);
+
+  let milestoneHtml;
+  if (cleared) {
+    const rows = nd.milestones.map((m) =>
+      `<div class="level-mile ${m.claimed ? "done" : ""}">` +
+      `<div class="tick"></div>` +
+      `<span class="m-label">${escapeHtml(m.label)}</span>` +
+      `<span class="m-reward">${milestoneRewardText(m.reward)}</span></div>`
+    ).join("");
+    milestoneHtml = `<div class="level-mile-head">ENDLESS MILESTONES</div>${rows}`;
+  } else {
+    milestoneHtml = `<p class="level-sheet-desc">${
+      locked ? escapeHtml(nd.lockReason) : "Beat the campaign level to unlock Endless mode and its milestone rewards."
+    }</p>`;
+  }
+
+  el.levelSheet.innerHTML =
+    `<h2 style="color:${world.accent}">${escapeHtml(level.name.toUpperCase())}</h2>` +
+    `<div class="level-sheet-tag">LEVEL ${nd.n} &mdash; ${escapeHtml(world.name)}</div>` +
+    `<p class="level-sheet-desc">${escapeHtml(level.desc || "")}</p>` +
+    `<div class="level-chip-row">${chips.join("")}</div>` +
+    milestoneHtml +
+    `<div class="level-sheet-actions">` +
+    `<button class="level-sheet-btn play" id="level-sheet-play"${locked ? " disabled" : ""}>&#9654; PLAY</button>` +
+    `<button class="level-sheet-btn endless" id="level-sheet-endless"${cleared ? "" : " disabled"}>&#8734; ENDLESS</button>` +
+    `</div>`;
+
+  el.levelSheetOverlay.classList.remove("hidden");
+
+  if (!locked) {
+    document.getElementById("level-sheet-play").addEventListener("click", () => {
+      closeLevelSheet();
+      pick(level, false);
+    });
+  }
+  if (cleared) {
+    document.getElementById("level-sheet-endless").addEventListener("click", () => {
+      closeLevelSheet();
+      pick(level, true);
+    });
+  }
 }
 
 // The account-wide entries. Pinned in their own footer (#menu-actions)

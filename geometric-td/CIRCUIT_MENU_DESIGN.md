@@ -179,6 +179,27 @@ one new sheet.
   across all three worlds): every node state, campaign + endless launch,
   pinned footer, skill-tree z-order intact, no console errors. APP_VERSION →
   2026.07.12-3, pushed to main.
-- [ ] M2 — level detail bottom sheet
+- [x] M2 — level detail bottom sheet (2026-07-12). New `#level-sheet-overlay`/
+  `#level-sheet` inside `#level-overlay` (own ids, same positioning/animation
+  as the gear/store sheets). Every board tap (including locked nodes, which
+  got a hit target for the first time) now opens the sheet instead of M1's
+  direct launch: title in world accent, `LEVEL n — WORLD`, `desc`, status
+  chips (CLEARED/NOT CLEARED/LOCKED, ∞ ENDLESS state, gold ★ milestone
+  count), full milestone list (`getEndlessMilestones` + a new
+  `milestoneRewardText` formatter that reads `reward.kind`/`amount`/`rarity`
+  — never hardcoded, so a future 20-entry track renders the same way), and
+  PLAY/ENDLESS buttons. PLAY disabled when locked; ENDLESS disabled unless
+  cleared. Locked nodes show why (`nd.lockReason`, computed in `renderWorld`:
+  distinguishes "clear the previous level" from "clear all of \<world\>").
+  Veil tap closes the sheet; world swipe/arrow nav closes it too
+  (`navigateWorld`) so a stale sheet never lingers behind a different
+  world's board. Verified live via DOM/event dispatch (screenshots still
+  time out at the harness level per the M1 note): cleared node (milestones
+  claimed/unclaimed rows, best-wave chip), frontier node (PLAY enabled,
+  ENDLESS disabled), locked node in an unlocked world, locked node in a
+  locked world (correct per-case reason text), veil-tap close, PLAY launch
+  (`game.level.id` correct, HUD shown, overlay hidden), ENDLESS launch
+  (`game.endless === true`) — no console errors. APP_VERSION →
+  2026.07.12-4, pushed to main.
 - [ ] M3 — pizzazz + iPhone perf pass
 - [ ] M4 — per-level milestone tracks (20-ready data shape)
