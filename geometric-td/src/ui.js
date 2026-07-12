@@ -3,7 +3,8 @@
 // ============================================================
 
 import {
-  TOWERS, ENEMIES, SKILLS, SKILL_VALUES, SKILL_TIERS, TOWER_UPGRADES, LOOT,
+  TOWERS, ENEMIES, SKILLS, SKILL_VALUES, TOWER_UPGRADES, LOOT,
+  SKILL_BRANCH_COLORS, SKILL_TREE_VIEWBOX,
 } from "./config.js";
 import {
   xpThresholdFor, upgradeCostFor, isUpgradeEligible, sellValueOf,
@@ -11,6 +12,7 @@ import {
 } from "./towers.js";
 import {
   getSkillTier, nextTierCost, getSkillPoints, buySkill, resetProgress,
+  skillMaxTier, isSkillUnlocked, getTowerLevelCap,
   isTowerUnlocked, getProgress, getBestEndlessWave, getShards, getEndlessMilestones,
   getStash, getPendingLoot, stashSlotsFree, claimPendingLoot,
   discardPendingLoot, sellStashItem, sellPendingItem, sellAllStashRarity,
@@ -44,6 +46,8 @@ const el = {
   skillOverlay: document.getElementById("skill-overlay"),
   skillPointsLine: document.getElementById("skill-points-line"),
   skillList: document.getElementById("skill-list"),
+  skillSheetOverlay: document.getElementById("skill-sheet-overlay"),
+  skillSheet: document.getElementById("skill-sheet"),
   skillClose: document.getElementById("skill-close"),
   resetSave: document.getElementById("reset-save"),
   hud: document.getElementById("hud"),
@@ -1742,7 +1746,7 @@ export function initSkillTree(onSkillBought) {
 
 // Open the skill tree from anywhere (HUD, level select, end-of-battle).
 export function openSkillTree() {
-  renderSkillList(skillBoughtCallback);
+  renderSkillTree(skillBoughtCallback);
   el.skillOverlay.classList.remove("hidden");
 }
 
@@ -1751,56 +1755,180 @@ function resetConfirmState() {
   el.resetSave.textContent = "RESET SAVE";
 }
 
-// One row per skill: name, tier pips, current -> next effect, buy button.
-function renderSkillList(onSkillBought) {
-  el.skillPointsLine.textContent = `AVAILABLE POINTS: ${getSkillPoints()} — win battles to earn more`;
-  el.skillList.innerHTML = "";
+// Cumulative effect text at a given tier, from the node's `kind`.
+function skillEffectText(id, tier) {
+  const node = SKILLS[id];
+  const step = SKILL_VALUES[id];
+  const kind = node.kind || (step < 1 ? "pct" : "flat");
+  switch (kind) {
+    case "pct":   return `+${Math.round(step * tier * 100)}%`;
+    case "cap":   return `${step * tier}/wave`;
+    case "mult":  return `&times;${(1 + step * tier).toFixed(1)}`;
+    case "level": return tier > 0 ? `LV CAP &rarr; ${getTowerLevelCap()}` : "LV CAP +1";
+    default:      return `+${step * tier}`;
+  }
+}
 
-  for (const [id, def] of Object.entries(SKILLS)) {
+// Build the branching skill-tree SVG. Modeled on buildBoardSvg: connectors
+// under square nodes, per-branch accent color, invisible hit targets last.
+function buildSkillTreeSvg() {
+  const { w, h } = SKILL_TREE_VIEWBOX;
+  const points = getSkillPoints();
+  let svg = `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <filter id="skill-glow" x="-80%" y="-80%" width="260%" height="260%">
+        <feGaussianBlur stdDeviation="1.1" result="b"/>
+        <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>`;
+
+  // Connectors (under nodes): lit once the PARENT owns a tier.
+  for (const node of Object.values(SKILLS)) {
+    if (!node.parent) continue;
+    const p = SKILLS[node.parent].pos, c = node.pos;
+    const color = SKILL_BRANCH_COLORS[node.branch] || "#8aa";
+    const lit = getSkillTier(node.parent) >= 1;
+    svg += lit
+      ? `<path d="M${p.x} ${p.y} L${c.x} ${c.y}" fill="none" stroke="${color}" stroke-width="1.4" opacity=".85" filter="url(#skill-glow)"/>`
+      : `<path d="M${p.x} ${p.y} L${c.x} ${c.y}" fill="none" stroke="rgba(120,140,170,.3)" stroke-width=".9" stroke-dasharray="2 2"/>`;
+  }
+
+  // Nodes.
+  const R = 7.5;
+  for (const [id, node] of Object.entries(SKILLS)) {
+    const { x, y } = node.pos;
+    const color = SKILL_BRANCH_COLORS[node.branch] || "#8aa";
     const tier = getSkillTier(id);
-    const cost = nextTierCost(id); // null when maxed
-    const step = SKILL_VALUES[id];
-    const isPercent = step < 1;
-    const fmt = (t) => (isPercent ? `+${Math.round(step * t * 100)}%` : `+${step * t}`);
+    const max = skillMaxTier(id);
+    const owned = tier >= 1;
+    const maxed = tier >= max;
+    const available = !owned && isSkillUnlocked(id);
+    const affordable = available && points >= (nextTierCost(id) || Infinity);
+    const rx = x - R, ry = y - R, s = R * 2;
 
-    const row = document.createElement("div");
-    row.className = "skill-row";
-
-    // Tier pips: ● earned, ○ remaining.
-    const pips = "●".repeat(tier) + "○".repeat(SKILL_TIERS.maxTier - tier);
-    const effectLine =
-      cost === null
-        ? `${fmt(tier)} ${def.desc} — MAXED`
-        : tier === 0
-          ? `next: ${fmt(1)} ${def.desc}`
-          : `${fmt(tier)} ${def.desc} → next: ${fmt(tier + 1)}`;
-
-    const text = document.createElement("div");
-    text.className = "skill-text";
-    text.innerHTML =
-      `<span class="skill-name">${def.name} <span class="skill-pips">${pips}</span></span>` +
-      `<span class="skill-desc">${effectLine}</span>`;
-
-    const buy = document.createElement("button");
-    buy.className = "skill-buy";
-    if (cost === null) {
-      buy.textContent = "MAX";
-      buy.classList.add("owned");
-      buy.disabled = true;
-    } else {
-      buy.textContent = `${cost} PT`;
-      buy.disabled = getSkillPoints() < cost;
-      buy.addEventListener("click", () => {
-        if (buySkill(id)) {
-          onSkillBought();
-          renderSkillList(onSkillBought); // re-render with new state
-        }
-      });
+    if (maxed) {
+      svg += `<rect x="${rx}" y="${ry}" width="${s}" height="${s}" rx="2" fill="${color}" opacity=".9" filter="url(#skill-glow)"/>` +
+        `<rect x="${rx}" y="${ry}" width="${s}" height="${s}" rx="2" fill="none" stroke="#fff" stroke-width=".7"/>` +
+        `<text x="${x}" y="${y + 2.6}" text-anchor="middle" font-size="7" fill="#04121a" font-weight="700">${node.glyph}</text>`;
+    } else if (owned) {
+      svg += `<rect x="${rx}" y="${ry}" width="${s}" height="${s}" rx="2" fill="${color}" opacity=".28"/>` +
+        `<rect x="${rx}" y="${ry}" width="${s}" height="${s}" rx="2" fill="none" stroke="${color}" stroke-width="1.3" filter="url(#skill-glow)"/>` +
+        `<text x="${x}" y="${y + 2.2}" text-anchor="middle" font-size="6.5" fill="${color}">${node.glyph}</text>`;
+    } else if (available) {
+      // Pulse ring only when the player can actually afford it (perf: one
+      // animated ring per affordable node, no filter on the ring itself).
+      if (affordable) {
+        svg += `<rect x="${rx - 2.4}" y="${ry - 2.4}" width="${s + 4.8}" height="${s + 4.8}" rx="3" fill="none" stroke="${color}" stroke-width=".6" class="skill-pulse"/>`;
+      }
+      svg += `<rect x="${rx}" y="${ry}" width="${s}" height="${s}" rx="2" fill="#0a1220" stroke="${color}" stroke-width="1.1" ${affordable ? 'filter="url(#skill-glow)"' : 'opacity=".9"'}/>` +
+        `<text x="${x}" y="${y + 2.2}" text-anchor="middle" font-size="6.5" fill="${color}" opacity="${affordable ? 1 : 0.8}">${node.glyph}</text>`;
+    } else { // locked (parent not owned)
+      svg += `<rect x="${rx}" y="${ry}" width="${s}" height="${s}" rx="2" fill="#0a0f18" stroke="rgba(110,130,160,.45)" stroke-width=".8" stroke-dasharray="2 2"/>` +
+        `<text x="${x}" y="${y + 2.2}" text-anchor="middle" font-size="6" fill="rgba(130,150,180,.55)">${node.glyph}</text>`;
     }
 
-    row.appendChild(text);
-    row.appendChild(buy);
-    el.skillList.appendChild(row);
+    // Multi-tier progress badge (e.g. 3/5) below the node.
+    if (max > 1) {
+      svg += `<text x="${x}" y="${y + R + 4.6}" text-anchor="middle" font-size="4" fill="${owned ? color : "rgba(150,170,200,.6)"}">${tier}/${max}</text>`;
+    }
+  }
+
+  // Invisible hit targets last so taps always land.
+  for (const [id, node] of Object.entries(SKILLS)) {
+    svg += `<rect x="${node.pos.x - R - 2}" y="${node.pos.y - R - 2}" width="${R * 2 + 4}" height="${R * 2 + 4}" fill="rgba(0,0,0,0)" data-skill="${id}" style="cursor:pointer"/>`;
+  }
+
+  svg += `</svg>`;
+  return svg;
+}
+
+// Legend chip per branch, so the color coding reads at a glance.
+function skillLegendHtml() {
+  const labels = { core: "CORE", combat: "COMBAT", economy: "ECONOMY" };
+  return `<div class="skill-legend">` +
+    Object.entries(labels).map(([b, txt]) =>
+      `<span class="skill-legend-chip" style="color:${SKILL_BRANCH_COLORS[b]}">` +
+      `<span class="dot" style="background:${SKILL_BRANCH_COLORS[b]}"></span>${txt}</span>`
+    ).join("") + `</div>`;
+}
+
+function renderSkillTree(onSkillBought) {
+  const points = getSkillPoints();
+  el.skillPointsLine.innerHTML =
+    `AVAILABLE POINTS: <b>${points}</b> &mdash; win battles to earn more` +
+    ` &middot; TOWER CAP LV ${getTowerLevelCap()}`;
+  el.skillList.classList.add("skill-tree-host");
+  el.skillList.innerHTML = skillLegendHtml() +
+    `<div class="skill-tree-scroll">${buildSkillTreeSvg()}</div>`;
+
+  el.skillList.querySelectorAll("[data-skill]").forEach((hit) => {
+    hit.addEventListener("click", () => openSkillSheet(hit.dataset.skill, onSkillBought));
+  });
+}
+
+// ---- Skill node detail bottom sheet (tap a node) ----
+
+function closeSkillSheet() {
+  el.skillSheetOverlay.classList.add("hidden");
+}
+el.skillSheetOverlay.addEventListener("click", (e) => {
+  if (e.target === el.skillSheetOverlay) closeSkillSheet();
+});
+
+function openSkillSheet(id, onSkillBought) {
+  const node = SKILLS[id];
+  if (!node) return;
+  const color = SKILL_BRANCH_COLORS[node.branch] || "#8aa";
+  const tier = getSkillTier(id);
+  const max = skillMaxTier(id);
+  const cost = nextTierCost(id); // null when maxed
+  const owned = tier >= 1;
+  const unlocked = isSkillUnlocked(id);
+  const points = getSkillPoints();
+
+  const pips = `<span class="skill-pips">${"&#9679;".repeat(tier)}${"&#9675;".repeat(max - tier)}</span>`;
+
+  let effectLine;
+  if (cost === null) {
+    effectLine = `${skillEffectText(id, tier)} ${node.desc} &mdash; MAXED`;
+  } else if (tier === 0) {
+    effectLine = `next: ${skillEffectText(id, 1)} ${node.desc}`;
+  } else {
+    effectLine = `${skillEffectText(id, tier)} &rarr; ${skillEffectText(id, tier + 1)} ${node.desc}`;
+  }
+
+  // Buy button label / disabled reasoning.
+  let btnLabel, disabled = false, lockNote = "";
+  if (cost === null) {
+    btnLabel = "MAXED"; disabled = true;
+  } else if (!unlocked) {
+    const parent = SKILLS[node.parent];
+    btnLabel = "LOCKED"; disabled = true;
+    lockNote = `<div class="skill-sheet-lock">Unlock <b>${parent.name}</b> first.</div>`;
+  } else {
+    btnLabel = `BUY &mdash; ${cost} PT`;
+    disabled = points < cost;
+  }
+
+  el.skillSheet.innerHTML =
+    `<div class="skill-sheet-title" style="color:${color}; text-shadow:0 0 10px ${color}66">` +
+    `${node.glyph} ${node.name}</div>` +
+    `<div class="skill-sheet-sub">${node.branch.toUpperCase()} BRANCH &middot; ${pips}</div>` +
+    `<div class="skill-sheet-effect">${effectLine}</div>` +
+    lockNote +
+    `<div class="skill-sheet-actions">` +
+    `<button class="skill-sheet-btn" id="skill-sheet-buy"${disabled ? " disabled" : ""}>${btnLabel}</button>` +
+    `</div>`;
+  el.skillSheetOverlay.classList.remove("hidden");
+
+  if (!disabled) {
+    document.getElementById("skill-sheet-buy").addEventListener("click", () => {
+      if (buySkill(id)) {
+        onSkillBought();
+        closeSkillSheet();
+        renderSkillTree(onSkillBought); // re-render the board with new state
+      }
+    });
   }
 }
 

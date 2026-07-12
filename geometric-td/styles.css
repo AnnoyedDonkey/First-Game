@@ -402,7 +402,7 @@ button.hud-item {
 
 @media (prefers-reduced-motion: reduce) {
   .trace-flow, .frontier-pulse, .board-deco-enter, .board-node-enter,
-  .board-inf-live { animation: none; }
+  .board-inf-live, .skill-pulse { animation: none; }
   /* draw-in leaves the trace hidden without its animation — force it shown. */
   .board-trace-draw { animation: none; stroke-dashoffset: 0; }
 }
@@ -1303,6 +1303,86 @@ button.hud-item {
   border-color: var(--neon-green);
   color: var(--neon-green);
 }
+
+/* ---------- Skill tree: branching SVG board (B3) ---------- */
+/* When #skill-list hosts the tree it becomes a flexible column: a legend
+   row on top, then a vertically-pannable SVG that fills the rest. */
+#skill-list.skill-tree-host {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1 1 auto;
+  overflow: hidden;
+  padding: 0;
+}
+.skill-tree-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+.skill-tree-scroll svg { width: 100%; height: auto; display: block; }
+
+.skill-legend {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  flex-shrink: 0;
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+.skill-legend-chip { display: inline-flex; align-items: center; gap: 5px; }
+.skill-legend-chip .dot { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+
+/* Affordable-node breathing ring (shares the board pulse keyframe). */
+.skill-pulse { animation: board-node-pulse 1.6s ease-in-out infinite; }
+
+/* Node detail bottom sheet — mirrors #store-sheet-overlay. */
+#skill-sheet-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 6, 15, 0.82);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 5;
+  backdrop-filter: blur(2px);
+}
+#skill-sheet-overlay.hidden { display: none; }
+#skill-sheet {
+  width: 100%;
+  max-width: 420px;
+  max-height: 78%;
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-bottom: none;
+  border-radius: 18px 18px 0 0;
+  padding: 18px 18px calc(22px + env(safe-area-inset-bottom));
+  animation: gearSheetUp 0.22s ease-out;
+}
+@media (prefers-reduced-motion: reduce) { #skill-sheet { animation: none; } }
+.skill-sheet-title { font-size: 18px; letter-spacing: 1px; margin-bottom: 6px; }
+.skill-sheet-sub { font-size: 12px; color: var(--text-dim); letter-spacing: 1px; margin-bottom: 10px; }
+.skill-sheet-sub .skill-pips { color: inherit; letter-spacing: 2px; margin-left: 4px; }
+.skill-sheet-effect { font-size: 13px; color: var(--text); margin-bottom: 14px; }
+.skill-sheet-lock { font-size: 12px; color: var(--neon-yellow); margin-bottom: 12px; }
+.skill-sheet-actions { display: flex; }
+.skill-sheet-btn {
+  font-family: inherit;
+  font-size: 14px;
+  min-height: 46px;
+  flex: 1;
+  border-radius: 8px;
+  border: 1px solid var(--neon-magenta);
+  color: var(--neon-magenta);
+  background: rgba(255, 63, 212, 0.06);
+  cursor: pointer;
+  letter-spacing: 1px;
+}
+.skill-sheet-btn:disabled { opacity: 0.4; cursor: default; }
 
 #skill-actions {
   display: flex;

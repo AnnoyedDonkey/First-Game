@@ -13,7 +13,10 @@ import { createGridModel } from "./grid.js";
 import { createEnemy, updateEnemies } from "./enemies.js";
 import { updateTowers } from "./towers.js";
 import { updateProjectiles, updateEffects } from "./projectiles.js";
-import { getCoreBonus, recordBattleEnd, recordEndlessResult } from "./progression.js";
+import {
+  getCoreBonus, recordBattleEnd, recordEndlessResult,
+  getInterestRate, getInterestCap,
+} from "./progression.js";
 import { updateParticles } from "./particles.js";
 import { createSpringGrid } from "./springgrid.js";
 import { VFX } from "./config.js";
@@ -152,6 +155,7 @@ export function updateGame(game, dt) {
   // Wave cleared?
   if (game.phase === "wave" && game.spawnQueue.length === 0 && game.enemies.length === 0) {
     game.waveIndex += 1;
+    applyWaveInterest(game);
     if (!game.endless && game.waveIndex >= game.totalWaves) {
       game.phase = "won";
       recordBattleEnd(game, true); // roster + 1 skill point, saved
@@ -168,4 +172,22 @@ export function updateGame(game, dt) {
     game.countdown -= dt;
     if (game.countdown <= 0) startNextWave(game);
   }
+}
+
+// Cash interest (skills: interestRate + interestCap). Paid once per cleared
+// wave: floor(money * rate), capped. A golden ring at the core sells it.
+// `game.lastInterest` is left for the HUD / B5 milestone toast to read.
+function applyWaveInterest(game) {
+  game.lastInterest = 0;
+  const rate = getInterestRate();
+  if (rate <= 0) return;
+  const gain = Math.min(Math.floor(game.money * rate), getInterestCap());
+  if (gain <= 0) return;
+  game.money += gain;
+  game.lastInterest = gain;
+  const core = game.grid.pathPoints[game.grid.pathPoints.length - 1];
+  game.effects.push({
+    kind: "ring", x: core.x, y: core.y, color: "#ffe24a",
+    radius: game.grid.tileSize * 0.9, ttl: 0.6, maxTtl: 0.6,
+  });
 }

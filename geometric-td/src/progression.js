@@ -8,10 +8,18 @@
 // available roster unit of that type before creating a new one.
 // ============================================================
 
-import { endlessTrackFor, LOOT, SKILLS, SKILL_VALUES, SKILL_TIERS, TOWERS } from "./config.js";
+import {
+  endlessTrackFor, LOOT, SKILLS, SKILL_VALUES, SKILL_TIERS, TOWER_UPGRADES, TOWERS,
+} from "./config.js";
 import { loadSave, writeSave, clearSave } from "./save.js";
 import { dropIlvl, generateGuaranteedDrop, generateItem, RARITIES } from "./loot.js";
-import { canEquipItem, emptyGear, masteryRankFor, normalizeGear } from "./equipment.js";
+import {
+  canEquipItem, emptyGear, masteryRankFor, normalizeGear, setMasteryXpStart,
+} from "./equipment.js";
+
+// The chained tower level-cap skill nodes (towerCap6..10). Declared before
+// module-init runs syncMasteryAnchor() so getTowerLevelCap() isn't in a TDZ.
+const CAP_NODES = ["towerCap6", "towerCap7", "towerCap8", "towerCap9", "towerCap10"];
 
 let state = loadSave();
 migrateSkills();
@@ -30,8 +38,10 @@ state.store.rerolls ??= 0;
 state.endlessRewards ||= {};
 state.seenLoot ||= [];
 state.storeUnlocks ||= [];
+state.skills ||= {};
 backfillGear();
 migrateRosterNames();
+syncMasteryAnchor(); // anchor Mastery start to the unlocked tower cap (B3)
 
 function backfillGear() {
   state.roster ||= [];
@@ -74,11 +84,32 @@ export function getSkillTier(id) {
   return state.skills[id] || 0;
 }
 
+// Per-node max tier / cost table (fall back to the shared defaults).
+export function skillMaxTier(id) {
+  return SKILLS[id]?.maxTier ?? SKILL_TIERS.maxTier;
+}
+function skillCosts(id) {
+  return SKILLS[id]?.costs ?? SKILL_TIERS.costs;
+}
+
 // Cost of the NEXT tier, or null if maxed.
 export function nextTierCost(id) {
   const tier = getSkillTier(id);
-  if (tier >= SKILL_TIERS.maxTier) return null;
-  return SKILL_TIERS.costs[tier];
+  const max = skillMaxTier(id);
+  if (tier >= max) return null;
+  const costs = skillCosts(id);
+  return costs[Math.min(tier, costs.length - 1)];
+}
+
+// A node is BUYABLE if it isn't maxed and — for its FIRST tier only — its
+// parent prerequisite has at least one tier. Once a node is owned (tier>=1)
+// the parent gate no longer applies, so pre-B3 saves keep upgrading skills
+// that happen to sit deeper in the new graph.
+export function isSkillUnlocked(id) {
+  const node = SKILLS[id];
+  if (!node) return false;
+  if (getSkillTier(id) >= 1) return true;
+  return !node.parent || getSkillTier(node.parent) >= 1;
 }
 
 export function getSkillPoints() {
@@ -89,10 +120,50 @@ export function buySkill(id) {
   if (!SKILLS[id]) return false;
   const cost = nextTierCost(id);
   if (cost === null || state.skillPoints < cost) return false;
+  if (!isSkillUnlocked(id)) return false; // parent prerequisite not met
   state.skillPoints -= cost;
   state.skills[id] = getSkillTier(id) + 1;
+  syncMasteryAnchor(); // a towerCap purchase moves the Mastery start line
   writeSave(state);
   return true;
+}
+
+// ---------- New B3 skill effects ----------
+
+// Account-wide tower level cap: base 5 plus every unlocked Overclock node.
+// The cap nodes chain, so owned ones are always contiguous.
+export function getTowerLevelCap() {
+  let cap = TOWER_UPGRADES.maxLevel;
+  for (const id of CAP_NODES) if (getSkillTier(id) > 0) cap += 1;
+  return cap;
+}
+
+// Cash interest applied each wave-clear (game.js): floor(money*rate), capped.
+export function getInterestRate() {
+  return SKILL_VALUES.interestRate * getSkillTier("interestRate");
+}
+export function getInterestCap() {
+  return SKILL_VALUES.interestCap * getSkillTier("interestCap");
+}
+
+// Account-wide shard-find multiplier (composes with per-tower gear shardFind).
+export function getSkillShardFindMult() {
+  return 1 + SKILL_VALUES.shardFind * getSkillTier("shardFind");
+}
+
+// Railgun beam-length multiplier (over-penetration): x1.0 up to x2.0.
+export function getRailBeamLengthMult() {
+  return 1 + SKILL_VALUES.railPen * getSkillTier("railPen");
+}
+
+// Keep Mastery starting at the account's unlocked-cap XP threshold so XP
+// spent reaching levels 6-10 doesn't ALSO count as mastery ranks. For the
+// base cap of 5 this resolves to the original 700 (no behavior change).
+function syncMasteryAnchor() {
+  const cap = getTowerLevelCap();
+  const t = TOWER_UPGRADES.xpThresholds;
+  const idx = Math.min(cap - 2, t.length - 1);
+  setMasteryXpStart(t[idx]);
 }
 
 // Skill-derived modifiers: tier N = N x the per-tier value.

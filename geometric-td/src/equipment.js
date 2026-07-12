@@ -15,10 +15,19 @@ export function normalizeGear(gear) {
   return { ...emptyGear(), ...(gear || {}) };
 }
 
+// The XP where Mastery begins. Defaults to the config value (the level-5
+// threshold); progression.js re-anchors it to the account's unlocked tower
+// cap so leveling 6-10 doesn't double-count as mastery (B3). Kept as a
+// module-level scalar to avoid a progression->equipment import cycle.
+let masteryXpStart = TOWER_UPGRADES.mastery.xpStart;
+export function setMasteryXpStart(v) {
+  masteryXpStart = v;
+}
+
 // Mastery remains derived from career XP, so old saves need no new field.
 export function masteryRankFor(xp) {
   const m = TOWER_UPGRADES.mastery;
-  const x = xp - m.xpStart;
+  const x = xp - masteryXpStart;
   if (x <= 0) return 0;
   const b = m.baseXpPerRank;
   const k = m.xpRankIncrement;
@@ -39,7 +48,7 @@ export function xpToNextMastery(xp) {
   const m = TOWER_UPGRADES.mastery;
   const rank = masteryRankFor(xp);
   if (rank >= m.maxRanks) return null;
-  return m.xpStart + masteryCumulativeXp(rank + 1, m) - xp;
+  return masteryXpStart + masteryCumulativeXp(rank + 1, m) - xp;
 }
 
 export function canEquipItem(record, item) {

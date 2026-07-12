@@ -3,7 +3,7 @@
 // ============================================================
 
 import { ENEMIES, ECONOMY, VFX, LOOT } from "./config.js";
-import { getMoneyMult, getXpMult } from "./progression.js";
+import { getMoneyMult, getXpMult, getSkillShardFindMult } from "./progression.js";
 import { rollKillDrop } from "./loot.js";
 import { emitHitSparks, emitDeathShards } from "./particles.js";
 
@@ -215,7 +215,8 @@ export function damageEnemy(game, enemy, sourceTower, amount) {
   const levelMult = 1 + LOOT.shards.perLevelMult * (levelNumber - 1);
   game.shardsEarned +=
     LOOT.shards.perKillBase * (enemy.def.shardTier ?? 1) * levelMult *
-    (sourceTower ? sourceTower.shardFindMult || 1 : 1);
+    (sourceTower ? sourceTower.shardFindMult || 1 : 1) *
+    getSkillShardFindMult();
 
   const drop = rollKillDrop(enemy, game.level, game.waveIndex);
   if (drop) game.lootDrops.push(drop);

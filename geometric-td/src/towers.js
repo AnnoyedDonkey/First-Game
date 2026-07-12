@@ -10,6 +10,7 @@ import { enemyPosition, damageEnemy, slowEnemy } from "./enemies.js";
 import { spawnPulseOrb, spawnRocket } from "./projectiles.js";
 import {
   getTowerDamageMult, getSlowDurationMult, takeRosterUnit, isTowerUnlocked,
+  getTowerLevelCap, getRailBeamLengthMult,
 } from "./progression.js";
 import { emitHitSparks } from "./particles.js";
 import {
@@ -127,6 +128,10 @@ function recomputeStats(tower, grid) {
   if (def.pierceWidth) {
     tower.pierceWidth = def.pierceWidth * grid.tileSize;
   }
+  // Railgun over-penetration (skill: railPen) — the rail's damage corridor
+  // reaches beyond the tower's range ring. Only affects the railgun; the
+  // laser's own pierce uses tower.range directly.
+  tower.beamLengthMult = tower.type === "railgun" ? getRailBeamLengthMult() : 1;
   tower.pierce = Math.max(1, (def.basePierce || 1) + gs.pierce);
   tower.projectileSpeedMult = 1 + gs.projSpeed / 100;
   tower.critChance = Math.min(1, gs.critChance / 100);
@@ -191,14 +196,15 @@ export function careerStatsFor(rec) {
 // XP makes a tower ELIGIBLE; money pays for the actual upgrade.
 
 // Total XP required to become eligible for the next level (null at max).
+// The cap is the account-wide unlocked level (base 5, up to 10 via skills).
 export function xpThresholdFor(tower) {
-  if (tower.level >= TOWER_UPGRADES.maxLevel) return null;
+  if (tower.level >= getTowerLevelCap()) return null;
   const t = TOWER_UPGRADES.xpThresholds;
   return t[Math.min(tower.level - 1, t.length - 1)];
 }
 
 export function upgradeCostFor(tower) {
-  if (tower.level >= TOWER_UPGRADES.maxLevel) return null;
+  if (tower.level >= getTowerLevelCap()) return null;
   const c = TOWER_UPGRADES.upgradeCosts;
   const base = c[Math.min(tower.level - 1, c.length - 1)];
   // Each tower type can scale its own upgrade cost (Pulse pricier, etc.).
@@ -309,7 +315,10 @@ function findTarget(game, tower, excluded = null) {
 // the path clears the whole lane. Ties break toward the enemy furthest
 // along the path. Returns { angle, target } or null.
 function findRailgunAim(game, tower) {
-  const r2 = tower.range * tower.range;
+  // Over-penetration (railPen skill) lets the rail aim through and hit
+  // enemies out to railLength, not just the range ring.
+  const railLength = tower.range * (tower.beamLengthMult || 1);
+  const r2 = railLength * railLength;
   const inRange = [];
   for (const e of game.enemies) {
     if (!e.alive) continue;
@@ -329,7 +338,7 @@ function findRailgunAim(game, tower) {
     let count = 0;
     for (const o of inRange) {
       const along = o.dx * dirX + o.dy * dirY;
-      if (along < 0 || along > tower.range) continue;
+      if (along < 0 || along > railLength) continue;
       const perp = Math.abs(o.dx * dirY - o.dy * dirX);
       if (perp <= tower.pierceWidth + game.grid.tileSize * o.e.def.size) count++;
     }
@@ -391,7 +400,9 @@ function emitCritVfx(game, tower, x, y) {
   });
 }
 
-function collectLineVictims(game, tower, angle, halfWidth) {
+// maxLength defaults to the tower's range; the railgun passes a longer
+// reach for over-penetration (skill: railPen). The laser leaves it default.
+function collectLineVictims(game, tower, angle, halfWidth, maxLength = tower.range) {
   const dirX = Math.cos(angle);
   const dirY = Math.sin(angle);
   const victims = [];
@@ -401,7 +412,7 @@ function collectLineVictims(game, tower, angle, halfWidth) {
     const relX = pos.x - tower.pos.x;
     const relY = pos.y - tower.pos.y;
     const along = relX * dirX + relY * dirY;
-    if (along < 0 || along > tower.range) continue;
+    if (along < 0 || along > maxLength) continue;
     const perp = Math.abs(relX * dirY - relY * dirX);
     if (perp <= halfWidth + game.grid.tileSize * enemy.def.size) {
       victims.push({ enemy, pos, along });
@@ -489,13 +500,16 @@ function fireShot(game, tower, target, targetPos, damageScale) {
 
   } else if (tower.type === "railgun") {
     // The rail damages enemies along its corridor up to its pierce limit.
+    // Over-penetration (railPen skill) extends both the visible beam and
+    // the damage cutoff beyond the range ring.
+    const railLength = tower.range * (tower.beamLengthMult || 1);
     const dirX = Math.cos(tower.aimAngle);
     const dirY = Math.sin(tower.aimAngle);
-    const endX = tower.pos.x + dirX * tower.range;
-    const endY = tower.pos.y + dirY * tower.range;
+    const endX = tower.pos.x + dirX * railLength;
+    const endY = tower.pos.y + dirY * railLength;
 
     // Collect victims first (kills can spawn splitlings mid-loop).
-    const victims = collectLineVictims(game, tower, tower.aimAngle, tower.pierceWidth);
+    const victims = collectLineVictims(game, tower, tower.aimAngle, tower.pierceWidth, railLength);
 
     // White-hot rail flash + sparks at every victim.
     game.effects.push({

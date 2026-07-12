@@ -300,18 +300,22 @@ export const TOWERS = {
 // Per-level stat growth when a tower is upgraded (Checkpoint C).
 // Each level multiplies the stat by (1 + value).
 export const TOWER_UPGRADES = {
+  // BASE cap = 5. The account-wide skill tree can raise it to 10 via the
+  // chained towerCap6..towerCap10 nodes (progression.js getTowerLevelCap).
   maxLevel: 5,
   damageGrowth: 0.35,      // +35% damage per level
   rangeGrowth: 0.08,       // +8% range per level
   fireRateGrowth: 0.10,    // fires 10% faster per level
   splashGrowth: 0.10,      // pulse: +10% splash radius per level
   slowGrowth: 0.12,        // slow: +12% slow duration per level
-  // XP needed to become ELIGIBLE for each level (index 0 = level 2)
-  xpThresholds: [100, 250, 450, 700],
+  // XP needed to become ELIGIBLE for each level (index 0 = level 2).
+  // Length 9 = levels 2..10; indices 4..8 (levels 6-10) only ever apply
+  // once the matching towerCap skill is unlocked. Steep on purpose.
+  xpThresholds: [100, 250, 450, 700, 1050, 1500, 2100, 2900, 3900],
   // Money cost to actually buy each level (index 0 = level 2).
   // A tower can scale this with its own `upgradeCostMult` (see TOWERS) —
-  // e.g. Pulse pays 1.6x, Slow pays 0.8x.
-  upgradeCosts: [75, 125, 200, 300],
+  // e.g. Pulse pays 1.6x, Slow pays 0.8x. Levels 6-10 are pricey.
+  upgradeCosts: [75, 125, 200, 300, 450, 650, 900, 1250, 1700],
 
   // MASTERY — progression beyond level 5. XP earned past the level-5
   // threshold converts into permanent damage ranks (no money cost,
@@ -327,7 +331,13 @@ export const TOWER_UPGRADES = {
   // Reference (base 400, inc 80): rank 1 = 1,100 XP total ·
   // rank 10 = 8,300 · rank 20 = 23,900 · rank 50 = 118,700.
   mastery: {
-    xpStart: 700,          // XP where mastery begins (= level-5 threshold)
+    // XP where mastery begins. This is the DEFAULT (= the level-5
+    // threshold, for a base cap of 5). When the account unlocks higher
+    // tower caps (towerCap6..10), progression.js re-anchors the live
+    // start to the new cap's XP threshold via equipment.setMasteryXpStart
+    // so XP spent reaching levels 6-10 doesn't ALSO double-count as
+    // mastery ranks. Anchored to the account cap, not per-tower.
+    xpStart: 700,
     baseXpPerRank: 400,    // XP cost of rank 1
     xpRankIncrement: 80,   // each rank costs this much more than the last
     damagePerRank: 0.015,  // +1.5% damage per rank (+75% at rank 50)
@@ -350,6 +360,14 @@ export const TOWER_UPGRADES = {
 export const ECONOMY = {
   moneyPerKillMultiplier: 1.0,  // global multiplier on all bounties
   xpPerKillMultiplier: 1.0,     // global multiplier on all XP gains
+
+  // Cash interest (skill: interestRate + interestCap). At each wave-clear
+  // the player earns floor(money * rate), capped. Both are 0 until the
+  // matching skill nodes are bought — the per-tier sizes live in
+  // SKILL_VALUES.interestRate / .interestCap below. Applied in game.js.
+  interest: {
+    enabled: true,
+  },
 };
 
 // ---------- Loot & equipment (see LOOT_DESIGN.md) ----------
@@ -634,35 +652,105 @@ export const SHAPE_SIDES = {
 };
 
 // ---------- Permanent skill tree ----------
-// Each skill has 5 TIERS. Tier N gives N x the base value below
-// (e.g. Laser Calibration tier 3 = +30% damage). The player earns
-// 1 skill point per level won; tier costs escalate.
+// A BRANCHING prerequisite graph rendered as an SVG tree (ui.js
+// buildSkillTreeSvg). Each node has:
+//   name, desc            display text
+//   branch               "core" | "combat" | "economy" — drives node color
+//   parent               id of the prerequisite node (null = a branch root).
+//                        A node's FIRST tier can only be bought once its
+//                        parent has >=1 tier (progression.buySkill). Already
+//                        -owned nodes keep upgrading regardless, so old saves
+//                        never get stuck.
+//   pos {x,y}            coordinate in the SVG_TREE_VIEWBOX space (tunable)
+//   glyph               single char/emoji drawn on the node
+//   maxTier             tiers available (default SKILL_TIERS.maxTier = 5)
+//   costs               skill-point cost per tier (default SKILL_TIERS.costs)
+//   kind                effect flavor for the value formatter:
+//                        "pct" (+N%), "flat" (+N), "cap" (+N gold), "level"
+//                        (+1 tower level), "mult" (xN.N)
+// The 8 ORIGINAL skills keep their ids, so existing state.skills carries
+// over unchanged; they just gained layout + graph metadata.
 export const SKILL_TIERS = {
   maxTier: 5,
-  costs: [1, 1, 2, 2, 3],  // cost of tier 1, 2, 3, 4, 5
+  costs: [1, 1, 2, 2, 3],  // default cost of tier 1, 2, 3, 4, 5
 };
 
+// SVG coordinate box the layout is authored in (portrait, iPhone-first).
+export const SKILL_TREE_VIEWBOX = { w: 120, h: 168 };
+
 export const SKILLS = {
-  laserDamage:  { name: "Laser Calibration", desc: "Laser Tower damage" },
-  pulseDamage:  { name: "Pulse Amplifier",   desc: "Pulse Tower damage" },
-  railDamage:   { name: "Rail Overcharge",   desc: "Railgun Tower damage" },
-  rocketDamage: { name: "Warhead Payload",   desc: "Rocket Launcher damage" },
-  slowDuration: { name: "Stasis Field",      desc: "slow effect duration" },
-  moneyPerKill: { name: "Salvage Protocol",  desc: "money per kill" },
-  xpGain:       { name: "Combat Learning",   desc: "tower XP gain" },
-  coreHealth:   { name: "Core Plating",      desc: "AI Core health" },
+  // ----- CORE branch (cyan): survivability + the tower level-cap spine -----
+  coreHealth:  { name: "Core Plating", desc: "AI Core health",
+    branch: "core", parent: null, pos: { x: 60, y: 16 }, glyph: "⬛" },
+  towerCap6:  { name: "Overclock VI",   desc: "raise tower level cap to 6",
+    branch: "core", parent: "coreHealth", pos: { x: 60, y: 42 }, glyph: "6",
+    maxTier: 1, costs: [2], kind: "level" },
+  towerCap7:  { name: "Overclock VII",  desc: "raise tower level cap to 7",
+    branch: "core", parent: "towerCap6", pos: { x: 60, y: 66 }, glyph: "7",
+    maxTier: 1, costs: [2], kind: "level" },
+  towerCap8:  { name: "Overclock VIII", desc: "raise tower level cap to 8",
+    branch: "core", parent: "towerCap7", pos: { x: 60, y: 90 }, glyph: "8",
+    maxTier: 1, costs: [3], kind: "level" },
+  towerCap9:  { name: "Overclock IX",   desc: "raise tower level cap to 9",
+    branch: "core", parent: "towerCap8", pos: { x: 60, y: 114 }, glyph: "9",
+    maxTier: 1, costs: [3], kind: "level" },
+  towerCap10: { name: "Overclock X",    desc: "raise tower level cap to 10",
+    branch: "core", parent: "towerCap9", pos: { x: 60, y: 138 }, glyph: "★",
+    maxTier: 1, costs: [4], kind: "level" },
+
+  // ----- COMBAT branch (per-tower damage, left column) -----
+  laserDamage:  { name: "Laser Calibration", desc: "Laser Tower damage",
+    branch: "combat", parent: null, pos: { x: 24, y: 34 }, glyph: "L", kind: "pct" },
+  pulseDamage:  { name: "Pulse Amplifier", desc: "Pulse Tower damage",
+    branch: "combat", parent: "laserDamage", pos: { x: 24, y: 58 }, glyph: "P", kind: "pct" },
+  slowDuration: { name: "Stasis Field", desc: "slow effect duration",
+    branch: "combat", parent: "pulseDamage", pos: { x: 24, y: 82 }, glyph: "S", kind: "pct" },
+  railDamage:   { name: "Rail Overcharge", desc: "Railgun Tower damage",
+    branch: "combat", parent: "slowDuration", pos: { x: 24, y: 106 }, glyph: "R", kind: "pct" },
+  railPen:      { name: "Over-Penetration", desc: "Railgun beam length",
+    branch: "combat", parent: "railDamage", pos: { x: 8, y: 118 }, glyph: "➤",
+    kind: "mult" },
+  rocketDamage: { name: "Warhead Payload", desc: "Rocket Launcher damage",
+    branch: "combat", parent: "railDamage", pos: { x: 24, y: 130 }, glyph: "K", kind: "pct" },
+
+  // ----- ECONOMY branch (money/XP/shards/interest, right column) -----
+  moneyPerKill: { name: "Salvage Protocol", desc: "money per kill",
+    branch: "economy", parent: null, pos: { x: 96, y: 34 }, glyph: "$", kind: "pct" },
+  xpGain:       { name: "Combat Learning", desc: "tower XP gain",
+    branch: "economy", parent: "moneyPerKill", pos: { x: 96, y: 58 }, glyph: "▲", kind: "pct" },
+  shardFind:    { name: "Shard Magnet", desc: "shards found per kill",
+    branch: "economy", parent: "xpGain", pos: { x: 96, y: 82 }, glyph: "◆", kind: "pct" },
+  interestRate: { name: "Compound Yield", desc: "cash interest per wave",
+    branch: "economy", parent: "shardFind", pos: { x: 96, y: 106 }, glyph: "%", kind: "pct" },
+  interestCap:  { name: "Reserve Cap", desc: "max interest per wave",
+    branch: "economy", parent: "interestRate", pos: { x: 112, y: 118 }, glyph: "▰", kind: "cap" },
 };
 
 // Per-tier effect size (tier N = N x this value).
 export const SKILL_VALUES = {
-  laserDamage: 0.10,   // +10% per tier
+  // Core
+  coreHealth: 5,          // +5 HP per tier
+  towerCap6: 1, towerCap7: 1, towerCap8: 1, towerCap9: 1, towerCap10: 1, // +1 cap
+  // Combat
+  laserDamage: 0.10,      // +10% per tier
   pulseDamage: 0.10,
-  railDamage: 0.10,
-  rocketDamage: 0.10,
   slowDuration: 0.10,
+  railDamage: 0.10,
+  railPen: 0.20,          // +20% beam length per tier (x1.0 -> x2.0 at tier 5)
+  rocketDamage: 0.10,
+  // Economy
   moneyPerKill: 0.10,
   xpGain: 0.10,
-  coreHealth: 5,       // +5 HP per tier
+  shardFind: 0.02,        // +2% shards per tier (2% -> 10%)
+  interestRate: 0.02,     // +2% of bank per wave per tier (2% -> 10%)
+  interestCap: 50,        // +50 gold to the per-wave cap per tier (50 -> 250)
+};
+
+// Per-branch node accent color (matches the tower / economy palette).
+export const SKILL_BRANCH_COLORS = {
+  core: "#35e0ff",
+  combat: "#ff6a6a",
+  economy: "#ffe24a",
 };
 
 // ---------- End-of-battle roast titles ----------

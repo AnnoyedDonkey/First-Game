@@ -9,7 +9,9 @@ them.
 
 **State (July 2026):** 15-level campaign across 3 worlds, 5 towers (Railgun
 unlocks after level 5, Rocket after level 10), 7 enemy types, damage-type
-counter system with visible hit feedback, 8-skill tree, permanent per-class
+counter system with visible hit feedback, a branching SVG skill tree
+(17 nodes: per-class damage, tower levels 6-10, cash interest, shard find,
+railgun over-penetration), permanent per-class
 specialties, post-cap Mastery ranks, per-level palettes, GeoDefense-style
 VFX, ¼x–4x speed controls, Endless mode per level with a 5-milestone reward
 track, forfeit button, a full Diablo-style loot/equipment system (Shards ◆
@@ -132,9 +134,19 @@ mockups/          approved interactive HTML mockups (gear UI, circuit menu)
 - **Mastery:** XP past the level cap converts to permanent damage ranks on a
   50-rank escalating curve (`TOWER_UPGRADES.mastery`; +1.5%/rank, cap +75%).
   Derived purely from saved `xp` (retroactive); ranks up live mid-battle.
-- **Skill tree:** 8 skills × 5 tiers (`SKILLS`/`SKILL_VALUES`/`SKILL_TIERS` in
-  config.js), tier costs 1/1/2/2/3, 1 point per battle won (replays farmable
-  by design, awarded in `recordBattleEnd`).
+- **Skill tree:** a branching prerequisite GRAPH of 17 nodes across 3
+  branches (`SKILLS`/`SKILL_VALUES`/`SKILL_TIERS`/`SKILL_BRANCH_COLORS`/
+  `SKILL_TREE_VIEWBOX` in config.js). Each node: `{ branch, parent, pos,
+  glyph, maxTier, costs, kind }`. Default tier costs 1/1/2/2/3; single-tier
+  nodes (towerCap6-10, interestCap) override `maxTier`/`costs`. A node's FIRST
+  tier needs its parent owned (`isSkillUnlocked`); already-owned nodes always
+  keep upgrading (old saves never stuck). 1 point per battle won (replays
+  farmable, awarded in `recordBattleEnd`). Rendered as an SVG board
+  (`ui.js buildSkillTreeSvg`), tap a node → `#skill-sheet-overlay` sheet.
+  New-skill effects live in `progression.js`: `getTowerLevelCap`,
+  `getInterestRate`/`getInterestCap`, `getSkillShardFindMult`,
+  `getRailBeamLengthMult`. Tower cap 6-10 also re-anchors Mastery
+  (`syncMasteryAnchor` → `equipment.setMasteryXpStart`).
 - **Loot/equipment:** 4 typed slots per tower, 5 rarities
   (common→singularity), affixes + uniques — generator in loot.js, knobs in
   `config.js LOOT`. Kill drops (`LOOT.drops.dropChanceBase`) + one guaranteed
@@ -322,6 +334,38 @@ selector is open. Treat `levels.js` as the source of truth on wave numbers.
     button) showing each locked rarity with ◆ price in rarity color; tap →
     bottom-sheet confirm (reuses `#store-sheet-overlay`). Old saves backfill
     cleanly; console clean on load. Next: B3 branching SVG skill tree.
+  - **DONE — B3 (2026-07-12):** branching SVG skill tree + 4 new skill
+    families. `config.js SKILLS` is now a prerequisite GRAPH — each node has
+    `{ branch, parent, pos, glyph, maxTier, costs, kind }`; layout coords live
+    in `SKILLS[*].pos` (viewbox `SKILL_TREE_VIEWBOX` 120×168) and branch colors
+    in `SKILL_BRANCH_COLORS` — all tunable. 3 branches: CORE (cyan) =
+    coreHealth root + the towerCap6→10 spine; COMBAT (red) = laser/pulse/slow/
+    rail damage chain with railPen forking off railDamage; ECONOMY (yellow) =
+    money/xp/shardFind + interestRate→interestCap fork. The 8 original skill ids
+    are unchanged so old `state.skills` carries over. `ui.js buildSkillTreeSvg`
+    (replaces `renderSkillList`) draws square nodes + lit/dim connectors, states
+    bought/available(pulse)/locked; tap → `#skill-sheet-overlay` bottom sheet
+    with pips + BUY (reuses the store-sheet pattern). Vertically pannable
+    (`.skill-tree-scroll`). New skills: **tower levels 6–10** (5 chained
+    single-tier nodes; `progression.getTowerLevelCap()` = 5 + owned cap nodes,
+    routed through `towers.xpThresholdFor/upgradeCostFor`; `xpThresholds`/
+    `upgradeCosts` extended to length 9). **Cash interest** (interestRate 2→10%,
+    interestCap 50→250/wave) applied in `game.js applyWaveInterest` at each
+    wave-clear (gold ring VFX at core; `game.lastInterest` left for B5 toast).
+    **Shard find** (2→10%, `getSkillShardFindMult` composed into the enemies.js
+    shard accumulation). **Railgun over-penetration** (railPen, beam ×1.0→2.0)
+    via `tower.beamLengthMult` threaded through `collectLineVictims`
+    (new `maxLength` param — laser unaffected), the rail fire endpoint, and
+    `findRailgunAim`. buySkill gained a parent gate (first tier only — owned
+    nodes always keep upgrading, so pre-B3 saves never get stuck) and per-node
+    `maxTier`/`costs`. **Mastery anchor decision:** `equipment.masteryRankFor`
+    now reads a settable `masteryXpStart`; `progression.syncMasteryAnchor` moves
+    it to the unlocked cap's XP threshold (`xpThresholds[cap-2]`) so leveling
+    6–10 doesn't double-count as mastery. Base cap 5 → stays 700, so EXISTING
+    veterans are NOT nerfed until they choose to unlock higher caps. Verified:
+    parent-gating, cap→10 + enforcement, interest (+38 under a 50 cap on a 1000
+    bank), rail reach 224→314 at ×1.4, old array-form save migrates clean
+    (mastery probe unchanged at 1100). Next: B4 gear visible on towers.
 - **Loot P7 balance pass** — largely superseded by B1/B6; read
   `LOOT_DESIGN.md` §15 before tuning drops.
 - **PLAYTEST-PENDING:** counter re-tune + Rocket + World 3 difficulty is
