@@ -344,6 +344,164 @@ function navigateWorld(delta) {
   renderWorld();
 }
 
+// ---------- Circuit-board menu (CIRCUIT_MENU_DESIGN.md M1) ----------
+// The level list is drawn as a neon SVG circuit board: 5 level "chips"
+// wired top→bottom by a per-world trace, decorative dead-end traces/pads,
+// milestone tick-rings on cleared nodes, and an ∞ pad per cleared level.
+// Ported from mockups/circuit-menu-mockup.html (the visual contract).
+
+// Decorative circuit traces + pads, per world style. `a` = world accent.
+function boardDecoTraces(style, a) {
+  const seg = [];
+  const line = (d, w, o, cls = "") =>
+    seg.push(
+      `<path d="${d}" fill="none" stroke="${a}" stroke-width="${w}" opacity="${o}" stroke-linecap="round" class="${cls}" ${cls ? 'stroke-dasharray="3 9"' : ""}/>`
+    );
+  const pad = (x, y, r, o) =>
+    seg.push(
+      `<circle cx="${x}" cy="${y}" r="${r}" fill="none" stroke="${a}" stroke-width=".5" opacity="${o}"/><circle cx="${x}" cy="${y}" r="${r * 0.35}" fill="${a}" opacity="${o * 0.8}"/>`
+    );
+  const hex = (x, y, r, o) => {
+    let p = "";
+    for (let i = 0; i < 6; i++) {
+      const t = (Math.PI / 3) * i - Math.PI / 6;
+      p += (i ? "L" : "M") + (x + r * Math.cos(t)).toFixed(1) + " " + (y + r * Math.sin(t)).toFixed(1);
+    }
+    seg.push(`<path d="${p}Z" fill="none" stroke="${a}" stroke-width=".5" opacity="${o}"/>`);
+  };
+
+  if (style === "grid") {
+    line("M6 8 H40 V22 H14 V40", 0.7, 0.22); pad(14, 40, 1.6, 0.5);
+    line("M94 6 V26 H86 V48", 0.7, 0.22); pad(86, 48, 1.6, 0.5);
+    line("M4 70 H16 V92 H8 V118", 0.7, 0.18); pad(8, 118, 1.6, 0.4);
+    line("M96 66 V88 H88 V112 H94", 0.7, 0.18); pad(94, 112, 1.6, 0.4);
+    line("M10 55 H20", 0.5, 0.3); pad(10, 55, 1.2, 0.5);
+    line("M90 58 H82", 0.5, 0.3); pad(90, 58, 1.2, 0.5);
+    line("M48 2 V8 H60", 0.5, 0.25); pad(60, 8, 1.2, 0.45);
+  } else if (style === "diagonal") {
+    line("M4 22 L18 8 H34", 0.7, 0.22); hex(4, 22, 2.2, 0.5);
+    line("M96 30 L84 18 H70", 0.7, 0.22); hex(96, 30, 2.2, 0.5);
+    line("M6 64 L18 52", 0.6, 0.25); hex(6, 64, 2, 0.45);
+    line("M94 78 L82 66", 0.6, 0.25); hex(94, 78, 2, 0.45);
+    line("M10 122 L26 106 H40", 0.7, 0.18); hex(10, 122, 2.2, 0.4);
+    line("M92 118 L78 104", 0.6, 0.2); hex(92, 118, 2, 0.45);
+    line("M50 2 L58 10", 0.5, 0.25); hex(50, 2, 1.8, 0.4);
+  } else {
+    line("M50 64 L12 20", 0.5, 0.15); line("M50 64 L88 20", 0.5, 0.15);
+    line("M50 64 L8 96", 0.5, 0.12); line("M50 64 L92 96", 0.5, 0.12);
+    seg.push(`<circle cx="50" cy="64" r="44" fill="none" stroke="${a}" stroke-width=".4" opacity=".14"/>`);
+    seg.push(`<circle cx="50" cy="64" r="55" fill="none" stroke="${a}" stroke-width=".4" opacity=".09"/>`);
+    pad(12, 20, 1.6, 0.4); pad(88, 20, 1.6, 0.4); pad(8, 96, 1.4, 0.35); pad(92, 96, 1.4, 0.35);
+  }
+  return seg.join("");
+}
+
+// Connector path between two consecutive nodes, per world style.
+function boardConnector(p1, p2, style) {
+  if (style === "grid") {
+    const my = (p1.y + p2.y) / 2;
+    return `M${p1.x} ${p1.y} V${my} H${p2.x} V${p2.y}`;
+  }
+  if (style === "diagonal") {
+    const dx = p2.x - p1.x, sy = p2.y - Math.abs(dx);
+    return `M${p1.x} ${p1.y} V${sy} L${p2.x} ${p2.y}`;
+  }
+  return `M${p1.x} ${p1.y} L${p2.x} ${p2.y}`;
+}
+
+// Milestone tick-ring around a cleared node. Works for 5 or 20 ticks
+// (tighter gap past 10 so a full 20-track still fits).
+function boardTickRing(x, y, r, done, total) {
+  if (!total) return "";
+  let out = "";
+  const gapDeg = total > 10 ? 6 : 14;
+  const arc = 360 / total;
+  for (let i = 0; i < total; i++) {
+    const a0 = -90 + i * arc + gapDeg / 2, a1 = -90 + (i + 1) * arc - gapDeg / 2;
+    const p = (a) => {
+      const t = (a * Math.PI) / 180;
+      return `${(x + r * Math.cos(t)).toFixed(2)} ${(y + r * Math.sin(t)).toFixed(2)}`;
+    };
+    const lit = i < done;
+    out += `<path d="M${p(a0)} A${r} ${r} 0 0 1 ${p(a1)}" fill="none" stroke="${lit ? "#ffd76a" : "rgba(120,140,170,.28)"}" stroke-width="${lit ? 1.4 : 1}" stroke-linecap="round" ${lit ? 'filter="url(#board-glow)"' : ""}/>`;
+  }
+  return out;
+}
+
+// Build the full board SVG string for the current world. `nodes` is a
+// per-level array of { level, state, best, done, total }.
+function buildBoardSvg(world, nodes) {
+  const pts = world.nodePos;
+  const a = world.accent;
+  const a2 = world.accent2;
+  const R = 7.5;
+
+  let svg = `<svg viewBox="0 0 100 130" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <filter id="board-glow" x="-80%" y="-80%" width="260%" height="260%">
+        <feGaussianBlur stdDeviation="1.1" result="b"/>
+        <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+      <radialGradient id="board-vign" cx="50%" cy="45%" r="75%">
+        <stop offset="60%" stop-color="transparent"/><stop offset="100%" stop-color="rgba(0,0,0,.55)"/>
+      </radialGradient>
+    </defs>`;
+
+  svg += boardDecoTraces(world.boardStyle, a);
+
+  // Connectors between consecutive levels — lit once the FROM node is cleared.
+  for (let i = 0; i < pts.length - 1; i++) {
+    const d = boardConnector(pts[i], pts[i + 1], world.boardStyle);
+    const lit = nodes[i].state === "cleared";
+    svg += `<path d="${d}" fill="none" stroke="${lit ? a : "rgba(90,110,140,.35)"}" stroke-width="${lit ? 1.1 : 0.8}" ${lit ? 'filter="url(#board-glow)"' : 'stroke-dasharray="2 3"'}/>`;
+    if (lit)
+      svg += `<path d="${d}" fill="none" stroke="#ffffff" stroke-width=".7" opacity=".8" stroke-dasharray="1.5 38.5" class="trace-flow" filter="url(#board-glow)"/>`;
+  }
+
+  // Level node visuals.
+  nodes.forEach((nd, i) => {
+    const { x, y } = pts[i];
+    if (nd.state === "locked") {
+      svg += `<circle cx="${x}" cy="${y}" r="${R}" fill="#0a0f18" stroke="rgba(90,110,140,.5)" stroke-width=".8" stroke-dasharray="2 2"/>
+        <text x="${x}" y="${y + 1.8}" text-anchor="middle" font-size="5" fill="rgba(120,140,170,.6)">🔒</text>`;
+    } else if (nd.state === "frontier") {
+      svg += `<circle cx="${x}" cy="${y}" r="${R + 3.4}" fill="none" stroke="${a}" stroke-width=".6" class="frontier-pulse" filter="url(#board-glow)"/>
+        <circle cx="${x}" cy="${y}" r="${R}" fill="#0a1220" stroke="${a}" stroke-width="1.3" filter="url(#board-glow)"/>
+        <text x="${x}" y="${y + 2.4}" text-anchor="middle" font-size="6.5" fill="${a}" filter="url(#board-glow)">${nd.n}</text>`;
+    } else { // cleared
+      svg += boardTickRing(x, y, R + 3.6, nd.done, nd.total);
+      svg += `<circle cx="${x}" cy="${y}" r="${R}" fill="rgba(0,60,70,.5)" stroke="${a}" stroke-width="1.2" filter="url(#board-glow)"/>
+        <circle cx="${x}" cy="${y}" r="${R - 2.4}" fill="${a}" opacity=".18"/>
+        <text x="${x}" y="${y + 2.4}" text-anchor="middle" font-size="6.5" fill="#eaffff" filter="url(#board-glow)">${nd.n}</text>`;
+      // ∞ pad wired off the lower-right; hot-pink glow once a best exists.
+      const bx = x + R + 4.2, by = y + R + 2.5;
+      svg += `<path d="M${x + R * 0.72} ${y + R * 0.72} L${bx - 2} ${by - 1.4}" stroke="${a}" stroke-width=".5" opacity=".6"/>
+        <circle cx="${bx}" cy="${by}" r="3.4" fill="#0a1220" stroke="${nd.best > 0 ? "#ff7ccb" : a2}" stroke-width=".8" ${nd.best > 0 ? 'filter="url(#board-glow)"' : 'opacity=".75"'}/>
+        <text x="${bx}" y="${by + 1.7}" text-anchor="middle" font-size="4.6" fill="${nd.best > 0 ? "#ffb3de" : a2}">∞</text>`;
+    }
+  });
+
+  // Vignette (below the hit layer, above the art).
+  svg += `<rect x="0" y="0" width="100" height="130" fill="url(#board-vign)" pointer-events="none"/>`;
+
+  // Invisible hit targets, painted last so they always receive taps. Each
+  // node gets a fat circle → PLAY; each cleared node's ∞ pad → ENDLESS.
+  nodes.forEach((nd, i) => {
+    const { x, y } = pts[i];
+    if (nd.state === "cleared") {
+      const bx = x + R + 4.2, by = y + R + 2.5;
+      svg += `<circle cx="${x}" cy="${y}" r="13" fill="rgba(0,0,0,0)" data-hit="play" data-i="${i}" style="cursor:pointer"/>`;
+      svg += `<circle cx="${bx}" cy="${by}" r="5" fill="rgba(0,0,0,0)" data-hit="endless" data-i="${i}" style="cursor:pointer"/>`;
+    } else if (nd.state === "frontier") {
+      svg += `<circle cx="${x}" cy="${y}" r="13" fill="rgba(0,0,0,0)" data-hit="play" data-i="${i}" style="cursor:pointer"/>`;
+    }
+    // Locked nodes get no hit target (nothing to launch).
+  });
+
+  svg += `</svg>`;
+  return svg;
+}
+
 function renderWorld() {
   el.shardsValue.textContent = String(getShards());
 
@@ -354,6 +512,7 @@ function renderWorld() {
   // --- Header: name (+ lock accent), page dots, arrow states ---
   el.worldName.textContent = world.name;
   el.worldName.classList.toggle("locked", !unlocked);
+  el.worldName.style.color = unlocked ? world.accent : "";
   el.worldDots.innerHTML = WORLDS.map(
     (_, i) => `<span class="dot${i === currentWorld ? " active" : ""}"></span>`
   ).join("");
@@ -365,55 +524,54 @@ function renderWorld() {
   // (it's tappable — tapping previews it).
   el.worldNext.classList.toggle("locked", hasNext && !isWorldUnlocked(currentWorld + 1));
 
-  // --- Level rows for this world ---
-  el.levelList.innerHTML = "";
+  // --- Derive per-node state from real progression ---
+  // Frontier = first not-yet-cleared level of an UNLOCKED world; every node
+  // of a locked world renders in the locked state (a preview).
+  let frontierAssigned = false;
+  const nodes = world.levelIds.map((id) => {
+    const level = levelById.get(id);
+    const done = !!level && completedIds.includes(id);
+    let state;
+    if (!unlocked) {
+      state = "locked";
+    } else if (done) {
+      state = "cleared";
+    } else if (!frontierAssigned) {
+      state = "frontier";
+      frontierAssigned = true;
+    } else {
+      state = "locked";
+    }
+    const milestones = done ? getEndlessMilestones(id) : [];
+    return {
+      level,
+      n: level ? Number(id.slice(-3)) : "",
+      state,
+      done: milestones.filter((m) => m.claimed).length,
+      total: milestones.length,
+      best: done ? getBestEndlessWave(id) : 0,
+    };
+  });
+
+  // --- Render the board into #level-list (now the board host) ---
+  el.levelList.classList.add("board-host");
+  el.levelList.innerHTML = buildBoardSvg(world, nodes);
 
   if (!unlocked) {
     const note = document.createElement("div");
-    note.className = "world-locked-note";
+    note.className = "world-locked-note board-note";
     note.textContent =
       `LOCKED — clear all of ${WORLDS[currentWorld - 1].name} to unlock ${world.name}.`;
     el.levelList.appendChild(note);
   }
 
-  for (const id of world.levelIds) {
-    const level = levelById.get(id);
-    if (!level) continue;
-    const done = completedIds.includes(level.id);
-
-    const row = document.createElement("div");
-    row.className = "level-row";
-
-    const btn = document.createElement("button");
-    btn.className = "level-button" + (unlocked ? "" : " locked");
-    const tag = done
-      ? `<span class="level-done">✓ CLEARED</span>`
-      : unlocked
-        ? `<span></span>`
-        : `<span class="level-done">🔒</span>`;
-    btn.innerHTML = `<span>${level.name.toUpperCase()}</span>` + tag;
-    if (unlocked) btn.addEventListener("click", () => pick(level, false));
-    else btn.disabled = true;
-    row.appendChild(btn);
-
-    // Endless mode: unlocked once the campaign level is beaten. Waves
-    // never stop and escalate fast — see endless.js.
-    if (unlocked && done) {
-      const best = getBestEndlessWave(level.id);
-      const milestones = getEndlessMilestones(level.id);
-      const claimedCount = milestones.filter((m) => m.claimed).length;
-      const endlessBtn = document.createElement("button");
-      endlessBtn.className = "level-button endless-button";
-      endlessBtn.innerHTML =
-        `<span>∞ ENDLESS</span>` +
-        `<span class="level-done">${best > 0 ? `BEST W${best}` : "NEW"}</span>` +
-        `<span class="level-done endless-milestones">★ ${claimedCount}/${milestones.length}</span>`;
-      endlessBtn.addEventListener("click", () => pick(level, true));
-      row.appendChild(endlessBtn);
-    }
-
-    el.levelList.appendChild(row);
-  }
+  // Wire taps: M1 launches directly (the detail sheet lands in M2).
+  el.levelList.querySelectorAll("[data-hit]").forEach((hit) => {
+    const nd = nodes[+hit.dataset.i];
+    if (!nd || !nd.level) return;
+    const endless = hit.dataset.hit === "endless";
+    hit.addEventListener("click", () => pick(nd.level, endless));
+  });
 
   appendGlobalMenuButtons();
 }

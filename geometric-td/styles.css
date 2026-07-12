@@ -327,6 +327,47 @@ button.hud-item {
 
 .level-button { flex-shrink: 0; } /* buttons keep height while scrolling */
 
+/* ---------- Circuit-board menu (CIRCUIT_MENU_DESIGN.md M1) ---------- */
+/* When #level-list hosts the SVG board it stops being a scrolling column
+   and becomes a single non-scrolling frame the board fills. It's still a
+   flex ITEM of #level-overlay (flex:1, min-height:0), so it takes the
+   space between the world nav and the pinned footer. */
+#level-list.board-host {
+  display: block;
+  position: relative;
+  overflow: hidden;
+  padding: 0;
+  max-width: 440px;
+}
+#level-list.board-host svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: pan-y; /* keep taps responsive; horizontal swipe flips worlds */
+}
+/* Locked-world banner overlaid on the previewed board. */
+.world-locked-note.board-note {
+  position: absolute;
+  top: 6px;
+  left: 0;
+  right: 0;
+  padding: 4px 12px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Slow white energy pulse along cleared connectors; frontier ring breathes.
+   Both respect reduced-motion (U4 pattern). */
+@keyframes board-flow-dash { to { stroke-dashoffset: -40; } }
+@keyframes board-node-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+.trace-flow { animation: board-flow-dash 2.2s linear infinite; }
+.frontier-pulse { animation: board-node-pulse 1.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .trace-flow, .frontier-pulse { animation: none; }
+}
+
 /* Thin visible scrollbar so desktop users can see the list scrolls */
 #level-list::-webkit-scrollbar, #skill-list::-webkit-scrollbar { width: 4px; }
 #level-list::-webkit-scrollbar-thumb, #skill-list::-webkit-scrollbar-thumb {
