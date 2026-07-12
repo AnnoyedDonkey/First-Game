@@ -451,25 +451,37 @@ function buildBoardSvg(world, nodes) {
       </radialGradient>
     </defs>`;
 
-  svg += boardDecoTraces(world.boardStyle, a);
+  // Decorative traces fade in together as the board powers on (M3).
+  svg += `<g class="board-deco-enter">${boardDecoTraces(world.boardStyle, a)}</g>`;
 
   // Connectors between consecutive levels — lit once the FROM node is cleared.
+  // Lit ones "draw in" (M3 entry flourish) so energy reads as flowing down
+  // the board from the top; unlit ones just fade with the deco layer.
   for (let i = 0; i < pts.length - 1; i++) {
     const d = boardConnector(pts[i], pts[i + 1], world.boardStyle);
     const lit = nodes[i].state === "cleared";
-    svg += `<path d="${d}" fill="none" stroke="${lit ? a : "rgba(90,110,140,.35)"}" stroke-width="${lit ? 1.1 : 0.8}" ${lit ? 'filter="url(#board-glow)"' : 'stroke-dasharray="2 3"'}/>`;
-    if (lit)
-      svg += `<path d="${d}" fill="none" stroke="#ffffff" stroke-width=".7" opacity=".8" stroke-dasharray="1.5 38.5" class="trace-flow" filter="url(#board-glow)"/>`;
+    if (lit) {
+      // pathLength="1" normalizes the draw-in dash regardless of path length.
+      svg += `<path d="${d}" pathLength="1" fill="none" stroke="${a}" stroke-width="1.1" class="board-trace-draw" style="animation-delay:${70 + i * 55}ms" filter="url(#board-glow)"/>`;
+      // Perpetual white energy pulse (no filter — it animates forever, so the
+      // static glow of the base connector carries the bloom instead; M3 perf).
+      svg += `<path d="${d}" fill="none" stroke="#ffffff" stroke-width=".7" opacity=".85" stroke-dasharray="1.5 38.5" class="trace-flow"/>`;
+    } else {
+      svg += `<path d="${d}" fill="none" stroke="rgba(90,110,140,.35)" stroke-width="0.8" stroke-dasharray="2 3" class="board-deco-enter"/>`;
+    }
   }
 
-  // Level node visuals.
+  // Level node visuals — each ignites in sequence down the board (M3).
   nodes.forEach((nd, i) => {
     const { x, y } = pts[i];
+    svg += `<g class="board-node-enter" style="animation-delay:${40 + i * 55}ms">`;
     if (nd.state === "locked") {
       svg += `<circle cx="${x}" cy="${y}" r="${R}" fill="#0a0f18" stroke="rgba(90,110,140,.5)" stroke-width=".8" stroke-dasharray="2 2"/>
         <text x="${x}" y="${y + 1.8}" text-anchor="middle" font-size="5" fill="rgba(120,140,170,.6)">🔒</text>`;
     } else if (nd.state === "frontier") {
-      svg += `<circle cx="${x}" cy="${y}" r="${R + 3.4}" fill="none" stroke="${a}" stroke-width=".6" class="frontier-pulse" filter="url(#board-glow)"/>
+      // Pulse ring carries no filter (it animates forever — M3 perf); the
+      // inner node's static glow supplies the bloom.
+      svg += `<circle cx="${x}" cy="${y}" r="${R + 3.4}" fill="none" stroke="${a}" stroke-width=".6" class="frontier-pulse"/>
         <circle cx="${x}" cy="${y}" r="${R}" fill="#0a1220" stroke="${a}" stroke-width="1.3" filter="url(#board-glow)"/>
         <text x="${x}" y="${y + 2.4}" text-anchor="middle" font-size="6.5" fill="${a}" filter="url(#board-glow)">${nd.n}</text>`;
     } else { // cleared
@@ -480,9 +492,10 @@ function buildBoardSvg(world, nodes) {
       // ∞ pad wired off the lower-right; hot-pink glow once a best exists.
       const bx = x + R + 4.2, by = y + R + 2.5;
       svg += `<path d="M${x + R * 0.72} ${y + R * 0.72} L${bx - 2} ${by - 1.4}" stroke="${a}" stroke-width=".5" opacity=".6"/>
-        <circle cx="${bx}" cy="${by}" r="3.4" fill="#0a1220" stroke="${nd.best > 0 ? "#ff7ccb" : a2}" stroke-width=".8" ${nd.best > 0 ? 'filter="url(#board-glow)"' : 'opacity=".75"'}/>
+        <circle cx="${bx}" cy="${by}" r="3.4" fill="#0a1220" stroke="${nd.best > 0 ? "#ff7ccb" : a2}" stroke-width=".8" class="${nd.best > 0 ? "board-inf-live" : ""}" ${nd.best > 0 ? 'filter="url(#board-glow)"' : 'opacity=".75"'}/>
         <text x="${bx}" y="${by + 1.7}" text-anchor="middle" font-size="4.6" fill="${nd.best > 0 ? "#ffb3de" : a2}">∞</text>`;
     }
+    svg += `</g>`;
   });
 
   // Vignette (below the hit layer, above the art).

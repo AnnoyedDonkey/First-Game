@@ -364,8 +364,47 @@ button.hud-item {
 @keyframes board-node-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
 .trace-flow { animation: board-flow-dash 2.2s linear infinite; }
 .frontier-pulse { animation: board-node-pulse 1.6s ease-in-out infinite; }
+
+/* ---------- M3 pizzazz ----------
+   Entry flourish: on every board render / world flip the board "powers on"
+   in under ~550ms — decorative traces fade up, the lit main trace draws in
+   from the top, and the level nodes ignite one after another down the board
+   so energy reads as flowing into each chip. Plus a breathing glow on any
+   ∞ pad that has a best wave. All one-shot except the ∞ breathe; all gated
+   behind reduced-motion below. */
+@keyframes board-deco-in { from { opacity: 0; } to { opacity: 1; } }
+.board-deco-enter { animation: board-deco-in 0.3s ease-out both; }
+
+@keyframes board-trace-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+.board-trace-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: board-trace-draw 0.4s ease-out both;
+}
+
+@keyframes board-node-ignite {
+  0%   { opacity: 0; transform: scale(0.3); }
+  65%  { opacity: 1; transform: scale(1.14); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.board-node-enter {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: board-node-ignite 0.28s cubic-bezier(0.2, 0.85, 0.3, 1) both;
+}
+
+@keyframes board-inf-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.13); } }
+.board-inf-live {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: board-inf-pulse 1.9s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .trace-flow, .frontier-pulse { animation: none; }
+  .trace-flow, .frontier-pulse, .board-deco-enter, .board-node-enter,
+  .board-inf-live { animation: none; }
+  /* draw-in leaves the trace hidden without its animation — force it shown. */
+  .board-trace-draw { animation: none; stroke-dashoffset: 0; }
 }
 
 /* ---------- Level detail bottom sheet (CIRCUIT_MENU_DESIGN.md M2) ----------

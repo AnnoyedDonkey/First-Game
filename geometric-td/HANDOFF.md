@@ -643,7 +643,7 @@ as the source of truth, not that old ×1.2 rule.)
     `rerollStore`/`buyStoreItem` untouched) — pure restyle, per
     `GEAR_UI_DESIGN.md` §3. Full detail + verification notes in that doc's
     U5 checkbox.
-- **CIRCUIT-BOARD MAIN MENU (in progress — M2 shipped, M3 next):** replace
+- **CIRCUIT-BOARD MAIN MENU (in progress — M3 shipped, M4 next):** replace
   the level-row list with a per-world neon circuit board (SVG nodes +
   traces), node states readable at a glance (cleared / frontier / locked /
   ∞ pad / milestone tick-ring), tap → bottom-sheet level detail with
@@ -709,8 +709,35 @@ as the source of truth, not that old ×1.2 rule.)
     sheets all showed correct content and button enablement, veil-tap
     closed the sheet, PLAY and ENDLESS both launched the right mode
     (`game.level.id`, `game.endless`) — no console errors.
-    Next: **M3** (Opus) — pizzazz (traveling energy pulse, entry flourish)
-    + an iPhone perf pass on the SVG glow filters.
+  - **M3 DONE (2026-07-12):** pizzazz + iPhone perf pass. Entry flourish in
+    `ui.js buildBoardSvg` (+ new CSS in `styles.css`): on every board render
+    / world flip the board "powers on" in ~550ms — deco traces + unlit
+    connectors fade up (`.board-deco-enter`), each lit main-trace segment
+    draws in from the top (`.board-trace-draw`, `pathLength="1"` so the dash
+    normalizes for any path length, staggered `animation-delay`), and the 5
+    nodes ignite in sequence down the board (`.board-node-enter`, scale-pop
+    via `transform-box: fill-box; transform-origin: center`). Kept the
+    perpetual `.trace-flow` energy pulse; added a breathing glow to any ∞ pad
+    with a best wave (`.board-inf-live`). **Perf:** removed
+    `filter="url(#board-glow)"` from the two *perpetually*-animating overlays
+    (`.trace-flow` + the frontier pulse ring) so the SVG Gaussian-blur filter
+    isn't recomputed every frame on the idle menu — a static-glow sibling
+    (base connector / inner frontier circle) still supplies the bloom; the
+    one-shot entry animations keep their filters (only ~0.4s per render). All
+    animations gated behind `prefers-reduced-motion` — and the draw-in is
+    explicitly forced to `stroke-dashoffset:0` there so a reduced-motion trace
+    is never left hidden (its non-animated base state is invisible by design).
+    Verified in-browser against a seeded save (world 1: L1–4 cleared, L5
+    frontier, endless bests on L1–2): correct class/element counts, animation
+    names/durations wired, zero console errors, and — because the browser-pane
+    tab runs `visibilityState:"hidden"` (CSS animations throttle at their 0%
+    frame, screenshots time out, same harness limit noted for M1/M2) —
+    force-`.finish()`ed all 17 board animations to confirm every node settles
+    to opacity 1 / scale(1) and every trace to offset 0 (they resolve
+    *visible*, never stuck invisible). The actual motion FEEL can't be
+    eyeballed in this harness (that's this phase's whole point per the spec) —
+    it's on the user's iPhone. APP_VERSION → 2026.07.12-5.
+    Next: **M4** (Sonnet) — per-level milestone tracks (20-ready data shape).
 - **PLAYTEST-PENDING:** the counter re-tune + visible feedback + Rocket +
   World 3 all shipped but the difficulty is calibrated only by bot sims
   (superhuman placement → flawless bot wins are a WEAK signal). The user's

@@ -201,5 +201,32 @@ one new sheet.
   (`game.level.id` correct, HUD shown, overlay hidden), ENDLESS launch
   (`game.endless === true`) — no console errors. APP_VERSION →
   2026.07.12-4, pushed to main.
-- [ ] M3 — pizzazz + iPhone perf pass
+- [x] M3 — pizzazz + iPhone perf pass (2026-07-12). Entry flourish on every
+  board render / world flip (`ui.js buildBoardSvg` + new CSS in `styles.css`):
+  the board "powers on" in ~550ms — decorative traces + unlit connectors fade
+  up (`.board-deco-enter`), each lit main-trace segment draws in from the top
+  (`.board-trace-draw`, `pathLength="1"` normalized dash so it works for any
+  path length, staggered `animation-delay`), and the 5 level nodes ignite one
+  after another down the board (`.board-node-enter`, scale-pop via
+  `transform-box: fill-box`, staggered). Kept the perpetual white energy pulse
+  along cleared connectors (`.trace-flow`) and added a breathing glow to any
+  ∞ pad with a best wave (`.board-inf-live`). **Perf pass:** dropped
+  `filter="url(#board-glow)"` from the two *perpetually-animating* overlays
+  (`.trace-flow`, the frontier pulse ring) so the SVG glow filter no longer
+  recomputes every frame on the idle menu — the static-glow sibling under each
+  (base connector / inner frontier circle) still carries the bloom; the
+  one-shot entry animations keep their filters (they only run ~0.4s on render).
+  All entry/idle animations gated behind `prefers-reduced-motion` (the draw-in
+  is explicitly forced to `stroke-dashoffset:0` there so a reduced-motion trace
+  is never left hidden). Verified in-browser (seeded save, world 1: levels 1–4
+  cleared, 5 frontier, endless bests on 1–2): correct element counts (5 node
+  groups, 4 draw-in traces, 4 trace-flow, 1 frontier-pulse, 2 inf-live, 1 deco
+  group, 9 hit targets), animation names/durations wired, and — since the
+  browser-pane tab runs `visibilityState:"hidden"` (animations throttled at
+  0%, screenshots time out, same harness limit as M1/M2) — forced all 17
+  animations to `.finish()` to confirm every node settles to opacity 1 /
+  scale(1) and every trace to offset 0px (i.e. they resolve visible, not stuck
+  invisible). No console errors. The actual *motion feel* is unverifiable in
+  this harness by design of this phase — it's the user's iPhone playtest.
+  APP_VERSION → 2026.07.12-5.
 - [ ] M4 — per-level milestone tracks (20-ready data shape)
