@@ -14,6 +14,7 @@ import {
   getSkillTier, nextTierCost, getSkillPoints, buySkill, resetProgress,
   skillMaxTier, isSkillUnlocked, getTowerLevelCap,
   isTowerUnlocked, getProgress, getBestEndlessWave, getShards, getEndlessMilestones,
+  getLevelMilestones,
   getStash, getPendingLoot, stashSlotsFree, claimPendingLoot,
   discardPendingLoot, sellStashItem, sellPendingItem, sellAllStashRarity,
   equipStashItem, unequipToStash,
@@ -94,8 +95,10 @@ const el = {
   overlaySubtitle: document.getElementById("overlay-subtitle"),
   overlayButtons: document.getElementById("overlay-buttons"),
   overlayNote: document.getElementById("overlay-note"),
+  overlayMilestones: document.getElementById("overlay-milestones"),
   overlayItems: document.getElementById("overlay-items"),
   dropReveal: document.getElementById("drop-reveal"),
+  milestoneToast: document.getElementById("milestone-toast"),
   leaderboardOverlay: document.getElementById("leaderboard-overlay"),
   leaderboardList: document.getElementById("leaderboard-list"),
   leaderboardMsg: document.getElementById("leaderboard-msg"),
@@ -565,6 +568,8 @@ function renderWorld() {
       state = "locked";
     }
     const milestones = done ? getEndlessMilestones(id) : [];
+    // Campaign milestones are earnable as soon as the level is playable.
+    const campaign = (level && state !== "locked") ? getLevelMilestones(id) : [];
     const lockReason = state !== "locked"
       ? null
       : !unlocked
@@ -575,6 +580,8 @@ function renderWorld() {
       n: level ? Number(id.slice(-3)) : "",
       state,
       milestones,
+      campaign,
+      campaignDone: campaign.filter((m) => m.claimed).length,
       done: milestones.filter((m) => m.claimed).length,
       total: milestones.length,
       best: done ? getBestEndlessWave(id) : 0,
@@ -609,7 +616,11 @@ function renderWorld() {
 // per CIRCUIT_MENU_DESIGN.md M0 — a future 20-entry track renders the same way).
 function milestoneRewardText(reward) {
   if (reward.kind === "shards") return `&#9670; ${reward.amount}`;
-  return reward.rarity === "singularity" ? "SINGULARITY" : `${reward.rarity.toUpperCase()} LOOT`;
+  if (reward.kind === "skillPoint") return `&#9733; ${reward.amount} SKILL PT`;
+  if (reward.kind === "loot" || reward.rarity) {
+    return reward.rarity === "singularity" ? "SINGULARITY" : `${reward.rarity.toUpperCase()} LOOT`;
+  }
+  return "";
 }
 
 // ---- Level detail bottom sheet (CIRCUIT_MENU_DESIGN.md M2) ----
@@ -630,7 +641,22 @@ function openLevelSheet(nd, world, pick) {
     `<span class="level-chip ${cleared ? "on" : ""}">${cleared ? "&#10003; CLEARED" : locked ? "&#128274; LOCKED" : "NOT CLEARED"}</span>`,
     `<span class="level-chip ${cleared ? "on" : ""}">&#8734; ENDLESS ${cleared ? (nd.best > 0 ? `&mdash; BEST W${nd.best}` : "UNLOCKED") : "LOCKED"}</span>`,
   ];
+  if (nd.campaign && nd.campaign.length) {
+    chips.push(`<span class="level-chip gold">&#9873; ${nd.campaignDone}/${nd.campaign.length} CHALLENGES</span>`);
+  }
   if (cleared) chips.push(`<span class="level-chip gold">&#9733; ${nd.done}/${nd.total} MILESTONES</span>`);
+
+  // Campaign challenges — shown whenever the level is playable (not locked).
+  let campaignHtml = "";
+  if (!locked && nd.campaign && nd.campaign.length) {
+    const rows = nd.campaign.map((m) =>
+      `<div class="level-mile ${m.claimed ? "done" : ""}">` +
+      `<div class="tick"></div>` +
+      `<span class="m-label">${escapeHtml(m.label)}</span>` +
+      `<span class="m-reward">${milestoneRewardText(m.reward)}</span></div>`
+    ).join("");
+    campaignHtml = `<div class="level-mile-head">CAMPAIGN CHALLENGES</div>${rows}`;
+  }
 
   let milestoneHtml;
   if (cleared) {
@@ -652,6 +678,7 @@ function openLevelSheet(nd, world, pick) {
     `<div class="level-sheet-tag">LEVEL ${nd.n} &mdash; ${escapeHtml(world.name)}</div>` +
     `<p class="level-sheet-desc">${escapeHtml(level.desc || "")}</p>` +
     `<div class="level-chip-row">${chips.join("")}</div>` +
+    campaignHtml +
     milestoneHtml +
     `<div class="level-sheet-actions">` +
     `<button class="level-sheet-btn play" id="level-sheet-play"${locked ? " disabled" : ""}>&#9654; PLAY</button>` +
@@ -2127,7 +2154,7 @@ export function onExitButtonTap(handler) {
 // ({ item, dest, towerName? } from bankEarnedItem) — rendered as a tappable
 // grid under the buttons, each tile opening its detail card. `note`
 // (optional) is a short red warning line (used when loot couldn't fit).
-export function showOverlay({ title, subtitle, type, buttons, items, note }) {
+export function showOverlay({ title, subtitle, type, buttons, items, note, milestones }) {
   el.overlayTitle.textContent = title;
   el.overlaySubtitle.textContent = subtitle || "";
   el.overlay.className = type; // "win" or "loss"
@@ -2137,6 +2164,22 @@ export function showOverlay({ title, subtitle, type, buttons, items, note }) {
     el.overlayNote.classList.remove("hidden");
   } else {
     el.overlayNote.classList.add("hidden");
+  }
+
+  // Milestone recap — a compact gold list above the loot grid (B5). Each
+  // entry: { label, reward, isNew }. `isNew` marks first-time attainment.
+  const miles = (milestones || []).filter(Boolean);
+  if (miles.length) {
+    el.overlayMilestones.innerHTML = miles.map((m) =>
+      `<div class="recap-mile${m.isNew ? " new" : ""}">` +
+      `<span class="recap-star">&#9733;</span>` +
+      `<span class="recap-label">${escapeHtml(m.label)}${m.isNew ? " &mdash; NEW!" : ""}</span>` +
+      `<span class="recap-reward">${milestoneRewardText(m.reward)}</span></div>`
+    ).join("");
+    el.overlayMilestones.classList.remove("hidden");
+  } else {
+    el.overlayMilestones.innerHTML = "";
+    el.overlayMilestones.classList.add("hidden");
   }
 
   el.overlayButtons.innerHTML = "";
@@ -2171,4 +2214,33 @@ export function showOverlay({ title, subtitle, type, buttons, items, note }) {
 
 export function hideOverlay() {
   el.overlay.className = "hidden";
+}
+
+// ---- Live milestone toast (B5) ----
+// Brief celebratory banner fired mid-battle when a milestone is reached.
+// Queued so back-to-back milestones (e.g. two in one wave) each get a moment
+// on screen. pointer-events:none (see CSS) so it never eats a tap; the fade
+// is disabled under prefers-reduced-motion.
+const toastQueue = [];
+let toastActive = false;
+
+export function showMilestoneToast(text) {
+  if (!el.milestoneToast) return;
+  toastQueue.push(text);
+  if (!toastActive) runNextToast();
+}
+
+function runNextToast() {
+  const t = el.milestoneToast;
+  if (!t || toastQueue.length === 0) { toastActive = false; return; }
+  toastActive = true;
+  t.textContent = toastQueue.shift();
+  t.classList.remove("hidden", "show");
+  void t.offsetWidth; // restart the CSS entry animation
+  t.classList.add("show");
+  setTimeout(() => {
+    t.classList.remove("show");
+    t.classList.add("hidden");
+    setTimeout(runNextToast, 180);
+  }, 2300);
 }

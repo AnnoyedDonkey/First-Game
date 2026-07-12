@@ -21,6 +21,7 @@ const DEFAULT_SAVE = {
   store: { stock: [], rerolls: 0 },
   storeUnlocks: [],   // rarities unlocked for store rolls: ["enhanced", "rare", ...]
   endlessRewards: {},
+  levelMilestones: {}, // { levelId: [claimedMilestoneId, ...] } — per-level challenges (B5)
 };
 
 export function loadSave() {

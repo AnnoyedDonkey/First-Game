@@ -14,7 +14,9 @@ counter system with visible hit feedback, a branching SVG skill tree
 railgun over-penetration), permanent per-class
 specialties, post-cap Mastery ranks, per-level palettes, GeoDefense-style
 VFX, ¼x–4x speed controls, Endless mode per level with a 5-milestone reward
-track, forfeit button, a full Diablo-style loot/equipment system (Shards ◆
+track, per-level campaign challenges (2/level, some award skill points) with
+live milestone toasts + an end-screen recap, forfeit button, a full
+Diablo-style loot/equipment system (Shards ◆
 currency, per-tower gear in 4 slots, 5 rarities, drops/stash/triage, store,
 gear visible on towers in-battle as orbiting rarity diamonds, old-vs-new
 equip comparison), a tower-first gear UI, and an SVG circuit-board main menu. All deployed and
@@ -393,6 +395,44 @@ selector is open. Treat `levels.js` as the source of truth on wave numbers.
     unique row; EQUIP NEW swaps and banks the displaced item to stash; KEEP
     CURRENT is non-destructive. Next: B5 milestone toasts + recap + per-level
     milestones.
+  - **DONE — B5 (2026-07-12):** milestone live toasts + end-screen recap +
+    per-level campaign challenges. **Live toast:** new `#milestone-toast`
+    DOM element (index.html) + `ui.js showMilestoneToast(text)` — a queued,
+    auto-fading gold banner (2.3s, pointer-events none, `prefers-reduced-motion`
+    aware, z-index 8 so it sits under the win/loss overlay). Fired from
+    `game.js queueMilestoneToasts` at each wave-clear: Endless crossings
+    (`★ WAVE N — MILESTONE!` when `waveIndex+1` hits a track threshold,
+    display-only — grants still fire at run end) and campaign milestone
+    attainment. game.js pushes texts onto `game.newMilestoneToasts`; main.js
+    drains them each frame (keeps game.js UI-free). **New per-level
+    milestones:** `config.js LEVEL_MILESTONES` (2 per level ×15), evaluated by
+    new pure `src/milestones.js`. Condition vocabulary (data, combinable):
+    `kills`, `towersAtLevel:[count,level]`, `clearNoLeaks`, `onlyTowers`,
+    `withoutTowers`, `throughWave` (window gate). Whole-run constraints
+    (clearNoLeaks, bare onlyTowers/withoutTowers) resolve at WIN only;
+    kills/towersAtLevel/wave-windowed ones latch mid-run into
+    `game.milestoneResults` (a Set, never un-earned once latched). Rewards:
+    `{kind:"shards"}` or `{kind:"skillPoint"}`; the marquee "Flawless"
+    (clearNoLeaks) plus a hard tactical challenge per level, skill points on
+    the toughest. **Run tracking:** `game.kills` (enemies.js death branch),
+    `game.leaks` (game.js leak loop), `game.typesUsed` Set (towers.js
+    placeTower — survives sells). **Persistence:** new save field
+    `state.levelMilestones {levelId:[claimedIds]}` (save.js DEFAULT_SAVE +
+    progression.js top backfill). Granted in `progression.grantLevelMilestones`
+    (called from `recordBattleEnd` won/lost + `forfeitBattle`; endless runs
+    never grant campaign milestones); idempotent — a claimed id re-toasts but
+    pays nothing. **Recap:** `showOverlay` gained a `milestones` param →
+    `#overlay-milestones` gold list above the loot grid (each entry
+    label/reward/isNew, `— NEW!` + glow on first attainment). main.js builds it
+    from `game.campaignMilestones` (campaign) or `game.endlessResult.newRewards`
+    (endless — replaces the old `endlessRewardLine()` subtitle hack, now
+    deleted along with the orphaned `placementText`). **Display:** level-detail
+    sheet gained a CAMPAIGN CHALLENGES section + `⚑ done/total` chip
+    (`getLevelMilestones`). Verified via full bot sims: L1 clear with one-shot
+    lasers → both milestones latch, persist to save, grant +70◆; a loss grants
+    neither win-only milestone; endless run toasts exactly once at wave 10;
+    toast + recap + level-sheet DOM all render with correct reward text;
+    console clean on load. Next: B6 playtest tuning (needs iPhone play).
 - **Loot P7 balance pass** — largely superseded by B1/B6; read
   `LOOT_DESIGN.md` §15 before tuning drops.
 - **PLAYTEST-PENDING:** counter re-tune + Rocket + World 3 difficulty is

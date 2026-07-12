@@ -260,6 +260,7 @@ export function placeTower(game, type, tileX, tileY) {
   const veteran = takeRosterUnit(type, deployedNames);
   const tower = createTower(type, tileX, tileY, game.grid, veteran);
   game.towers.push(tower);
+  (game.typesUsed ||= new Set()).add(type); // B5: survives sells, unlike scanning game.towers
 
   // Placement flash so building feels responsive.
   game.effects.push({

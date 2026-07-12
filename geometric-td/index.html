@@ -17,6 +17,10 @@
       <button class="update-dismiss" aria-label="Dismiss">&#10005;</button>
     </div>
 
+    <!-- Live milestone toast: shown briefly by ui.js showMilestoneToast when
+         an Endless or campaign milestone is reached mid-battle (B5) -->
+    <div id="milestone-toast" class="hidden" aria-live="polite"></div>
+
     <!-- Top HUD: money / wave / core health -->
     <header id="hud">
       <div class="hud-item" id="hud-money">
@@ -53,6 +57,7 @@
         <h1 id="overlay-title"></h1>
         <p id="overlay-subtitle"></p>
         <div id="overlay-note" class="hidden"></div>
+        <div id="overlay-milestones" class="hidden"></div>
         <div id="overlay-buttons"></div>
         <div id="overlay-items" class="hidden"></div>
       </div>

@@ -8,7 +8,8 @@
 //   "won" / "lost"
 // ============================================================
 
-import { WAVE_DEFAULTS } from "./config.js";
+import { WAVE_DEFAULTS, endlessTrackFor } from "./config.js";
+import { updateMilestoneResults } from "./milestones.js";
 import { createGridModel } from "./grid.js";
 import { createEnemy, updateEnemies } from "./enemies.js";
 import { updateTowers } from "./towers.js";
@@ -34,6 +35,11 @@ export function createGame(level, tileSize, endless = false) {
     money: level.startingMoney,
     shardsEarned: 0,                // Shards ◆ banked this battle; synced to the save at battle end
     lootDrops: [],                   // unclaimed items found during this battle
+    kills: 0,                        // enemies killed this run (milestone tracking, B5)
+    leaks: 0,                        // enemies that reached the core this run (B5)
+    typesUsed: new Set(),            // tower types ever placed this run — survives sells (B5)
+    milestoneResults: new Set(),     // latched campaign-milestone ids attained this run (B5)
+    newMilestoneToasts: [],          // toast texts main.js drains each frame (B5)
     coreHealth: level.coreHealth + getCoreBonus(),
     maxCoreHealth: level.coreHealth + getCoreBonus(),
     waveIndex: 0,                  // 0-based; wave 1 is index 0
@@ -122,6 +128,7 @@ export function updateGame(game, dt) {
 
   // Move enemies; handle leaks.
   const leaked = updateEnemies(game, dt);
+  game.leaks += leaked.length; // B5: "Flawless" milestone tracking
   for (const e of leaked) {
     game.coreHealth -= e.coreDamage;
     // The core flinches: shockwave + red flash at the path exit.
@@ -156,6 +163,7 @@ export function updateGame(game, dt) {
   if (game.phase === "wave" && game.spawnQueue.length === 0 && game.enemies.length === 0) {
     game.waveIndex += 1;
     applyWaveInterest(game);
+    queueMilestoneToasts(game);
     if (!game.endless && game.waveIndex >= game.totalWaves) {
       game.phase = "won";
       recordBattleEnd(game, true); // roster + 1 skill point, saved
@@ -190,4 +198,25 @@ function applyWaveInterest(game) {
     kind: "ring", x: core.x, y: core.y, color: "#ffe24a",
     radius: game.grid.tileSize * 0.9, ttl: 0.6, maxTtl: 0.6,
   });
+}
+
+// Queue celebratory milestone toasts crossed by clearing this wave (B5).
+// Display-only: Endless track grants still fire at run end (idempotent off
+// best wave), and campaign milestones are latched here but granted in
+// progression.recordBattleEnd. main.js drains game.newMilestoneToasts.
+function queueMilestoneToasts(game) {
+  if (game.endless) {
+    // The wave number just reached (matches recordEndlessResult's waveReached
+    // = waveIndex + 1, so the toast lines up with the actual reward grant).
+    const reached = game.waveIndex + 1;
+    for (const m of endlessTrackFor(game.level.id)) {
+      if (m.type === "wave" && m.threshold === reached) {
+        game.newMilestoneToasts.push(`★ WAVE ${reached} — MILESTONE!`);
+      }
+    }
+    return;
+  }
+  for (const m of updateMilestoneResults(game, { atEnd: false })) {
+    game.newMilestoneToasts.push(`★ ${m.label.toUpperCase()}`);
+  }
 }

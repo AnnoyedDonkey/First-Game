@@ -21,7 +21,7 @@ import {
   updateUpgradePanel, onUpgradeButtonTap, onSellButtonTap,
   initSkillTree, showLevelSelect, openSkillTree, hideOverlay,
   initSpeedControls, openTowerGuide, onExitButtonTap, openLeaderboard,
-  openGearPanel,
+  openGearPanel, showMilestoneToast,
 } from "./ui.js";
 import { submitScore, isEnabled as lbEnabled } from "./leaderboard.js";
 import { initUpdateCheck } from "./update.js";
@@ -207,17 +207,6 @@ function goToMainMenu() {
   showLevelSelect(LEVELS, getProgress().completedLevels, startLevel);
 }
 
-// One earned item's fate, as decided by progression.js bankEarnedItem
-// (U0 auto-equip): "▲ RARE EMITTER → Laser-01", "→ STASH", or "→ UNCLAIMED"
-// (pendingLoot triage, only when the stash is full). Used both as the
-// overlay subtitle's plain-text recap and to drive the U4 drop-reveal cards.
-function placementText(p) {
-  const label = `${p.item.rarity.toUpperCase()} ${p.item.slot.toUpperCase()}`;
-  if (p.dest === "equipped") return `▲ ${label} → ${p.towerName}`;
-  if (p.dest === "stash") return `${label} → STASH`;
-  return `${label} → UNCLAIMED`;
-}
-
 // One of the config roast pools, picked at random for the results title.
 function pickRoast(bucket) {
   const pool = RESULT_ROASTS[bucket] || RESULT_ROASTS.victory;
@@ -254,18 +243,29 @@ function lootTailButtons(items, stashFull) {
 }
 
 // Endless reward-track milestones newly crossed this run (progression.js
-// grantEndlessRewards) — shards are already banked, loot already sits in
-// pendingLoot, this is just telling the player what happened.
-function endlessRewardLine() {
+// grantEndlessRewards) as recap entries for the end screen (B5) — shards are
+// already banked, loot already sits in pendingLoot, this just tells the
+// player what happened. All freshly crossed, so every entry is `isNew`.
+function endlessRecapEntries() {
   const rewards = game && game.endlessResult ? game.endlessResult.newRewards : null;
-  if (!rewards || !rewards.length) return "";
-  const parts = rewards.map((m) => {
-    const label = m.reward.kind === "shards"
-      ? `+${m.reward.amount} Shards`
-      : m.placement ? placementText(m.placement) : `a ${m.reward.rarity} item`;
-    return `wave ${m.threshold} (${label})`;
-  });
-  return ` MILESTONE${parts.length > 1 ? "S" : ""} REACHED: ${parts.join(", ")}!`;
+  if (!rewards || !rewards.length) return [];
+  return rewards.map((m) => ({
+    label: `Wave ${m.threshold}`,
+    reward: m.reward,
+    isNew: true,
+  }));
+}
+
+// Campaign milestones attained this run (progression.js grantLevelMilestones),
+// as recap entries. `isNew` = first-ever attainment (rewarded this run).
+function campaignRecapEntries() {
+  const cm = game && game.campaignMilestones;
+  if (!cm || !cm.attained.length) return [];
+  return cm.attained.map((m) => ({
+    label: m.label,
+    reward: m.reward,
+    isNew: cm.newIds.has(m.id),
+  }));
 }
 
 // Every item earned this run, across the base loot pipeline (kill drops +
@@ -319,6 +319,7 @@ onExitButtonTap(() => {
             ],
             items,
             note: stashOverflowNote(items),
+            milestones: endless ? endlessRecapEntries() : campaignRecapEntries(),
           });
         },
       },
@@ -356,6 +357,7 @@ function checkEndState() {
       buttons,
       items,
       note,
+      milestones: campaignRecapEntries(),
     });
   } else if (game.endless) {
     const { waveReached, isNewBest, bestWave } = game.endlessResult;
@@ -372,12 +374,12 @@ function checkEndState() {
       title: pickRoast("endless"),
       subtitle:
         `${level.name.toUpperCase()} ENDLESS — reached wave ${waveReached}` +
-        (isNewBest ? " · NEW BEST!" : ` · best wave ${bestWave}`) +
-        endlessRewardLine(),
+        (isNewBest ? " · NEW BEST!" : ` · best wave ${bestWave}`),
       type: "loss",
       buttons,
       items,
       note,
+      milestones: endlessRecapEntries(),
     });
   } else {
     const buttons = [{ text: "RETRY LEVEL", onTap: () => startLevel(level) }];
@@ -389,6 +391,7 @@ function checkEndState() {
       buttons,
       items,
       note,
+      milestones: campaignRecapEntries(),
     });
   }
 }
@@ -410,6 +413,10 @@ function frame(now) {
     // (layout reports 0), fit it again now that we're visible.
     if (canvas.style.width === "0px") fitCanvas();
     updateGame(game, dt);
+    // Drain any milestone toasts queued by this tick's wave-clear (B5).
+    if (game.newMilestoneToasts && game.newMilestoneToasts.length) {
+      while (game.newMilestoneToasts.length) showMilestoneToast(game.newMilestoneToasts.shift());
+    }
     render(ctx, game, game.time, uiState);
     updateHUD(game);
     updateTowerButtons(game, uiState.selectedType);

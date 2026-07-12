@@ -11,6 +11,7 @@
 import {
   endlessTrackFor, LOOT, SKILLS, SKILL_VALUES, SKILL_TIERS, TOWER_UPGRADES, TOWERS,
 } from "./config.js";
+import { levelMilestonesFor, updateMilestoneResults } from "./milestones.js";
 import { loadSave, writeSave, clearSave } from "./save.js";
 import { dropIlvl, generateGuaranteedDrop, generateItem, RARITIES } from "./loot.js";
 import {
@@ -38,6 +39,7 @@ state.store.rerolls ??= 0;
 state.endlessRewards ||= {};
 state.seenLoot ||= [];
 state.storeUnlocks ||= [];
+state.levelMilestones ||= {};
 state.skills ||= {};
 backfillGear();
 migrateRosterNames();
@@ -585,6 +587,7 @@ export function recordBattleEnd(game, won) {
   syncRoster(game);
   recordRunLoot(game);
   refreshStoreAfterRun();
+  grantLevelMilestones(game, won);
 
   if (won) {
     state.skillPoints += 1;
@@ -596,6 +599,45 @@ export function recordBattleEnd(game, won) {
   writeSave(state);
 }
 
+// ---------- Per-level campaign milestones (B5) ----------
+
+function claimedLevelMilestones(levelId) {
+  state.levelMilestones ||= {};
+  state.levelMilestones[levelId] ||= [];
+  return state.levelMilestones[levelId];
+}
+
+// Grant any milestones attained this run that haven't been claimed before,
+// and stash a recap on `game` for the end screen. `won` unlocks the
+// whole-run challenges (Flawless, tower-limit clears). Endless runs never
+// grant campaign milestones. Idempotent across replays: a claimed id is
+// skipped, so re-attaining it re-toasts (harmless) but pays nothing.
+function grantLevelMilestones(game, won) {
+  if (game.endless) return;
+  updateMilestoneResults(game, { atEnd: won });
+  const attained = game.milestoneResults || new Set();
+  const claimed = claimedLevelMilestones(game.level.id);
+  const newIds = new Set();
+  for (const m of levelMilestonesFor(game.level.id)) {
+    if (!attained.has(m.id) || claimed.includes(m.id)) continue;
+    claimed.push(m.id);
+    newIds.add(m.id);
+    if (m.reward.kind === "shards") state.shards += m.reward.amount;
+    else if (m.reward.kind === "skillPoint") state.skillPoints += m.reward.amount;
+  }
+  game.campaignMilestones = {
+    attained: levelMilestonesFor(game.level.id).filter((m) => attained.has(m.id)),
+    newIds,
+  };
+}
+
+// For the level-detail sheet: every campaign milestone for a level, tagged
+// with whether it's been claimed. Mirrors getEndlessMilestones.
+export function getLevelMilestones(levelId) {
+  const claimed = new Set(state.levelMilestones[levelId] || []);
+  return levelMilestonesFor(levelId).map((m) => ({ ...m, claimed: claimed.has(m.id) }));
+}
+
 // Player-initiated exit mid-battle (the X button + confirm). No win/loss
 // is recorded either way — just walking away — but towers keep the XP
 // they earned so far, same philosophy as an actual loss.
@@ -603,6 +645,7 @@ export function forfeitBattle(game) {
   syncRoster(game);
   recordRunLoot(game);
   refreshStoreAfterRun();
+  grantLevelMilestones(game, false); // a bail-out isn't a clear — no whole-run challenges
   writeSave(state);
   return game.lootResult;
 }

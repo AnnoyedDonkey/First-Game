@@ -195,6 +195,7 @@ export function damageEnemy(game, enemy, sourceTower, amount) {
   }
 
   enemy.alive = false;
+  game.kills = (game.kills || 0) + 1; // B5 milestone tracking
   game.money += Math.round(
     enemy.bounty * ECONOMY.moneyPerKillMultiplier * getMoneyMult() *
     (sourceTower ? sourceTower.bountyMult || 1 : 1)
