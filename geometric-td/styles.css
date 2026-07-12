@@ -1298,8 +1298,14 @@ button.hud-item {
 /* ---------- Win / loss overlay ---------- */
 
 #overlay {
-  position: absolute;
+  /* fixed (not absolute) so the results screen covers the WHOLE viewport,
+     not just #game-area — otherwise the HUD (top) and action bar (bottom)
+     show through above and below it. Constrained to the phone-shaped
+     column (matches #app) so it stays centered on desktop. */
+  position: fixed;
   inset: 0;
+  max-width: 560px;
+  margin-inline: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
