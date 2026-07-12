@@ -623,6 +623,39 @@ function milestoneRewardText(reward) {
   return "";
 }
 
+// Friendly tower names for challenge descriptions (challenge labels like
+// "Battle-Hardened" don't say what to DO — this spells it out from the data).
+const CHALLENGE_TOWER_LABEL = {
+  laser: "Laser", pulse: "Pulse", slow: "Slow", railgun: "Railgun", rocket: "Rocket",
+};
+function challengeTowerList(types) {
+  const names = types.map((t) => CHALLENGE_TOWER_LABEL[t] || t);
+  if (names.length === 1) return names[0];
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names.slice(0, -1).join(", ")}, and ${names[names.length - 1]}`;
+}
+
+// Human "how to earn this" text, derived from a milestone's `check` clauses
+// (config.js milestones.js vocabulary) — never hardcoded per challenge, so
+// new challenges explain themselves.
+function milestoneDescText(check) {
+  const parts = [];
+  if (check.clearNoLeaks) parts.push("Clear the level without letting a single enemy reach the core.");
+  if (check.onlyTowers) {
+    parts.push(`Win the level using only ${challengeTowerList(check.onlyTowers)} towers.`);
+  }
+  if (check.withoutTowers) {
+    parts.push(`Win the level without building any ${challengeTowerList(check.withoutTowers)} towers.`);
+  }
+  if (check.towersAtLevel) {
+    const [count, lvl] = check.towersAtLevel;
+    parts.push(`Have ${count} tower${count > 1 ? "s" : ""} at level ${lvl} or higher deployed at the same time.`);
+  }
+  if (check.kills != null) parts.push(`Destroy at least ${check.kills} enemies.`);
+  if (check.throughWave != null) parts.push(`(Must be held through wave ${check.throughWave}.)`);
+  return parts.join(" ") || "Complete the level.";
+}
+
 // ---- Level detail bottom sheet (CIRCUIT_MENU_DESIGN.md M2) ----
 
 function closeLevelSheet() {
@@ -647,15 +680,19 @@ function openLevelSheet(nd, world, pick) {
   if (cleared) chips.push(`<span class="level-chip gold">&#9733; ${nd.done}/${nd.total} MILESTONES</span>`);
 
   // Campaign challenges — shown whenever the level is playable (not locked).
+  // Each row is tappable to expand a data-derived "how to earn this" line, so
+  // labels like "Battle-Hardened" or "Flawless" actually explain themselves.
   let campaignHtml = "";
   if (!locked && nd.campaign && nd.campaign.length) {
-    const rows = nd.campaign.map((m) =>
-      `<div class="level-mile ${m.claimed ? "done" : ""}">` +
+    const rows = nd.campaign.map((m, i) =>
+      `<div class="level-mile challenge ${m.claimed ? "done" : ""}" data-mi="${i}">` +
       `<div class="tick"></div>` +
       `<span class="m-label">${escapeHtml(m.label)}</span>` +
-      `<span class="m-reward">${milestoneRewardText(m.reward)}</span></div>`
+      `<span class="m-reward">${milestoneRewardText(m.reward)}</span>` +
+      `<span class="m-chev">&#9662;</span></div>` +
+      `<div class="mile-desc" data-mi-desc="${i}">${escapeHtml(milestoneDescText(m.check))}</div>`
     ).join("");
-    campaignHtml = `<div class="level-mile-head">CAMPAIGN CHALLENGES</div>${rows}`;
+    campaignHtml = `<div class="level-mile-head">CAMPAIGN CHALLENGES <span class="mile-hint">tap to learn</span></div>${rows}`;
   }
 
   let milestoneHtml;
@@ -686,6 +723,16 @@ function openLevelSheet(nd, world, pick) {
     `</div>`;
 
   el.levelSheetOverlay.classList.remove("hidden");
+
+  // Expand/collapse a challenge's description on tap.
+  el.levelSheet.querySelectorAll(".level-mile.challenge").forEach((row) => {
+    row.addEventListener("click", () => {
+      const i = row.getAttribute("data-mi");
+      const desc = el.levelSheet.querySelector(`.mile-desc[data-mi-desc="${i}"]`);
+      const open = row.classList.toggle("open");
+      if (desc) desc.classList.toggle("open", open);
+    });
+  });
 
   if (!locked) {
     document.getElementById("level-sheet-play").addEventListener("click", () => {

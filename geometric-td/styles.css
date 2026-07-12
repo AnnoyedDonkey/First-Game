@@ -539,6 +539,25 @@ button.hud-item {
 .level-mile .m-reward { margin-left: auto; color: var(--text-dim); }
 .level-mile.done .m-reward { color: var(--neon-yellow); }
 
+/* Tap-to-expand campaign challenge rows */
+.mile-hint { color: var(--text-dim); font-size: 9px; letter-spacing: 1px; opacity: 0.7; margin-left: 6px; }
+.level-mile.challenge { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.level-mile .m-chev {
+  color: var(--text-dim);
+  font-size: 10px;
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+.level-mile.challenge.open .m-chev { transform: rotate(180deg); color: var(--neon-cyan); }
+.mile-desc {
+  display: none;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-dim);
+  padding: 0 4px 8px 24px;
+}
+.mile-desc.open { display: block; }
+
 .level-sheet-actions { display: flex; gap: 10px; margin-top: 14px; }
 .level-sheet-btn {
   flex: 1;
@@ -1262,7 +1281,11 @@ button.hud-item {
 #store-scroll::-webkit-scrollbar { width: 4px; }
 #store-scroll::-webkit-scrollbar-thumb { background: var(--panel-border); border-radius: 2px; }
 
-#store-actions { margin-bottom: 10px; }
+/* Stack the unlock-rarities row above the reroll button (rather than the
+   inherited gear-actions-row's side-by-side flex, which stretched reroll to
+   the tall unlock block's height). */
+#store-actions { margin-bottom: 10px; flex-direction: column; align-items: stretch; }
+#store-actions .store-reroll { flex: 0 0 auto; align-self: stretch; }
 
 .store-unlock-row { margin-bottom: 12px; }
 .store-unlock-label {
@@ -1890,6 +1913,7 @@ button.hud-item {
   display: flex;
   gap: 8px;
   flex: 1 1 auto;
+  min-width: 0; /* let the tray shrink so the wave button always fits on-screen */
 }
 
 /* Big tappable buttons — minimum 44px touch target */
@@ -1909,6 +1933,7 @@ button.hud-item {
 /* GeoDefense-style tray: compact rounded chips */
 .tower-button {
   flex: 1 1 0;
+  min-width: 0; /* equal-width compact chips; shrink to make room for the wave button */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2038,6 +2063,21 @@ button.hud-item {
   font-size: 10px;
   opacity: 0.8;
   letter-spacing: 0.5px;
+}
+
+/* Wave button: keep it compact so it never overflows the action bar when the
+   tray is full (5 towers). Let the "START WAVE" label wrap to two lines
+   instead of forcing a wide single-line button. Scoped to #wave-button so the
+   upgrade/sell panel keeps its intentional nowrap+ellipsis. */
+#wave-button {
+  min-width: 54px;
+  max-width: 58px;
+  letter-spacing: 0.5px;
+}
+#wave-button #wave-btn-label {
+  white-space: normal;   /* "START WAVE" wraps to two lines instead of one wide line */
+  line-height: 1.05;
+  font-size: 11px;
 }
 
 .big-button:disabled {
