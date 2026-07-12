@@ -177,13 +177,16 @@ export const ENDLESS = {
 // Reference: an 8-tower level-1 laser wall (fresh, no Mastery) died on
 // endless wave 18 in first-pass bot testing (HANDOFF.md) — thresholds
 // are set around and past that bar.
+// label is the human-readable milestone name shown on the circuit-board
+// menu's level detail sheet (CIRCUIT_MENU_DESIGN.md M0); reward text
+// itself is derived in ui.js from `reward` so it's never hardcoded here.
 export const ENDLESS_REWARDS = {
   milestones: [
-    { id: "wave10", type: "wave", threshold: 10, reward: { kind: "shards", amount: 100 } },
-    { id: "wave20", type: "wave", threshold: 20, reward: { kind: "loot", rarity: "rare" } },
-    { id: "wave35", type: "wave", threshold: 35, reward: { kind: "shards", amount: 350 } },
-    { id: "wave50", type: "wave", threshold: 50, reward: { kind: "loot", rarity: "prismatic" } },
-    { id: "wave75", type: "wave", threshold: 75, reward: { kind: "loot", rarity: "singularity" } },
+    { id: "wave10", type: "wave", threshold: 10, label: "Reach wave 10", reward: { kind: "shards", amount: 100 } },
+    { id: "wave20", type: "wave", threshold: 20, label: "Reach wave 20", reward: { kind: "loot", rarity: "rare" } },
+    { id: "wave35", type: "wave", threshold: 35, label: "Reach wave 35", reward: { kind: "shards", amount: 350 } },
+    { id: "wave50", type: "wave", threshold: 50, label: "Reach wave 50", reward: { kind: "loot", rarity: "prismatic" } },
+    { id: "wave75", type: "wave", threshold: 75, label: "Reach wave 75", reward: { kind: "loot", rarity: "singularity" } },
   ],
 };
 

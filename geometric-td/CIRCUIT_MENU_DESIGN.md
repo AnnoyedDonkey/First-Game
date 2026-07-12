@@ -165,7 +165,7 @@ one new sheet.
 
 ## 5. Build status
 
-- [ ] M0 — data groundwork (`desc`, WORLDS board fields, milestone labels)
+- [x] M0 — data groundwork (`desc`, WORLDS board fields, milestone labels)
 - [ ] M1 — SVG circuit board replaces level rows
 - [ ] M2 — level detail bottom sheet
 - [ ] M3 — pizzazz + iPhone perf pass

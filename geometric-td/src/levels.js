@@ -7,6 +7,8 @@
 //   coreHealth              - AI Core hit points
 //   timeBetweenWaves        - overrides WAVE_DEFAULTS (optional)
 //   autoStartNextWave       - overrides WAVE_DEFAULTS (optional)
+//   desc                    - short flavor text (~140 chars) shown on the
+//                             circuit-board menu's level detail sheet
 //   pathCorners             - the enemy path as corner points; the
 //                             code fills in every tile between
 //                             corners (segments must be straight
@@ -32,6 +34,7 @@
 const level001 = {
   id: "level_001",
   name: "First Contact",
+  desc: "A gentle serpentine through the inner lattice. Grunts only — learn the grid, plant your first Laser.",
   gridWidth: 8,
   gridHeight: 12,
   startingMoney: 100,
@@ -118,6 +121,7 @@ const level001 = {
 const level002 = {
   id: "level_002",
   name: "Signal Breach",
+  desc: "Fast movers slip through a chevron zigzag. Lasers shred them — if they can reach.",
   gridWidth: 8,
   gridHeight: 12,
   startingMoney: 90,
@@ -218,6 +222,7 @@ const level002 = {
 const level003 = {
   id: "level_003",
   name: "Dark Relay",
+  desc: "Armored crawlers loop the perimeter before spiraling to the core. Lasers bounce off — bring Pulse.",
   gridWidth: 8,
   gridHeight: 12,
   startingMoney: 90,
@@ -295,6 +300,7 @@ const level003 = {
 const level004 = {
   id: "level_004",
   name: "Split Second",
+  desc: "Splitters double on death down a tight staircase. Slow towers turn the chaos into kill zones.",
   gridWidth: 8,
   gridHeight: 12,
   // Generous opening money: the short path demands instant density.
@@ -376,6 +382,7 @@ const level004 = {
 const level005 = {
   id: "level_005",
   name: "Core Siege",
+  desc: "The first boss holds a triple spiral. Only the interior pockets survive it — clear this to unlock the RAILGUN.",
   gridWidth: 8,
   gridHeight: 12,
   // Big war chest: the siege starts heavy and never lets up.
@@ -470,6 +477,7 @@ const level005 = {
 const level006 = {
   id: "level_006",
   name: "Ember Relay",
+  desc: "Regenerators appear beyond the grid. Sustained Railgun fire is the only thing that outpaces the healing.",
   gridWidth: 8,
   gridHeight: 12,
   startingMoney: 130,
@@ -541,6 +549,7 @@ const level006 = {
 const level007 = {
   id: "level_007",
   name: "Toxic Sink",
+  desc: "A vertical comb drips with splitter swarms. Pulse and patience clear the sink.",
   gridWidth: 8,
   gridHeight: 12,
   startingMoney: 130,
@@ -616,6 +625,7 @@ const level007 = {
 const level008 = {
   id: "level_008",
   name: "Ultraviolet Maze",
+  desc: "Full-width maze sweeps under UV light, denying prime tiles. Splitters and regenerators both show up.",
   gridWidth: 8,
   gridHeight: 12,
   startingMoney: 180,
@@ -688,6 +698,7 @@ const level008 = {
 const level009 = {
   id: "level_009",
   name: "Glacier Run",
+  desc: "Long frozen straights built for the Railgun — aim down the lanes, and everything is fast.",
   gridWidth: 8,
   gridHeight: 12,
   startingMoney: 220,
@@ -754,6 +765,7 @@ const level009 = {
 const level010 = {
   id: "level_010",
   name: "Solar Core",
+  desc: "The void's furnace: every enemy type and a triple-boss finale. Survive it to unlock the ROCKET LAUNCHER.",
   gridWidth: 8,
   gridHeight: 12,
   startingMoney: 260,
@@ -839,6 +851,7 @@ const level010 = {
 const level011 = {
   id: "level_011",
   name: "Crimson Vein",
+  desc: "A bottom-entry spiral coils into a mid-board core. Boss-heavy — the Rocket finally earns its slot.",
   gridWidth: 8,
   gridHeight: 12,
   startingMoney: 240,
@@ -910,6 +923,7 @@ const level011 = {
 const level012 = {
   id: "level_012",
   name: "Abyssal Teal",
+  desc: "A widening cascade of steps. Splitters and regenerators cluster — Pulse/Rocket for the swarm, Railgun for the healers.",
   gridWidth: 8,
   gridHeight: 12,
   startingMoney: 220,
@@ -978,6 +992,7 @@ const level012 = {
 const level013 = {
   id: "level_013",
   name: "Violet Pulse",
+  desc: "A plus-shaped detour pulses everything into a sprint. Slow and Laser lead; Pulse/Rocket clean up the splitters.",
   gridWidth: 8,
   gridHeight: 12,
   startingMoney: 200,
@@ -1047,6 +1062,7 @@ const level013 = {
 const level014 = {
   id: "level_014",
   name: "Silver Null",
+  desc: "A tight switchback ladder — six short lanes, little dwell time. Every counter gets tested here.",
   gridWidth: 8,
   gridHeight: 12,
   startingMoney: 240,
@@ -1122,6 +1138,7 @@ const level014 = {
 const level015 = {
   id: "level_015",
   name: "Prismatic Core",
+  desc: "The grand finale: the full perimeter into a deep spiral, every enemy form, and a four-boss climax.",
   gridWidth: 8,
   gridHeight: 12,
   startingMoney: 300,
@@ -1212,20 +1229,58 @@ export const LEVELS = [
 // PREVIOUS world is in completedLevels. Add a world here (name + its
 // level ids) to grow the campaign — order matters: worlds unlock in
 // sequence. Endless mode is still per-level and unchanged.
+//
+// Circuit-board menu fields (CIRCUIT_MENU_DESIGN.md):
+//   accent / accent2  - world's neon palette (accent = primary trace/node
+//                        glow, accent2 = secondary, e.g. the ∞ pad tint)
+//   boardStyle        - "grid" | "diagonal" | "prism", picks the trace/pad
+//                        rendering style for this world's board
+//   nodePos           - one {x,y} per level (same order as levelIds), in
+//                        the board SVG's 0-100 x 0-130 viewBox space
 export const WORLDS = [
   {
     id: "world_1",
     name: "INNER GRID",
     levelIds: ["level_001", "level_002", "level_003", "level_004", "level_005"],
+    accent: "#22d6ff",
+    accent2: "#2fd6a8",
+    boardStyle: "grid",
+    nodePos: [
+      { x: 24, y: 16 },
+      { x: 72, y: 33 },
+      { x: 28, y: 56 },
+      { x: 66, y: 80 },
+      { x: 50, y: 108 },
+    ],
   },
   {
     id: "world_2",
     name: "OUTER VOID",
     levelIds: ["level_006", "level_007", "level_008", "level_009", "level_010"],
+    accent: "#ff9d3c",
+    accent2: "#ffd76a",
+    boardStyle: "diagonal",
+    nodePos: [
+      { x: 70, y: 14 },
+      { x: 24, y: 36 },
+      { x: 62, y: 58 },
+      { x: 30, y: 84 },
+      { x: 68, y: 108 },
+    ],
   },
   {
     id: "world_3",
     name: "PRISM DEEP",
     levelIds: ["level_011", "level_012", "level_013", "level_014", "level_015"],
+    accent: "#e05cff",
+    accent2: "#ff5ca8",
+    boardStyle: "prism",
+    nodePos: [
+      { x: 50, y: 14 },
+      { x: 22, y: 42 },
+      { x: 78, y: 42 },
+      { x: 32, y: 84 },
+      { x: 64, y: 104 },
+    ],
   },
 ];
