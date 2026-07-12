@@ -1914,16 +1914,19 @@ function resetConfirmState() {
   el.resetSave.textContent = "RESET SAVE";
 }
 
-// Cumulative effect text at a given tier, from the node's `kind`.
+// Cumulative effect text at a given tier, from the node's `kind`. Per-tower
+// chain boxes carry their own `step` (damage) or `lvl` (level cap); shared
+// core/economy nodes read their per-tier value from SKILL_VALUES.
 function skillEffectText(id, tier) {
   const node = SKILLS[id];
-  const step = SKILL_VALUES[id];
+  if (node.kind === "unlock") return `Unlocks ${node.name.replace(/ Core$/, "")} upgrades`;
+  if (node.kind === "level") return `Level cap &rarr; ${node.lvl}`;
+  const step = SKILL_VALUES[id] ?? node.step ?? 0;
   const kind = node.kind || (step < 1 ? "pct" : "flat");
   switch (kind) {
     case "pct":   return `+${Math.round(step * tier * 100)}%`;
     case "cap":   return `${step * tier}/wave`;
     case "mult":  return `&times;${(1 + step * tier).toFixed(1)}`;
-    case "level": return tier > 0 ? `LV CAP &rarr; ${getTowerLevelCap()}` : "LV CAP +1";
     default:      return `+${step * tier}`;
   }
 }
@@ -2015,7 +2018,7 @@ function buildSkillTreeSvg() {
   for (const node of Object.values(SKILLS)) {
     if (!node.parent) continue;
     const p = SKILLS[node.parent].pos, c = node.pos;
-    const color = SKILL_BRANCH_COLORS[node.branch] || "#8aa";
+    const color = node.color || SKILL_BRANCH_COLORS[node.branch] || "#8aa";
     const lit = getSkillTier(node.parent) >= 1;
     if (lit) {
       svg += `<path d="M${p.x} ${p.y} L${c.x} ${c.y}" fill="none" stroke="${color}" stroke-width="3" opacity=".35" filter="url(#skill-glow)"/>` +
@@ -2028,7 +2031,7 @@ function buildSkillTreeSvg() {
   // Nodes.
   for (const [id, node] of Object.entries(SKILLS)) {
     const { x, y } = node.pos;
-    const color = SKILL_BRANCH_COLORS[node.branch] || "#8aa";
+    const color = node.color || SKILL_BRANCH_COLORS[node.branch] || "#8aa";
     const tier = getSkillTier(id);
     const max = skillMaxTier(id);
     const owned = tier >= 1;
@@ -2038,6 +2041,13 @@ function buildSkillTreeSvg() {
     const rx = x - R, ry = y - R, s = R * 2;
     const iconSize = 12;
 
+    // Node contents: a short value label ("+10%", "L6") for the chain boxes,
+    // otherwise the vector icon. Fill flips to dark ink on a solid maxed tile.
+    const content = (fill) => node.chainLabel
+      ? `<text x="${x}" y="${y + 2.2}" text-anchor="middle" font-weight="700" ` +
+        `font-size="${node.chainLabel.length > 3 ? 5.4 : 7}" fill="${fill}">${node.chainLabel}</text>`
+      : skillIcon(node.icon, fill, x, y, iconSize);
+
     // Soft outer glow behind the tile (only lit states) — mimics the gear
     // tile's box-shadow without fattening the crisp border above.
     if (maxed || owned || affordable) {
@@ -2046,23 +2056,23 @@ function buildSkillTreeSvg() {
     }
 
     if (maxed) {
-      // Fully-owned: solid tile + dark icon — the "complete" look.
+      // Fully-owned: solid tile + dark contents — the "complete" look.
       svg += `<rect ${box(rx, ry, s, `fill="${color}" opacity=".92"`)}/>` +
         `<rect ${box(rx, ry, s, `fill="none" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"`)}/>` +
-        skillIcon(node.icon, "#04121a", x, y, iconSize);
+        content("#04121a");
     } else if (owned) {
       svg += `<rect ${box(rx, ry, s, `fill="${colorFill(color, 0.16)}" stroke="${color}" stroke-width="1" vector-effect="non-scaling-stroke"`)}/>` +
-        skillIcon(node.icon, color, x, y, iconSize);
+        content(color);
     } else if (available) {
       // Pulse ring only when the player can actually afford it.
       if (affordable) {
         svg += `<rect x="${rx - 2.6}" y="${ry - 2.6}" width="${s + 5.2}" height="${s + 5.2}" rx="4" fill="none" stroke="${color}" stroke-width="1" vector-effect="non-scaling-stroke" class="skill-pulse"/>`;
       }
       svg += `<rect ${box(rx, ry, s, `fill="#0a1220" stroke="${color}" stroke-width="1" vector-effect="non-scaling-stroke" opacity="${affordable ? 1 : 0.85}"`)}/>` +
-        skillIcon(node.icon, color, x, y, iconSize);
+        content(color);
     } else { // locked (parent not owned)
       svg += `<rect ${box(rx, ry, s, `fill="#0a0f18" stroke="rgba(120,140,170,.5)" stroke-width="1" vector-effect="non-scaling-stroke" stroke-dasharray="3 3"`)}/>` +
-        skillIcon(node.icon, "rgba(140,160,190,.5)", x, y, iconSize);
+        content("rgba(140,160,190,.6)");
     }
 
     // Multi-tier progress badge (e.g. 3/5) below the node.
@@ -2080,21 +2090,27 @@ function buildSkillTreeSvg() {
   return svg;
 }
 
-// Legend chip per branch, so the color coding reads at a glance.
+// Legend chip per branch — shared CORE/ECON plus one per tower, in the tower's
+// color (built from the tower root nodes so it tracks the config spec).
 function skillLegendHtml() {
-  const labels = { core: "CORE", combat: "COMBAT", economy: "ECONOMY" };
+  const chips = [
+    ["CORE", SKILL_BRANCH_COLORS.core],
+    ["ECON", SKILL_BRANCH_COLORS.economy],
+  ];
+  for (const node of Object.values(SKILLS)) {
+    if (node.isRoot) chips.push([node.name.replace(/ Core$/, "").toUpperCase(), node.color]);
+  }
   return `<div class="skill-legend">` +
-    Object.entries(labels).map(([b, txt]) =>
-      `<span class="skill-legend-chip" style="color:${SKILL_BRANCH_COLORS[b]}">` +
-      `<span class="dot" style="background:${SKILL_BRANCH_COLORS[b]}"></span>${txt}</span>`
+    chips.map(([txt, c]) =>
+      `<span class="skill-legend-chip" style="color:${c}">` +
+      `<span class="dot" style="background:${c}"></span>${txt}</span>`
     ).join("") + `</div>`;
 }
 
 function renderSkillTree(onSkillBought) {
   const points = getSkillPoints();
   el.skillPointsLine.innerHTML =
-    `AVAILABLE POINTS: <b>${points}</b> &mdash; win battles to earn more` +
-    ` &middot; TOWER CAP LV ${getTowerLevelCap()}`;
+    `AVAILABLE POINTS: <b>${points}</b> &mdash; win battles to earn more`;
   el.skillList.classList.add("skill-tree-host");
   el.skillList.innerHTML = skillLegendHtml() +
     `<div class="skill-tree-scroll">${buildSkillTreeSvg()}</div>`;
@@ -2116,7 +2132,7 @@ el.skillSheetOverlay.addEventListener("click", (e) => {
 function openSkillSheet(id, onSkillBought) {
   const node = SKILLS[id];
   if (!node) return;
-  const color = SKILL_BRANCH_COLORS[node.branch] || "#8aa";
+  const color = node.color || SKILL_BRANCH_COLORS[node.branch] || "#8aa";
   const tier = getSkillTier(id);
   const max = skillMaxTier(id);
   const cost = nextTierCost(id); // null when maxed
@@ -2126,13 +2142,16 @@ function openSkillSheet(id, onSkillBought) {
 
   const pips = `<span class="skill-pips">${"&#9679;".repeat(tier)}${"&#9675;".repeat(max - tier)}</span>`;
 
+  // `unlock`/`level` effect text is a full self-contained phrase, so don't
+  // also append the node's descriptive noun (that would read redundantly).
+  const tail = (node.kind === "unlock" || node.kind === "level") ? "" : ` ${node.desc}`;
   let effectLine;
   if (cost === null) {
-    effectLine = `${skillEffectText(id, tier)} ${node.desc} &mdash; MAXED`;
+    effectLine = `${skillEffectText(id, tier)}${tail} &mdash; MAXED`;
   } else if (tier === 0) {
-    effectLine = `next: ${skillEffectText(id, 1)} ${node.desc}`;
+    effectLine = `next: ${skillEffectText(id, 1)}${tail}`;
   } else {
-    effectLine = `${skillEffectText(id, tier)} &rarr; ${skillEffectText(id, tier + 1)} ${node.desc}`;
+    effectLine = `${skillEffectText(id, tier)} &rarr; ${skillEffectText(id, tier + 1)}${tail}`;
   }
 
   // Buy button label / disabled reasoning.
@@ -2150,7 +2169,7 @@ function openSkillSheet(id, onSkillBought) {
 
   el.skillSheet.innerHTML =
     `<div class="skill-sheet-title" style="color:${color}; text-shadow:0 0 10px ${color}66">` +
-    `${node.glyph} ${node.name}</div>` +
+    `${node.glyph ? node.glyph + " " : ""}${node.name}</div>` +
     `<div class="skill-sheet-sub">${node.branch.toUpperCase()} BRANCH &middot; ${pips}</div>` +
     `<div class="skill-sheet-effect">${effectLine}</div>` +
     lockNote +

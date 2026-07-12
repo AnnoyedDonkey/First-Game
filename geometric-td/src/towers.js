@@ -196,15 +196,16 @@ export function careerStatsFor(rec) {
 // XP makes a tower ELIGIBLE; money pays for the actual upgrade.
 
 // Total XP required to become eligible for the next level (null at max).
-// The cap is the account-wide unlocked level (base 5, up to 10 via skills).
+// The cap is this tower type's unlocked level (base 5, up to 10 via that
+// tower's own Overclock skill boxes).
 export function xpThresholdFor(tower) {
-  if (tower.level >= getTowerLevelCap()) return null;
+  if (tower.level >= getTowerLevelCap(tower.type)) return null;
   const t = TOWER_UPGRADES.xpThresholds;
   return t[Math.min(tower.level - 1, t.length - 1)];
 }
 
 export function upgradeCostFor(tower) {
-  if (tower.level >= getTowerLevelCap()) return null;
+  if (tower.level >= getTowerLevelCap(tower.type)) return null;
   const c = TOWER_UPGRADES.upgradeCosts;
   const base = c[Math.min(tower.level - 1, c.length - 1)];
   // Each tower type can scale its own upgrade cost (Pulse pricier, etc.).

@@ -346,6 +346,35 @@ selector is open. Treat `levels.js` as the source of truth on wave numbers.
   specific unlockables like railPen) is NOT done yet — pending a decision on
   whether tower level caps go per-tower (currently the global `towerCap6-10`
   spine + `getTowerLevelCap()`).
+- **Per-tower skill branches (2026-07-12, v2026.07.12-16)** — skill tree
+  restructured so each tower has its OWN branch (user-approved: per-tower level
+  caps). `config.js` now GENERATES the graph via `buildSkillGraph()` from
+  `TOWER_SKILL_SPEC` (per-tower color/icon/stat/damageStep) + `TOWER_SKILL_LAYOUT`
+  (chain lengths + costs). Layout: shared CORE (coreHealth) + ECONOMY chain down
+  the center, then each tower = a colored root that forks into a DAMAGE chain
+  (each box +10% to that tower's damage, or slow duration) running down-left and
+  a LEVEL chain (`<t>_lvl6..10`, each +1 cap) down-right; railPen hangs off the
+  railgun damage chain. `SKILL_TREE_VIEWBOX` is computed (tall+narrow → vertical
+  scroll). 62 nodes total. `progression.js`: `getTowerLevelCap(type)` = 5 +
+  owned `<type>_lvl*`; `getTowerDamageMult(type)`/`getSlowDurationMult()` sum the
+  owned `<type>_dmg*` boxes × `TOWER_SKILL_SPEC[type].damageStep`; new
+  `ownedSkillCount(prefix)` helper. **Mastery is deliberately NO LONGER
+  re-anchored to the cap** — `syncMasteryAnchor` removed, anchor stays at the
+  base xpStart for every tower (unlocking higher levels never nerfs a veteran's
+  mastery; veterans who'd raised the old global cap get a small mastery buff,
+  never a nerf). `towers.js xpThreshold/upgradeCostFor` pass `tower.type`.
+  **Save migration** (`progression.migrateSkillGraph`, idempotent): old
+  `<t>Damage` tier k → `<t>_root` + `<t>_dmg1..k`; old GLOBAL `towerCap6..10`
+  grandfathered onto EVERY tower's level chain (nobody loses a cap, no points
+  refunded/recharged); `railPen` id kept. `ui.js`: nodes carry their own
+  `color`; chain boxes render a value label (`+10%` / `L6`) instead of an icon;
+  legend now CORE/ECON + one chip per tower. Verified: migration (laserDamage:3
+  → +30% preserved, caps grandfathered to all 5), per-tower cap gate, damage/
+  duration mults, node-sheet text, a full L1 bot battle runs with no throw,
+  console clean. **NOTE (dev-env):** iCloud briefly created a `ui 2.js`
+  sync-conflict copy mid-edit; renamed back to `ui.js`. If files "vanish" or
+  gain a " 2" suffix again, that's iCloud, not a bug. **Deferred (user said
+  "later"):** more tower-specific unlockables beyond railPen.
 
 ## Backlog
 

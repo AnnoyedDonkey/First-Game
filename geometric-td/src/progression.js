@@ -10,17 +10,14 @@
 
 import {
   endlessTrackFor, LOOT, SKILLS, SKILL_VALUES, SKILL_TIERS, TOWER_UPGRADES, TOWERS,
+  TOWER_SKILL_SPEC, TOWER_SKILL_LAYOUT,
 } from "./config.js";
 import { levelMilestonesFor, updateMilestoneResults } from "./milestones.js";
 import { loadSave, writeSave, clearSave } from "./save.js";
 import { dropIlvl, generateGuaranteedDrop, generateItem, RARITIES } from "./loot.js";
 import {
-  canEquipItem, emptyGear, masteryRankFor, normalizeGear, setMasteryXpStart,
+  canEquipItem, emptyGear, masteryRankFor, normalizeGear,
 } from "./equipment.js";
-
-// The chained tower level-cap skill nodes (towerCap6..10). Declared before
-// module-init runs syncMasteryAnchor() so getTowerLevelCap() isn't in a TDZ.
-const CAP_NODES = ["towerCap6", "towerCap7", "towerCap8", "towerCap9", "towerCap10"];
 
 let state = loadSave();
 migrateSkills();
@@ -41,9 +38,9 @@ state.seenLoot ||= [];
 state.storeUnlocks ||= [];
 state.levelMilestones ||= {};
 state.skills ||= {};
+migrateSkillGraph(); // fold pre-per-tower skills into the new tower branches
 backfillGear();
 migrateRosterNames();
-syncMasteryAnchor(); // anchor Mastery start to the unlocked tower cap (B3)
 
 function backfillGear() {
   state.roster ||= [];
@@ -59,6 +56,58 @@ function migrateSkills() {
     state.skills = tiers;
     writeSave(state);
   }
+}
+
+// Fold pre-per-tower skills into the new tower-branch graph. Old single-node
+// per-tower damage (laserDamage tier k) becomes that tower's root + damage
+// boxes 1..k; the old GLOBAL level-cap spine (towerCap6..10) is grandfathered
+// onto EVERY tower (nobody loses the cap they'd unlocked, and no points are
+// refunded or re-charged). Idempotent: it only touches known legacy ids.
+function migrateSkillGraph() {
+  const sk = state.skills;
+  if (!sk || typeof sk !== "object") return;
+  let changed = false;
+  const own = (id) => { if (sk[id] !== 1) { sk[id] = 1; changed = true; } };
+  const drop = (id) => { if (id in sk) { delete sk[id]; changed = true; } };
+
+  const oldDamage = {
+    laser: "laserDamage", pulse: "pulseDamage", slow: "slowDuration",
+    railgun: "railDamage", rocket: "rocketDamage",
+  };
+  for (const [t, oldId] of Object.entries(oldDamage)) {
+    const tier = sk[oldId] | 0;
+    if (tier >= 1) {
+      own(`${t}_root`);
+      for (let i = 1; i <= Math.min(tier, TOWER_SKILL_LAYOUT.damageSteps); i++) own(`${t}_dmg${i}`);
+      drop(oldId);
+    }
+  }
+
+  const capNodes = ["towerCap6", "towerCap7", "towerCap8", "towerCap9", "towerCap10"];
+  const capOwned = capNodes.filter((id) => (sk[id] | 0) >= 1).length;
+  if (capOwned > 0) {
+    for (const t of Object.keys(TOWER_SKILL_SPEC)) {
+      own(`${t}_root`);
+      for (let k = 0; k < Math.min(capOwned, TOWER_SKILL_LAYOUT.levelSteps); k++) own(`${t}_lvl${6 + k}`);
+    }
+  }
+  for (const id of capNodes) drop(id);
+
+  // railPen kept its id; make sure its railgun root is owned so it isn't
+  // orphaned/locked after the reshuffle.
+  if ((sk.railPen | 0) >= 1) own("railgun_root");
+
+  if (changed) writeSave(state);
+}
+
+// Count owned single-tier skill nodes whose id starts with `prefix`
+// (e.g. "laser_dmg", "railgun_lvl") — the per-tower chains are contiguous.
+function ownedSkillCount(prefix) {
+  let n = 0;
+  for (const id in state.skills) {
+    if (id.startsWith(prefix) && (state.skills[id] | 0) >= 1) n++;
+  }
+  return n;
 }
 
 // GEAR_UI_DESIGN.md U2: roster names moved from single-letter prefixes
@@ -125,19 +174,21 @@ export function buySkill(id) {
   if (!isSkillUnlocked(id)) return false; // parent prerequisite not met
   state.skillPoints -= cost;
   state.skills[id] = getSkillTier(id) + 1;
-  syncMasteryAnchor(); // a towerCap purchase moves the Mastery start line
   writeSave(state);
   return true;
 }
 
-// ---------- New B3 skill effects ----------
+// ---------- Skill effects ----------
 
-// Account-wide tower level cap: base 5 plus every unlocked Overclock node.
-// The cap nodes chain, so owned ones are always contiguous.
-export function getTowerLevelCap() {
-  let cap = TOWER_UPGRADES.maxLevel;
-  for (const id of CAP_NODES) if (getSkillTier(id) > 0) cap += 1;
-  return cap;
+// Per-tower level cap: base 5 plus that tower's owned Overclock boxes
+// (`<type>_lvl6..10`). With no type it falls back to the base cap. Mastery is
+// intentionally NOT re-anchored to the cap (see equipment.js) — it stays at the
+// base-cap XP threshold for every tower, so unlocking higher levels never nerfs
+// a veteran's mastery ranks.
+export function getTowerLevelCap(type) {
+  const base = TOWER_UPGRADES.maxLevel;
+  if (!type) return base;
+  return base + ownedSkillCount(`${type}_lvl`);
 }
 
 // Cash interest applied each wave-clear (game.js): floor(money*rate), capped.
@@ -158,16 +209,6 @@ export function getRailBeamLengthMult() {
   return 1 + SKILL_VALUES.railPen * getSkillTier("railPen");
 }
 
-// Keep Mastery starting at the account's unlocked-cap XP threshold so XP
-// spent reaching levels 6-10 doesn't ALSO count as mastery ranks. For the
-// base cap of 5 this resolves to the original 700 (no behavior change).
-function syncMasteryAnchor() {
-  const cap = getTowerLevelCap();
-  const t = TOWER_UPGRADES.xpThresholds;
-  const idx = Math.min(cap - 2, t.length - 1);
-  setMasteryXpStart(t[idx]);
-}
-
 // Skill-derived modifiers: tier N = N x the per-tier value.
 export function getMoneyMult() {
   return 1 + SKILL_VALUES.moneyPerKill * getSkillTier("moneyPerKill");
@@ -181,12 +222,13 @@ export function getCoreBonus() {
   return SKILL_VALUES.coreHealth * getSkillTier("coreHealth");
 }
 
+// Per-tower damage multiplier = 1 + step x owned damage boxes for that tower.
+// The Slow tower's chain feeds duration instead (getSlowDurationMult), so it
+// contributes no damage here.
 export function getTowerDamageMult(type) {
-  if (type === "laser") return 1 + SKILL_VALUES.laserDamage * getSkillTier("laserDamage");
-  if (type === "pulse") return 1 + SKILL_VALUES.pulseDamage * getSkillTier("pulseDamage");
-  if (type === "railgun") return 1 + SKILL_VALUES.railDamage * getSkillTier("railDamage");
-  if (type === "rocket") return 1 + SKILL_VALUES.rocketDamage * getSkillTier("rocketDamage");
-  return 1;
+  const spec = TOWER_SKILL_SPEC[type];
+  if (!spec || spec.stat !== "damage") return 1;
+  return 1 + spec.damageStep * ownedSkillCount(`${type}_dmg`);
 }
 
 // Tower guide auto-opens once, when the player starts level 2.
@@ -207,8 +249,10 @@ export function isTowerUnlocked(type) {
   return true;
 }
 
+// The Slow tower's damage chain feeds slow-effect duration.
 export function getSlowDurationMult() {
-  return 1 + SKILL_VALUES.slowDuration * getSkillTier("slowDuration");
+  const spec = TOWER_SKILL_SPEC.slow;
+  return 1 + spec.damageStep * ownedSkillCount("slow_dmg");
 }
 
 // ---------- Roster ----------
