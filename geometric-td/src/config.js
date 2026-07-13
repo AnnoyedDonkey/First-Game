@@ -825,7 +825,7 @@ export const ECONOMY_LAYOUT = { steps: 5, boxCost: 1, rootCost: 1 };
 // tree fits on screen zoomed out (ui.js adds pinch / +/- zoom to see detail).
 function buildSkillGraph() {
   const S = {};
-  const COL = 20, ROW = 22, HEAD_Y = 16, BRANCH_GAP = 18, MARGIN = 12, R = 9;
+  const COL = 20, ROW = 22, HEAD_Y = 24, BRANCH_GAP = 18, MARGIN = 12, R = 9;
   let x = MARGIN + R;
   let maxX = 0, maxY = 0;
   const put = (id, node) => {

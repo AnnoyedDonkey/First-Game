@@ -2196,6 +2196,15 @@ function renderSkillTree(onSkillBought, recenter = false) {
     `<button type="button" class="skill-zoom-btn" data-zoom="in" aria-label="Zoom in">+</button>` +
     `</div>`;
 
+  // On fresh open, zoom so the deepest branch nearly fills the pane height.
+  if (recenter) {
+    const pane = skillPane();
+    if (pane && pane.clientWidth && pane.clientHeight) {
+      const vb = SKILL_TREE_VIEWBOX;
+      const fit = Math.min(pane.clientWidth / vb.w, pane.clientHeight / vb.h);
+      skillZoom = Math.max(1, pane.clientHeight / (vb.h * fit));
+    }
+  }
   layoutSkillTree(recenter);
   bindSkillTreeGestures();
 
