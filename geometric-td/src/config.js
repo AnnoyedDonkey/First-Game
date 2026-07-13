@@ -211,7 +211,7 @@ export function endlessTrackFor(levelId) {
 // Optional per-battle challenges layered on the campaign. Each entry:
 //   { id, label, check, reward }
 // `label` shows in the level sheet + end-screen recap and (uppercased) in the
-// live toast. `reward.kind` is "shards" (amount) or "skillPoint" (amount).
+// live toast. `reward` is { skillPoints, shards } — both optional, both paid.
 //
 // `check` is DATA evaluated by src/milestones.js against the run — no code
 // here. The condition vocabulary (combine freely in one check; all must pass):
@@ -227,67 +227,69 @@ export function endlessTrackFor(levelId) {
 //
 // Tower types: laser, pulse, slow (from L1), railgun (after L5), rocket
 // (after L10). "Flawless" (clearNoLeaks) is intentionally hard — the marquee
-// per-level challenge. skillPoint rewards sit on the hardest ones.
+// per-level challenge. EVERY campaign challenge awards 1 skill point plus
+// shards ({ skillPoints, shards } — both optional in the data, both granted
+// in progression.js grantLevelMilestones). Shard amounts scale with depth.
 export const LEVEL_MILESTONES = {
   level_001: [
-    { id: "l1_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { kind: "shards", amount: 30 } },
-    { id: "l1_laseronly", label: "Laser Purist", check: { onlyTowers: ["laser"] }, reward: { kind: "shards", amount: 40 } },
+    { id: "l1_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { skillPoints: 1, shards: 30 } },
+    { id: "l1_laseronly", label: "Laser Purist", check: { onlyTowers: ["laser"] }, reward: { skillPoints: 1, shards: 40 } },
   ],
   level_002: [
-    { id: "l2_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { kind: "shards", amount: 30 } },
-    { id: "l2_noslow", label: "No Slowing Down", check: { withoutTowers: ["slow"] }, reward: { kind: "shards", amount: 40 } },
+    { id: "l2_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { skillPoints: 1, shards: 30 } },
+    { id: "l2_noslow", label: "No Slowing Down", check: { withoutTowers: ["slow"] }, reward: { skillPoints: 1, shards: 40 } },
   ],
   level_003: [
-    { id: "l3_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { kind: "shards", amount: 40 } },
-    { id: "l3_veterans", label: "Battle-Hardened", check: { towersAtLevel: [2, 3] }, reward: { kind: "shards", amount: 60 } },
+    { id: "l3_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { skillPoints: 1, shards: 40 } },
+    { id: "l3_veterans", label: "Battle-Hardened", check: { towersAtLevel: [2, 3] }, reward: { skillPoints: 1, shards: 60 } },
   ],
   level_004: [
-    { id: "l4_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { kind: "shards", amount: 40 } },
-    { id: "l4_nolaser", label: "Beyond Lasers", check: { onlyTowers: ["pulse", "slow"] }, reward: { kind: "skillPoint", amount: 1 } },
+    { id: "l4_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { skillPoints: 1, shards: 40 } },
+    { id: "l4_nolaser", label: "Beyond Lasers", check: { onlyTowers: ["pulse", "slow"] }, reward: { skillPoints: 1, shards: 50 } },
   ],
   level_005: [
-    { id: "l5_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { kind: "shards", amount: 50 } },
-    { id: "l5_laseronly", label: "Laser Purist", check: { onlyTowers: ["laser"] }, reward: { kind: "skillPoint", amount: 1 } },
+    { id: "l5_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { skillPoints: 1, shards: 50 } },
+    { id: "l5_laseronly", label: "Laser Purist", check: { onlyTowers: ["laser"] }, reward: { skillPoints: 1, shards: 60 } },
   ],
   level_006: [
-    { id: "l6_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { kind: "shards", amount: 50 } },
-    { id: "l6_nopulse", label: "Silent Field", check: { withoutTowers: ["pulse"] }, reward: { kind: "shards", amount: 60 } },
+    { id: "l6_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { skillPoints: 1, shards: 50 } },
+    { id: "l6_nopulse", label: "Silent Field", check: { withoutTowers: ["pulse"] }, reward: { skillPoints: 1, shards: 60 } },
   ],
   level_007: [
-    { id: "l7_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { kind: "shards", amount: 50 } },
-    { id: "l7_elite", label: "Elite Squad", check: { towersAtLevel: [3, 5] }, reward: { kind: "shards", amount: 80 } },
+    { id: "l7_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { skillPoints: 1, shards: 50 } },
+    { id: "l7_elite", label: "Elite Squad", check: { towersAtLevel: [3, 5] }, reward: { skillPoints: 1, shards: 80 } },
   ],
   level_008: [
-    { id: "l8_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { kind: "shards", amount: 60 } },
-    { id: "l8_railline", label: "Rail & Beam", check: { onlyTowers: ["railgun", "laser"] }, reward: { kind: "skillPoint", amount: 1 } },
+    { id: "l8_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { skillPoints: 1, shards: 60 } },
+    { id: "l8_railline", label: "Rail & Beam", check: { onlyTowers: ["railgun", "laser"] }, reward: { skillPoints: 1, shards: 70 } },
   ],
   level_009: [
-    { id: "l9_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { kind: "shards", amount: 60 } },
-    { id: "l9_noslow", label: "No Slowing Down", check: { withoutTowers: ["slow"] }, reward: { kind: "shards", amount: 80 } },
+    { id: "l9_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { skillPoints: 1, shards: 60 } },
+    { id: "l9_noslow", label: "No Slowing Down", check: { withoutTowers: ["slow"] }, reward: { skillPoints: 1, shards: 80 } },
   ],
   level_010: [
-    { id: "l10_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { kind: "shards", amount: 70 } },
-    { id: "l10_wall", label: "Veteran Wall", check: { towersAtLevel: [4, 5] }, reward: { kind: "skillPoint", amount: 1 } },
+    { id: "l10_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { skillPoints: 1, shards: 70 } },
+    { id: "l10_wall", label: "Veteran Wall", check: { towersAtLevel: [4, 5] }, reward: { skillPoints: 1, shards: 80 } },
   ],
   level_011: [
-    { id: "l11_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { kind: "shards", amount: 70 } },
-    { id: "l11_norocket", label: "No Rockets", check: { withoutTowers: ["rocket"] }, reward: { kind: "shards", amount: 90 } },
+    { id: "l11_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { skillPoints: 1, shards: 70 } },
+    { id: "l11_norocket", label: "No Rockets", check: { withoutTowers: ["rocket"] }, reward: { skillPoints: 1, shards: 90 } },
   ],
   level_012: [
-    { id: "l12_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { kind: "shards", amount: 70 } },
-    { id: "l12_elite", label: "Fully Fielded", check: { towersAtLevel: [5, 5] }, reward: { kind: "skillPoint", amount: 1 } },
+    { id: "l12_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { skillPoints: 1, shards: 70 } },
+    { id: "l12_elite", label: "Fully Fielded", check: { towersAtLevel: [5, 5] }, reward: { skillPoints: 1, shards: 90 } },
   ],
   level_013: [
-    { id: "l13_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { kind: "shards", amount: 80 } },
-    { id: "l13_railfocus", label: "Rail Doctrine", check: { onlyTowers: ["railgun", "slow"] }, reward: { kind: "skillPoint", amount: 1 } },
+    { id: "l13_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { skillPoints: 1, shards: 80 } },
+    { id: "l13_railfocus", label: "Rail Doctrine", check: { onlyTowers: ["railgun", "slow"] }, reward: { skillPoints: 1, shards: 90 } },
   ],
   level_014: [
-    { id: "l14_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { kind: "shards", amount: 80 } },
-    { id: "l14_purist", label: "Prism Purist", check: { onlyTowers: ["laser", "pulse"] }, reward: { kind: "skillPoint", amount: 1 } },
+    { id: "l14_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { skillPoints: 1, shards: 80 } },
+    { id: "l14_purist", label: "Prism Purist", check: { onlyTowers: ["laser", "pulse"] }, reward: { skillPoints: 1, shards: 100 } },
   ],
   level_015: [
-    { id: "l15_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { kind: "shards", amount: 100 } },
-    { id: "l15_grandmaster", label: "Grand Master", check: { towersAtLevel: [6, 5] }, reward: { kind: "skillPoint", amount: 1 } },
+    { id: "l15_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { skillPoints: 1, shards: 100 } },
+    { id: "l15_grandmaster", label: "Grand Master", check: { towersAtLevel: [6, 5] }, reward: { skillPoints: 1, shards: 120 } },
   ],
 };
 
@@ -730,6 +732,26 @@ export const VFX = {
     auraAlpha: 0.18,       // aura halo alpha (best rarity tint)
     shimmerSpeed: 5,       // singularity aura shimmer pulse speed
     shimmerDepth: 0.75,    // how much the shimmer swells the aura alpha (0-1)
+  },
+
+  // Circuit-board map decoration: a static layer of PCB traces, solder
+  // pads, vias and silkscreen hexes drawn under the battle (renderer.js
+  // buildCircuitLayer). Deterministic per level (seeded by level id) and
+  // tinted from the level palette's pathEdge accent, so every world's maps
+  // match its menu board. Pre-rendered ONCE per level to an offscreen
+  // canvas — zero per-frame cost. All alphas are the layer's own; it sits
+  // beneath the warp grid so it stays subtle behind the action.
+  circuit: {
+    traceCount: 26,     // wandering trace attempts per board (deduped by tile)
+    traceWidth: 1.6,    // px stroke of each trace
+    traceAlpha: 0.28,   // trace line alpha
+    padAlpha: 0.65,     // terminal solder pads (ring + filled dot)
+    viaCount: 14,       // lone via rings sprinkled on untouched tiles
+    viaAlpha: 0.4,
+    hexCount: 4,        // silkscreen hex marks (the world-menu vocabulary)
+    hexAlpha: 0.3,
+    coreRingAlpha: 0.5, // concentric "CPU" rings + stub pads around the core
+    portalRingAlpha: 0.5, // pad ring under the spawn portal
   },
 
   // The warping background grid (spring mesh).

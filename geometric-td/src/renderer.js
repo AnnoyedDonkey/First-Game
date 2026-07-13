@@ -76,6 +76,199 @@ function activePalette(game) {
   return pal;
 }
 
+// ---------- Circuit-board map decoration ----------
+// The world menus draw levels as neon circuit boards; this carries the same
+// vocabulary (traces, solder pads, vias, silkscreen hexes) onto the battle
+// map itself. The layout is deterministic per level (seeded by level id),
+// tinted from the level palette, and pre-rendered ONCE to an offscreen
+// canvas — the per-frame cost is a single drawImage. Knobs: VFX.circuit.
+
+// Tiny deterministic RNG (mulberry32) seeded from the level id.
+function circuitRng(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  let a = h >>> 0;
+  return function () {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// "r, g, b" out of a palette color (rgba(...) or #rrggbb) so the layer can
+// re-alpha the level's accent for traces/pads.
+function rgbOf(color) {
+  const m = /rgba?\(([^)]+)\)/.exec(color);
+  if (m) return m[1].split(",").slice(0, 3).map((s) => s.trim()).join(",");
+  const hex = /^#([0-9a-f]{6})$/i.exec(color);
+  if (hex) {
+    const n = parseInt(hex[1], 16);
+    return `${(n >> 16) & 255},${(n >> 8) & 255},${n & 255}`;
+  }
+  return "53,224,255";
+}
+
+let circuitCanvas = null;
+let circuitKey = "";
+
+function buildCircuitLayer(game) {
+  const grid = game.grid;
+  const ts = grid.tileSize;
+  const knobs = VFX.circuit;
+  const rng = circuitRng(game.level.id);
+  const rgb = rgbOf(pal.pathEdge);
+  const tint = (a) => `rgba(${rgb},${a})`;
+
+  const c = document.createElement("canvas");
+  c.width = grid.width * ts;
+  c.height = grid.height * ts;
+  const g = c.getContext("2d");
+  g.lineJoin = "round";
+  g.lineCap = "round";
+
+  const key = (x, y) => `${x},${y}`;
+  const used = new Set(); // tiles already carrying a trace — keeps it clean
+
+  const pad = (x, y, r, alpha) => {
+    g.strokeStyle = tint(alpha);
+    g.lineWidth = 1;
+    g.beginPath();
+    g.arc(x, y, r, 0, Math.PI * 2);
+    g.stroke();
+    g.fillStyle = tint(alpha * 0.8);
+    g.beginPath();
+    g.arc(x, y, r * 0.4, 0, Math.PI * 2);
+    g.fill();
+  };
+
+  // Wandering traces: orthogonal walks across buildable tiles (the menu
+  // boards' right-angle "grid" style), each ending in a solder pad.
+  const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  for (let attempt = 0; attempt < knobs.traceCount; attempt++) {
+    let x = Math.floor(rng() * grid.width);
+    let y = Math.floor(rng() * grid.height);
+    if (!grid.isBuildable(x, y) || used.has(key(x, y))) continue;
+
+    const corners = [[x, y]];
+    const tiles = [[x, y]];
+    let dir = DIRS[Math.floor(rng() * 4)];
+    const segments = 2 + Math.floor(rng() * 3);
+    for (let s = 0; s < segments; s++) {
+      const len = 1 + Math.floor(rng() * 3);
+      let moved = 0;
+      for (let i = 0; i < len; i++) {
+        const nx = x + dir[0], ny = y + dir[1];
+        if (!grid.isBuildable(nx, ny) || used.has(key(nx, ny))) break;
+        x = nx; y = ny;
+        tiles.push([x, y]);
+        moved++;
+      }
+      if (moved > 0) corners.push([x, y]);
+      // Turn perpendicular for the next segment.
+      dir = dir[0] !== 0
+        ? [0, rng() < 0.5 ? 1 : -1]
+        : [rng() < 0.5 ? 1 : -1, 0];
+    }
+    if (tiles.length < 3) continue; // too stubby to read as a trace
+
+    for (const [tx, ty] of tiles) used.add(key(tx, ty));
+    const pts = corners.map(([cx, cy]) => grid.tileCenter(cx, cy));
+
+    g.strokeStyle = tint(knobs.traceAlpha);
+    g.lineWidth = knobs.traceWidth;
+    g.beginPath();
+    g.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) g.lineTo(pts[i].x, pts[i].y);
+    g.stroke();
+
+    // Via dots on the interior corners, solder pads on both ends.
+    g.fillStyle = tint(knobs.padAlpha * 0.7);
+    for (let i = 1; i < pts.length - 1; i++) {
+      g.beginPath();
+      g.arc(pts[i].x, pts[i].y, knobs.traceWidth * 0.9, 0, Math.PI * 2);
+      g.fill();
+    }
+    pad(pts[0].x, pts[0].y, ts * 0.07, knobs.padAlpha * 0.7);
+    pad(pts[pts.length - 1].x, pts[pts.length - 1].y, ts * 0.11, knobs.padAlpha);
+  }
+
+  // Lone vias + silkscreen hexes on tiles no trace touched.
+  const sprinkle = (count, draw) => {
+    for (let i = 0; i < count; i++) {
+      const x = Math.floor(rng() * grid.width);
+      const y = Math.floor(rng() * grid.height);
+      if (!grid.isBuildable(x, y) || used.has(key(x, y))) continue;
+      used.add(key(x, y));
+      const p = grid.tileCenter(x, y);
+      draw(p);
+    }
+  };
+  sprinkle(knobs.viaCount, (p) => pad(p.x, p.y, ts * 0.06, knobs.viaAlpha));
+  sprinkle(knobs.hexCount, (p) => {
+    g.strokeStyle = tint(knobs.hexAlpha);
+    g.lineWidth = 1;
+    g.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const t = (Math.PI / 3) * i - Math.PI / 6;
+      const hx = p.x + ts * 0.2 * Math.cos(t);
+      const hy = p.y + ts * 0.2 * Math.sin(t);
+      i ? g.lineTo(hx, hy) : g.moveTo(hx, hy);
+    }
+    g.closePath();
+    g.stroke();
+  });
+
+  // The core is the board's CPU: concentric rings + four diagonal stub
+  // traces fanning out to pads (the PRISM DEEP menu's "rings" style).
+  const core = grid.pathPoints[grid.pathPoints.length - 1];
+  g.lineWidth = 1;
+  for (const [r, a] of [[0.55, 1], [0.8, 0.6]]) {
+    g.strokeStyle = tint(knobs.coreRingAlpha * a);
+    g.beginPath();
+    g.arc(core.x, core.y, ts * r, 0, Math.PI * 2);
+    g.stroke();
+  }
+  g.strokeStyle = tint(knobs.coreRingAlpha * 0.8);
+  g.lineWidth = knobs.traceWidth;
+  for (let i = 0; i < 4; i++) {
+    const t = (Math.PI / 2) * i + Math.PI / 4;
+    const x0 = core.x + ts * 0.8 * Math.cos(t);
+    const y0 = core.y + ts * 0.8 * Math.sin(t);
+    const x1 = core.x + ts * 1.3 * Math.cos(t);
+    const y1 = core.y + ts * 1.3 * Math.sin(t);
+    g.beginPath();
+    g.moveTo(x0, y0);
+    g.lineTo(x1, y1);
+    g.stroke();
+    pad(x1, y1, ts * 0.08, knobs.coreRingAlpha);
+  }
+
+  // Pad ring under the spawn portal — enemies arrive through a socket.
+  const portal = grid.pathPoints[0];
+  g.strokeStyle = tint(knobs.portalRingAlpha);
+  g.lineWidth = 1;
+  g.setLineDash([3, 4]);
+  g.beginPath();
+  g.arc(portal.x, portal.y, ts * 0.48, 0, Math.PI * 2);
+  g.stroke();
+  g.setLineDash([]);
+
+  return c;
+}
+
+function drawCircuitLayer(ctx, game) {
+  const cacheKey = `${game.level.id}:${game.grid.tileSize}`;
+  if (circuitKey !== cacheKey) {
+    circuitCanvas = buildCircuitLayer(game);
+    circuitKey = cacheKey;
+  }
+  ctx.drawImage(circuitCanvas, 0, 0);
+}
+
 // uiState: { selectedType, selectedTower, hoverTile } from main.js
 export function render(ctx, game, time, uiState = {}) {
   const { grid } = game;
@@ -87,6 +280,7 @@ export function render(ctx, game, time, uiState = {}) {
   ctx.fillStyle = pal.background;
   ctx.fillRect(0, 0, w, h);
 
+  drawCircuitLayer(ctx, game);
   drawWarpGrid(ctx, game);
   drawPath(ctx, grid, time);
   drawBlockedTiles(ctx, grid);
@@ -245,24 +439,58 @@ function drawPath(ctx, grid, time) {
   ctx.restore();
 }
 
+// Blocked tiles read as soldered IC chips: a dark package body with pin
+// stubs down both sides and a small X inside (kept so "can't build here"
+// still reads at a glance). Matches the circuit-board decoration layer.
 function drawBlockedTiles(ctx, grid) {
   const ts = grid.tileSize;
-  ctx.fillStyle = LOOK.blockedFill;
-  ctx.strokeStyle = LOOK.blockedEdge;
-  ctx.lineWidth = 1.5;
   for (let y = 0; y < grid.height; y++) {
     for (let x = 0; x < grid.width; x++) {
       if (!grid.isBlocked(x, y)) continue;
       const px = x * ts;
       const py = y * ts;
-      const pad = ts * 0.18;
-      ctx.fillRect(px, py, ts, ts);
-      // Draw an X.
+      const inset = ts * 0.18;   // chip body inset from the tile edge
+      const bx = px + inset, by = py + inset;
+      const bw = ts - inset * 2, bh = ts - inset * 2;
+
+      // Pin stubs first, so the body edge overlaps their roots.
+      ctx.strokeStyle = pal.blockedEdge;
+      ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(px + pad, py + pad);
-      ctx.lineTo(px + ts - pad, py + ts - pad);
-      ctx.moveTo(px + ts - pad, py + pad);
-      ctx.lineTo(px + pad, py + ts - pad);
+      for (let i = 0; i < 3; i++) {
+        const pinY = by + bh * (0.25 + 0.25 * i);
+        ctx.moveTo(bx - ts * 0.09, pinY);
+        ctx.lineTo(bx, pinY);
+        ctx.moveTo(bx + bw, pinY);
+        ctx.lineTo(bx + bw + ts * 0.09, pinY);
+      }
+      ctx.stroke();
+
+      // Package body.
+      ctx.fillStyle = "rgba(10, 8, 14, 0.85)";
+      ctx.fillRect(bx, by, bw, bh);
+      ctx.fillStyle = pal.blockedFill;
+      ctx.fillRect(bx, by, bw, bh);
+      ctx.strokeStyle = pal.blockedEdge;
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(bx, by, bw, bh);
+
+      // Pin-1 notch dot, like a real IC package.
+      ctx.fillStyle = pal.blockedEdge;
+      ctx.beginPath();
+      ctx.arc(bx + bw * 0.2, by + bh * 0.2, ts * 0.035, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Small X so "unbuildable" still reads instantly.
+      const xr = ts * 0.12;
+      const cx = bx + bw / 2, cy = by + bh / 2;
+      ctx.strokeStyle = pal.blockedEdge;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(cx - xr, cy - xr);
+      ctx.lineTo(cx + xr, cy + xr);
+      ctx.moveTo(cx + xr, cy - xr);
+      ctx.lineTo(cx - xr, cy + xr);
       ctx.stroke();
     }
   }

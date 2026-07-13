@@ -621,7 +621,11 @@ function milestoneRewardText(reward) {
   if (reward.kind === "loot" || reward.rarity) {
     return reward.rarity === "singularity" ? "SINGULARITY" : `${reward.rarity.toUpperCase()} LOOT`;
   }
-  return "";
+  // Combined campaign-challenge shape: { skillPoints, shards }, both optional.
+  const parts = [];
+  if (reward.skillPoints) parts.push(`&#9733; ${reward.skillPoints} SKILL PT`);
+  if (reward.shards) parts.push(`&#9670; ${reward.shards}`);
+  return parts.join(" + ");
 }
 
 // Friendly tower names for challenge descriptions (challenge labels like

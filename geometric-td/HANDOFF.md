@@ -400,6 +400,35 @@ selector is open. Treat `levels.js` as the source of truth on wave numbers.
   clean. Knobs: `TOWER_SKILL_LAYOUT` / `ECONOMY_LAYOUT` (chain lengths/costs),
   `SKILL_ZOOM_MIN/MAX/STEP` in ui.js, layout consts in `buildSkillGraph`.
 
+- **Challenge rewards + circuit-board maps (2026-07-12, v2026.07.12-19)** —
+  (1) EVERY campaign challenge now awards **1 skill point + shards**:
+  `LEVEL_MILESTONES` rewards changed from `{kind, amount}` to
+  `{ skillPoints, shards }` (both optional, both paid in
+  `progression.grantLevelMilestones`); `ui.js milestoneRewardText` renders
+  the combined shape ("★ 1 SKILL PT + ◆ 30") and still handles the old
+  `kind` shape used by Endless reward tracks. No save migration needed —
+  saves store only claimed ids. 30 challenges ⇒ up to 30 bonus skill
+  points account-wide. (2) **Circuit-board map decoration**: the world-menu
+  circuit vocabulary now lives on the battle maps themselves.
+  `renderer.js buildCircuitLayer` pre-renders (ONCE per level, offscreen
+  canvas, zero per-frame cost) a static layer of wandering PCB traces
+  ending in solder pads, via dots on corners, lone vias, silkscreen hexes,
+  concentric "CPU" rings + 4 stub pads around the core, and a dashed
+  socket ring under the spawn portal. Layout is deterministic (mulberry32
+  seeded by level id) and auto-tinted from the level palette's `pathEdge`
+  (rgbOf parses rgba/hex), so every world's maps match its menu board with
+  no levels.js changes. Traces avoid path/blocked tiles and never share a
+  tile (occupancy set). Drawn between the background fill and the warp
+  grid. Blocked tiles restyled as soldered **IC chips** (dark package,
+  side pin stubs, pin-1 notch dot, small X kept for "can't build" read) in
+  `drawBlockedTiles`, now using `pal` so palettes may override. All knobs
+  in `config.js VFX.circuit` (traceCount/Width/Alpha, padAlpha, viaCount,
+  hexCount, coreRingAlpha, portalRingAlpha…). Verified in-browser: L1
+  bot-cleared laser-only/no-leak → both challenges latch, +2 SP + 70◆ on
+  top of run earnings, claimed ids persist; sheet + recap show combined
+  reward text; L1 (cyan) and L6 (ember) map renders eyeballed via canvas
+  export — deco tints per palette, console clean.
+
 ## Backlog
 
 - **ACTIVE: Economy rebalance + progression expansion (B1–B6)** — approved

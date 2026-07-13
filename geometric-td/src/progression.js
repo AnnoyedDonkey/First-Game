@@ -688,8 +688,9 @@ function grantLevelMilestones(game, won) {
     if (!attained.has(m.id) || claimed.includes(m.id)) continue;
     claimed.push(m.id);
     newIds.add(m.id);
-    if (m.reward.kind === "shards") state.shards += m.reward.amount;
-    else if (m.reward.kind === "skillPoint") state.skillPoints += m.reward.amount;
+    // Campaign rewards are combined: { skillPoints, shards }, both optional.
+    if (m.reward.shards) state.shards += m.reward.shards;
+    if (m.reward.skillPoints) state.skillPoints += m.reward.skillPoints;
   }
   game.campaignMilestones = {
     attained: levelMilestonesFor(game.level.id).filter((m) => attained.has(m.id)),
