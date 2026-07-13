@@ -805,102 +805,116 @@ export const TOWER_SKILL_LAYOUT = {
   rootCost: 1,                  // cost to unlock a tower branch's root
 };
 
-// Build the skill graph + its viewbox from the spec above. Layout: a shared
-// CORE + ECONOMY spine down the center, then each tower branch stacked below,
-// its root centered with the damage chain running down-left and the level chain
-// down-right. Board is tall and narrow → the player scrolls it vertically.
+// The MONEY branch: a head that forks into one sub-branch chain per economy
+// stat (each box is one increment, e.g. +10% money). progression.js sums the
+// owned boxes per stat (ownedSkillCount) — the `eco_*` id prefix is the key.
+export const ECONOMY_SKILL_SPEC = {
+  eco_money:   { name: "Salvage Protocol", icon: "coin",     step: 0.10, kind: "pct", desc: "money per kill" },
+  eco_xp:      { name: "Combat Learning",  icon: "xp",       step: 0.10, kind: "pct", desc: "tower XP gain" },
+  eco_shard:   { name: "Shard Magnet",     icon: "shard",    step: 0.02, kind: "pct", desc: "shards per kill" },
+  eco_intrate: { name: "Compound Yield",   icon: "interest", step: 0.02, kind: "pct", desc: "cash interest per wave" },
+  eco_intcap:  { name: "Reserve Cap",      icon: "cap",      step: 50,   kind: "cap", desc: "max interest per wave" },
+};
+export const ECONOMY_LAYOUT = { steps: 5, boxCost: 1, rootCost: 1 };
+
+// Build the skill graph + its viewbox from the specs above. Layout: every
+// branch HEAD sits in one row across the top (order: the five towers, then
+// Money, then Core), and each head fans DOWNWARD into its sub-chains — towers
+// into a damage chain (down-left) + level chain (down-right); Money into one
+// chain per economy stat; Core is a single node. Wide + shallow so the whole
+// tree fits on screen zoomed out (ui.js adds pinch / +/- zoom to see detail).
 function buildSkillGraph() {
   const S = {};
-  const COL_L = 26, COL_C = 50, COL_R = 74; // damage / center / level columns
-  const ROW = 24, GROUP_GAP = 16;
-  let y = 18, maxX = 0;
-  const put = (id, node) => { S[id] = node; maxX = Math.max(maxX, node.pos.x); };
+  const COL = 20, ROW = 22, HEAD_Y = 16, BRANCH_GAP = 18, MARGIN = 12, R = 9;
+  let x = MARGIN + R;
+  let maxX = 0, maxY = 0;
+  const put = (id, node) => {
+    S[id] = node;
+    maxX = Math.max(maxX, node.pos.x);
+    maxY = Math.max(maxY, node.pos.y);
+  };
+  const labelFor = (step, kind) => kind === "cap" ? `+${step}` : `+${Math.round(step * 100)}%`;
 
-  // CORE — account survivability.
-  put("coreHealth", { name: "Core Plating", desc: "AI Core health", branch: "core",
-    color: SKILL_BRANCH_COLORS.core, parent: null, pos: { x: COL_C, y }, icon: "core" });
-  y += ROW + GROUP_GAP;
-
-  // ECONOMY — shared money/XP/shard/interest chain.
-  const econ = [
-    ["moneyPerKill", "Salvage Protocol", "money per kill", "coin", "pct"],
-    ["xpGain", "Combat Learning", "tower XP gain", "xp", "pct"],
-    ["shardFind", "Shard Magnet", "shards found per kill", "shard", "pct"],
-    ["interestRate", "Compound Yield", "cash interest per wave", "interest", "pct"],
-    ["interestCap", "Reserve Cap", "max interest per wave", "cap", "cap"],
-  ];
-  let prev = null;
-  for (const [id, name, desc, icon, kind] of econ) {
-    put(id, { name, desc, branch: "economy", color: SKILL_BRANCH_COLORS.economy,
-      parent: prev, pos: { x: COL_C, y }, icon, kind });
-    prev = id; y += ROW;
-  }
-  y += GROUP_GAP;
-
-  // TOWER branches.
+  // ----- Tower branches (laser, pulse, slow, railgun, rocket) -----
   for (const [t, spec] of Object.entries(TOWER_SKILL_SPEC)) {
-    const rootId = `${t}_root`;
-    const rootY = y;
-    put(rootId, { name: `${spec.name} Core`, desc: `unlock ${spec.name} upgrades`, branch: t,
-      color: spec.color, parent: null, pos: { x: COL_C, y: rootY }, icon: spec.icon,
-      maxTier: 1, costs: [TOWER_SKILL_LAYOUT.rootCost], kind: "unlock", tower: t, isRoot: true });
+    const dmgX = x, lvlX = x + COL, headX = x + COL / 2;
+    put(`${t}_root`, { name: `${spec.name} Core`, desc: `unlock ${spec.name} upgrades`, branch: t,
+      color: spec.color, parent: null, pos: { x: headX, y: HEAD_Y }, icon: spec.icon,
+      maxTier: 1, costs: [TOWER_SKILL_LAYOUT.rootCost], kind: "unlock", tower: t, isRoot: true,
+      headLabel: spec.name.toUpperCase() });
 
     const statWord = spec.stat === "duration" ? "duration" : "damage";
     const pctLabel = `+${Math.round(spec.damageStep * 100)}%`;
-
-    // Damage chain (down-left from the root).
-    let p = rootId;
+    let p = `${t}_root`;
     for (let i = 1; i <= TOWER_SKILL_LAYOUT.damageSteps; i++) {
       put(`${t}_dmg${i}`, { name: `${spec.name} ${statWord === "duration" ? "Duration" : "Damage"} ${i}`,
         desc: statWord, branch: t, color: spec.color, parent: p,
-        pos: { x: COL_L, y: rootY + i * ROW }, maxTier: 1, costs: [TOWER_SKILL_LAYOUT.damageCost],
+        pos: { x: dmgX, y: HEAD_Y + i * ROW }, maxTier: 1, costs: [TOWER_SKILL_LAYOUT.damageCost],
         kind: "pct", tower: t, dmg: true, step: spec.damageStep, chainLabel: pctLabel });
       p = `${t}_dmg${i}`;
     }
-    // Level chain (down-right from the root).
-    p = rootId;
+    p = `${t}_root`;
     for (let k = 0; k < TOWER_SKILL_LAYOUT.levelSteps; k++) {
       const lvl = 6 + k;
       put(`${t}_lvl${lvl}`, { name: `${spec.name} Overclock ${lvl}`,
         desc: `raise ${spec.name} level cap to ${lvl}`, branch: t, color: spec.color, parent: p,
-        pos: { x: COL_R, y: rootY + (k + 1) * ROW }, maxTier: 1,
+        pos: { x: lvlX, y: HEAD_Y + (k + 1) * ROW }, maxTier: 1,
         costs: [TOWER_SKILL_LAYOUT.levelCosts[k] ?? 4], kind: "level", tower: t, lvl,
         icon: "level", chainLabel: `L${lvl}` });
       p = `${t}_lvl${lvl}`;
     }
-
-    let rows = Math.max(TOWER_SKILL_LAYOUT.damageSteps, TOWER_SKILL_LAYOUT.levelSteps);
     // Railgun-only perk: over-penetration hangs off the end of the damage chain.
     if (t === "railgun") {
       put("railPen", { name: "Over-Penetration", desc: "Railgun beam length", branch: t,
         color: spec.color, parent: `railgun_dmg${TOWER_SKILL_LAYOUT.damageSteps}`,
-        pos: { x: COL_L - 15, y: rootY + (TOWER_SKILL_LAYOUT.damageSteps + 1) * ROW },
+        pos: { x: dmgX, y: HEAD_Y + (TOWER_SKILL_LAYOUT.damageSteps + 1) * ROW },
         icon: "pierce", kind: "mult", tower: t });
-      rows += 1;
     }
-    y = rootY + (rows + 1) * ROW + GROUP_GAP;
+    x = lvlX + COL + BRANCH_GAP;
   }
 
-  return { skills: S, viewbox: { w: maxX + 14, h: y } };
+  // ----- Money branch: head + one chain per economy stat -----
+  const ecoEntries = Object.entries(ECONOMY_SKILL_SPEC);
+  const ecoSpan = (ecoEntries.length - 1) * COL;
+  put("money_root", { name: "Salvage Grid", desc: "unlock economy upgrades", branch: "economy",
+    color: SKILL_BRANCH_COLORS.economy, parent: null, pos: { x: x + ecoSpan / 2, y: HEAD_Y },
+    icon: "coin", maxTier: 1, costs: [ECONOMY_LAYOUT.rootCost], kind: "unlock", isRoot: true,
+    headLabel: "MONEY" });
+  ecoEntries.forEach(([key, spec], ci) => {
+    const cx = x + ci * COL;
+    const label = labelFor(spec.step, spec.kind);
+    let p = "money_root";
+    for (let i = 1; i <= ECONOMY_LAYOUT.steps; i++) {
+      put(`${key}${i}`, { name: `${spec.name} ${i}`, desc: spec.desc, branch: "economy",
+        color: SKILL_BRANCH_COLORS.economy, parent: p, pos: { x: cx, y: HEAD_Y + i * ROW },
+        maxTier: 1, costs: [ECONOMY_LAYOUT.boxCost], kind: spec.kind, step: spec.step,
+        eco: key, chainLabel: label });
+      p = `${key}${i}`;
+    }
+  });
+  x += ecoSpan + COL + BRANCH_GAP;
+
+  // ----- Core branch: core plating (single multi-tier node) -----
+  put("coreHealth", { name: "Core Plating", desc: "AI Core health", branch: "core",
+    color: SKILL_BRANCH_COLORS.core, parent: null, pos: { x, y: HEAD_Y }, icon: "core",
+    isRoot: true, headLabel: "CORE" });
+
+  return { skills: S, viewbox: { w: maxX + MARGIN + R, h: maxY + MARGIN + R } };
 }
 
 const _skillGraph = buildSkillGraph();
 export const SKILLS = _skillGraph.skills;
-// SVG coordinate box (computed from the generated layout). Tall + narrow so the
-// board scrolls vertically on the phone like the towers screen.
+// SVG coordinate box (computed from the generated layout). Wide + shallow so
+// the whole tree fits on screen at the default zoom; ui.js manages zoom/pan.
 export const SKILL_TREE_VIEWBOX = _skillGraph.viewbox;
 
-// Per-tier effect size for the SHARED (core + economy) nodes; the railgun
-// over-penetration perk. Per-tower damage/level effects come from
-// TOWER_SKILL_SPEC / TOWER_SKILL_LAYOUT (progression.js sums the owned boxes).
+// Per-tier effect size for the nodes NOT covered by a spec: core plating (still
+// a single multi-tier node) and the railgun over-penetration perk. Per-tower
+// damage/level and economy effects come from their specs (progression.js sums
+// the owned boxes).
 export const SKILL_VALUES = {
   coreHealth: 5,          // +5 HP per tier
   railPen: 0.20,          // +20% beam length per tier (x1.0 -> x2.0 at tier 5)
-  moneyPerKill: 0.10,
-  xpGain: 0.10,
-  shardFind: 0.02,        // +2% shards per tier (2% -> 10%)
-  interestRate: 0.02,     // +2% of bank per wave per tier (2% -> 10%)
-  interestCap: 50,        // +50 gold to the per-wave cap per tier (50 -> 250)
 };
 
 // ---------- End-of-battle roast titles ----------

@@ -1904,9 +1904,12 @@ export function initSkillTree(onSkillBought) {
 }
 
 // Open the skill tree from anywhere (HUD, level select, end-of-battle).
+// Show the overlay FIRST so the scroll pane has real dimensions when
+// layoutSkillTree measures it, then start at fit-to-screen (zoom reset).
 export function openSkillTree() {
-  renderSkillTree(skillBoughtCallback);
   el.skillOverlay.classList.remove("hidden");
+  skillZoom = 1;
+  renderSkillTree(skillBoughtCallback, true);
 }
 
 function resetConfirmState() {
@@ -2079,6 +2082,10 @@ function buildSkillTreeSvg() {
     if (max > 1) {
       svg += `<text x="${x}" y="${y + R + 5.4}" text-anchor="middle" font-size="4.6" fill="${owned ? color : "rgba(150,170,200,.6)"}">${tier}/${max}</text>`;
     }
+    // Branch-head label above the top-row heads (LASER / PULSE / MONEY / …).
+    if (node.headLabel) {
+      svg += `<text x="${x}" y="${y - R - 3}" text-anchor="middle" font-size="4.8" font-weight="700" letter-spacing="0.4" fill="${color}" opacity=".92">${node.headLabel}</text>`;
+    }
   }
 
   // Invisible hit targets last so taps always land.
@@ -2090,31 +2097,112 @@ function buildSkillTreeSvg() {
   return svg;
 }
 
-// Legend chip per branch — shared CORE/ECON plus one per tower, in the tower's
-// color (built from the tower root nodes so it tracks the config spec).
-function skillLegendHtml() {
-  const chips = [
-    ["CORE", SKILL_BRANCH_COLORS.core],
-    ["ECON", SKILL_BRANCH_COLORS.economy],
-  ];
-  for (const node of Object.values(SKILLS)) {
-    if (node.isRoot) chips.push([node.name.replace(/ Core$/, "").toUpperCase(), node.color]);
+// ---- Skill-tree zoom / pan ----
+// The whole board is drawn at once; the pane starts at fit-to-screen (zoom 1 =
+// entire tree visible) and the player pinches or taps +/- to zoom in, then
+// drags/scrolls to pan. Zoom + scroll persist across re-renders (buying a node
+// rebuilds the SVG) so the view doesn't jump.
+let skillZoom = 1;
+let skillScroll = { left: 0, top: 0 };
+const SKILL_ZOOM_MIN = 1, SKILL_ZOOM_MAX = 5, SKILL_ZOOM_STEP = 1.5;
+
+function skillPane() { return el.skillList.querySelector(".skill-tree-scroll"); }
+
+// Size the SVG in px: fit the viewbox into the pane, then multiply by zoom.
+function layoutSkillTree(recenter) {
+  const pane = skillPane();
+  const svg = pane && pane.querySelector("svg");
+  if (!pane || !svg) return;
+  const vb = SKILL_TREE_VIEWBOX;
+  const cw = pane.clientWidth, ch = pane.clientHeight;
+  if (!cw || !ch) return;
+  const fit = Math.min(cw / vb.w, ch / vb.h);
+  svg.style.width = (vb.w * fit * skillZoom) + "px";
+  svg.style.height = (vb.h * fit * skillZoom) + "px";
+  if (recenter) {
+    pane.scrollLeft = Math.max(0, (svg.clientWidth - cw) / 2);
+    pane.scrollTop = 0;
+    skillScroll = { left: pane.scrollLeft, top: pane.scrollTop };
+  } else {
+    pane.scrollLeft = skillScroll.left;
+    pane.scrollTop = skillScroll.top;
   }
-  return `<div class="skill-legend">` +
-    chips.map(([txt, c]) =>
-      `<span class="skill-legend-chip" style="color:${c}">` +
-      `<span class="dot" style="background:${c}"></span>${txt}</span>`
-    ).join("") + `</div>`;
 }
 
-function renderSkillTree(onSkillBought) {
+// Zoom toward a focal point (pinch midpoint, or pane center for the buttons),
+// keeping the content under that point stationary.
+function setSkillZoom(z, focal) {
+  const pane = skillPane();
+  if (!pane) return;
+  const prev = skillZoom;
+  skillZoom = Math.max(SKILL_ZOOM_MIN, Math.min(SKILL_ZOOM_MAX, z));
+  if (skillZoom === prev) return;
+  const fx = focal ? focal.x : pane.clientWidth / 2;
+  const fy = focal ? focal.y : pane.clientHeight / 2;
+  const ratio = skillZoom / prev;
+  const nl = (pane.scrollLeft + fx) * ratio - fx;
+  const nt = (pane.scrollTop + fy) * ratio - fy;
+  layoutSkillTree(false);
+  pane.scrollLeft = nl; pane.scrollTop = nt;
+  skillScroll = { left: pane.scrollLeft, top: pane.scrollTop };
+}
+
+function touchDist(t) {
+  return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+}
+
+function bindSkillTreeGestures() {
+  const pane = skillPane();
+  if (!pane) return;
+  pane.addEventListener("scroll", () => {
+    skillScroll = { left: pane.scrollLeft, top: pane.scrollTop };
+  });
+  let startDist = 0, startZoom = 1;
+  const midOf = (touches) => {
+    const r = pane.getBoundingClientRect();
+    return { x: (touches[0].clientX + touches[1].clientX) / 2 - r.left,
+             y: (touches[0].clientY + touches[1].clientY) / 2 - r.top };
+  };
+  pane.addEventListener("touchstart", (e) => {
+    if (e.touches.length === 2) { startDist = touchDist(e.touches); startZoom = skillZoom; }
+  }, { passive: true });
+  pane.addEventListener("touchmove", (e) => {
+    if (e.touches.length === 2 && startDist) {
+      e.preventDefault(); // we own the pinch; don't let the page zoom
+      setSkillZoom(startZoom * touchDist(e.touches) / startDist, midOf(e.touches));
+    }
+  }, { passive: false });
+  const end = () => { startDist = 0; };
+  pane.addEventListener("touchend", end);
+  pane.addEventListener("touchcancel", end);
+  // Desktop convenience: ctrl/⌘ + wheel to zoom.
+  pane.addEventListener("wheel", (e) => {
+    if (!(e.ctrlKey || e.metaKey)) return;
+    e.preventDefault();
+    const r = pane.getBoundingClientRect();
+    setSkillZoom(skillZoom * (e.deltaY < 0 ? 1.12 : 1 / 1.12), { x: e.clientX - r.left, y: e.clientY - r.top });
+  }, { passive: false });
+}
+
+function renderSkillTree(onSkillBought, recenter = false) {
   const points = getSkillPoints();
   el.skillPointsLine.innerHTML =
-    `AVAILABLE POINTS: <b>${points}</b> &mdash; win battles to earn more`;
+    `AVAILABLE POINTS: <b>${points}</b> &mdash; win battles to earn more &middot; pinch or &plusmn; to zoom`;
   el.skillList.classList.add("skill-tree-host");
-  el.skillList.innerHTML = skillLegendHtml() +
-    `<div class="skill-tree-scroll">${buildSkillTreeSvg()}</div>`;
+  el.skillList.innerHTML =
+    `<div class="skill-tree-scroll">${buildSkillTreeSvg()}</div>` +
+    `<div class="skill-zoom">` +
+    `<button type="button" class="skill-zoom-btn" data-zoom="out" aria-label="Zoom out">&minus;</button>` +
+    `<button type="button" class="skill-zoom-btn" data-zoom="in" aria-label="Zoom in">+</button>` +
+    `</div>`;
 
+  layoutSkillTree(recenter);
+  bindSkillTreeGestures();
+
+  el.skillList.querySelectorAll("[data-zoom]").forEach((b) => {
+    b.addEventListener("click", () =>
+      setSkillZoom(b.dataset.zoom === "in" ? skillZoom * SKILL_ZOOM_STEP : skillZoom / SKILL_ZOOM_STEP));
+  });
   el.skillList.querySelectorAll("[data-skill]").forEach((hit) => {
     hit.addEventListener("click", () => openSkillSheet(hit.dataset.skill, onSkillBought));
   });

@@ -10,7 +10,7 @@
 
 import {
   endlessTrackFor, LOOT, SKILLS, SKILL_VALUES, SKILL_TIERS, TOWER_UPGRADES, TOWERS,
-  TOWER_SKILL_SPEC, TOWER_SKILL_LAYOUT,
+  TOWER_SKILL_SPEC, TOWER_SKILL_LAYOUT, ECONOMY_SKILL_SPEC, ECONOMY_LAYOUT,
 } from "./config.js";
 import { levelMilestonesFor, updateMilestoneResults } from "./milestones.js";
 import { loadSave, writeSave, clearSave } from "./save.js";
@@ -92,6 +92,23 @@ function migrateSkillGraph() {
     }
   }
   for (const id of capNodes) drop(id);
+
+  // Economy: old single multi-tier nodes → per-stat sub-branch chains under
+  // the money root. tier k → boxes 1..k of that stat's chain.
+  const oldEco = {
+    eco_money: "moneyPerKill", eco_xp: "xpGain", eco_shard: "shardFind",
+    eco_intrate: "interestRate", eco_intcap: "interestCap",
+  };
+  let anyEco = false;
+  for (const [key, oldId] of Object.entries(oldEco)) {
+    const tier = sk[oldId] | 0;
+    if (tier >= 1) {
+      for (let i = 1; i <= Math.min(tier, ECONOMY_LAYOUT.steps); i++) own(`${key}${i}`);
+      drop(oldId);
+      anyEco = true;
+    }
+  }
+  if (anyEco) own("money_root");
 
   // railPen kept its id; make sure its railgun root is owned so it isn't
   // orphaned/locked after the reshuffle.
@@ -191,17 +208,23 @@ export function getTowerLevelCap(type) {
   return base + ownedSkillCount(`${type}_lvl`);
 }
 
+// Economy effects sum the owned boxes in each stat's sub-branch chain
+// (`eco_*` id prefix), times that stat's per-box step from ECONOMY_SKILL_SPEC.
+function ecoSum(key) {
+  return ECONOMY_SKILL_SPEC[key].step * ownedSkillCount(key);
+}
+
 // Cash interest applied each wave-clear (game.js): floor(money*rate), capped.
 export function getInterestRate() {
-  return SKILL_VALUES.interestRate * getSkillTier("interestRate");
+  return ecoSum("eco_intrate");
 }
 export function getInterestCap() {
-  return SKILL_VALUES.interestCap * getSkillTier("interestCap");
+  return ecoSum("eco_intcap");
 }
 
 // Account-wide shard-find multiplier (composes with per-tower gear shardFind).
 export function getSkillShardFindMult() {
-  return 1 + SKILL_VALUES.shardFind * getSkillTier("shardFind");
+  return 1 + ecoSum("eco_shard");
 }
 
 // Railgun beam-length multiplier (over-penetration): x1.0 up to x2.0.
@@ -209,13 +232,12 @@ export function getRailBeamLengthMult() {
   return 1 + SKILL_VALUES.railPen * getSkillTier("railPen");
 }
 
-// Skill-derived modifiers: tier N = N x the per-tier value.
 export function getMoneyMult() {
-  return 1 + SKILL_VALUES.moneyPerKill * getSkillTier("moneyPerKill");
+  return 1 + ecoSum("eco_money");
 }
 
 export function getXpMult() {
-  return 1 + SKILL_VALUES.xpGain * getSkillTier("xpGain");
+  return 1 + ecoSum("eco_xp");
 }
 
 export function getCoreBonus() {

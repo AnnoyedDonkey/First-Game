@@ -375,6 +375,30 @@ selector is open. Treat `levels.js` as the source of truth on wave numbers.
   sync-conflict copy mid-edit; renamed back to `ui.js`. If files "vanish" or
   gain a " 2" suffix again, that's iCloud, not a bug. **Deferred (user said
   "later"):** more tower-specific unlockables beyond railPen.
+- **Skill tree: horizontal layout + economy sub-branches + pan/zoom
+  (2026-07-12, v2026.07.12-17)** — reworked per an iPhone screenshot the user
+  liked. `config.js buildSkillGraph()` now lays branch HEADS in one row across
+  the top (order: laser, pulse, slow, railgun, rocket, then MONEY, then CORE),
+  each fanning downward; viewbox is wide + shallow so the whole tree fits on
+  screen at the default zoom. The economy branch is now a **money head +
+  one sub-branch chain per stat** (`ECONOMY_SKILL_SPEC`: eco_money / eco_xp /
+  eco_shard / eco_intrate / eco_intcap, each a 5-box chain; `ECONOMY_LAYOUT`);
+  `progression.js` economy getters sum owned `eco_*` boxes via
+  `ownedSkillCount` (`ecoSum` helper) and `migrateSkillGraph` folds the old
+  single economy nodes (moneyPerKill/xpGain/shardFind/interestRate/interestCap
+  tier k → boxes 1..k). coreHealth stays a single multi-tier node.
+  **Pan/zoom (ui.js):** the board is drawn once; `layoutSkillTree` sizes the
+  SVG in px = fit-to-pane × `skillZoom` (default 1 = whole tree visible),
+  `setSkillZoom` zooms toward a focal point, `bindSkillTreeGestures` wires
+  two-finger pinch (+ ctrl/⌘-wheel on desktop), and `.skill-zoom` +/- buttons
+  step 1.5×. Zoom + scroll persist across re-renders (buying a node rebuilds
+  the SVG); `openSkillTree` shows the overlay before measuring, resets to fit.
+  Branch heads render a text label (LASER/MONEY/…) above them; the old legend
+  row is gone. `SKILL_TREE_VIEWBOX` is computed. Verified: 83 nodes, head order
+  + alignment, economy migration + effects, fit-at-default / zoom-in-scrolls /
+  zoom-persists-after-buy, in-battle economy effects run with no throw, console
+  clean. Knobs: `TOWER_SKILL_LAYOUT` / `ECONOMY_LAYOUT` (chain lengths/costs),
+  `SKILL_ZOOM_MIN/MAX/STEP` in ui.js, layout consts in `buildSkillGraph`.
 
 ## Backlog
 
