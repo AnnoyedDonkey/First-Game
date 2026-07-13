@@ -259,7 +259,12 @@ warning the user** — his real progress lives in the same browser.
 
 Gotchas: rAF pauses in hidden tabs (DOM won't update; `step()` still works;
 dynamic `import()` reaches live modules). Browser-pane screenshots time out
-in this harness — verify via DOM queries instead. Pointer simulation needs
+in this harness — verify via DOM queries instead. **Do NOT try to capture,
+decode, or POST the canvas image out of the page either (toDataURL chunks,
+local HTTP listeners, etc.) — user directive: it's slow, error-prone and
+not worth it. For visual changes, assert on state/DOM (render() throws
+nothing, console clean, sample logic-level facts) and let the user eyeball
+on iPhone after the push.** Pointer simulation needs
 the canvas to have layout — prefer the module API for placement. Sim
 scripts have caused false alarms twice — when a result looks insane, debug
 the test before nerfing the game.
