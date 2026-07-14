@@ -14,12 +14,14 @@ counter system with visible hit feedback, a branching SVG skill tree
 railgun over-penetration), permanent per-class
 specialties, post-cap Mastery ranks, per-level palettes, GeoDefense-style
 VFX, ¼x–4x speed controls, Endless mode per level with a 5-milestone reward
-track, per-level campaign challenges (2/level, some award skill points) with
-live milestone toasts + an end-screen recap, forfeit button, a full
+track, per-level campaign challenges (2/level, each awards 1 skill point +
+shards) with live milestone toasts + an end-screen recap, forfeit button, a full
 Diablo-style loot/equipment system (Shards ◆
 currency, per-tower gear in 4 slots, 5 rarities, drops/stash/triage, store,
 gear visible on towers in-battle as orbiting rarity diamonds, old-vs-new
-equip comparison), a tower-first gear UI, and an SVG circuit-board main menu. All deployed and
+equip comparison), a tower-first gear UI, an SVG circuit-board main menu,
+and circuit-board battle-map decoration (traces/pads/vias/IC chips, tinted
+per level palette — knobs in `VFX.circuit`). All deployed and
 playable at the GitHub Pages URL below. No known bugs.
 
 **Active work:** economy rebalance + progression expansion, phases B1–B6,
