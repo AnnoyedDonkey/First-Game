@@ -11,7 +11,7 @@ import {
 } from "./towers.js";
 import {
   getProgress, getSkillPoints, shouldShowTowerGuide, markTowerGuideSeen,
-  forfeitBattle, equipItem, unequipItem, debugGrantGear,
+  forfeitBattle, equipItem, unequipItem, debugGrantGear, getSkillsSnapshot,
 } from "./progression.js";
 import { render } from "./renderer.js";
 import { bindCanvasInput } from "./input.js";
@@ -24,6 +24,10 @@ import {
   openGearPanel, showMilestoneToast,
 } from "./ui.js";
 import { submitScore, isEnabled as lbEnabled } from "./leaderboard.js";
+import {
+  submitRun, submitRating, isEnabled as feedbackEnabled,
+} from "./feedback.js";
+import { GEAR_SLOTS } from "./equipment.js";
 import { initUpdateCheck } from "./update.js";
 import * as loot from "./loot.js";
 
@@ -242,6 +246,48 @@ function lootTailButtons(items, stashFull) {
   return tail;
 }
 
+// Balance-telemetry snapshot for feedback.js, taken at the battle-end
+// moment (win/loss/forfeit). Column-shaped fields are queryable in
+// Supabase directly; everything situational rides in the `details` jsonb
+// so the schema never needs migrating as the game grows.
+function runTelemetry(g, outcome) {
+  const snap = getSkillsSnapshot();
+  const waveReached = g.endless && g.endlessResult ? g.endlessResult.waveReached : null;
+  return {
+    level_id: g.level.id,
+    mode: g.endless ? "endless" : "campaign",
+    outcome,
+    waves_cleared: outcome === "won" ? g.totalWaves : (waveReached ?? g.waveIndex),
+    total_waves: g.totalWaves,
+    core_health: Math.max(0, Math.round(g.coreHealth)),
+    duration_sec: Math.round(g.time),
+    details: {
+      towers: g.towers.map((t) => ({
+        type: t.type,
+        level: t.level,
+        kills: t.kills, // career kills for veterans, not just this run
+        invested: t.invested,
+        gear: GEAR_SLOTS.filter((s) => t.gear && t.gear[s]).map((s) => t.gear[s].rarity),
+      })),
+      typesUsed: [...g.typesUsed],
+      kills: g.kills,
+      leaks: g.leaks,
+      moneyLeft: Math.round(g.money),
+      shardsEarned: Math.round(g.shardsEarned),
+      skills: snap.skills,
+      unspentSkillPoints: snap.unspentPoints,
+    },
+  };
+}
+
+// The showOverlay `feedback` param: campaign end screens get the one-tap
+// difficulty strip; endless runs send telemetry only (a rating against
+// procedurally-extended waves wouldn't say anything about the level).
+function feedbackStrip(g) {
+  if (!feedbackEnabled() || g.endless) return null;
+  return { onRate: (rating, note) => submitRating(rating, note) };
+}
+
 // Endless reward-track milestones newly crossed this run (progression.js
 // grantEndlessRewards) as recap entries for the end screen (B5) — shards are
 // already banked, loot already sits in pendingLoot, this just tells the
@@ -304,6 +350,7 @@ onExitButtonTap(() => {
           forfeitBattle(game);
           game.phase = "lost";
           overlayShown = true;
+          submitRun(runTelemetry(game, "forfeit")); // best-effort, never blocks
           const level = game.level;
           const endless = game.endless;
           const items = allPlacements(game);
@@ -321,6 +368,7 @@ onExitButtonTap(() => {
             items,
             note: stashOverflowNote(items),
             milestones: endless ? endlessRecapEntries() : campaignRecapEntries(),
+            feedback: feedbackStrip(game),
           });
         },
       },
@@ -338,6 +386,7 @@ function checkEndState() {
   if (game.phase !== "won" && game.phase !== "lost") return;
 
   overlayShown = true;
+  submitRun(runTelemetry(game, game.phase)); // best-effort, never blocks
   const level = game.level;
   const items = allPlacements(game);
   const stashFull = items.some((p) => p.dest === "pending");
@@ -359,6 +408,7 @@ function checkEndState() {
       items,
       note,
       milestones: campaignRecapEntries(),
+      feedback: feedbackStrip(game),
     });
   } else if (game.endless) {
     const { waveReached, isNewBest, bestWave } = game.endlessResult;
@@ -393,9 +443,15 @@ function checkEndState() {
       items,
       note,
       milestones: campaignRecapEntries(),
+      feedback: feedbackStrip(game),
     });
   }
 }
+
+// Debug handle: run the end-of-battle resolution from the console. Needed
+// for headless bot sims — checkEndState normally only runs in frame(),
+// and rAF is paused while the tab is hidden.
+window.checkEndState = () => checkEndState();
 
 // ---------- Game loop ----------
 let lastTime = performance.now();

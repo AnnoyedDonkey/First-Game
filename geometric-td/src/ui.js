@@ -4,7 +4,7 @@
 
 import {
   TOWERS, ENEMIES, SKILLS, SKILL_VALUES, TOWER_UPGRADES, LOOT,
-  SKILL_BRANCH_COLORS, SKILL_TREE_VIEWBOX,
+  SKILL_BRANCH_COLORS, SKILL_TREE_VIEWBOX, FEEDBACK,
 } from "./config.js";
 import {
   xpThresholdFor, upgradeCostFor, isUpgradeEligible, sellValueOf,
@@ -96,6 +96,7 @@ const el = {
   overlayButtons: document.getElementById("overlay-buttons"),
   overlayNote: document.getElementById("overlay-note"),
   overlayMilestones: document.getElementById("overlay-milestones"),
+  overlayFeedback: document.getElementById("overlay-feedback"),
   overlayLootHead: document.getElementById("overlay-loot-head"),
   overlayItems: document.getElementById("overlay-items"),
   dropReveal: document.getElementById("drop-reveal"),
@@ -2401,7 +2402,7 @@ export function onExitButtonTap(handler) {
 // ({ item, dest, towerName? } from bankEarnedItem) — rendered as a tappable
 // grid under the buttons, each tile opening its detail card. `note`
 // (optional) is a short red warning line (used when loot couldn't fit).
-export function showOverlay({ title, subtitle, type, buttons, items, note, milestones }) {
+export function showOverlay({ title, subtitle, type, buttons, items, note, milestones, feedback }) {
   el.overlayTitle.textContent = title;
   el.overlaySubtitle.textContent = subtitle || "";
   el.overlay.className = type; // "win" or "loss"
@@ -2448,6 +2449,8 @@ export function showOverlay({ title, subtitle, type, buttons, items, note, miles
     el.overlayMilestones.classList.add("hidden");
   }
 
+  renderFeedbackStrip(feedback);
+
   el.overlayButtons.innerHTML = "";
   for (const spec of buttons) {
     const btn = document.createElement("button");
@@ -2482,6 +2485,65 @@ export function showOverlay({ title, subtitle, type, buttons, items, note, miles
 
 export function hideOverlay() {
   el.overlay.className = "hidden";
+}
+
+// ---- End-screen difficulty feedback strip ----
+// `feedback` = { onRate(rating, note) } or falsy (strip hidden). One tap
+// on a chip sends the rating immediately (no SEND needed), then an
+// optional note field appears; SEND re-submits rating + note. Re-tapping
+// a different chip just re-sends — the backend upserts the same run row.
+const FEEDBACK_CHOICES = [
+  { rating: "too_easy", label: "TOO EASY" },
+  { rating: "just_right", label: "JUST RIGHT" },
+  { rating: "too_hard", label: "TOO HARD" },
+];
+
+function renderFeedbackStrip(feedback) {
+  const box = el.overlayFeedback;
+  if (!box) return;
+  if (!feedback) {
+    box.innerHTML = "";
+    box.classList.add("hidden");
+    return;
+  }
+
+  box.innerHTML =
+    `<div class="fb-head">HOW WAS THIS LEVEL?</div>` +
+    `<div class="fb-chips">` +
+    FEEDBACK_CHOICES.map(
+      (c) => `<button class="fb-chip" data-rating="${c.rating}">${c.label}</button>`
+    ).join("") +
+    `</div>` +
+    `<div class="fb-note-row hidden">` +
+    `<input class="fb-note" type="text" maxlength="${FEEDBACK.maxNoteLength}"` +
+    ` placeholder="Anything else? (optional)">` +
+    `<button class="fb-send">SEND</button>` +
+    `</div>` +
+    `<div class="fb-thanks hidden">&#9733; THANKS &mdash; FEEDBACK SENT</div>`;
+  box.classList.remove("hidden");
+
+  const noteRow = box.querySelector(".fb-note-row");
+  const noteInput = box.querySelector(".fb-note");
+  const thanks = box.querySelector(".fb-thanks");
+  let picked = null;
+
+  box.querySelectorAll(".fb-chip").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      picked = chip.dataset.rating;
+      box.querySelectorAll(".fb-chip").forEach((c) =>
+        c.classList.toggle("picked", c === chip));
+      thanks.classList.remove("hidden");
+      noteRow.classList.remove("hidden");
+      feedback.onRate(picked, noteInput.value);
+    });
+  });
+
+  box.querySelector(".fb-send").addEventListener("click", () => {
+    if (!picked) return;
+    feedback.onRate(picked, noteInput.value);
+    noteRow.classList.add("hidden");
+    noteInput.blur();
+  });
 }
 
 // ---- Live milestone toast (B5) ----

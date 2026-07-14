@@ -184,6 +184,13 @@ export function getSkillPoints() {
   return state.skillPoints;
 }
 
+// Read-only copy of the account's skill spread, for the end-of-battle
+// balance telemetry (feedback.js): which nodes are owned at what tier,
+// plus unspent points — "were they under-levelled or badly specced?".
+export function getSkillsSnapshot() {
+  return { skills: { ...state.skills }, unspentPoints: state.skillPoints };
+}
+
 export function buySkill(id) {
   if (!SKILLS[id]) return false;
   const cost = nextTierCost(id);

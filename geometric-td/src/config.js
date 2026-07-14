@@ -1017,3 +1017,17 @@ export const LEADERBOARD = {
   maxWave: 1000,       // reject absurd waves (matches the DB CHECK)
   maxNickLength: 16,   // nickname is trimmed to this many chars
 };
+
+// Run feedback + balance telemetry (feedback.js). Every battle end sends
+// an anonymous telemetry row (towers/levels/gear, skills, kills, leaks,
+// waves, duration) to the `feedback` table in the SAME Supabase project as
+// the leaderboard, and campaign end screens show a one-tap difficulty
+// rating (TOO EASY / JUST RIGHT / TOO HARD) plus an optional short note
+// that upserts onto that row. All best-effort: a dead network or missing
+// table can never block the end screen. Table SQL in SUPABASE_SETUP.md §
+// "Feedback table". Used to rebalance levels once enough runs pile up.
+export const FEEDBACK = {
+  enabled: true,       // master switch — false hides the rating strip and stops all telemetry
+  table: "feedback",   // table name created by SUPABASE_SETUP.md
+  maxNoteLength: 120,  // optional note trimmed to this many chars (DB CHECK allows 200)
+};

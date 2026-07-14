@@ -316,6 +316,105 @@ button.hud-item {
 }
 .recap-desc.open { display: block; }
 
+/* ---------- End-screen difficulty feedback strip ---------- */
+
+#overlay-feedback {
+  width: 100%;
+  max-width: 340px;
+  margin: 0 0 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+#overlay-feedback.hidden { display: none; }
+
+.fb-head {
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: var(--text-dim);
+}
+
+.fb-chips {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.fb-chip {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 8px 4px;
+  font-family: inherit;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--text);
+  background: rgba(53, 224, 255, 0.04);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.fb-chip:active { background: var(--panel-border); }
+
+.fb-chip.picked {
+  color: var(--neon-cyan);
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 12px rgba(53, 224, 255, 0.35);
+  text-shadow: 0 0 8px rgba(53, 224, 255, 0.6);
+}
+
+.fb-note-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.fb-note-row.hidden { display: none; }
+
+.fb-note {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 8px 10px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  outline: none;
+  /* Override the global user-select:none — iOS won't focus an input
+     that can't place a text cursor. */
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.fb-note::placeholder { color: var(--text-dim); }
+
+.fb-send {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  font-family: inherit;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--neon-cyan);
+  background: none;
+  border: 1px solid var(--neon-cyan);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.fb-thanks {
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--neon-green);
+  text-shadow: 0 0 8px rgba(74, 255, 161, 0.5);
+}
+
+.fb-thanks.hidden { display: none; }
+
 /* "LOOT EARNED" header above the end-screen loot grid, so the tile row
    below it reads as earned rewards rather than mystery icons. */
 #overlay-loot-head {

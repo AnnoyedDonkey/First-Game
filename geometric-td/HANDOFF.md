@@ -107,6 +107,8 @@ src/
   save.js         localStorage read/write/reset (key: geometric-td-save-v1)
   leaderboard.js  shared online board (Supabase REST via fetch); own
                   localStorage key, never touches the game save
+  feedback.js     run telemetry + difficulty ratings (Supabase REST, same
+                  project as the leaderboard, `feedback` table); best-effort
   version.js      APP_VERSION build stamp — BUMP EVERY DEPLOY
   update.js       home-screen "update available" nudge
 mockups/          approved interactive HTML mockups (gear UI, circuit menu)
@@ -239,8 +241,11 @@ on L1 — strong rosters should push well past; `ENDLESS` knobs are untuned.
 
 ## How to verify changes (no test framework — use the browser)
 
-Debug helpers on `window`: `game` (full state) and `step(seconds)`
-(instantly simulates N seconds — the main balance tool).
+Debug helpers on `window`: `game` (full state), `step(seconds)`
+(instantly simulates N seconds — the main balance tool), and
+`checkEndState()` (runs the end-of-battle resolution — overlay, telemetry,
+feedback strip — from the console; needed headless because it normally
+only runs in the rAF frame, and rAF pauses in hidden tabs).
 
 ```js
 // Bot recipe (superhuman; "bot loses" = strong signal, "bot wins" = weak):
@@ -435,6 +440,36 @@ selector is open. Treat `levels.js` as the source of truth on wave numbers.
   top of run earnings, claimed ids persist; sheet + recap show combined
   reward text; L1 (cyan) and L6 (ember) map renders eyeballed via canvas
   export — deco tints per palette, console clean.
+
+- **Balance feedback + telemetry (2026-07-13, v2026.07.13-1)** — the data
+  pipeline for rebalancing levels from real play. New `src/feedback.js`
+  (mirrors leaderboard.js: same Supabase project/keys, own `feedback`
+  table, plain fetch, best-effort — a missing table or dead network only
+  console.warns). EVERY battle end (win/loss/forfeit, campaign AND
+  endless) auto-inserts one telemetry row: level_id, mode, outcome,
+  waves_cleared, total_waves, core_health, duration_sec, app_version,
+  client_id (leaderboard's anonymous id), plus a `details` jsonb (towers
+  with type/level/kills/invested/gear rarities, typesUsed, kills, leaks,
+  moneyLeft, shardsEarned, full skills spread + unspent points via new
+  `progression.getSkillsSnapshot()`). Rows are keyed by a per-run
+  `run_id`; the CAMPAIGN end screen also shows a one-tap difficulty strip
+  (`#overlay-feedback`, `ui.js renderFeedbackStrip`, `.fb-*` styles):
+  TOO EASY / JUST RIGHT / TOO HARD chips — one tap upserts the rating
+  onto the run row, then an optional note input appears (SEND upserts
+  again; re-taps just overwrite). Endless gets telemetry only (a rating
+  against procedural waves says nothing about the level). Knobs in
+  `config.js FEEDBACK` (enabled/table/maxNoteLength); telemetry built by
+  `main.js runTelemetry()`; table SQL + console test recipe in
+  `SUPABASE_SETUP.md` § "Feedback table" (RUN THAT SQL ONCE or every
+  submit 404s harmlessly). **Analysis workflow:** pull rows with the anon
+  key (`GET {url}/rest/v1/feedback?select=*` with apikey header, or
+  filter `?level_id=eq.level_003`), aggregate per level — attempts, win
+  rate, rating split, avg waves_cleared on losses, tower/skill spreads —
+  then tune `levels.js` waves / `config.js` counters and note the change
+  here. Verified: all three end paths submit correct payloads (fetch
+  intercepted + inspected), strip renders/upserts/clears correctly,
+  forfeit-confirm overlay never shows it, console clean apart from the
+  expected dormant-table warns.
 
 ## Backlog
 

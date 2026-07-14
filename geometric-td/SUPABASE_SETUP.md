@@ -103,6 +103,77 @@ Serve locally (`serve.ps1`) and open the site. Then either:
 You can view/edit/delete rows anytime in Supabase → **Table Editor → scores**
 (handy for wiping test data or removing a troll's entry).
 
+## Feedback table (run telemetry + difficulty ratings) — one time, ~2 min
+
+The balance-feedback system (feedback.js) needs a second table in the SAME
+project. Left sidebar → **SQL Editor** → **New query** → paste ALL of this
+→ **Run**:
+
+```sql
+-- One row per battle: auto-telemetry at battle end, plus the player's
+-- optional one-tap difficulty rating (upserted onto the same row).
+create table if not exists public.feedback (
+  run_id        text primary key,          -- minted per battle; lets the rating UPSERT
+  client_id     text not null,             -- same anonymous id as the leaderboard
+  level_id      text not null,
+  mode          text not null check (mode in ('campaign', 'endless')),
+  outcome       text not null check (outcome in ('won', 'lost', 'forfeit')),
+  app_version   text,
+  waves_cleared integer,
+  total_waves   integer,
+  core_health   integer,
+  duration_sec  integer,
+  rating        text check (rating in ('too_easy', 'just_right', 'too_hard')),
+  note          text check (char_length(note) <= 200),
+  details       jsonb,                     -- towers/levels/gear, skills, kills, leaks…
+  created_at    timestamptz not null default now()
+);
+
+-- Analyze one level's runs fast, newest first.
+create index if not exists feedback_level_idx
+  on public.feedback (level_id, created_at desc);
+
+alter table public.feedback enable row level security;
+
+-- Anyone may read (used for the balance analysis pulls).
+create policy "public read"
+  on public.feedback for select
+  using (true);
+
+-- Anyone may submit a run...
+create policy "public insert"
+  on public.feedback for insert
+  with check (
+    char_length(run_id) between 1 and 64
+    and char_length(client_id) between 1 and 64
+  );
+
+-- ...and the rating upsert may overwrite a row (keyed by run_id).
+create policy "public update"
+  on public.feedback for update
+  using (true)
+  with check (
+    char_length(run_id) between 1 and 64
+    and char_length(client_id) between 1 and 64
+  );
+```
+
+No config keys to copy — feedback.js reuses `LEADERBOARD.url`/`anonKey` and
+is on while `config.js FEEDBACK.enabled` is true. Until this SQL has run,
+submissions fail silently (console warning only); the game is unaffected.
+
+Test in the browser console after a battle, or directly:
+
+```js
+const fb = await import('./src/feedback.js');
+await fb.submitRun({ level_id: 'level_001', mode: 'campaign', outcome: 'won',
+  waves_cleared: 5, total_waves: 5, core_health: 20, duration_sec: 300,
+  details: { test: true } });                    // true = success
+await fb.submitRating('just_right', 'test note'); // true = success
+```
+
+Rows land in **Table Editor → feedback** (delete test rows there).
+
 ## Notes / limits
 
 - **Free tier:** 500 MB DB + 5 GB egress/month. Scores are tiny rows; you
