@@ -350,7 +350,7 @@ export const TOWERS = {
     name: "Railgun Tower",
     prefix: "R",           // single-letter gear lock-tag glyph
     rosterPrefix: "Railgun",
-    baseCost: 100,
+    baseCost: 140,
     baseDamage: 48,
     baseRange: 3.5,
     baseFireRate: 3.0,
@@ -359,6 +359,10 @@ export const TOWERS = {
     damageType: "rail",
     color: "#ff9d3f",
     unlockLabel: "CLEAR LV 5",
+    // Playtest feedback (2026-07): "overpowered or too cheap" — 48 dmg ×
+    // 4 pierce / 3s beats laser's DPS-per-gold badly. baseCost 100→140 plus
+    // a steeper per-upgrade cost so it stays a premium pick, not a default.
+    upgradeCostMult: 1.3,
   },
   // Unlocked by clearing World 2 (level 10). GLOBAL RANGE — lobs an
   // explosive rocket at any enemy anywhere on the map. Very slow to
@@ -380,6 +384,11 @@ export const TOWERS = {
     damageType: "blast",
     color: "#ff5e3a",      // rocket red-orange (distinct from railgun amber)
     unlockLabel: "CLEAR LV 10",
+    // Playtest feedback (2026-07): "Rocket should be more expensive to
+    // upgrade" — global range is meant to be the expensive-to-scale option
+    // (cf. pulse 1.6×), so it costs more to level than a placement-limited
+    // tower.
+    upgradeCostMult: 1.4,
   },
 };
 

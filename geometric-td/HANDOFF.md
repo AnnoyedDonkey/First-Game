@@ -471,6 +471,32 @@ selector is open. Treat `levels.js` as the source of truth on wave numbers.
   forfeit-confirm overlay never shows it, console clean apart from the
   expected dormant-table warns.
 
+- **T1: Tower economics (2026-07-16)** — first phase of the feedback-tuning
+  plan (`C:\Users\fthia\.claude\plans\feedback-tuning-2026-07.md`), driven by
+  real telemetry ("Railgun is overpowered or too cheap" / "Rocket should be
+  more expensive to upgrade"). `config.js TOWERS.railgun`: `baseCost` 100→140
+  + new `upgradeCostMult: 1.3`. `config.js TOWERS.rocket`: new
+  `upgradeCostMult: 1.4` (global range stays the expensive-to-scale option,
+  cf. pulse's 1.6×). `towers.js upgradeCostFor` already applies
+  `tower.def.upgradeCostMult` generically — confirmed, not rewritten.
+  Verified in-browser (fresh profile, no save to restore): cumulative L1→L5
+  upgrade cost is 98/163/260/390 for railgun (base 75/125/200/300 × 1.3,
+  exactly) and 105/175/280/420 for rocket (× 1.4, exactly); pulse/slow
+  multipliers unchanged (1.6/0.8). `level_006 startingMoney` is 130 — a
+  player saving for the new 140-cost railgun is 10g short at the door, a
+  reasonable early save-up target (not a hard wall). A pre-capitalized
+  8-laser-wall bot sim (mirrors the documented "fresh 8-tower wall" reference)
+  clears all 10 L1 waves 0-leak at full core (227 kills, grew to 39 towers by
+  the end) — confirms no regression, unrelated to this railgun/rocket-only
+  change. Console clean throughout. **Test-script gotcha hit and fixed**: an
+  early bot script called `updateGame(game, 1)` (1-second dt) instead of
+  substepping at `1/60` — this desyncs the enemy/projectile/targeting sim and
+  produces bogus losses (enemies "stuck", no kills, phantom leaks). Always
+  substep via `for (i=0; i<seconds*60; i++) updateGame(game, 1/60)`, matching
+  `window.step()`, when driving `game.js` from a script instead of the rAF
+  loop. New `.claude/launch.json` (repo root) added a `"td"` config wrapping
+  `geometric-td/serve.ps1` for the preview harness.
+
 ## Backlog
 
 - **ACTIVE: Economy rebalance + progression expansion (B1–B6)** — approved
