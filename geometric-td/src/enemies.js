@@ -198,7 +198,8 @@ export function damageEnemy(game, enemy, sourceTower, amount) {
   game.kills = (game.kills || 0) + 1; // B5 milestone tracking
   game.money += Math.round(
     enemy.bounty * ECONOMY.moneyPerKillMultiplier * getMoneyMult() *
-    (sourceTower ? sourceTower.bountyMult || 1 : 1)
+    (sourceTower ? sourceTower.bountyMult || 1 : 1) *
+    (game.level && game.level.bountyMult != null ? game.level.bountyMult : 1)
   );
 
   // The base XP pool is split without inflation; equipped XP Gain then

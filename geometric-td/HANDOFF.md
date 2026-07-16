@@ -174,6 +174,14 @@ mockups/          approved interactive HTML mockups (gear UI, circuit menu)
   Slow applies a +30% vulnerability debuff (`TOWERS.slow.vulnerability`) to
   slowed enemies. Per-tower `upgradeCostMult` (Pulse 1.6×, Slow 0.8×).
   Splitter spawns 2 splitlings on death; Regenerator heals 5% max HP/s.
+- **Per-level bounty multiplier (`level.bountyMult`, added T3):** a level-wide
+  multiplier on money earned per kill, default 1, documented alongside the
+  other level fields at the top of `levels.js`. Stacks with a wave group's
+  own `bountyMult` (unchanged, still per-spawn-group). Consumed in
+  `enemies.js damageEnemy()`'s bounty payout line. Late-game economy knob —
+  trims accumulated leftover cash on levels a strong roster clears easily
+  without touching enemy HP/waves. Currently set to `0.75` on all five World
+  3 levels (L11-15).
 - **Endless mode:** per level once cleared. Plays the authored waves then
   `generateEndlessWave(level, waveIndex)` (endless.js — deterministic, no
   RNG). Never "won"; ends in "lost" → `recordEndlessResult` records best
@@ -540,6 +548,61 @@ selector is open. Treat `levels.js` as the source of truth on wave numbers.
   unchanged) and those levels assume some carried-over roster strength
   from clearing the prior world, not a first-ever campaign attempt.
   Console clean throughout. No `" 2"` iCloud conflict copies found.
+
+- **T3: World 3 difficulty + late-game economy (2026-07-16)** — third phase
+  of the feedback-tuning plan (`C:\Users\fthia\.claude\plans\feedback-tuning-2026-07.md`),
+  driven by telemetry: every W3 (L11-15) win was first-try with 1,500-5,100
+  leftover money (L15: "Leftover 5000 coins"); L11 rated "way too easy"; L13
+  was the only W3 level with any leaks (5). **Waves** (`levels.js`, waves 2
+  through the end of each level — wave 1 left untouched everywhere per the
+  bankroll rule): `healthMult` raised on every non-boss group and boss group
+  in L11 (×1.35 / ×1.40), L12 (×1.30 / ×1.40), L14 (×1.30 / ×1.40), L15
+  (×1.35 / ×1.40); L13 got a lighter dose (×1.25 / ×1.35) since it already
+  produced the only W3 leaks. Every number is an old→new HP multiplier bump
+  (e.g. L11 wave 10 final boss 4.8→6.7, L15 wave 12 final boss 5.2→7.3);
+  full before/after values are in the diff, not repeated here. **Economy:**
+  new per-level `bountyMult` data knob (see Key mechanics above) added and
+  set to `0.75` on L11-15, trimming late-game bounty income 25% without
+  touching enemy HP/waves. Verified the knob is actually consumed: an
+  isolated `damageEnemy` call with `bountyMult:0.75` vs `1` on the same kill
+  paid 5 vs 7 money (exact 0.75 ratio once rounding is accounted for) — not
+  applied is the same as `1` (confirmed via an undefined-field control).
+  **Verified** (bot sims via the `td` preview + console, substepped at
+  1/60, no canvas capture): seeded a near-max account (6 railgun + 6 rocket
+  veterans at unlocked level 10 with mastery XP, 4 laser + 4 pulse at level
+  7, 3 slow at level 6, full tower-cap/damage skill chains, `completedLevels`
+  through L10) — backed up the pre-existing local test-profile save first
+  and restored it after. **Sim-methodology gotcha hit and fixed:** running
+  multiple sims back-to-back in the same page session silently contaminates
+  results — `recordBattleEnd` writes the roster's in-battle XP/level gains
+  back to the live `progression.js` module state after every win/loss, so a
+  later sim in the same session starts from an already-leveled-up roster,
+  not the pristine seed. Fixed by re-writing the seed to `localStorage` and
+  reloading the page before every single sim run (fresh module state each
+  time) — a second cheapest-tower-first build-order variant was also tried
+  and discarded (it starved the exact railgun/rocket veterans whose
+  specialty+mastery bonuses apply even at battle-level 1, producing bogus
+  losses on levels that clearly won under a like-for-like re-test; per
+  HANDOFF's "debug the test before nerfing the game" rule). Clean,
+  uncontaminated results with a "rocket/pulse/railgun/laser/slow"-priority
+  strong comp (21 towers): L11 WON, wave 10/10, core 37/37 (full), 0 leaks,
+  358 kills, 84 leftover. L12 WON, wave 10/10, core 31/35, 2 leaks, 430
+  kills, 213 leftover. L15 WON, wave 12/12, core 37/37 (full), 0 leaks, 614
+  kills, 48 leftover. None hit the stretch target of winning at ≤ half core,
+  but all three are decisive improvements on the 1,500-5,100 leftover-cash
+  problem and none is a trivial stomp — a mismatched comp (railgun-heavy
+  against L12's splitter/regenerator-heavy waves) lost outright at wave 3 in
+  an earlier (later found contaminated, but independently reproduced clean)
+  run, showing comp/counter choice now genuinely matters on L12, consistent
+  with the counter-system's "punish mono-focus" design. **Wave-1 openers**
+  verified on all five W3 levels with a cheap laser/slow/pulse opening build
+  paid for by `startingMoney` alone (no mid-wave bounty income spent): all
+  five cleared wave 1 without losing the core (L11-15 core remaining
+  18/11/24/7/37 out of 35-37 max) — wave 1 itself was never touched, so this
+  is an unregression check, not new tuning. Console clean throughout. No
+  `" 2"` iCloud conflict copies found. Did NOT bump `src/version.js` or
+  push, per the phase's shared rules — the orchestrator does that once after
+  T4.
 
 ## Backlog
 
