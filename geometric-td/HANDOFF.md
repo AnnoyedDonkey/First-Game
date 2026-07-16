@@ -497,6 +497,50 @@ selector is open. Treat `levels.js` as the source of truth on wave numbers.
   loop. New `.claude/launch.json` (repo root) added a `"td"` config wrapping
   `geometric-td/serve.ps1` for the preview harness.
 
+- **T2: Boss & counter pass (2026-07-16)** — second phase of the
+  feedback-tuning plan, `levels.js`-only (no `config.js`/`ENEMIES` changes,
+  so no cross-level knock-on to check). Driven by telemetry: L2 "the boss
+  wave should be harder"; L5 "no wave came close to the core .. way too
+  easy" (an 11-laser wall won); L6 "Railgun should almost be mandatory to
+  use but I could have done the map without it"; L7 "Boss should be way
+  harder" (L7 itself stays the veteran-gated wall — only its boss got
+  meaner). **L2** (`level_002`): wave 7 mini-boss `healthMult` 1.1→1.65,
+  wave 12 (final, twin boss) `healthMult` 2.4→3.6 (both +50%). **L5**
+  (`level_005`): punished the mono-laser wall via wave COMPOSITION (armored
+  is the energy-resist enemy — preferred lever per the plan, no global
+  `ENEMIES.armored.damageMult` change needed). Armored `count`/`healthMult`
+  raised across waves 3/5/7/8/9/11/13: 10/3.0→12/3.4, 12/3.8→14/4.2,
+  10/4.4→14/5.6, 12/5.0→18/6.2, 12/5.4→18/6.8, 20/7.2→28/8.6,
+  12/7.8→18/9.4 (spawnIntervals tightened to match the higher counts;
+  waves 1/2/4/6/10/12 untouched). **L6** (`level_006`): wave 6 first-boss
+  `healthMult` 2.4→3.6, wave 10 final twin-boss `healthMult` 3.6→5.2
+  (+50%/+44%); boss already resists Pulse (`damageMult.pulse: 0.75`, see
+  `config.js ENEMIES.boss`) so a heavier boss makes an all-Pulse
+  splitter-only build genuinely worse than one with Railgun/focused Laser
+  — the counter math did the work, only HP moved. Also fixed a stale
+  `desc` that promised Regenerators (a Level 7 enemy, never spawned on L6)
+  and rewrote it to name the real Pulse-vs-Splitter / Railgun-vs-boss
+  tension. **L7** (`level_007`): wave 5 boss `healthMult` 2.6→3.9 (+50%),
+  wave 10 final twin-boss `healthMult` 3.6→5.4 (+50%) plus thicker escorts
+  (regenerator 10→12, splitter 12→14). **Verified** (bot sims via the
+  `td` preview + console, substepped at 1/60, no canvas capture; a
+  pre-existing local test-profile save was backed up and restored after):
+  (a) L5 11-laser wall, all towers precapitalized to level 5 (mirrors the
+  reported "11 lasers, max level 5" win) — now LOSES at wave 11/13, core
+  0, 5 leaks. (b) L5 mixed 4-laser/4-pulse/3-slow comp, same total tower
+  count and same level-5 precap methodology — WINS with a full-core,
+  0-leak clear (374 kills). (c) L2: a 7-tower laser/pulse/slow spread
+  (mid-level, not maxed) cleared the buffed wave 7 mini-boss AND wave 12
+  final boss in isolation with 0 leaks/full core — the buffs don't break
+  fresh-player survivability. (d) Bankroll rule: L5 wave 1 unaffected
+  (untouched) and clears 0-leak on starting money; L2/L6/L7 wave 1 (also
+  untouched) clear 0-leak for a roster carrying realistic prior-world
+  tower levels — note a truly from-scratch level-1-tower opener still
+  struggles on L6/L7 wave 1, but that's pre-existing (wave 1 there is
+  unchanged) and those levels assume some carried-over roster strength
+  from clearing the prior world, not a first-ever campaign attempt.
+  Console clean throughout. No `" 2"` iCloud conflict copies found.
+
 ## Backlog
 
 - **ACTIVE: Economy rebalance + progression expansion (B1–B6)** — approved
