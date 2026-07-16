@@ -1005,6 +1005,58 @@ export const RESULT_ROASTS = {
   ],
 };
 
+// ---------- First-play tutorial (T4) ----------
+// A quick, skippable 5-step walkthrough shown ONCE, only on the very
+// first campaign start of level_001. Gating state machine lives in
+// src/tutorial.js (subscribes/advances on REAL actions: tray selection,
+// tower placement, wave-button tap — see its notify* hooks, wired from
+// main.js); the persistent `tutorialDone` flag lives in save.js
+// DEFAULT_SAVE + gets backfilled true for any save with prior progress
+// in progression.js. Copy + the two illustrative tile coordinates are
+// data here, never hardcoded in ui.js. Root cause this fixes: a new
+// player read the red X blocked tiles as "build here" — see step
+// `blockedTile` below.
+export const TUTORIAL = {
+  enabled: true,
+  targetLevelId: "level_001",
+  // A good buildable tile near the level_001 opening corridor — purely
+  // illustrative for the spotlight ring; ANY successful placement
+  // advances the `placeTile` step (see tutorial.js notifyPlacement).
+  placementTile: { x: 5, y: 2 },
+  // One of level_001's real blockedTiles (levels.js), chosen close to
+  // placementTile so the callout tile is right where the player just
+  // looked — the step-4 "you can't build here" explainer.
+  blockedTileCallout: { x: 4, y: 2 },
+  steps: [
+    {
+      id: "welcome",
+      cta: "TAP TO START",
+      text: "Defend the AI Core — build towers to stop the wave.",
+    },
+    {
+      id: "selectLaser",
+      target: "trayLaser",
+      text: "Tap the LASER tower.",
+    },
+    {
+      id: "placeTile",
+      target: "tile",
+      text: "Now tap an open tile to build.",
+    },
+    {
+      id: "blockedTile",
+      target: "blockedTile",
+      cta: "TAP TO CONTINUE",
+      text: "✕ chips are part of the circuit board — no building there.",
+    },
+    {
+      id: "startWave",
+      target: "waveButton",
+      text: "Tap START WAVE to send in the wave!",
+    },
+  ],
+};
+
 // ---------- Shared leaderboard (Supabase) ----------
 // A common online high-score board: per-level Endless BEST WAVE reached.
 // Reached with plain fetch() against Supabase's auto-generated REST API,

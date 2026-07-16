@@ -194,6 +194,27 @@ mockups/          approved interactive HTML mockups (gear UI, circuit menu)
 - **Forfeit:** ✕ in the HUD → confirm overlay → `forfeitBattle` (syncs
   roster XP + loot, no win credit). Sim frozen during the prompt via
   `exitConfirming` in main.js (doesn't touch pause state).
+- **First-play tutorial (T4):** a 5-step, skippable walkthrough shown ONCE,
+  only on level_001's very first campaign start (new player report: the red
+  ✕ blocked tiles read as "build here"). State machine in `src/tutorial.js`
+  (game/UI-free, mirrors the milestone-toast split — it only tracks the
+  active step and gates advancement on REAL actions notified from main.js:
+  tray selection, a successful `placeTower`, the wave-button tap); copy +
+  enable switch + the two illustrative tile coordinates live in `config.js
+  TUTORIAL`. Persistent flag: `save.js DEFAULT_SAVE.tutorialDone` +
+  `progression.js` backfill (auto-true for any save with a completed level
+  or non-empty roster — mirrors `seenTowerGuide`). DOM in `index.html`
+  (`#tutorial-overlay`: a freeze-catcher + card for the two static steps —
+  welcome and the blocked-tile callout, tap anywhere to continue, sim frozen
+  via `tutorial.isTutorialFreezing()` in main.js's dt calc — and a
+  pointer-events:none banner + spotlight ring for the other three, so the
+  REAL tray chip / canvas tile / wave button still receives the tap); ui.js
+  repositions the ring every frame (`updateTutorialOverlay`, called from
+  main.js's frame loop) using `getBoundingClientRect()` off the real
+  elements — never drawn into the canvas. **To re-trigger for testing:**
+  clear `localStorage['geometric-td-save-v1']` (or set `tutorialDone:
+  false` with an empty `roster`/`completedLevels`) and start level_001's
+  campaign; `TUTORIAL.enabled = false` in config.js disables it entirely.
 - **Main menu:** world-paged SVG circuit board (`ui.js renderWorld` /
   `buildBoardSvg`), swipe/arrows between worlds, tap node → level-detail
   bottom sheet (desc, milestones, PLAY/ENDLESS). Global actions live in the
@@ -603,6 +624,51 @@ selector is open. Treat `levels.js` as the source of truth on wave numbers.
   `" 2"` iCloud conflict copies found. Did NOT bump `src/version.js` or
   push, per the phase's shared rules — the orchestrator does that once after
   T4.
+
+- **T4: First-play interactive tutorial (2026-07-16)** — fourth and final
+  phase of the feedback-tuning plan, driven by a new-player observation
+  (watching a friend play): the red ✕ blocked tiles read as "build HERE",
+  costing them a confused minute before their first placement. A 5-step,
+  skippable, tap-gated walkthrough now runs ONCE on level_001's very first
+  campaign start — see the "First-play tutorial (T4)" bullet under Key
+  mechanics above for the full architecture (`src/tutorial.js` state
+  machine, `config.js TUTORIAL` copy/knobs, `save.js`/`progression.js`
+  `tutorialDone` flag + backfill, `index.html`/`styles.css`/`ui.js` overlay).
+  Steps: (1) welcome card ("Defend the AI Core…"), TAP TO START or SKIP;
+  (2) spotlight the tray's LASER chip, gated on the real tray-selection
+  click; (3) spotlight a buildable tile, gated on any real successful
+  `placeTower` (not just the illustrated one); (4) callout on a real
+  blocked tile ("✕ chips are part of the circuit board — no building
+  there" — the actual fix), tap-anywhere to continue; (5) spotlight the
+  real START WAVE button, gated on the real wave-button click, which ends
+  the tutorial and saves the flag. SKIP is reachable on every step.
+  **Verified in-browser** (fresh + seeded saves via the `td` preview,
+  console-driven real-DOM interactions — real tray click, a real
+  `pointerdown` dispatched on the canvas at the target tile's actual
+  screen coordinates, a real wave-button click — no synthetic module-API
+  shortcuts for the gated steps, no canvas capture): (1) fresh save → all
+  5 steps advanced only on their real action in order, tutorial ended,
+  `tutorialDone` saved true, game fully playable afterward (botted wave 1,
+  no throw); (2) replaying L1 and reloading the page both show no
+  tutorial; (3) SKIP on step 2 removed the tutorial and saved the flag
+  without disturbing the in-progress battle; (4) a hand-built save with
+  `completedLevels`/`roster` but no `tutorialDone` field at all (simulating
+  a pre-T4 save) backfilled the flag to `true` on load, no tutorial shown;
+  (5) `tutorial.maybeStartTutorial` returns/stays inactive for level_002
+  campaign and level_001 Endless on a fresh save (level_001-campaign-only,
+  by construction). Spotlight math double-checked against
+  `getBoundingClientRect()` of the real tray button, canvas tile, and wave
+  button — exact match every time. Console clean throughout every run.
+  Hit and worked around the documented "rAF pauses in a hidden/background
+  tab" gotcha (HANDOFF § How to verify changes) while testing the
+  per-frame spotlight repositioning: called `ui.updateTutorialOverlay`
+  directly to confirm the math, since the automation harness's tab isn't
+  the OS-focused foreground tab — gating logic itself runs from click
+  handlers, not the frame loop, so it was unaffected. No `" 2"` iCloud
+  conflict copies found. Original local test-profile save backed up
+  before testing and restored byte-for-byte after (verified: shards,
+  wins, roster count, stash count all matched post-restore). Did NOT bump
+  `src/version.js` or push, per the phase's shared rules.
 
 ## Backlog
 

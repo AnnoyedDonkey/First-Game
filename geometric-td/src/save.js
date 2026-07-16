@@ -22,6 +22,7 @@ const DEFAULT_SAVE = {
   storeUnlocks: [],   // rarities unlocked for store rolls: ["enhanced", "rare", ...]
   endlessRewards: {},
   levelMilestones: {}, // { levelId: [claimedMilestoneId, ...] } — per-level challenges (B5)
+  tutorialDone: false, // first-play walkthrough (T4) shown once on level_001's first campaign start
 };
 
 export function loadSave() {

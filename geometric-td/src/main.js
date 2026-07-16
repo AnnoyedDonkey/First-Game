@@ -21,7 +21,7 @@ import {
   updateUpgradePanel, onUpgradeButtonTap, onSellButtonTap,
   initSkillTree, showLevelSelect, openSkillTree, hideOverlay,
   initSpeedControls, openTowerGuide, onExitButtonTap, openLeaderboard,
-  openGearPanel, showMilestoneToast,
+  openGearPanel, showMilestoneToast, updateTutorialOverlay,
 } from "./ui.js";
 import { submitScore, isEnabled as lbEnabled } from "./leaderboard.js";
 import {
@@ -30,6 +30,7 @@ import {
 import { GEAR_SLOTS } from "./equipment.js";
 import { initUpdateCheck } from "./update.js";
 import * as loot from "./loot.js";
+import * as tutorial from "./tutorial.js";
 
 const TILE_SIZE = 64; // internal render resolution per tile
 
@@ -102,6 +103,12 @@ function startLevel(level, endless = false) {
     markTowerGuideSeen();
     openTowerGuide();
   }
+
+  // First-play walkthrough (T4): only actually starts for level_001's
+  // very first campaign attempt — see tutorial.js maybeStartTutorial.
+  // Must run after the canvas is sized so the spotlight ring can measure
+  // the real tray/tile/wave-button positions immediately.
+  tutorial.maybeStartTutorial(level, endless);
 }
 
 // Size the canvas element to the largest rectangle that fits the
@@ -119,7 +126,9 @@ function fitCanvas() {
 window.addEventListener("resize", fitCanvas);
 
 onWaveButtonTap(() => {
-  if (game) startNextWave(game);
+  if (!game) return;
+  tutorial.notifyWaveStart(); // T4: real START WAVE tap gates/ends the tutorial
+  startNextWave(game);
 });
 
 // ---------- Selection & placement ----------
@@ -137,6 +146,8 @@ initTowerButtons((type) => {
   uiState.selectedType = uiState.selectedType === type ? null : type;
   uiState.selectedDef = uiState.selectedType ? TOWERS[type] : null;
   uiState.selectedTower = null;
+  // T4: real tray selection gates the tutorial's "tap the LASER tower" step.
+  if (uiState.selectedType === type) tutorial.notifyTraySelect(type);
 });
 
 onUpgradeButtonTap(() => {
@@ -174,6 +185,10 @@ bindCanvasInput(canvas, {
 
     if (uiState.selectedType) {
       const result = placeTower(game, uiState.selectedType, x, y);
+      // T4: a real successful placement gates the tutorial's "tap an open
+      // tile to build" step — any valid tile counts, not just the
+      // illustrative one the spotlight ring points at.
+      tutorial.notifyPlacement(result.ok);
       if (!result.ok) {
         // Red flash on the rejected tile, then cancel placement mode —
         // tapping anywhere invalid is the "never mind" gesture.
@@ -462,7 +477,8 @@ function frame(now) {
   // Also freezes while the forfeit-confirm prompt is up.
   const dt =
     Math.min((now - lastTime) / 1000, 0.05) *
-    DEBUG.gameSpeed * (gamePaused || exitConfirming ? 0 : speedFactor);
+    DEBUG.gameSpeed *
+    (gamePaused || exitConfirming || tutorial.isTutorialFreezing() ? 0 : speedFactor);
   lastTime = now;
 
   if (game) {
@@ -478,6 +494,7 @@ function frame(now) {
     updateHUD(game);
     updateTowerButtons(game, uiState.selectedType);
     updateUpgradePanel(game, uiState.selectedTower);
+    updateTutorialOverlay(game); // T4: reposition the spotlight ring, if active
     checkEndState();
   }
 

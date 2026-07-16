@@ -21,6 +21,33 @@
          an Endless or campaign milestone is reached mid-battle (B5) -->
     <div id="milestone-toast" class="hidden" aria-live="polite"></div>
 
+    <!-- First-play tutorial (T4): quick, skippable 5-step walkthrough shown
+         once, only on the very first level_001 campaign start. Gating state
+         machine in src/tutorial.js; copy + enable switch in config.js
+         TUTORIAL; positioning + rendering in ui.js. Three independent parts:
+           - #tutorial-freeze-catcher: full-screen tap target, ACTIVE ONLY on
+             the two static explainer steps (welcome + blocked-tile callout)
+             — tapping anywhere advances; main.js freezes the sim underneath
+             while it's up (mirrors the existing forfeit-confirm freeze).
+           - #tutorial-card: the step's text (+ a CTA hint on the two static
+             steps). Always pointer-events:none — pure display, never
+             intercepts a tap itself.
+           - #tutorial-spotlight: a ring positioned every frame (ui.js
+             updateTutorialOverlay) over the REAL target element — the tray's
+             LASER chip, a canvas tile, or the wave button. Also always
+             pointer-events:none: the real element underneath gets the tap,
+             never a decoy. Never drawn into the game canvas itself.
+         #tutorial-skip is reachable on every step. -->
+    <div id="tutorial-overlay" class="hidden" aria-live="polite">
+      <div id="tutorial-freeze-catcher"></div>
+      <div id="tutorial-card">
+        <p id="tutorial-card-text"></p>
+        <span id="tutorial-card-cta"></span>
+      </div>
+      <div id="tutorial-spotlight" class="hidden"></div>
+      <button id="tutorial-skip">SKIP TUTORIAL</button>
+    </div>
+
     <!-- Top HUD: money / wave / core health -->
     <header id="hud">
       <div class="hud-item" id="hud-money">

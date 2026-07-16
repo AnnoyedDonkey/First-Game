@@ -4,8 +4,12 @@
 
 import {
   TOWERS, ENEMIES, SKILLS, SKILL_VALUES, TOWER_UPGRADES, LOOT,
-  SKILL_BRANCH_COLORS, SKILL_TREE_VIEWBOX, FEEDBACK,
+  SKILL_BRANCH_COLORS, SKILL_TREE_VIEWBOX, FEEDBACK, TUTORIAL,
 } from "./config.js";
+import {
+  onTutorialChange, isTutorialActive, currentStep as currentTutorialStep,
+  isFreezeStep, advance as advanceTutorial, skipTutorial,
+} from "./tutorial.js";
 import {
   xpThresholdFor, upgradeCostFor, isUpgradeEligible, sellValueOf,
   masteryRankFor, xpToNextMastery, careerStatsFor,
@@ -101,6 +105,13 @@ const el = {
   overlayItems: document.getElementById("overlay-items"),
   dropReveal: document.getElementById("drop-reveal"),
   milestoneToast: document.getElementById("milestone-toast"),
+  tutorialOverlay: document.getElementById("tutorial-overlay"),
+  tutorialFreezeCatcher: document.getElementById("tutorial-freeze-catcher"),
+  tutorialCard: document.getElementById("tutorial-card"),
+  tutorialCardText: document.getElementById("tutorial-card-text"),
+  tutorialCardCta: document.getElementById("tutorial-card-cta"),
+  tutorialSpotlight: document.getElementById("tutorial-spotlight"),
+  tutorialSkip: document.getElementById("tutorial-skip"),
   leaderboardOverlay: document.getElementById("leaderboard-overlay"),
   leaderboardList: document.getElementById("leaderboard-list"),
   leaderboardMsg: document.getElementById("leaderboard-msg"),
@@ -2573,4 +2584,89 @@ function runNextToast() {
     t.classList.add("hidden");
     setTimeout(runNextToast, 180);
   }, 2300);
+}
+
+// ---- First-play tutorial overlay (T4) ----
+// Renders whatever src/tutorial.js's state machine says is current; ui.js
+// never advances or gates a step itself, it only reacts (same split as the
+// milestone toast: game/logic pushes state, UI draws it). Two presentations
+// per step (see tutorial.js isFreezeStep + index.html's per-piece comment):
+//   - freeze steps (welcome, blockedTile): centered modal card, tap the
+//     full-screen catcher anywhere to continue.
+//   - the other three: a compact banner pinned near the top + a spotlight
+//     ring positioned every frame (updateTutorialOverlay) over the REAL
+//     tray chip / canvas tile / wave button — never a decoy control.
+// SKIP TUTORIAL stays reachable regardless of which presentation is up.
+function renderTutorialStep() {
+  const step = currentTutorialStep();
+  if (!el.tutorialOverlay) return;
+  if (!isTutorialActive() || !step) {
+    el.tutorialOverlay.classList.add("hidden");
+    return;
+  }
+  el.tutorialOverlay.classList.remove("hidden");
+
+  const freezing = isFreezeStep(step);
+  el.tutorialFreezeCatcher.classList.toggle("active", freezing);
+  el.tutorialFreezeCatcher.classList.toggle("dim", freezing && !step.target);
+
+  el.tutorialCard.classList.toggle("modal", freezing);
+  el.tutorialCard.classList.toggle("banner", !freezing);
+  el.tutorialCardText.textContent = step.text;
+  el.tutorialCardCta.textContent = freezing ? (step.cta || "TAP TO CONTINUE") : "";
+
+  el.tutorialSpotlight.classList.toggle("hidden", !step.target);
+}
+
+onTutorialChange(renderTutorialStep);
+
+if (el.tutorialFreezeCatcher) {
+  el.tutorialFreezeCatcher.addEventListener("click", () => advanceTutorial());
+}
+if (el.tutorialSkip) {
+  el.tutorialSkip.addEventListener("click", () => skipTutorial());
+}
+
+// Screen-space box for one of the tutorial's real targets. `game` supplies
+// the live grid/tileSize for the two canvas-tile targets; the tray chip and
+// wave button are read straight off their real DOM elements (getBoundingClientRect),
+// so the ring always tracks the actual on-screen control, not a copy of it.
+function tutorialTileBox(game, tile) {
+  const canvasEl = document.getElementById("game-canvas");
+  if (!canvasEl || !game || !tile) return null;
+  const rect = canvasEl.getBoundingClientRect();
+  if (!rect.width || !canvasEl.width) return null;
+  const scale = rect.width / canvasEl.width; // CSS px per internal render px
+  const size = game.grid.tileSize * scale;
+  return { left: rect.left + tile.x * size, top: rect.top + tile.y * size, width: size, height: size };
+}
+
+function tutorialElementBox(elm, pad = 4) {
+  if (!elm) return null;
+  const r = elm.getBoundingClientRect();
+  return { left: r.left - pad, top: r.top - pad, width: r.width + pad * 2, height: r.height + pad * 2 };
+}
+
+function tutorialTargetBox(game, target) {
+  if (target === "trayLaser") return tutorialElementBox(towerButtonRefs.laser);
+  if (target === "waveButton") return tutorialElementBox(el.waveButton);
+  if (target === "tile") return tutorialTileBox(game, TUTORIAL.placementTile);
+  if (target === "blockedTile") return tutorialTileBox(game, TUTORIAL.blockedTileCallout);
+  return null;
+}
+
+// Called every frame from main.js while a battle is running (cheap no-op
+// otherwise): repositions the spotlight ring over the current step's REAL
+// target. Never draws into the game canvas itself — this is a plain
+// positioned DOM box layered on top of it.
+export function updateTutorialOverlay(game) {
+  if (!el.tutorialSpotlight || !isTutorialActive()) return;
+  const step = currentTutorialStep();
+  if (!step || !step.target) return;
+  const box = tutorialTargetBox(game, step.target);
+  if (!box) return;
+  el.tutorialSpotlight.style.left = `${box.left}px`;
+  el.tutorialSpotlight.style.top = `${box.top}px`;
+  el.tutorialSpotlight.style.width = `${box.width}px`;
+  el.tutorialSpotlight.style.height = `${box.height}px`;
 }

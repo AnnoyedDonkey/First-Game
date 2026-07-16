@@ -254,6 +254,126 @@ button.hud-item {
   #milestone-toast { transition: opacity 0.28s ease; transform: translate(-50%, 0); }
 }
 
+/* ---------- First-play tutorial (T4) ---------- */
+/* z-index 9: above the HUD/tray (unpositioned, default stacking) and the
+   milestone toast (8), below the win/loss overlay (#overlay = 10) — see
+   index.html for the piece-by-piece breakdown. */
+
+#tutorial-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9;
+  pointer-events: none;
+}
+#tutorial-overlay.hidden { display: none; }
+
+#tutorial-freeze-catcher {
+  position: absolute;
+  inset: 0;
+  background: transparent;
+  pointer-events: none;
+}
+/* Active on the two static steps (tap anywhere to continue). */
+#tutorial-freeze-catcher.active { pointer-events: auto; }
+/* Only the welcome step (no spotlight target) gets a flat dim backdrop —
+   the blocked-tile callout instead relies on #tutorial-spotlight's own
+   cutout dim so the highlighted tile itself stays clearly visible. */
+#tutorial-freeze-catcher.dim { background: rgba(5, 6, 15, 0.72); }
+
+#tutorial-card {
+  position: absolute;
+  left: 50%;
+  width: 280px;
+  max-width: calc(100% - 48px);
+  padding: 16px 20px;
+  text-align: center;
+  background: var(--panel);
+  border: 1px solid var(--neon-cyan);
+  border-radius: 12px;
+  box-shadow: 0 0 24px rgba(53, 224, 255, 0.35);
+  pointer-events: none;
+}
+
+/* Modal placement (welcome / blocked-tile callout): centered card. */
+#tutorial-card.modal {
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* Banner placement (tray/tile/wave-button spotlight steps): a compact
+   pill pinned near the top, out of the way of the highlighted element. */
+#tutorial-card.banner {
+  top: calc(env(safe-area-inset-top) + 14px);
+  transform: translateX(-50%);
+  width: auto;
+  padding: 9px 16px;
+  border-color: var(--neon-yellow);
+  box-shadow: 0 0 18px rgba(255, 226, 74, 0.3);
+}
+
+#tutorial-card-text {
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+  letter-spacing: 0.3px;
+}
+#tutorial-card.banner #tutorial-card-text {
+  color: var(--neon-yellow);
+  font-size: 12px;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+#tutorial-card-cta {
+  display: block;
+  margin-top: 10px;
+  color: var(--neon-cyan);
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  opacity: 0.85;
+}
+#tutorial-card-cta:empty { display: none; }
+
+/* Ring over the REAL target element, repositioned every frame (ui.js
+   updateTutorialOverlay). The oversized box-shadow spread is the
+   spotlight/cutout trick: it dims the whole screen while leaving the
+   ring's own box (the actual tray chip / tile / wave button) clear. */
+#tutorial-spotlight {
+  position: absolute;
+  border: 2px solid var(--neon-yellow);
+  border-radius: 10px;
+  box-shadow: 0 0 0 999px rgba(5, 6, 15, 0.45), 0 0 16px rgba(255, 226, 74, 0.6);
+  pointer-events: none;
+  animation: tutorialSpotlightPulse 1.4s ease-in-out infinite;
+}
+#tutorial-spotlight.hidden { display: none; }
+
+@keyframes tutorialSpotlightPulse {
+  0%, 100% { box-shadow: 0 0 0 999px rgba(5, 6, 15, 0.45), 0 0 16px rgba(255, 226, 74, 0.6); }
+  50%      { box-shadow: 0 0 0 999px rgba(5, 6, 15, 0.45), 0 0 26px rgba(255, 226, 74, 0.9); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #tutorial-spotlight { animation: none; }
+}
+
+#tutorial-skip {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 8px);
+  right: 12px;
+  pointer-events: auto;
+  background: rgba(5, 6, 15, 0.85);
+  color: var(--text-dim);
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 10px;
+  letter-spacing: 1px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+#tutorial-skip:active { background: var(--panel-border); }
+
 /* ---------- End-screen milestone recap (B5) ---------- */
 
 #overlay-milestones {

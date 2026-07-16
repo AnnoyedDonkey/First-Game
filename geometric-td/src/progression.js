@@ -37,6 +37,15 @@ state.endlessRewards ||= {};
 state.seenLoot ||= [];
 state.storeUnlocks ||= [];
 state.levelMilestones ||= {};
+state.tutorialDone ??= false;
+// Any save that already has real progress (a level cleared or an
+// existing roster) belongs to a player well past the tutorial's target
+// moment (level_001's very first campaign start) — never show it to
+// them retroactively, even if this field predates their save.
+if (!state.tutorialDone && (state.completedLevels.length > 0 || state.roster.length > 0)) {
+  state.tutorialDone = true;
+  writeSave(state);
+}
 state.skills ||= {};
 migrateSkillGraph(); // fold pre-per-tower skills into the new tower branches
 backfillGear();
@@ -267,6 +276,17 @@ export function shouldShowTowerGuide() {
 
 export function markTowerGuideSeen() {
   state.seenTowerGuide = true;
+  writeSave(state);
+}
+
+// First-play tutorial (T4): shown once, only on level_001's very first
+// campaign start. See src/tutorial.js for the step-gating state machine.
+export function shouldShowTutorial() {
+  return !state.tutorialDone;
+}
+
+export function markTutorialDone() {
+  state.tutorialDone = true;
   writeSave(state);
 }
 
