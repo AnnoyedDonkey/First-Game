@@ -722,6 +722,77 @@ selector is open. Treat `levels.js` as the source of truth on wave numbers.
   for a clean signal. Did NOT bump `src/version.js` or push, per the
   phase's shared rules — the orchestrator does that once after H4.
 
+- **H2: World 1 hard pass, L1-L5 (2026-07-17)** — second phase of the
+  round-2 hard-mode tuning plan, `levels.js`-only, driven by telemetry:
+  L1 was the only `just_right` rating ("boss could have been a little
+  harder"); L3 "none of the waves felt challenging, need to boost across
+  the board"; L4 "way too easy"; L5 still rated too-easy despite T2's
+  armored composition-punish. All changes are wave `healthMult` (plus one
+  `bountyMult` knob); wave 1 untouched on every level (bankroll rule).
+  **L1** (`level_001`): only the wave 10 boss touched, `healthMult` 5.2→6.8
+  (+31%) — a smaller, targeted bump since this was the one level already
+  rated right. **L2** (`level_002`): non-boss waves 2-6 ended up net ×2.4-
+  2.6 vs the pre-H2 baseline (e.g. wave 5 basic 2.6→6.2), but waves 7-12
+  needed THREE escalating passes before the test comp's outcome actually
+  moved — the first two passes (~×1.7-2.0, then another ~+40%) produced
+  bit-for-bit identical sim results (same kill count, same core, same
+  leak count) despite the multiplier change, so those waves got pushed
+  hard: final wave 12 twin-boss `healthMult` 3.6→18.2 (~×5 net). **L3**
+  (`level_003`): after two passes (~×1.8/×2.2, then ~×2.9/×3.5) both still
+  won FULL core with 0 leaks against the test comp, a console probe (see
+  Verified below) found the actual threshold and every wave 2-12 group got
+  an additional ×3 on top of the second pass — e.g. the final wave 12
+  twin-boss `healthMult` ended at 36.0 (boss) / 41.4 (fast escort) / 45.6
+  (armored escort), net ~×8.6-10.6 vs the pre-H2 baseline depending on the
+  group. **L4** (`level_004`): non-boss/boss waves net ~×2.4/
+  ×3.0 vs the pre-H2 baseline (e.g. wave 9 fast blitz 4.0→9.7, wave 12 twin
+  boss 3.0→8.9). **L5** (`level_005`): T2's composition-punish (armored
+  count/healthMult raised on waves 3,5,7,8,9,11,13 to break mono-laser
+  walls) stays; on top, a first pass (~×1.85/×2.25, armored counts +15%)
+  still won FULL core 0 leaks, so every wave 2-13 healthMult was doubled
+  again (net ~×3.7 non-boss / ×4.5 boss vs pre-H2) after a console probe
+  confirmed that multiplier reliably loses. **Economy:** added
+  `level.bountyMult: 0.82` to L3/L4/L5 (L1/L2 left at default 1 — the plan
+  only flagged L3-L5 as bounty-trim candidates). **Verified** (bot sims via
+  the `td` preview + console, substepped at 1/60, no canvas capture; the
+  pre-existing local test-profile save was backed up first — verified
+  wins/shards/roster/stash counts matched byte-for-byte after restore).
+  Test comp: an 11-tower level-5 laser/pulse/slow wall (4/4/3), mirroring
+  T2's own "L5 mixed 4-laser/4-pulse/3-slow" methodology, precapitalized
+  via the veteran-repurchase path (`maxUnlockedLevel` set, then
+  `tryUpgradeTower` called with temporary funds) rather than a save/roster
+  — this sidesteps T3's documented cross-sim contamination gotcha
+  entirely by creating games directly via `game.js createGame`/
+  `startNextWave`/`updateGame`, never touching the DOM or save. **New
+  gotcha hit and fixed this phase:** running multiple LEVELS' sims back
+  to back in one page session (not just multiple sims of the SAME level,
+  which T3 already documented) also contaminates results — `towers.js`
+  keeps module-scope globals (`nextTowerId`, `rosterCounters`) that keep
+  incrementing across every `createTower` call in a session, and at least
+  one borderline level (L5) produced a clean FULL-CORE WIN in an isolated
+  fresh page load but a LOSS when run after 4 other levels' sims in the
+  same session — same config, different result. Fixed by reloading the
+  page (fresh module state) before every single level's sim, not just
+  before repeat sims of one level. Final clean isolated results: L1 WON
+  full core (20/20) 0 leaks — expected, only the boss was touched. L2 WON
+  at 5/15 core (33%) with 2 leaks. L3 LOST on the final wave (12/12), core
+  0, 3 leaks. L4 LOST on the final wave (12/12), core 0, 2 leaks. L5 LOST
+  on the final wave (13/13), core 0, 3 leaks — all four hit or
+  near-enough-hit the "loss or ≤30% core" target the plan asked for,
+  where the same comp previously stomped these levels at full core per
+  this round's telemetry. **Bankroll rule re-confirmed:** a from-scratch,
+  starting-money-only build (no precap) clears wave 1 at full core with
+  sane tower placement on all five levels — an earlier naive test script
+  that placed a single L2 tower at an arbitrary buildable tile (not near
+  the path) produced 12 leaks; re-tested by scanning every buildable tile
+  for the single best placement and it clears wave 1 clean (0 leaks, full
+  15/15 core), confirming the "12 leaks" reading was a test-script
+  placement artifact, not a real bankroll violation (wave 1 numbers were
+  untouched on every level this phase anyway). Console clean throughout.
+  No `" 2"` iCloud conflict copies found (repo-wide sweep). Did NOT bump
+  `src/version.js` or push, per the phase's shared rules — the
+  orchestrator does that once after H4.
+
 ## Backlog
 
 - **ACTIVE: Economy rebalance + progression expansion (B1–B6)** — approved
