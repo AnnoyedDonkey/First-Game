@@ -312,17 +312,25 @@ export const TOWERS = {
     name: "Pulse Tower",
     prefix: "P",           // single-letter gear lock-tag glyph
     rosterPrefix: "Pulse",
-    baseCost: 75,
+    baseCost: 105,
     baseDamage: 14,
     splashRadius: 0.7,     // in tiles
-    baseRange: 1.6,
-    baseFireRate: 1.1,
+    baseRange: 1.35,
+    baseFireRate: 0.78,
     projectileSpeed: 5.5,  // tiles per second
     damageType: "pulse",
     color: "#ff3fd4",
-    // Expensive to level, but scales into a swarm-clearing monster (see
-    // its bigger splash specialty in TOWER_UPGRADES). Costs 60% more per
-    // upgrade than the shared table.
+    // Playtest feedback (2026-07, round 2): "Pulse tower should have a
+    // slower firing cadence and smaller range. It's overpowered" (L5) +
+    // "Pulse tower should cost more to buy" (L10). Was the free default
+    // answer to everything (13/15 winning comps, usually the top-invested
+    // tower). Slower cadence (1.1s→0.78s), shorter range (now the
+    // shortest of the set, below laser/slow's 1.6/1.9), pricier
+    // (75→105) — meant to become a legitimate splash/crowd-control pick,
+    // not the best single pick for every level. Expensive to level, but
+    // scales into a swarm-clearing monster (see its bigger splash
+    // specialty in TOWER_UPGRADES). Costs 60% more per upgrade than the
+    // shared table.
     upgradeCostMult: 1.6,
   },
   slow: {
@@ -444,7 +452,7 @@ export const TOWER_UPGRADES = {
   // Guide (shown at level 2, and from the main menu).
   specialties: {
     laser:   { rangeGrowth: 0.07,    label: "+ extra range per level" },
-    pulse:   { splashGrowth: 0.16,   label: "+ bigger explosions per level" },
+    pulse:   { splashGrowth: 0.12,   label: "+ bigger explosions per level" },
     slow:    { fireRateGrowth: 0.10, label: "+ faster firing per level" },
     railgun: { damageGrowth: 0.10,   label: "+ extra damage per level" },
     rocket:  { splashGrowth: 0.12,   label: "+ bigger blasts per level" },

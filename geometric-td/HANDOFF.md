@@ -675,6 +675,53 @@ selector is open. Treat `levels.js` as the source of truth on wave numbers.
   wins, roster count, stash count all matched post-restore). Did NOT bump
   `src/version.js` or push, per the phase's shared rules.
 
+- **H1: Pulse tower nerf (2026-07-17)** — first phase of the round-2
+  hard-mode tuning plan (`C:\Users\fthia\.claude\plans\hard-mode-tuning-2026-07.md`),
+  driven by fresh telemetry: Pulse appeared in 13/15 winning campaign
+  builds and was usually the highest-invested tower, plus two independent
+  player notes ("Pulse tower should have a slower firing cadence and
+  smaller range. It's overpowered" — L5; "Pulse tower should cost more to
+  buy" — L10). `config.js TOWERS.pulse`: `baseFireRate` 1.1→0.78 (slower
+  cadence), `baseRange` 1.6→1.35 (now the shortest-range tower in the
+  set, below laser 1.9 and slow 1.6 — the L5 note's exact ask), `baseCost`
+  75→105 (the L10 note's exact ask). `upgradeCostMult` left at 1.6
+  (already the highest in the game). Also trimmed
+  `TOWER_UPGRADES.specialties.pulse.splashGrowth` 0.16→0.12 (still above
+  the shared 0.10 baseline, so Pulse keeps its bigger-explosions identity,
+  just less generous per level). **Verified** (bot sims via the `td`
+  preview + console, substepped at 1/60, no canvas capture; a pre-existing
+  local test-profile save was backed up and restored byte-for-byte after
+  — verified wins/shards/roster/stash counts matched post-restore):
+  (a) **L15 economy A/B**, same money-earning bot script (build queue:
+  4×pulse + slow + rocket, funded only by starting money + earned bounty,
+  upgrading opportunistically when XP-eligible) run twice back-to-back —
+  once with the new nerfed Pulse config, once with the pre-H1 values
+  monkey-patched back in for a controlled comparison, same tile
+  placements, same build order: OLD config cleared in 342 sim-seconds
+  with 75g leftover; NEW (nerfed) config took 410 seconds (+20%) to clear
+  the identical level with 340g leftover (towers leveled up more slowly
+  since the weaker Pulse killed slower and hit its XP thresholds later)
+  — both still won at full core/0 leaks with this heavily-funded comp
+  (expected; H1 is a stat nerf, not a wave-HP change — H2-H4 handle the
+  wave/economy side), but the same investment now measurably
+  underperforms its old self. (b) **L1 pulse-only-wall vs mixed-wall**,
+  same $2000 budget, all towers placed before wave 1, mirrors the old
+  "11-laser wall" test pattern: an all-Pulse wall (19 towers fit at the
+  new 105g cost) ended the level at 15/20 core with 1 leak; a
+  laser/pulse/slow mixed wall of the same budget (28 towers fit, cheaper
+  average cost) cleared at full core (20/20) with 0 leaks — the mono-Pulse
+  investment is now measurably weaker than a diversified comp on identical
+  spend. Console clean throughout both test families. No `" 2"` iCloud
+  conflict copies found (repo-wide sweep). **Test-methodology note**: an
+  early version of the wall test placed a single lone tower and delayed
+  it slightly past wave start, which reproducibly got 0 kills even though
+  the tower was firing normally and enemies were in range — traced to a
+  genuine early-wave timing/positioning quirk (a lone tower's kill window
+  is narrow at the very entrance), not a script bug; switched to the
+  pre-funded whole-wall pattern (matches T2's precapitalized methodology)
+  for a clean signal. Did NOT bump `src/version.js` or push, per the
+  phase's shared rules — the orchestrator does that once after H4.
+
 ## Backlog
 
 - **ACTIVE: Economy rebalance + progression expansion (B1–B6)** — approved
