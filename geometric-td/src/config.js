@@ -86,7 +86,12 @@ export const ENEMIES = {
     // Massive lone target: shrugs off slows, and small splash is wasted on
     // a single body — but a direct Rocket blast hits hard. Focused fire wins.
     // ANSWER: Railgun / Rocket / Laser focus. NOT Pulse, NOT Slow.
-    damageMult: { control: 0.4, pulse: 0.75, rail: 1.2, blast: 1.3 },
+    // Hard-mode pass (H3, 2026-07-17): pulse resist eased 0.75->0.85 — H1
+    // already nerfed Pulse directly (slower cadence/shorter range/pricier),
+    // so the full 25% boss resist on top was double-stacking two independent
+    // Pulse nerfs (this value is global, shared by every level's boss, not
+    // just L6 — softened slightly for all, kept meaningfully resistant).
+    damageMult: { control: 0.4, pulse: 0.85, rail: 1.2, blast: 1.3 },
   },
   // Splits into 2 splitlings on death — punishes single-target builds.
   splitter: {

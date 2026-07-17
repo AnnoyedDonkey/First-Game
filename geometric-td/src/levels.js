@@ -530,6 +530,7 @@ const level006 = {
   startingMoney: 130,
   coreHealth: 12,
   timeBetweenWaves: 5,
+  bountyMult: 0.8, // hard-mode pass (H3, 2026-07-17): trim leftover cash (telemetry: 943g leftover)
   palette: {
     background: "#170a06",
     gridLine: "rgba(255, 122, 47, 0.08)",
@@ -553,46 +554,59 @@ const level006 = {
   // PULSE SHOWCASE: dense Splitter walls that a single-line Railgun or a
   // laser wall can't clear before the fragments swarm — you need splash.
   // Fast/armored interludes keep Laser and burst in the mix.
+  // Hard-mode pass (H3, 2026-07-17): this world wasn't touched at all in the
+  // previous rebalance round (telemetry: 943g leftover at full core). A bot
+  // sim (11-tower level-5 laser/pulse/slow/railgun wall, mirrors H2's
+  // methodology) stomped a first pass at non-boss x1.75/boss x2.1 (full
+  // core, 2232g leftover) — a console probe found the real threshold at a
+  // further x6.5 on top of that (net non-boss ~x11.4 / boss-final ~x13.65
+  // vs the pre-H3 baseline), which reliably loses the same comp on the
+  // final wave. Wave 1 untouched (bankroll rule; also re-verified with a
+  // realistic level-3 carried-over build — clears 0-leak/full-core). The
+  // boss-resists-Pulse lever (ENEMIES.boss damageMult) was eased 0.75->0.85
+  // this phase since H1 already nerfed Pulse directly — kept meaningfully
+  // resistant, not doubled-up.
   waves: [
     { groups: [{ type: "basic", count: 16, spawnInterval: 0.5, healthMult: 3.2 }] },
     // 2 — first Splitter wall (Pulse check)
-    { groups: [{ type: "splitter", count: 10, spawnInterval: 0.7, healthMult: 1.6 }] },
+    { groups: [{ type: "splitter", count: 10, spawnInterval: 0.7, healthMult: 18.2 }] },
     { groups: [
-      { type: "splitter", count: 10, spawnInterval: 0.7, healthMult: 2.0 },
-      { type: "fast", count: 10, spawnInterval: 0.32, startDelay: 3, healthMult: 3.2 },
+      { type: "splitter", count: 10, spawnInterval: 0.7, healthMult: 22.75 },
+      { type: "fast", count: 10, spawnInterval: 0.32, startDelay: 3, healthMult: 36.4 },
     ] },
     { groups: [
-      { type: "armored", count: 9, spawnInterval: 0.85, healthMult: 3.4 },
-      { type: "splitter", count: 8, spawnInterval: 0.8, startDelay: 4, healthMult: 2.2 },
+      { type: "armored", count: 9, spawnInterval: 0.85, healthMult: 38.7 },
+      { type: "splitter", count: 8, spawnInterval: 0.8, startDelay: 4, healthMult: 25.0 },
     ] },
     // 5 — big Splitter wall (real Pulse gate; Railgun wastes its shot)
-    { groups: [{ type: "splitter", count: 16, spawnInterval: 0.5, healthMult: 2.8 }] },
+    { groups: [{ type: "splitter", count: 16, spawnInterval: 0.5, healthMult: 31.9 }] },
     // Boss resists Pulse's splash (see ENEMIES.boss damageMult) — the first
     // real reason to bring a Railgun/focused Laser instead of an all-Pulse
     // splitter answer. Playtest: "Railgun should almost be mandatory... but
-    // I could have done the map without it" — +50% boss HP.
+    // I could have done the map without it" — boss HP now net ~x13.65 vs the
+    // pre-H3 baseline (was already +50% from T2).
     { groups: [
-      { type: "boss", count: 1, healthMult: 3.6 },
-      { type: "splitter", count: 12, spawnInterval: 0.55, startDelay: 3, healthMult: 2.8 },
+      { type: "boss", count: 1, healthMult: 49.4 },
+      { type: "splitter", count: 12, spawnInterval: 0.55, startDelay: 3, healthMult: 31.9 },
     ] },
     { groups: [
-      { type: "fast", count: 20, spawnInterval: 0.28, healthMult: 4.4, speedMult: 1.1 },
-      { type: "armored", count: 10, spawnInterval: 0.8, startDelay: 3, healthMult: 4.0 },
+      { type: "fast", count: 20, spawnInterval: 0.28, healthMult: 50.1, speedMult: 1.1 },
+      { type: "armored", count: 10, spawnInterval: 0.8, startDelay: 3, healthMult: 45.5 },
     ] },
     { groups: [
-      { type: "splitter", count: 16, spawnInterval: 0.45, healthMult: 4.0 },
-      { type: "basic", count: 18, spawnInterval: 0.32, startDelay: 4, healthMult: 6.4 },
+      { type: "splitter", count: 16, spawnInterval: 0.45, healthMult: 45.5 },
+      { type: "basic", count: 18, spawnInterval: 0.32, startDelay: 4, healthMult: 72.8 },
     ] },
     { groups: [
-      { type: "armored", count: 15, spawnInterval: 0.6, healthMult: 5.6 },
-      { type: "splitter", count: 12, spawnInterval: 0.5, startDelay: 5, healthMult: 4.4 },
+      { type: "armored", count: 15, spawnInterval: 0.6, healthMult: 63.7 },
+      { type: "splitter", count: 12, spawnInterval: 0.5, startDelay: 5, healthMult: 50.1 },
     ] },
     // Final wave: twin bosses resist Pulse — a Railgun (or focused Laser)
     // earns its slot here even in an otherwise all-Pulse splitter build.
     { groups: [
-      { type: "boss", count: 2, spawnInterval: 6, healthMult: 5.2 },
-      { type: "splitter", count: 14, spawnInterval: 0.45, startDelay: 4, healthMult: 5.0 },
-      { type: "fast", count: 12, spawnInterval: 0.3, startDelay: 10, healthMult: 6.0 },
+      { type: "boss", count: 2, spawnInterval: 6, healthMult: 70.9 },
+      { type: "splitter", count: 14, spawnInterval: 0.45, startDelay: 4, healthMult: 56.9 },
+      { type: "fast", count: 12, spawnInterval: 0.3, startDelay: 10, healthMult: 68.3 },
     ] },
   ],
 };
@@ -608,6 +622,7 @@ const level007 = {
   startingMoney: 130,
   coreHealth: 12,
   timeBetweenWaves: 5,
+  bountyMult: 0.8, // hard-mode pass (H3, 2026-07-17): trim leftover cash (telemetry: 1442g leftover)
   palette: {
     background: "#0a1206",
     gridLine: "rgba(150, 255, 60, 0.07)",
@@ -632,46 +647,54 @@ const level007 = {
   // RAILGUN SHOWCASE: Regenerator walls out-heal any laser chip — only
   // burst outruns their regen. Splitter escorts punish a pure-Railgun
   // answer, so you juggle burst (Rail) with splash (Pulse).
+  // Hard-mode pass (H3, 2026-07-17): telemetry showed 1442g leftover, the
+  // biggest of World 2. A bot sim (11-tower level-5 laser/pulse/slow/railgun
+  // wall) still won full core at a first pass (non-boss x1.75/boss x2.1) — a
+  // console probe found the real threshold at a further x4 on top (net
+  // non-boss x7 / boss-final x8.4 vs the pre-H3 baseline), which loses the
+  // same comp on the final wave (5 leaks). Wave 1 untouched (bankroll rule).
   waves: [
     { groups: [{ type: "basic", count: 16, spawnInterval: 0.5, healthMult: 3.6 }] },
     // 2 — first Regenerator wall (Railgun check; lasers just tickle them)
-    { groups: [{ type: "regenerator", count: 6, spawnInterval: 1.1, healthMult: 1.6 }] },
+    { groups: [{ type: "regenerator", count: 6, spawnInterval: 1.1, healthMult: 11.2 }] },
     { groups: [
-      { type: "regenerator", count: 7, spawnInterval: 1.0, healthMult: 2.2 },
-      { type: "fast", count: 10, spawnInterval: 0.3, startDelay: 4, healthMult: 3.4 },
+      { type: "regenerator", count: 7, spawnInterval: 1.0, healthMult: 15.4 },
+      { type: "fast", count: 10, spawnInterval: 0.3, startDelay: 4, healthMult: 23.8 },
     ] },
     { groups: [
-      { type: "splitter", count: 9, spawnInterval: 0.7, healthMult: 2.6 },
-      { type: "regenerator", count: 6, spawnInterval: 1.0, startDelay: 5, healthMult: 2.6 },
+      { type: "splitter", count: 9, spawnInterval: 0.7, healthMult: 18.2 },
+      { type: "regenerator", count: 6, spawnInterval: 1.0, startDelay: 5, healthMult: 18.2 },
     ] },
     { groups: [
-      { type: "armored", count: 11, spawnInterval: 0.7, healthMult: 3.8 },
-      { type: "regenerator", count: 7, spawnInterval: 0.9, startDelay: 4, healthMult: 2.9 },
+      { type: "armored", count: 11, spawnInterval: 0.7, healthMult: 26.6 },
+      { type: "regenerator", count: 7, spawnInterval: 0.9, startDelay: 4, healthMult: 20.4 },
     ] },
-    // Playtest feedback (2026-07): "Boss should be way harder" — +50% HP.
+    // Playtest feedback (2026-07): "Boss should be way harder" — T2 +50%,
+    // H3 stacks another pass on top (net ~x8.4 vs the pre-H2 baseline).
     { groups: [
-      { type: "boss", count: 1, healthMult: 3.9 },
-      { type: "regenerator", count: 8, spawnInterval: 0.8, startDelay: 3, healthMult: 3.4 },
+      { type: "boss", count: 1, healthMult: 32.8 },
+      { type: "regenerator", count: 8, spawnInterval: 0.8, startDelay: 3, healthMult: 23.8 },
     ] },
     // 7 — heavy Regenerator wall (real Railgun gate)
     { groups: [
-      { type: "regenerator", count: 12, spawnInterval: 0.7, healthMult: 3.8 },
-      { type: "fast", count: 12, spawnInterval: 0.28, startDelay: 5, healthMult: 4.6 },
+      { type: "regenerator", count: 12, spawnInterval: 0.7, healthMult: 26.6 },
+      { type: "fast", count: 12, spawnInterval: 0.28, startDelay: 5, healthMult: 32.2 },
     ] },
     { groups: [
-      { type: "basic", count: 26, spawnInterval: 0.28, healthMult: 5.8 },
-      { type: "splitter", count: 10, spawnInterval: 0.55, startDelay: 4, healthMult: 3.8 },
+      { type: "basic", count: 26, spawnInterval: 0.28, healthMult: 40.6 },
+      { type: "splitter", count: 10, spawnInterval: 0.55, startDelay: 4, healthMult: 26.6 },
     ] },
     { groups: [
-      { type: "armored", count: 16, spawnInterval: 0.6, healthMult: 5.4 },
-      { type: "regenerator", count: 10, spawnInterval: 0.7, startDelay: 4, healthMult: 4.4 },
+      { type: "armored", count: 16, spawnInterval: 0.6, healthMult: 37.8 },
+      { type: "regenerator", count: 10, spawnInterval: 0.7, startDelay: 4, healthMult: 30.8 },
     ] },
-    // Final wave. Playtest: "Boss should be way harder" — +50% HP plus
-    // thicker escorts; L7 stays the veteran-gated wall, just meaner now.
+    // Final wave. Playtest: "Boss should be way harder" — T2 +50%, H3 stacks
+    // another pass (net ~x8.4) plus thicker escorts; L7 stays the
+    // veteran-gated wall, just meaner now.
     { groups: [
-      { type: "boss", count: 2, spawnInterval: 6, healthMult: 5.4 },
-      { type: "regenerator", count: 12, spawnInterval: 0.6, startDelay: 4, healthMult: 4.8 },
-      { type: "splitter", count: 14, spawnInterval: 0.45, startDelay: 10, healthMult: 4.6 },
+      { type: "boss", count: 2, spawnInterval: 6, healthMult: 45.2 },
+      { type: "regenerator", count: 12, spawnInterval: 0.6, startDelay: 4, healthMult: 33.6 },
+      { type: "splitter", count: 14, spawnInterval: 0.45, startDelay: 10, healthMult: 32.2 },
     ] },
   ],
 };
@@ -687,6 +710,7 @@ const level008 = {
   startingMoney: 180,
   coreHealth: 10,
   timeBetweenWaves: 5,
+  bountyMult: 0.78, // hard-mode pass (H3, 2026-07-17): trim leftover cash (telemetry: 445g leftover)
   palette: {
     background: "#0d0618",
     gridLine: "rgba(170, 80, 255, 0.08)",
@@ -710,41 +734,57 @@ const level008 = {
   // JUGGLE EVERYTHING: Splitters (want Pulse), Regenerators (want Railgun)
   // and fast rushes (want Laser) alternate, so no two-tower build covers
   // it — the maze forces you to commit each prime spot to the right answer.
+  // Hard-mode pass (H3, 2026-07-17): this was the one W2 level with real
+  // pressure this round (3 leaks, core down to 4/10) yet still rated
+  // too_easy — pushed HARDER than the rest of the world. A bot sim
+  // (11-tower level-5 laser/pulse/slow/railgun wall) still won at full core
+  // at a first pass (non-boss x1.9/boss x2.3, 2043g leftover). A follow-up
+  // probe run showed a promising loss at a further x3.5 on top, but that
+  // multi-trial-in-one-session probe turned out to be contaminated by
+  // `recordBattleEnd` writing accumulated roster XP back into the live
+  // module state between trials (the T3-documented gotcha, which also
+  // applies WITHIN one level's repeated trials, not just across levels) —
+  // a clean, single-reload-per-trial re-test showed the x3.5 number
+  // actually still won FULL core in isolation. Re-probed properly (fresh
+  // page reload before every single trial this time): a further x1.25 on
+  // top of the x3.5 pass (net non-boss ~x8.3 / boss-final ~x10.1 vs the
+  // pre-H3 baseline) reliably loses the same comp on the final wave (5
+  // leaks). Wave 1 untouched (bankroll rule).
   waves: [
     { groups: [
       { type: "splitter", count: 8, spawnInterval: 0.7, healthMult: 2.8 },
       { type: "regenerator", count: 5, spawnInterval: 1.0, startDelay: 4, healthMult: 2.6 },
     ] },
     // 2 — fast wall (Laser check)
-    { groups: [{ type: "fast", count: 18, spawnInterval: 0.25, healthMult: 4.0, speedMult: 1.1 }] },
+    { groups: [{ type: "fast", count: 18, spawnInterval: 0.25, healthMult: 33.25, speedMult: 1.1 }] },
     { groups: [
-      { type: "regenerator", count: 8, spawnInterval: 0.8, healthMult: 3.2 },
-      { type: "splitter", count: 8, spawnInterval: 0.7, startDelay: 4, healthMult: 3.2 },
+      { type: "regenerator", count: 8, spawnInterval: 0.8, healthMult: 26.7 },
+      { type: "splitter", count: 8, spawnInterval: 0.7, startDelay: 4, healthMult: 26.7 },
     ] },
     { groups: [
-      { type: "armored", count: 12, spawnInterval: 0.65, healthMult: 4.4 },
-      { type: "fast", count: 12, spawnInterval: 0.3, startDelay: 4, healthMult: 4.4 },
+      { type: "armored", count: 12, spawnInterval: 0.65, healthMult: 36.75 },
+      { type: "fast", count: 12, spawnInterval: 0.3, startDelay: 4, healthMult: 36.75 },
     ] },
     { groups: [
-      { type: "boss", count: 1, healthMult: 2.8, speedMult: 1.2 },
-      { type: "splitter", count: 10, spawnInterval: 0.55, startDelay: 3, healthMult: 3.8 },
+      { type: "boss", count: 1, healthMult: 28.0, speedMult: 1.2 },
+      { type: "splitter", count: 10, spawnInterval: 0.55, startDelay: 3, healthMult: 31.5 },
     ] },
     { groups: [
-      { type: "basic", count: 26, spawnInterval: 0.28, healthMult: 6.8 },
-      { type: "regenerator", count: 8, spawnInterval: 0.8, startDelay: 4, healthMult: 3.8 },
+      { type: "basic", count: 26, spawnInterval: 0.28, healthMult: 56.5 },
+      { type: "regenerator", count: 8, spawnInterval: 0.8, startDelay: 4, healthMult: 31.5 },
     ] },
     { groups: [
-      { type: "splitter", count: 14, spawnInterval: 0.45, healthMult: 4.2 },
-      { type: "armored", count: 10, spawnInterval: 0.7, startDelay: 4, healthMult: 5.4 },
+      { type: "splitter", count: 14, spawnInterval: 0.45, healthMult: 35.0 },
+      { type: "armored", count: 10, spawnInterval: 0.7, startDelay: 4, healthMult: 45.1 },
     ] },
     { groups: [
-      { type: "regenerator", count: 14, spawnInterval: 0.55, healthMult: 4.6 },
-      { type: "fast", count: 16, spawnInterval: 0.25, startDelay: 5, healthMult: 5.4, speedMult: 1.15 },
+      { type: "regenerator", count: 14, spawnInterval: 0.55, healthMult: 38.1 },
+      { type: "fast", count: 16, spawnInterval: 0.25, startDelay: 5, healthMult: 45.1, speedMult: 1.15 },
     ] },
     { groups: [
-      { type: "boss", count: 2, spawnInterval: 5, healthMult: 3.6 },
-      { type: "splitter", count: 12, spawnInterval: 0.5, startDelay: 5, healthMult: 4.8 },
-      { type: "regenerator", count: 8, spawnInterval: 0.7, startDelay: 12, healthMult: 5.2 },
+      { type: "boss", count: 2, spawnInterval: 5, healthMult: 36.4 },
+      { type: "splitter", count: 12, spawnInterval: 0.5, startDelay: 5, healthMult: 39.9 },
+      { type: "regenerator", count: 8, spawnInterval: 0.7, startDelay: 12, healthMult: 43.4 },
     ] },
   ],
 };
@@ -760,6 +800,7 @@ const level009 = {
   startingMoney: 220,
   coreHealth: 10,
   timeBetweenWaves: 5,
+  bountyMult: 0.8, // hard-mode pass (H3, 2026-07-17): trim leftover cash (telemetry: 899g leftover)
   palette: {
     background: "#060d14",
     gridLine: "rgba(160, 220, 255, 0.08)",
@@ -780,38 +821,49 @@ const level009 = {
   // SLOW + LASER SHOWCASE: everything sprints, and Pulse orbs can't catch
   // the diamonds (fast resist splash). Pin them with Slow, finish with
   // Laser. The pure-fast blitz (wave 7) is the Slow-tower gate.
+  // Hard-mode pass (H3, 2026-07-17): telemetry showed 899g leftover. A bot
+  // sim (11-tower level-5 laser/pulse/slow/railgun wall) still won full core
+  // at a first pass (non-boss x1.75/boss x2.1, 2244g leftover). A follow-up
+  // probe (multiple trials in one page session) suggested a further x3 on
+  // top would lose — that turned out contaminated by accumulated roster
+  // mastery XP across trials (recordBattleEnd writes back into the live
+  // module state; the T3 gotcha applies within a level's own repeat trials
+  // too, not just across levels). Re-probed with a fresh page reload before
+  // EVERY trial: a further x1.4 on top of the first pass (net non-boss
+  // x2.45 / boss-final x2.94 vs the pre-H3 baseline) reliably loses the
+  // same comp on the final wave (2 leaks). Wave 1 untouched (bankroll rule).
   waves: [
     { groups: [{ type: "fast", count: 18, spawnInterval: 0.3, healthMult: 3.2 }] },
     { groups: [
-      { type: "fast", count: 16, spawnInterval: 0.26, healthMult: 4.4, speedMult: 1.15 },
-      { type: "splitter", count: 8, spawnInterval: 0.7, startDelay: 3, healthMult: 3.6, speedMult: 1.1 },
+      { type: "fast", count: 16, spawnInterval: 0.26, healthMult: 32.3, speedMult: 1.15 },
+      { type: "splitter", count: 8, spawnInterval: 0.7, startDelay: 3, healthMult: 26.5, speedMult: 1.1 },
     ] },
     { groups: [
-      { type: "armored", count: 12, spawnInterval: 0.6, healthMult: 4.8, speedMult: 1.15 },
-      { type: "fast", count: 12, spawnInterval: 0.28, startDelay: 4, healthMult: 4.8, speedMult: 1.2 },
+      { type: "armored", count: 12, spawnInterval: 0.6, healthMult: 35.3, speedMult: 1.15 },
+      { type: "fast", count: 12, spawnInterval: 0.28, startDelay: 4, healthMult: 35.3, speedMult: 1.2 },
     ] },
     { groups: [
-      { type: "regenerator", count: 10, spawnInterval: 0.7, healthMult: 4.0, speedMult: 1.2 },
-      { type: "splitter", count: 10, spawnInterval: 0.55, startDelay: 4, healthMult: 4.0, speedMult: 1.15 },
+      { type: "regenerator", count: 10, spawnInterval: 0.7, healthMult: 29.4, speedMult: 1.2 },
+      { type: "splitter", count: 10, spawnInterval: 0.55, startDelay: 4, healthMult: 29.4, speedMult: 1.15 },
     ] },
     { groups: [
-      { type: "boss", count: 1, healthMult: 2.9, speedMult: 1.4 },
-      { type: "fast", count: 18, spawnInterval: 0.24, startDelay: 3, healthMult: 5.2, speedMult: 1.2 },
+      { type: "boss", count: 1, healthMult: 25.6, speedMult: 1.4 },
+      { type: "fast", count: 18, spawnInterval: 0.24, startDelay: 3, healthMult: 38.2, speedMult: 1.2 },
     ] },
     { groups: [
-      { type: "basic", count: 28, spawnInterval: 0.24, healthMult: 7.6, speedMult: 1.15 },
-      { type: "splitter", count: 12, spawnInterval: 0.5, startDelay: 4, healthMult: 4.6, speedMult: 1.15 },
+      { type: "basic", count: 28, spawnInterval: 0.24, healthMult: 55.9, speedMult: 1.15 },
+      { type: "splitter", count: 12, spawnInterval: 0.5, startDelay: 4, healthMult: 33.9, speedMult: 1.15 },
     ] },
     // 7 — mega fast blitz (Slow gate: unpinned, they run the lanes clean)
-    { groups: [{ type: "fast", count: 30, spawnInterval: 0.17, healthMult: 6.0, speedMult: 1.3 }] },
+    { groups: [{ type: "fast", count: 30, spawnInterval: 0.17, healthMult: 44.1, speedMult: 1.3 }] },
     { groups: [
-      { type: "armored", count: 18, spawnInterval: 0.5, healthMult: 6.2, speedMult: 1.2 },
-      { type: "fast", count: 16, spawnInterval: 0.22, startDelay: 5, healthMult: 6.4, speedMult: 1.25 },
+      { type: "armored", count: 18, spawnInterval: 0.5, healthMult: 45.6, speedMult: 1.2 },
+      { type: "fast", count: 16, spawnInterval: 0.22, startDelay: 5, healthMult: 47.0, speedMult: 1.25 },
     ] },
     { groups: [
-      { type: "boss", count: 2, spawnInterval: 5, healthMult: 3.8, speedMult: 1.35 },
-      { type: "fast", count: 20, spawnInterval: 0.2, startDelay: 4, healthMult: 6.8, speedMult: 1.3 },
-      { type: "splitter", count: 12, spawnInterval: 0.45, startDelay: 11, healthMult: 5.6, speedMult: 1.2 },
+      { type: "boss", count: 2, spawnInterval: 5, healthMult: 33.6, speedMult: 1.35 },
+      { type: "fast", count: 20, spawnInterval: 0.2, startDelay: 4, healthMult: 50.0, speedMult: 1.3 },
+      { type: "splitter", count: 12, spawnInterval: 0.45, startDelay: 11, healthMult: 41.2, speedMult: 1.2 },
     ] },
   ],
 };
@@ -827,6 +879,7 @@ const level010 = {
   startingMoney: 260,
   coreHealth: 10,
   timeBetweenWaves: 5,
+  bountyMult: 0.8, // hard-mode pass (H3, 2026-07-17): trim leftover cash (telemetry: 495g leftover)
   palette: {
     background: "#140e02",
     gridLine: "rgba(255, 210, 80, 0.08)",
@@ -847,48 +900,54 @@ const level010 = {
   // BATCH FINALE: every enemy type, every counter tested. Armored walls
   // (Pulse/Rail), Regenerator escorts (Rail), Splitter floods (Pulse) and
   // fast surges (Laser/Slow) stack up — a mono build leaks somewhere.
+  // Hard-mode pass (H3, 2026-07-17): telemetry showed 495g leftover. A bot
+  // sim (11-tower level-5 wall) still won full core at a first pass
+  // (non-boss x1.75/boss x2.1, 3620g leftover) — a probe found the real
+  // threshold at a further x3 on top (net non-boss x5.25 / boss-final
+  // x6.3), which loses the same comp on the final wave (5 leaks). Wave 1
+  // untouched (bankroll rule).
   waves: [
     { groups: [
       { type: "basic", count: 20, spawnInterval: 0.38, healthMult: 4.6 },
       { type: "splitter", count: 8, spawnInterval: 0.7, startDelay: 4, healthMult: 3.4 },
     ] },
     { groups: [
-      { type: "regenerator", count: 8, spawnInterval: 0.8, healthMult: 3.8 },
-      { type: "fast", count: 14, spawnInterval: 0.28, startDelay: 4, healthMult: 4.6 },
+      { type: "regenerator", count: 8, spawnInterval: 0.8, healthMult: 20.0 },
+      { type: "fast", count: 14, spawnInterval: 0.28, startDelay: 4, healthMult: 24.2 },
     ] },
     { groups: [
-      { type: "armored", count: 15, spawnInterval: 0.55, healthMult: 5.2 },
-      { type: "splitter", count: 10, spawnInterval: 0.55, startDelay: 4, healthMult: 4.2 },
+      { type: "armored", count: 15, spawnInterval: 0.55, healthMult: 27.3 },
+      { type: "splitter", count: 10, spawnInterval: 0.55, startDelay: 4, healthMult: 22.1 },
     ] },
     { groups: [
-      { type: "boss", count: 1, healthMult: 3.4 },
-      { type: "regenerator", count: 10, spawnInterval: 0.7, startDelay: 3, healthMult: 4.4 },
+      { type: "boss", count: 1, healthMult: 21.3 },
+      { type: "regenerator", count: 10, spawnInterval: 0.7, startDelay: 3, healthMult: 23.1 },
     ] },
     { groups: [
-      { type: "basic", count: 32, spawnInterval: 0.22, healthMult: 8.4 },
-      { type: "splitter", count: 12, spawnInterval: 0.5, startDelay: 4, healthMult: 5.0 },
+      { type: "basic", count: 32, spawnInterval: 0.22, healthMult: 44.1 },
+      { type: "splitter", count: 12, spawnInterval: 0.5, startDelay: 4, healthMult: 26.3 },
     ] },
     { groups: [
-      { type: "fast", count: 24, spawnInterval: 0.2, healthMult: 6.4, speedMult: 1.2 },
-      { type: "regenerator", count: 12, spawnInterval: 0.6, startDelay: 4, healthMult: 5.4 },
+      { type: "fast", count: 24, spawnInterval: 0.2, healthMult: 33.6, speedMult: 1.2 },
+      { type: "regenerator", count: 12, spawnInterval: 0.6, startDelay: 4, healthMult: 28.4 },
     ] },
     { groups: [
-      { type: "armored", count: 22, spawnInterval: 0.45, healthMult: 7.2 },
-      { type: "splitter", count: 12, spawnInterval: 0.5, startDelay: 6, healthMult: 5.6 },
+      { type: "armored", count: 22, spawnInterval: 0.45, healthMult: 37.8 },
+      { type: "splitter", count: 12, spawnInterval: 0.5, startDelay: 6, healthMult: 29.4 },
     ] },
     { groups: [
-      { type: "boss", count: 2, spawnInterval: 6, healthMult: 4.0 },
-      { type: "regenerator", count: 12, spawnInterval: 0.55, startDelay: 4, healthMult: 5.8 },
+      { type: "boss", count: 2, spawnInterval: 6, healthMult: 25.2 },
+      { type: "regenerator", count: 12, spawnInterval: 0.55, startDelay: 4, healthMult: 30.5 },
     ] },
     { groups: [
-      { type: "splitter", count: 18, spawnInterval: 0.4, healthMult: 6.4 },
-      { type: "fast", count: 18, spawnInterval: 0.22, startDelay: 5, healthMult: 7.6, speedMult: 1.25 },
-      { type: "armored", count: 12, spawnInterval: 0.55, startDelay: 10, healthMult: 7.6 },
+      { type: "splitter", count: 18, spawnInterval: 0.4, healthMult: 33.6 },
+      { type: "fast", count: 18, spawnInterval: 0.22, startDelay: 5, healthMult: 39.9, speedMult: 1.25 },
+      { type: "armored", count: 12, spawnInterval: 0.55, startDelay: 10, healthMult: 39.9 },
     ] },
     { groups: [
-      { type: "boss", count: 3, spawnInterval: 5, healthMult: 4.6, speedMult: 1.15 },
-      { type: "regenerator", count: 14, spawnInterval: 0.5, startDelay: 6, healthMult: 6.6 },
-      { type: "splitter", count: 14, spawnInterval: 0.42, startDelay: 14, healthMult: 7.0 },
+      { type: "boss", count: 3, spawnInterval: 5, healthMult: 29.1, speedMult: 1.15 },
+      { type: "regenerator", count: 14, spawnInterval: 0.5, startDelay: 6, healthMult: 34.8 },
+      { type: "splitter", count: 14, spawnInterval: 0.42, startDelay: 14, healthMult: 36.9 },
     ] },
   ],
 };

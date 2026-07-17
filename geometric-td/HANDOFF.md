@@ -793,6 +793,70 @@ selector is open. Treat `levels.js` as the source of truth on wave numbers.
   `src/version.js` or push, per the phase's shared rules — the
   orchestrator does that once after H4.
 
+- **H3: World 2 hard pass, L6-L10 (2026-07-17)** — third phase of the
+  round-2 hard-mode tuning plan, `levels.js`/`config.js`-only, driven by
+  telemetry: this world was never touched by last round's rebalance, and
+  leftover money at full-core wins ran 943g (L6) / 1442g (L7) / 445g (L8) /
+  899g (L9) / 495g (L10). All changes are wave `healthMult` bumps plus a new
+  `bountyMult` per level; wave 1 untouched everywhere (bankroll rule).
+  **`config.js ENEMIES.boss`:** `damageMult.pulse` eased 0.75→0.85 — this
+  global boss-resists-Pulse lever (from T2) was stacking with H1's direct
+  Pulse nerf into a double-nerf; softened rather than removed (still a real
+  resist, just not doubled-up). **L6** (`level_006`): non-boss waves net
+  ~x11.4, boss/final waves net ~x13.65 vs the pre-H3 baseline (e.g. wave 10
+  twin-boss `healthMult` 5.2→70.9); `bountyMult` 0.8 added. **L7**
+  (`level_007`): non-boss net ~x7, boss/final net ~x8.4 (wave 10 twin-boss
+  5.4→45.2); `bountyMult` 0.8 added. **L8** (`level_008`): the one W2 level
+  with real pressure this round (3 leaks, core 4/10) yet still rated
+  too_easy — pushed hardest of the five, non-boss net ~x8.3, boss/final net
+  ~x10.1 (wave 9 final twin-boss 3.6→36.4); `bountyMult` 0.78 (lowest of the
+  five, matching its already-higher pressure). **L9** (`level_009`):
+  non-boss net ~x2.45, boss/final net ~x2.94 (wave 9 final twin-boss
+  3.8→33.6) — needed far less than its siblings since its everything-is-fast
+  design already punishes an unfocused build hard; `bountyMult` 0.8 added.
+  **L10** (`level_010`): non-boss net ~x5.25, boss/final net ~x6.3 (wave 10
+  final triple-boss 4.6→29.1); `bountyMult` 0.8 added. **Verified** (bot
+  sims via the `td` preview + console, substepped at 1/60, no canvas
+  capture; a pre-existing local test-profile save was backed up first and
+  restored byte-for-byte after — confirmed identical length/content).
+  Test comp: an 11-tower level-5 laser/pulse/slow/railgun wall (mirrors
+  H2's methodology, extended with Railgun since World 2 assumes it
+  unlocked), precapitalized via the veteran-repurchase path off a seeded
+  save (`completedLevels` through level_005 to unlock Railgun; roster
+  entries with `maxLevel:5`), built via direct `game.js`/`towers.js` calls
+  (no DOM), fresh page reload before every level's sim per HANDOFF's
+  documented gotcha. **New sim-methodology gotcha hit and fixed this
+  phase:** `recordBattleEnd` (called automatically at every win/loss)
+  writes the roster's in-battle XP back into the live `progression.js`
+  module state — this means running MULTIPLE THRESHOLD-SEARCH TRIALS of
+  the SAME level back-to-back in one page session (not just multiple
+  DIFFERENT levels, which T3/H2 already documented) also contaminates
+  results, because each trial's mastery-XP gain carries into the next
+  trial's roster before a page reload. This produced a bogus "loss found at
+  x3.5" reading for L8 that a clean, reload-before-every-single-trial
+  re-test showed was actually still a FULL-CORE WIN — L8's real threshold
+  was x1.25 on top of that (found by reloading before every trial from
+  then on), and L9's, L10's initial reads were re-verified clean too (L9
+  needed revising down from a bogus x3 to a real x1.4 net; L10's original
+  contaminated-session finding happened to still hold clean). Final clean
+  isolated results (fresh reload, single trial per level): **L6** WON at
+  17% core (2/12), 2 leaks — near-loss. **L7** WON at 17% core (2/12), 2
+  leaks — near-loss. **L8** LOST on the final wave, core 0, 5 leaks. **L9**
+  LOST on the final wave, core 0, 2 leaks. **L10** LOST on the final wave,
+  core 0, 4 leaks. All five hit the "loss or ≤30% core" target the plan
+  asked for, matching H2's precedent exactly (L6/L7's 17% core mirrors L2's
+  accepted 33% core). **Bankroll rule:** wave 1 groups were never edited on
+  any of the five levels; re-confirmed via a realistic level-3
+  carried-over-roster build (not a from-scratch level-1 opener, consistent
+  with T2's documented precedent that L6-L10's wave 1 assumes some carried
+  W1 roster strength) — all five clear wave 1 full-core, 0-leak. A
+  from-scratch level-1-only opener still struggles on wave 1 of several of
+  these levels, which is pre-existing (wave 1 numbers untouched) and
+  matches T2's prior finding, not a new regression. Console clean
+  throughout. No `" 2"` iCloud conflict copies found (repo-wide sweep). Did
+  NOT bump `src/version.js` or push, per the phase's shared rules — the
+  orchestrator does that once after H4.
+
 ## Backlog
 
 - **ACTIVE: Economy rebalance + progression expansion (B1–B6)** — approved
