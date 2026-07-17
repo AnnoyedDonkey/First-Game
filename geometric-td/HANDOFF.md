@@ -24,9 +24,14 @@ and circuit-board battle-map decoration (traces/pads/vias/IC chips, tinted
 per level palette — knobs in `VFX.circuit`). All deployed and
 playable at the GitHub Pages URL below. No known bugs.
 
-**Active work:** economy rebalance + progression expansion, phases B1–B6,
-one phase per fresh session — full spec in the approved plan at
-`C:\Users\fthia\.claude\plans\purring-knitting-lake.md` (see Backlog below).
+**Active work:** B1–B6 (economy rebalance,
+`C:\Users\fthia\.claude\plans\purring-knitting-lake.md`) all shipped, and the
+first real-play tuning pass T1–T4 (railgun/rocket nerfs, boss/counter pass,
+World 3 difficulty + bounty trim, first-play tutorial) landed 2026-07-16 from
+telemetry + user notes — plan + feedback summary at
+`C:\Users\fthia\.claude\plans\feedback-tuning-2026-07.md`. Next: iPhone
+re-playtest of the retuned levels, then a second pass from fresh telemetry
+(compare `app_version` in the feedback table).
 
 ## What this is
 
@@ -815,10 +820,20 @@ selector is open. Treat `levels.js` as the source of truth on wave numbers.
     → second B6 pass from user reports.
 - **Loot P7 balance pass** — largely superseded by B1/B6; read
   `LOOT_DESIGN.md` §15 before tuning drops.
-- **PLAYTEST-PENDING:** counter re-tune + Rocket + World 3 difficulty is
-  bot-calibrated only; expect a tuning pass from iPhone play (L2/L4/L5 and
-  all of W3 flagged). If counters don't drive combo choices: harsher resists
-  or waves that hard-require a tower.
+- **DONE — playtest tuning T1–T4 (2026-07-16):** first pass from real play.
+  Telemetry verdict (43 rows, one player): 19/26 ratings "too easy", zero
+  "too hard"; L1→L15 cleared in ~70 min; only walls were L3/L7/L8 (the L7/L8
+  lose-then-level-then-win shape was explicitly ENJOYED — that's the
+  calibration anchor); all of W3 fell first-try with 1.5–5.1k leftover money;
+  named culprits: railgun ("overpowered or too cheap"), rocket upgrades too
+  cheap, soft bosses (L2/L7), L5 mono-laser wall win, L6 railgun optional.
+  Fixes: T1 railgun 140g + 1.3× / rocket 1.4× upgrade mults; T2 boss +
+  counter pass (L5 11-laser wall now LOSES); T3 W3 waves +25–40% + new
+  per-level `bountyMult` knob (leftovers now <250 in sims); T4 first-play
+  tutorial (new-player watcher thought blocked-tile ✕ = tower socket).
+  Details in the build-history entries below + plan file
+  `feedback-tuning-2026-07.md`. **Re-playtest on iPhone pending** — next
+  pass should diff telemetry by `app_version`.
 - Retune `config.js ENDLESS` ramp (seeds off the re-tuned final waves).
 - Unscheduled ideas: save export/import (iOS evicts localStorage after ~7
   idle days), sound, more towers (Tesla chain-lightning runner-up),
