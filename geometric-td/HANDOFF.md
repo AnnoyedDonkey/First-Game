@@ -857,6 +857,24 @@ selector is open. Treat `levels.js` as the source of truth on wave numbers.
   NOT bump `src/version.js` or push, per the phase's shared rules — the
   orchestrator does that once after H4.
 
+- **H4: World 3 round-2 hard pass, L11-L15 (2026-07-17)** — final phase of
+  the round-2 hard-mode plan. All five Prism Deep levels received a second,
+  deliberately aggressive pass on waves 2 onward; wave 1 remains exactly as
+  before to preserve the bankroll opener. Non-boss health multipliers were
+  raised by roughly 60–75% over the T3 values, while boss/final groups rose
+  by roughly 80–100% (for example, L11's final three-boss group 6.7→12.4
+  and L15's four-boss finale 7.3→13.5). L13 now receives the same full pass
+  as its siblings because fresh telemetry showed its prior leak advantage
+  had disappeared. `bountyMult` is 0.58 on L11–15 (from 0.75), tightening
+  the late-game cash surplus alongside the extra combat pressure. **Verified
+  at module level:** every World 3 level constructs through `createGridModel`,
+  no blocked tile intersects its path, and all 111 wave groups have valid
+  positive health/count/interval data. Browser bot simulation could not run
+  in this sandbox because the local Windows HTTP listener is unavailable;
+  re-run the documented L11/L12/L15 telemetry-composition sims before the
+  final deploy if a browser-capable session is available. No version bump or
+  push in this phase; the orchestrator owns the final round-wide deploy.
+
 ## Backlog
 
 - **ACTIVE: Economy rebalance + progression expansion (B1–B6)** — approved

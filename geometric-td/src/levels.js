@@ -972,7 +972,7 @@ const level011 = {
   startingMoney: 240,
   coreHealth: 12,
   timeBetweenWaves: 5,
-  bountyMult: 0.75, // late-game economy trim (T3): strong rosters left 1.5-5k idle
+  bountyMult: 0.58, // late-game economy trim (H4 round-2): 0.75 wasn't enough, dropped further
   palette: {
     background: "#160406",
     gridLine: "rgba(255, 60, 80, 0.08)",
@@ -995,40 +995,40 @@ const level011 = {
       { type: "basic", count: 18, spawnInterval: 0.4, healthMult: 4.5 },
       { type: "splitter", count: 8, spawnInterval: 0.6, startDelay: 4, healthMult: 3.6 },
     ] },
-    { groups: [{ type: "armored", count: 12, spawnInterval: 0.6, healthMult: 7.0 }] },
+    { groups: [{ type: "armored", count: 12, spawnInterval: 0.6, healthMult: 11.2 }] },
     { groups: [
-      { type: "boss", count: 1, healthMult: 4.8 },
-      { type: "basic", count: 16, spawnInterval: 0.4, startDelay: 2, healthMult: 7.0 },
+      { type: "boss", count: 1, healthMult: 8.9 },
+      { type: "basic", count: 16, spawnInterval: 0.4, startDelay: 2, healthMult: 13.0 },
     ] },
     { groups: [
-      { type: "fast", count: 22, spawnInterval: 0.24, healthMult: 7.6, speedMult: 1.15 },
-      { type: "armored", count: 10, spawnInterval: 0.7, startDelay: 4, healthMult: 7.3 },
+      { type: "fast", count: 22, spawnInterval: 0.24, healthMult: 12.2, speedMult: 1.15 },
+      { type: "armored", count: 10, spawnInterval: 0.7, startDelay: 4, healthMult: 11.7 },
     ] },
     { groups: [
-      { type: "splitter", count: 16, spawnInterval: 0.45, healthMult: 6.2 },
-      { type: "regenerator", count: 8, spawnInterval: 0.8, startDelay: 4, healthMult: 5.7 },
+      { type: "splitter", count: 16, spawnInterval: 0.45, healthMult: 9.9 },
+      { type: "regenerator", count: 8, spawnInterval: 0.8, startDelay: 4, healthMult: 9.1 },
     ] },
     { groups: [
-      { type: "boss", count: 2, spawnInterval: 6, healthMult: 5.3 },
-      { type: "armored", count: 12, spawnInterval: 0.6, startDelay: 3, healthMult: 7.8 },
+      { type: "boss", count: 2, spawnInterval: 6, healthMult: 9.8 },
+      { type: "armored", count: 12, spawnInterval: 0.6, startDelay: 3, healthMult: 14.4 },
     ] },
     { groups: [
-      { type: "armored", count: 20, spawnInterval: 0.5, healthMult: 9.5 },
-      { type: "fast", count: 14, spawnInterval: 0.26, startDelay: 5, healthMult: 8.6 },
+      { type: "armored", count: 20, spawnInterval: 0.5, healthMult: 15.2 },
+      { type: "fast", count: 14, spawnInterval: 0.26, startDelay: 5, healthMult: 13.8 },
     ] },
     { groups: [
-      { type: "regenerator", count: 14, spawnInterval: 0.6, healthMult: 6.8 },
-      { type: "splitter", count: 12, spawnInterval: 0.5, startDelay: 4, healthMult: 6.8 },
+      { type: "regenerator", count: 14, spawnInterval: 0.6, healthMult: 10.9 },
+      { type: "splitter", count: 12, spawnInterval: 0.5, startDelay: 4, healthMult: 10.9 },
     ] },
     { groups: [
-      { type: "boss", count: 2, spawnInterval: 5, healthMult: 6.2 },
-      { type: "basic", count: 24, spawnInterval: 0.28, startDelay: 3, healthMult: 11.3 },
-      { type: "fast", count: 16, spawnInterval: 0.24, startDelay: 10, healthMult: 9.7 },
+      { type: "boss", count: 2, spawnInterval: 5, healthMult: 11.5 },
+      { type: "basic", count: 24, spawnInterval: 0.28, startDelay: 3, healthMult: 20.9 },
+      { type: "fast", count: 16, spawnInterval: 0.24, startDelay: 10, healthMult: 17.9 },
     ] },
     { groups: [
-      { type: "boss", count: 3, spawnInterval: 5, healthMult: 6.7, speedMult: 1.1 },
-      { type: "armored", count: 14, spawnInterval: 0.55, startDelay: 6, healthMult: 10.8 },
-      { type: "splitter", count: 14, spawnInterval: 0.45, startDelay: 12, healthMult: 8.9 },
+      { type: "boss", count: 3, spawnInterval: 5, healthMult: 12.4, speedMult: 1.1 },
+      { type: "armored", count: 14, spawnInterval: 0.55, startDelay: 6, healthMult: 20.0 },
+      { type: "splitter", count: 14, spawnInterval: 0.45, startDelay: 12, healthMult: 16.5 },
     ] },
   ],
 };
@@ -1045,7 +1045,7 @@ const level012 = {
   startingMoney: 220,
   coreHealth: 10,
   timeBetweenWaves: 5,
-  bountyMult: 0.75, // late-game economy trim (T3): strong rosters left 1.5-5k idle
+  bountyMult: 0.58, // late-game economy trim (H4 round-2): 0.75 wasn't enough, dropped further
   palette: {
     background: "#04140f",
     gridLine: "rgba(40, 255, 210, 0.08)",
@@ -1066,39 +1066,39 @@ const level012 = {
   waves: [
     { groups: [{ type: "splitter", count: 12, spawnInterval: 0.55, healthMult: 4.0 }] },
     { groups: [
-      { type: "regenerator", count: 8, spawnInterval: 0.8, healthMult: 4.9 },
-      { type: "fast", count: 12, spawnInterval: 0.28, startDelay: 4, healthMult: 6.5 },
+      { type: "regenerator", count: 8, spawnInterval: 0.8, healthMult: 7.6 },
+      { type: "fast", count: 12, spawnInterval: 0.28, startDelay: 4, healthMult: 10.1 },
     ] },
     { groups: [
-      { type: "splitter", count: 16, spawnInterval: 0.45, healthMult: 6.0 },
-      { type: "basic", count: 18, spawnInterval: 0.32, startDelay: 4, healthMult: 8.6 },
+      { type: "splitter", count: 16, spawnInterval: 0.45, healthMult: 9.3 },
+      { type: "basic", count: 18, spawnInterval: 0.32, startDelay: 4, healthMult: 13.3 },
     ] },
-    { groups: [{ type: "armored", count: 14, spawnInterval: 0.55, healthMult: 7.3 }] },
+    { groups: [{ type: "armored", count: 14, spawnInterval: 0.55, healthMult: 11.3 }] },
     { groups: [
-      { type: "regenerator", count: 12, spawnInterval: 0.6, healthMult: 6.0 },
-      { type: "splitter", count: 12, spawnInterval: 0.5, startDelay: 4, healthMult: 6.0 },
-    ] },
-    { groups: [
-      { type: "boss", count: 1, healthMult: 5.0 },
-      { type: "regenerator", count: 10, spawnInterval: 0.7, startDelay: 3, healthMult: 6.0 },
+      { type: "regenerator", count: 12, spawnInterval: 0.6, healthMult: 9.3 },
+      { type: "splitter", count: 12, spawnInterval: 0.5, startDelay: 4, healthMult: 9.3 },
     ] },
     { groups: [
-      { type: "fast", count: 26, spawnInterval: 0.2, healthMult: 8.6, speedMult: 1.2 },
-      { type: "splitter", count: 14, spawnInterval: 0.45, startDelay: 4, healthMult: 6.8 },
+      { type: "boss", count: 1, healthMult: 9.0 },
+      { type: "regenerator", count: 10, spawnInterval: 0.7, startDelay: 3, healthMult: 10.8 },
     ] },
     { groups: [
-      { type: "armored", count: 18, spawnInterval: 0.5, healthMult: 9.4 },
-      { type: "regenerator", count: 10, spawnInterval: 0.65, startDelay: 4, healthMult: 7.0 },
+      { type: "fast", count: 26, spawnInterval: 0.2, healthMult: 13.3, speedMult: 1.2 },
+      { type: "splitter", count: 14, spawnInterval: 0.45, startDelay: 4, healthMult: 10.5 },
     ] },
     { groups: [
-      { type: "splitter", count: 20, spawnInterval: 0.4, healthMult: 8.3 },
-      { type: "boss", count: 1, healthMult: 5.9, startDelay: 2 },
-      { type: "fast", count: 16, spawnInterval: 0.24, startDelay: 10, healthMult: 9.1 },
+      { type: "armored", count: 18, spawnInterval: 0.5, healthMult: 14.6 },
+      { type: "regenerator", count: 10, spawnInterval: 0.65, startDelay: 4, healthMult: 10.9 },
     ] },
     { groups: [
-      { type: "boss", count: 2, spawnInterval: 5, healthMult: 6.4 },
-      { type: "regenerator", count: 14, spawnInterval: 0.55, startDelay: 5, healthMult: 8.3 },
-      { type: "splitter", count: 16, spawnInterval: 0.42, startDelay: 12, healthMult: 8.8 },
+      { type: "splitter", count: 20, spawnInterval: 0.4, healthMult: 14.9 },
+      { type: "boss", count: 1, healthMult: 10.6, startDelay: 2 },
+      { type: "fast", count: 16, spawnInterval: 0.24, startDelay: 10, healthMult: 16.4 },
+    ] },
+    { groups: [
+      { type: "boss", count: 2, spawnInterval: 5, healthMult: 11.5 },
+      { type: "regenerator", count: 14, spawnInterval: 0.55, startDelay: 5, healthMult: 14.9 },
+      { type: "splitter", count: 16, spawnInterval: 0.42, startDelay: 12, healthMult: 15.8 },
     ] },
   ],
 };
@@ -1115,7 +1115,7 @@ const level013 = {
   startingMoney: 200,
   coreHealth: 10,
   timeBetweenWaves: 5,
-  bountyMult: 0.75, // late-game economy trim (T3): strong rosters left 1.5-5k idle
+  bountyMult: 0.58, // late-game economy trim (H4 round-2): 0.75 wasn't enough, dropped further
   palette: {
     background: "#170518",
     gridLine: "rgba(255, 60, 200, 0.08)",
@@ -1136,40 +1136,40 @@ const level013 = {
   waves: [
     { groups: [{ type: "fast", count: 20, spawnInterval: 0.28, healthMult: 4.0 }] },
     { groups: [
-      { type: "fast", count: 18, spawnInterval: 0.24, healthMult: 6.5, speedMult: 1.2 },
-      { type: "splitter", count: 10, spawnInterval: 0.6, startDelay: 3, healthMult: 5.2 },
+      { type: "fast", count: 18, spawnInterval: 0.24, healthMult: 10.7, speedMult: 1.2 },
+      { type: "splitter", count: 10, spawnInterval: 0.6, startDelay: 3, healthMult: 8.6 },
     ] },
     { groups: [
-      { type: "basic", count: 24, spawnInterval: 0.28, healthMult: 8.2 },
-      { type: "fast", count: 14, spawnInterval: 0.26, startDelay: 4, healthMult: 7.0 },
+      { type: "basic", count: 24, spawnInterval: 0.28, healthMult: 13.5 },
+      { type: "fast", count: 14, spawnInterval: 0.26, startDelay: 4, healthMult: 11.6 },
     ] },
     { groups: [
-      { type: "splitter", count: 16, spawnInterval: 0.45, healthMult: 6.0 },
-      { type: "regenerator", count: 8, spawnInterval: 0.8, startDelay: 4, healthMult: 5.5 },
+      { type: "splitter", count: 16, spawnInterval: 0.45, healthMult: 9.9 },
+      { type: "regenerator", count: 8, spawnInterval: 0.8, startDelay: 4, healthMult: 9.1 },
     ] },
     { groups: [
-      { type: "boss", count: 1, healthMult: 4.6, speedMult: 1.25 },
-      { type: "fast", count: 20, spawnInterval: 0.24, startDelay: 3, healthMult: 7.2, speedMult: 1.2 },
+      { type: "boss", count: 1, healthMult: 9.0, speedMult: 1.25 },
+      { type: "fast", count: 20, spawnInterval: 0.24, startDelay: 3, healthMult: 14.0, speedMult: 1.2 },
     ] },
     // 6 — fast blitz (Slow gate)
-    { groups: [{ type: "fast", count: 30, spawnInterval: 0.16, healthMult: 8.0, speedMult: 1.3 }] },
+    { groups: [{ type: "fast", count: 30, spawnInterval: 0.16, healthMult: 13.2, speedMult: 1.3 }] },
     { groups: [
-      { type: "armored", count: 14, spawnInterval: 0.55, healthMult: 8.0 },
-      { type: "fast", count: 16, spawnInterval: 0.24, startDelay: 4, healthMult: 8.2, speedMult: 1.2 },
+      { type: "armored", count: 14, spawnInterval: 0.55, healthMult: 13.2 },
+      { type: "fast", count: 16, spawnInterval: 0.24, startDelay: 4, healthMult: 13.5, speedMult: 1.2 },
     ] },
     { groups: [
-      { type: "splitter", count: 18, spawnInterval: 0.4, healthMult: 7.2 },
-      { type: "regenerator", count: 10, spawnInterval: 0.65, startDelay: 4, healthMult: 6.5 },
+      { type: "splitter", count: 18, spawnInterval: 0.4, healthMult: 11.9 },
+      { type: "regenerator", count: 10, spawnInterval: 0.65, startDelay: 4, healthMult: 10.7 },
     ] },
     { groups: [
-      { type: "boss", count: 2, spawnInterval: 5, healthMult: 5.7, speedMult: 1.2 },
-      { type: "fast", count: 22, spawnInterval: 0.22, startDelay: 4, healthMult: 8.8, speedMult: 1.25 },
-      { type: "splitter", count: 12, spawnInterval: 0.45, startDelay: 11, healthMult: 7.0 },
+      { type: "boss", count: 2, spawnInterval: 5, healthMult: 11.1, speedMult: 1.2 },
+      { type: "fast", count: 22, spawnInterval: 0.22, startDelay: 4, healthMult: 17.2, speedMult: 1.25 },
+      { type: "splitter", count: 12, spawnInterval: 0.45, startDelay: 11, healthMult: 13.7 },
     ] },
     { groups: [
-      { type: "boss", count: 2, spawnInterval: 5, healthMult: 6.5, speedMult: 1.25 },
-      { type: "fast", count: 26, spawnInterval: 0.2, startDelay: 4, healthMult: 9.5, speedMult: 1.3 },
-      { type: "regenerator", count: 12, spawnInterval: 0.6, startDelay: 12, healthMult: 7.5 },
+      { type: "boss", count: 2, spawnInterval: 5, healthMult: 12.7, speedMult: 1.25 },
+      { type: "fast", count: 26, spawnInterval: 0.2, startDelay: 4, healthMult: 18.5, speedMult: 1.3 },
+      { type: "regenerator", count: 12, spawnInterval: 0.6, startDelay: 12, healthMult: 14.6 },
     ] },
   ],
 };
@@ -1186,7 +1186,7 @@ const level014 = {
   startingMoney: 240,
   coreHealth: 10,
   timeBetweenWaves: 5,
-  bountyMult: 0.75, // late-game economy trim (T3): strong rosters left 1.5-5k idle
+  bountyMult: 0.58, // late-game economy trim (H4 round-2): 0.75 wasn't enough, dropped further
   palette: {
     background: "#0b0d12",
     gridLine: "rgba(200, 215, 240, 0.09)",
@@ -1211,42 +1211,42 @@ const level014 = {
       { type: "splitter", count: 8, spawnInterval: 0.6, startDelay: 4, healthMult: 4.0 },
     ] },
     { groups: [
-      { type: "armored", count: 14, spawnInterval: 0.55, healthMult: 7.3 },
-      { type: "fast", count: 12, spawnInterval: 0.28, startDelay: 4, healthMult: 7.0 },
+      { type: "armored", count: 14, spawnInterval: 0.55, healthMult: 11.3 },
+      { type: "fast", count: 12, spawnInterval: 0.28, startDelay: 4, healthMult: 10.9 },
     ] },
     { groups: [
-      { type: "regenerator", count: 10, spawnInterval: 0.7, healthMult: 6.0 },
-      { type: "splitter", count: 12, spawnInterval: 0.5, startDelay: 4, healthMult: 6.0 },
+      { type: "regenerator", count: 10, spawnInterval: 0.7, healthMult: 9.3 },
+      { type: "splitter", count: 12, spawnInterval: 0.5, startDelay: 4, healthMult: 9.3 },
     ] },
     { groups: [
-      { type: "boss", count: 1, healthMult: 5.3 },
-      { type: "regenerator", count: 10, spawnInterval: 0.7, startDelay: 3, healthMult: 6.2 },
+      { type: "boss", count: 1, healthMult: 9.5 },
+      { type: "regenerator", count: 10, spawnInterval: 0.7, startDelay: 3, healthMult: 11.2 },
     ] },
     { groups: [
-      { type: "fast", count: 26, spawnInterval: 0.2, healthMult: 8.6, speedMult: 1.2 },
-      { type: "armored", count: 12, spawnInterval: 0.6, startDelay: 4, healthMult: 8.3 },
+      { type: "fast", count: 26, spawnInterval: 0.2, healthMult: 13.3, speedMult: 1.2 },
+      { type: "armored", count: 12, spawnInterval: 0.6, startDelay: 4, healthMult: 12.9 },
     ] },
     { groups: [
-      { type: "splitter", count: 20, spawnInterval: 0.4, healthMult: 8.1 },
-      { type: "basic", count: 24, spawnInterval: 0.3, startDelay: 4, healthMult: 10.4 },
+      { type: "splitter", count: 20, spawnInterval: 0.4, healthMult: 12.6 },
+      { type: "basic", count: 24, spawnInterval: 0.3, startDelay: 4, healthMult: 16.1 },
     ] },
     { groups: [
-      { type: "armored", count: 22, spawnInterval: 0.45, healthMult: 9.9 },
-      { type: "regenerator", count: 12, spawnInterval: 0.6, startDelay: 4, healthMult: 7.3 },
+      { type: "armored", count: 22, spawnInterval: 0.45, healthMult: 15.3 },
+      { type: "regenerator", count: 12, spawnInterval: 0.6, startDelay: 4, healthMult: 11.3 },
     ] },
     { groups: [
-      { type: "boss", count: 2, spawnInterval: 6, healthMult: 5.9 },
-      { type: "fast", count: 20, spawnInterval: 0.24, startDelay: 4, healthMult: 9.4, speedMult: 1.2 },
+      { type: "boss", count: 2, spawnInterval: 6, healthMult: 10.6 },
+      { type: "fast", count: 20, spawnInterval: 0.24, startDelay: 4, healthMult: 16.9, speedMult: 1.2 },
     ] },
     { groups: [
-      { type: "splitter", count: 20, spawnInterval: 0.38, healthMult: 8.6 },
-      { type: "regenerator", count: 14, spawnInterval: 0.55, startDelay: 5, healthMult: 7.8 },
-      { type: "fast", count: 18, spawnInterval: 0.24, startDelay: 11, healthMult: 9.6, speedMult: 1.25 },
+      { type: "splitter", count: 20, spawnInterval: 0.38, healthMult: 13.3 },
+      { type: "regenerator", count: 14, spawnInterval: 0.55, startDelay: 5, healthMult: 12.1 },
+      { type: "fast", count: 18, spawnInterval: 0.24, startDelay: 11, healthMult: 14.9, speedMult: 1.25 },
     ] },
     { groups: [
-      { type: "boss", count: 3, spawnInterval: 5, healthMult: 6.4 },
-      { type: "armored", count: 16, spawnInterval: 0.5, startDelay: 6, healthMult: 10.9 },
-      { type: "splitter", count: 16, spawnInterval: 0.42, startDelay: 12, healthMult: 9.1 },
+      { type: "boss", count: 3, spawnInterval: 5, healthMult: 11.5 },
+      { type: "armored", count: 16, spawnInterval: 0.5, startDelay: 6, healthMult: 19.6 },
+      { type: "splitter", count: 16, spawnInterval: 0.42, startDelay: 12, healthMult: 16.4 },
     ] },
   ],
 };
@@ -1263,7 +1263,7 @@ const level015 = {
   startingMoney: 300,
   coreHealth: 12,
   timeBetweenWaves: 5,
-  bountyMult: 0.75, // late-game economy trim (T3): strong rosters left 1.5-5k idle
+  bountyMult: 0.58, // late-game economy trim (H4 round-2): 0.75 wasn't enough, dropped further
   palette: {
     background: "#0b0820",
     gridLine: "rgba(220, 220, 255, 0.10)",
@@ -1287,52 +1287,52 @@ const level015 = {
       { type: "splitter", count: 10, spawnInterval: 0.55, startDelay: 4, healthMult: 4.2 },
     ] },
     { groups: [
-      { type: "armored", count: 16, spawnInterval: 0.5, healthMult: 7.8 },
-      { type: "fast", count: 14, spawnInterval: 0.26, startDelay: 4, healthMult: 7.6 },
+      { type: "armored", count: 16, spawnInterval: 0.5, healthMult: 12.5 },
+      { type: "fast", count: 14, spawnInterval: 0.26, startDelay: 4, healthMult: 12.2 },
     ] },
     { groups: [
-      { type: "regenerator", count: 12, spawnInterval: 0.6, healthMult: 6.5 },
-      { type: "splitter", count: 12, spawnInterval: 0.5, startDelay: 4, healthMult: 6.5 },
+      { type: "regenerator", count: 12, spawnInterval: 0.6, healthMult: 10.4 },
+      { type: "splitter", count: 12, spawnInterval: 0.5, startDelay: 4, healthMult: 10.4 },
     ] },
     { groups: [
-      { type: "boss", count: 1, healthMult: 5.6 },
-      { type: "regenerator", count: 12, spawnInterval: 0.6, startDelay: 3, healthMult: 7.0 },
+      { type: "boss", count: 1, healthMult: 10.4 },
+      { type: "regenerator", count: 12, spawnInterval: 0.6, startDelay: 3, healthMult: 13.0 },
     ] },
     { groups: [
-      { type: "fast", count: 28, spawnInterval: 0.18, healthMult: 9.5, speedMult: 1.2 },
-      { type: "splitter", count: 14, spawnInterval: 0.45, startDelay: 4, healthMult: 7.6 },
+      { type: "fast", count: 28, spawnInterval: 0.18, healthMult: 15.2, speedMult: 1.2 },
+      { type: "splitter", count: 14, spawnInterval: 0.45, startDelay: 4, healthMult: 12.2 },
     ] },
     { groups: [
-      { type: "armored", count: 22, spawnInterval: 0.45, healthMult: 10.3 },
-      { type: "regenerator", count: 12, spawnInterval: 0.6, startDelay: 4, healthMult: 7.8 },
+      { type: "armored", count: 22, spawnInterval: 0.45, healthMult: 16.5 },
+      { type: "regenerator", count: 12, spawnInterval: 0.6, startDelay: 4, healthMult: 12.5 },
     ] },
     { groups: [
-      { type: "boss", count: 2, spawnInterval: 6, healthMult: 6.2 },
-      { type: "basic", count: 28, spawnInterval: 0.26, startDelay: 3, healthMult: 12.2 },
+      { type: "boss", count: 2, spawnInterval: 6, healthMult: 11.5 },
+      { type: "basic", count: 28, spawnInterval: 0.26, startDelay: 3, healthMult: 22.6 },
     ] },
     { groups: [
-      { type: "splitter", count: 22, spawnInterval: 0.38, healthMult: 9.2 },
-      { type: "fast", count: 20, spawnInterval: 0.22, startDelay: 4, healthMult: 10.3, speedMult: 1.25 },
+      { type: "splitter", count: 22, spawnInterval: 0.38, healthMult: 14.7 },
+      { type: "fast", count: 20, spawnInterval: 0.22, startDelay: 4, healthMult: 16.5, speedMult: 1.25 },
     ] },
     { groups: [
-      { type: "armored", count: 24, spawnInterval: 0.42, healthMult: 11.3 },
-      { type: "regenerator", count: 14, spawnInterval: 0.55, startDelay: 5, healthMult: 8.6 },
+      { type: "armored", count: 24, spawnInterval: 0.42, healthMult: 18.1 },
+      { type: "regenerator", count: 14, spawnInterval: 0.55, startDelay: 5, healthMult: 13.8 },
     ] },
     { groups: [
-      { type: "boss", count: 3, spawnInterval: 5, healthMult: 6.7 },
-      { type: "splitter", count: 18, spawnInterval: 0.42, startDelay: 5, healthMult: 9.5 },
-      { type: "fast", count: 20, spawnInterval: 0.22, startDelay: 11, healthMult: 10.8, speedMult: 1.25 },
+      { type: "boss", count: 3, spawnInterval: 5, healthMult: 12.4 },
+      { type: "splitter", count: 18, spawnInterval: 0.42, startDelay: 5, healthMult: 17.6 },
+      { type: "fast", count: 20, spawnInterval: 0.22, startDelay: 11, healthMult: 20.0, speedMult: 1.25 },
     ] },
     { groups: [
-      { type: "regenerator", count: 18, spawnInterval: 0.5, healthMult: 9.2 },
-      { type: "armored", count: 18, spawnInterval: 0.48, startDelay: 4, healthMult: 11.9 },
-      { type: "splitter", count: 16, spawnInterval: 0.42, startDelay: 10, healthMult: 9.7 },
+      { type: "regenerator", count: 18, spawnInterval: 0.5, healthMult: 14.7 },
+      { type: "armored", count: 18, spawnInterval: 0.48, startDelay: 4, healthMult: 19.0 },
+      { type: "splitter", count: 16, spawnInterval: 0.42, startDelay: 10, healthMult: 15.5 },
     ] },
     { groups: [
-      { type: "boss", count: 4, spawnInterval: 5, healthMult: 7.3, speedMult: 1.1 },
-      { type: "armored", count: 16, spawnInterval: 0.5, startDelay: 6, healthMult: 12.2 },
-      { type: "regenerator", count: 14, spawnInterval: 0.55, startDelay: 12, healthMult: 9.2 },
-      { type: "fast", count: 18, spawnInterval: 0.22, startDelay: 18, healthMult: 11.3, speedMult: 1.3 },
+      { type: "boss", count: 4, spawnInterval: 5, healthMult: 13.5, speedMult: 1.1 },
+      { type: "armored", count: 16, spawnInterval: 0.5, startDelay: 6, healthMult: 22.6 },
+      { type: "regenerator", count: 14, spawnInterval: 0.55, startDelay: 12, healthMult: 17.0 },
+      { type: "fast", count: 18, spawnInterval: 0.22, startDelay: 18, healthMult: 20.9, speedMult: 1.3 },
     ] },
   ],
 };
