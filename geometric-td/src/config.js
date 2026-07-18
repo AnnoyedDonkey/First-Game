@@ -3,7 +3,20 @@
 //
 // Everything here is a DEFAULT. Levels and individual waves can
 // override most of it (see levels.js for how).
+//
+// ---- Balance Lab (L1) ----
+// The EDITABLE gameplay numbers (enemy stats, tower stats, upgrade
+// curves, economy/wave/endless knobs, endless+campaign milestone
+// rewards, the migrated LOOT.xp/shards subset, and skill-tree numbers)
+// now live in src/balance-data.js (BALANCE), validated by
+// src/balance-schema.js. This file stays the stable module boundary
+// every other src/ file imports from: it merges BALANCE's numbers with
+// the presentation/identity fields that stay here (names, colors,
+// shapes, labels, icons) to rebuild the exact same public exports as
+// before the migration. See BALANCE_LAB_L1_PLAN.md.
 // ============================================================
+
+import { BALANCE } from "./balance-data.js";
 
 // ---------- Debug / testing ----------
 export const DEBUG = {
@@ -27,16 +40,14 @@ export const DEBUG = {
 // shardTier = relative "how tough is this enemy" bucket used to scale
 // Shards earned per kill (LOOT.shards.perKillBase * shardTier). 1 = grunt,
 // 2 = heavy, 4 = boss — matches LOOT_DESIGN.md §1's grunt/heavy/boss split.
-export const ENEMIES = {
+//
+// Presentation-only fields (identity, never Lab-editable). Numbers
+// (baseHealth, speed, coreDamage, bounty, xp, shardTier, regenRate?,
+// damageMult?, splitInto?) come from BALANCE.enemies below.
+const ENEMY_PRESENTATION = {
   basic: {
     name: "Basic",
     shape: "triangle",
-    baseHealth: 20,
-    speed: 1.4,
-    coreDamage: 1,
-    bounty: 5,
-    xp: 10,
-    shardTier: 1,
     size: 0.28,          // radius as a fraction of tile size
     color: "#35e0ff",    // neon cyan
     // Neutral to everything — the baseline enemy.
@@ -44,43 +55,23 @@ export const ENEMIES = {
   fast: {
     name: "Fast",
     shape: "diamond",
-    baseHealth: 11,
-    speed: 2.6,
-    coreDamage: 1,
-    bounty: 6,
-    xp: 12,
-    shardTier: 1,
     size: 0.22,
     color: "#ffe24a",    // neon yellow
     // Fragile flyers — Lasers (fast fire) shred them; slow Pulse orbs and
     // lobbed Rockets struggle to catch them. ANSWER: Laser (or Slow to pin).
-    damageMult: { energy: 1.3, pulse: 0.7, blast: 0.6 },
   },
   armored: {
     name: "Armored",
     shape: "hexagon",
-    baseHealth: 60,
-    speed: 0.9,
-    coreDamage: 2,
-    bounty: 12,
-    xp: 25,
-    shardTier: 2,
     size: 0.32,
     color: "#ff3fd4",    // neon magenta
     // Plated: lasers & slow-zaps clang off harmlessly. Concussive Pulse
     // splash rattles it, and a Railgun punches clean through.
     // ANSWER: Pulse early, Railgun once unlocked. NOT Laser.
-    damageMult: { energy: 0.4, control: 0.5, pulse: 1.2, rail: 1.6 },
   },
   boss: {
     name: "Boss",
     shape: "octagon",
-    baseHealth: 400,
-    speed: 0.55,
-    coreDamage: 5,
-    bounty: 100,
-    xp: 150,
-    shardTier: 4,
     size: 0.42,
     color: "#ff4a5e",    // neon red
     // Massive lone target: shrugs off slows, and small splash is wasted on
@@ -91,65 +82,41 @@ export const ENEMIES = {
     // so the full 25% boss resist on top was double-stacking two independent
     // Pulse nerfs (this value is global, shared by every level's boss, not
     // just L6 — softened slightly for all, kept meaningfully resistant).
-    damageMult: { control: 0.4, pulse: 0.85, rail: 1.2, blast: 1.3 },
   },
   // Splits into 2 splitlings on death — punishes single-target builds.
   splitter: {
     name: "Splitter",
     shape: "square",
-    baseHealth: 42,
-    speed: 1.1,
-    coreDamage: 2,
-    bounty: 10,
-    xp: 20,
-    shardTier: 2,
     size: 0.28,
     color: "#ff7a2f",    // neon orange
-    splitInto: { type: "splitling", count: 2 },
     // Pulse splash and Rocket blasts hit the parent AND both children at
     // once; a single-line Railgun wastes most of its shot on one body.
     // ANSWER: Pulse / Rocket. NOT Railgun.
-    damageMult: { pulse: 1.5, blast: 1.4, rail: 0.6 },
   },
   splitling: {
     name: "Splitling",
     shape: "diamond",
-    baseHealth: 10,
-    speed: 2.4,
-    coreDamage: 1,
-    bounty: 3,
-    xp: 5,
-    shardTier: 1,
     size: 0.16,
     color: "#ff7a2f",
-    damageMult: { pulse: 1.5, blast: 1.4 },
   },
   // Heals itself while alive — punishes chip damage, rewards burst.
   regenerator: {
     name: "Regenerator",
     shape: "pentagon",
-    baseHealth: 70,
-    speed: 0.85,
-    coreDamage: 2,
-    bounty: 14,
-    xp: 28,
-    shardTier: 2,
     size: 0.30,
     color: "#7dff4a",    // acid green
-    regenRate: 0.05,     // heals 5% of max health per second
     // Out-heals steady laser chip almost entirely; only a Railgun's burst
     // outruns the regen. ANSWER: Railgun. NOT Laser.
-    damageMult: { energy: 0.45, rail: 1.6 },
   },
 };
 
+export const ENEMIES = {};
+for (const id of Object.keys(ENEMY_PRESENTATION)) {
+  ENEMIES[id] = { ...ENEMY_PRESENTATION[id], ...BALANCE.enemies[id] };
+}
+
 // ---------- Waves ----------
-export const WAVE_DEFAULTS = {
-  timeBetweenWaves: 6,     // seconds of build time after a wave is cleared
-  autoStartNextWave: true, // false = player must tap START for every wave
-  allowEarlyStart: true,   // tap START during the countdown to skip the wait
-  spawnInterval: 0.8,      // default seconds between enemies in a group
-};
+export const WAVE_DEFAULTS = BALANCE.waveDefaults;
 
 // ---------- Endless mode ----------
 // Unlocked per level once its campaign is beaten. Reuses the level's own
@@ -158,17 +125,7 @@ export const WAVE_DEFAULTS = {
 // final wave. Everything compounds per "extra" wave k (k=1 is the wave
 // right after the campaign ends), so this ramps up FAST — only a
 // heavily-upgraded/high-Mastery roster should push deep into it.
-export const ENDLESS = {
-  healthGrowthPerWave: 0.16,     // enemy health compounds +16% per wave
-  countGrowthPerWave: 0.05,      // enemy count grows +5% per wave...
-  maxCountMult: 3,               // ...capped at 3x the seed wave's count
-  speedGrowthPerWave: 0.012,     // +1.2% enemy speed per wave...
-  maxSpeedMult: 1.6,             // ...capped at 1.6x
-  intervalShrinkPerWave: 0.985,  // spawns get denser over time...
-  minSpawnIntervalMult: 0.4,     // ...never denser than 40% of the base interval
-  bossEvery: 5,                  // an extra boss group every N endless waves
-  bossHealthGrowthPerWave: 0.20, // bosses scale even faster than the swarm
-};
+export const ENDLESS = BALANCE.endless;
 
 // One-time-per-level Endless milestones (LOOT_DESIGN.md §10). Each level
 // tracks its own claimed set (save.js endlessRewards[levelId], keyed by
@@ -191,18 +148,7 @@ export const ENDLESS = {
 // for a specific level). This is data-shape readiness only — content
 // (actually authoring per-level tracks) is a later balance pass; for now
 // every level still resolves to `defaultTrack`, so behavior is unchanged.
-export const ENDLESS_REWARDS = {
-  defaultTrack: [
-    { id: "wave10", type: "wave", threshold: 10, label: "Reach wave 10", reward: { kind: "shards", amount: 40 } },
-    { id: "wave20", type: "wave", threshold: 20, label: "Reach wave 20", reward: { kind: "loot", rarity: "rare" } },
-    { id: "wave35", type: "wave", threshold: 35, label: "Reach wave 35", reward: { kind: "shards", amount: 110 } },
-    { id: "wave50", type: "wave", threshold: 50, label: "Reach wave 50", reward: { kind: "loot", rarity: "prismatic" } },
-    { id: "wave75", type: "wave", threshold: 75, label: "Reach wave 75", reward: { kind: "loot", rarity: "singularity" } },
-  ],
-  // levelId -> milestone array override, e.g. "level_003": [ ... ].
-  // Empty until a per-level track is actually authored.
-  tracksByLevel: {},
-};
+export const ENDLESS_REWARDS = BALANCE.endlessRewards;
 
 // Resolves the milestone list for a level: its own track if one exists in
 // `tracksByLevel`, else the shared `defaultTrack`. The single read path
@@ -235,95 +181,25 @@ export function endlessTrackFor(levelId) {
 // per-level challenge. EVERY campaign challenge awards 1 skill point plus
 // shards ({ skillPoints, shards } — both optional in the data, both granted
 // in progression.js grantLevelMilestones). Shard amounts scale with depth.
-export const LEVEL_MILESTONES = {
-  level_001: [
-    { id: "l1_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { skillPoints: 1, shards: 30 } },
-    { id: "l1_laseronly", label: "Laser Purist", check: { onlyTowers: ["laser"] }, reward: { skillPoints: 1, shards: 40 } },
-  ],
-  level_002: [
-    { id: "l2_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { skillPoints: 1, shards: 30 } },
-    { id: "l2_noslow", label: "No Slowing Down", check: { withoutTowers: ["slow"] }, reward: { skillPoints: 1, shards: 40 } },
-  ],
-  level_003: [
-    { id: "l3_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { skillPoints: 1, shards: 40 } },
-    { id: "l3_veterans", label: "Battle-Hardened", check: { towersAtLevel: [2, 3] }, reward: { skillPoints: 1, shards: 60 } },
-  ],
-  level_004: [
-    { id: "l4_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { skillPoints: 1, shards: 40 } },
-    { id: "l4_nolaser", label: "Beyond Lasers", check: { onlyTowers: ["pulse", "slow"] }, reward: { skillPoints: 1, shards: 50 } },
-  ],
-  level_005: [
-    { id: "l5_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { skillPoints: 1, shards: 50 } },
-    { id: "l5_laseronly", label: "Laser Purist", check: { onlyTowers: ["laser"] }, reward: { skillPoints: 1, shards: 60 } },
-  ],
-  level_006: [
-    { id: "l6_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { skillPoints: 1, shards: 50 } },
-    { id: "l6_nopulse", label: "Silent Field", check: { withoutTowers: ["pulse"] }, reward: { skillPoints: 1, shards: 60 } },
-  ],
-  level_007: [
-    { id: "l7_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { skillPoints: 1, shards: 50 } },
-    { id: "l7_elite", label: "Elite Squad", check: { towersAtLevel: [3, 5] }, reward: { skillPoints: 1, shards: 80 } },
-  ],
-  level_008: [
-    { id: "l8_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { skillPoints: 1, shards: 60 } },
-    { id: "l8_railline", label: "Rail & Beam", check: { onlyTowers: ["railgun", "laser"] }, reward: { skillPoints: 1, shards: 70 } },
-  ],
-  level_009: [
-    { id: "l9_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { skillPoints: 1, shards: 60 } },
-    { id: "l9_noslow", label: "No Slowing Down", check: { withoutTowers: ["slow"] }, reward: { skillPoints: 1, shards: 80 } },
-  ],
-  level_010: [
-    { id: "l10_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { skillPoints: 1, shards: 70 } },
-    { id: "l10_wall", label: "Veteran Wall", check: { towersAtLevel: [4, 5] }, reward: { skillPoints: 1, shards: 80 } },
-  ],
-  level_011: [
-    { id: "l11_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { skillPoints: 1, shards: 70 } },
-    { id: "l11_norocket", label: "No Rockets", check: { withoutTowers: ["rocket"] }, reward: { skillPoints: 1, shards: 90 } },
-  ],
-  level_012: [
-    { id: "l12_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { skillPoints: 1, shards: 70 } },
-    { id: "l12_elite", label: "Fully Fielded", check: { towersAtLevel: [5, 5] }, reward: { skillPoints: 1, shards: 90 } },
-  ],
-  level_013: [
-    { id: "l13_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { skillPoints: 1, shards: 80 } },
-    { id: "l13_railfocus", label: "Rail Doctrine", check: { onlyTowers: ["railgun", "slow"] }, reward: { skillPoints: 1, shards: 90 } },
-  ],
-  level_014: [
-    { id: "l14_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { skillPoints: 1, shards: 80 } },
-    { id: "l14_purist", label: "Prism Purist", check: { onlyTowers: ["laser", "pulse"] }, reward: { skillPoints: 1, shards: 100 } },
-  ],
-  level_015: [
-    { id: "l15_flawless", label: "Flawless", check: { clearNoLeaks: true }, reward: { skillPoints: 1, shards: 100 } },
-    { id: "l15_grandmaster", label: "Grand Master", check: { towersAtLevel: [6, 5] }, reward: { skillPoints: 1, shards: 120 } },
-  ],
-};
+export const LEVEL_MILESTONES = BALANCE.levelMilestones;
 
 // ---------- Towers ----------
 // (Used from Checkpoint B onward — defined now so all knobs live together.)
-export const TOWERS = {
+// Presentation/identity-only fields. Numbers (baseCost, baseDamage,
+// baseRange, baseFireRate, basePierce?, splashRadius?, projectileSpeed?,
+// slowPercent?, slowDuration?, vulnerability?, pierceWidth?,
+// upgradeCostMult?, damageType) come from BALANCE.towers below.
+const TOWER_PRESENTATION = {
   laser: {
     name: "Laser Tower",
     prefix: "L",           // single-letter gear lock-tag glyph (e.g. STASH corner dot)
     rosterPrefix: "Laser", // roster names: Laser-01, Laser-02...
-    baseCost: 50,
-    baseDamage: 8,
-    baseRange: 1.9,        // in tiles
-    baseFireRate: 0.35,    // seconds between shots
-    basePierce: 1,         // max enemies hit by one beam before gear
-    damageType: "energy",
     color: "#35e0ff",
   },
   pulse: {
     name: "Pulse Tower",
     prefix: "P",           // single-letter gear lock-tag glyph
     rosterPrefix: "Pulse",
-    baseCost: 105,
-    baseDamage: 14,
-    splashRadius: 0.7,     // in tiles
-    baseRange: 1.35,
-    baseFireRate: 0.78,
-    projectileSpeed: 5.5,  // tiles per second
-    damageType: "pulse",
     color: "#ff3fd4",
     // Playtest feedback (2026-07, round 2): "Pulse tower should have a
     // slower firing cadence and smaller range. It's overpowered" (L5) +
@@ -336,26 +212,16 @@ export const TOWERS = {
     // scales into a swarm-clearing monster (see its bigger splash
     // specialty in TOWER_UPGRADES). Costs 60% more per upgrade than the
     // shared table.
-    upgradeCostMult: 1.6,
   },
   slow: {
     name: "Slow Tower",
     prefix: "S",           // single-letter gear lock-tag glyph
     rosterPrefix: "Slow",
-    baseCost: 60,
-    baseDamage: 2,
-    baseRange: 1.6,
-    baseFireRate: 0.8,
-    slowPercent: 0.35,     // 0.35 = enemies move 35% slower
-    slowDuration: 1.5,     // seconds
+    color: "#4affa1",
     // FORCE MULTIPLIER: a slowed enemy also takes extra damage from ALL
     // sources for the slow's duration. This is the Slow Tower's real job —
     // it makes every other tower hit harder, so it earns a slot in a combo.
-    vulnerability: 0.30,   // +30% damage taken while slowed
-    damageType: "control",
-    color: "#4affa1",
     // Cheap to level (it's support, not DPS).
-    upgradeCostMult: 0.8,
   },
   // Unlocked by clearing Core Siege (level 5). Slow, long-ranged,
   // devastating — the shot PIERCES every enemy along the beam line.
@@ -363,19 +229,11 @@ export const TOWERS = {
     name: "Railgun Tower",
     prefix: "R",           // single-letter gear lock-tag glyph
     rosterPrefix: "Railgun",
-    baseCost: 140,
-    baseDamage: 48,
-    baseRange: 3.5,
-    baseFireRate: 3.0,
-    basePierce: 4,         // max enemies hit by one rail before gear
-    pierceWidth: 0.18,     // beam corridor half-width, in tiles
-    damageType: "rail",
     color: "#ff9d3f",
     unlockLabel: "CLEAR LV 5",
     // Playtest feedback (2026-07): "overpowered or too cheap" — 48 dmg ×
     // 4 pierce / 3s beats laser's DPS-per-gold badly. baseCost 100→140 plus
     // a steeper per-upgrade cost so it stays a premium pick, not a default.
-    upgradeCostMult: 1.3,
   },
   // Unlocked by clearing World 2 (level 10). GLOBAL RANGE — lobs an
   // explosive rocket at any enemy anywhere on the map. Very slow to
@@ -388,110 +246,98 @@ export const TOWERS = {
     trayName: "ROCKET",    // tray label (name has no " Tower" to strip)
     prefix: "K",           // single-letter gear lock-tag glyph (R is the railgun)
     rosterPrefix: "Rocket", // roster names: Rocket-01, Rocket-02...
-    baseCost: 120,
-    baseDamage: 44,
-    splashRadius: 0.9,     // explosive AoE, in tiles
-    baseRange: 999,        // effectively the whole board
-    baseFireRate: 2.8,     // slow reload
-    projectileSpeed: 9,    // tiles per second
-    damageType: "blast",
     color: "#ff5e3a",      // rocket red-orange (distinct from railgun amber)
     unlockLabel: "CLEAR LV 10",
     // Playtest feedback (2026-07): "Rocket should be more expensive to
     // upgrade" — global range is meant to be the expensive-to-scale option
     // (cf. pulse 1.6×), so it costs more to level than a placement-limited
     // tower.
-    upgradeCostMult: 1.4,
   },
 };
+
+// Key order (laser, pulse, slow, railgun, rocket) drives tray order and
+// skill-branch layout (ui.js Object.entries(TOWERS)) — preserved via
+// TOWER_PRESENTATION's own insertion order.
+export const TOWERS = {};
+for (const id of Object.keys(TOWER_PRESENTATION)) {
+  TOWERS[id] = { ...TOWER_PRESENTATION[id], ...BALANCE.towers[id] };
+}
 
 // Per-level stat growth when a tower is upgraded (Checkpoint C).
 // Each level multiplies the stat by (1 + value).
-export const TOWER_UPGRADES = {
-  // BASE cap = 5. The account-wide skill tree can raise it to 10 via the
-  // chained towerCap6..towerCap10 nodes (progression.js getTowerLevelCap).
-  maxLevel: 5,
-  damageGrowth: 0.35,      // +35% damage per level
-  rangeGrowth: 0.08,       // +8% range per level
-  fireRateGrowth: 0.10,    // fires 10% faster per level
-  splashGrowth: 0.10,      // pulse: +10% splash radius per level
-  slowGrowth: 0.12,        // slow: +12% slow duration per level
-  // XP needed to become ELIGIBLE for each level (index 0 = level 2).
-  // Length 9 = levels 2..10; indices 4..8 (levels 6-10) only ever apply
-  // once the matching towerCap skill is unlocked. Steep on purpose.
-  xpThresholds: [100, 250, 450, 700, 1050, 1350, 1800, 2400, 3200],
-  // Money cost to actually buy each level (index 0 = level 2).
-  // A tower can scale this with its own `upgradeCostMult` (see TOWERS) —
-  // e.g. Pulse pays 1.6x, Slow pays 0.8x. Levels 6-10 are pricey.
-  upgradeCosts: [75, 125, 200, 300, 450, 600, 800, 1100, 1500],
-
-  // MASTERY — progression beyond level 5. XP earned past the level-5
-  // threshold converts into permanent damage ranks (no money cost,
-  // follows the tower forever like specialties). Makes grinding
-  // earlier levels pay off.
-  //
-  // 50-rank ESCALATING curve (loot spec §2a): rank n costs
-  // baseXpPerRank + xpRankIncrement*(n-1) XP, so each rank costs a bit
-  // more than the last (cumulative XP is quadratic). Rank is derived
-  // purely from `xp` in masteryRankFor() — no save field — so it stays
-  // retroactive. The steeper curve intentionally lowers existing
-  // veterans' ranks (loot spec §2b, decision: ACCEPT the nerf).
-  // Reference (base 400, inc 80): rank 1 = 1,100 XP total ·
-  // rank 10 = 8,300 · rank 20 = 23,900 · rank 50 = 118,700.
-  mastery: {
-    // XP where mastery begins. This is the DEFAULT (= the level-5
-    // threshold, for a base cap of 5). When the account unlocks higher
-    // tower caps (towerCap6..10), progression.js re-anchors the live
-    // start to the new cap's XP threshold via equipment.setMasteryXpStart
-    // so XP spent reaching levels 6-10 doesn't ALSO double-count as
-    // mastery ranks. Anchored to the account cap, not per-tower.
-    xpStart: 700,
-    baseXpPerRank: 400,    // XP cost of rank 1
-    xpRankIncrement: 80,   // each rank costs this much more than the last
-    damagePerRank: 0.015,  // +1.5% damage per rank (+75% at rank 50)
-    maxRanks: 50,          // hard cap
-  },
-
-  // Each tower class gains an EXTRA specialty bonus per level, on top
-  // of the shared growth above. Explained to the player in the Tower
-  // Guide (shown at level 2, and from the main menu).
-  specialties: {
-    laser:   { rangeGrowth: 0.07,    label: "+ extra range per level" },
-    pulse:   { splashGrowth: 0.12,   label: "+ bigger explosions per level" },
-    slow:    { fireRateGrowth: 0.10, label: "+ faster firing per level" },
-    railgun: { damageGrowth: 0.10,   label: "+ extra damage per level" },
-    rocket:  { splashGrowth: 0.12,   label: "+ bigger blasts per level" },
-  },
+// BASE cap = 5. The account-wide skill tree can raise it to 10 via the
+// chained towerCap6..towerCap10 nodes (progression.js getTowerLevelCap).
+// XP needed to become ELIGIBLE for each level (index 0 = level 2).
+// Length 9 = levels 2..10; indices 4..8 (levels 6-10) only ever apply
+// once the matching towerCap skill is unlocked. Steep on purpose.
+// Money cost to actually buy each level (index 0 = level 2).
+// A tower can scale this with its own `upgradeCostMult` (see TOWERS) —
+// e.g. Pulse pays 1.6x, Slow pays 0.8x. Levels 6-10 are pricey.
+//
+// MASTERY — progression beyond level 5. XP earned past the level-5
+// threshold converts into permanent damage ranks (no money cost,
+// follows the tower forever like specialties). Makes grinding
+// earlier levels pay off.
+//
+// 50-rank ESCALATING curve (loot spec §2a): rank n costs
+// baseXpPerRank + xpRankIncrement*(n-1) XP, so each rank costs a bit
+// more than the last (cumulative XP is quadratic). Rank is derived
+// purely from `xp` in masteryRankFor() — no save field — so it stays
+// retroactive. The steeper curve intentionally lowers existing
+// veterans' ranks (loot spec §2b, decision: ACCEPT the nerf).
+// Reference (base 400, inc 80): rank 1 = 1,100 XP total ·
+// rank 10 = 8,300 · rank 20 = 23,900 · rank 50 = 118,700.
+// xpStart is the DEFAULT (= the level-5 threshold, for a base cap of 5).
+// When the account unlocks higher tower caps (towerCap6..10),
+// progression.js re-anchors the live start to the new cap's XP threshold
+// via equipment.setMasteryXpStart so XP spent reaching levels 6-10
+// doesn't ALSO double-count as mastery ranks. Anchored to the account
+// cap, not per-tower.
+//
+// Each tower class gains an EXTRA specialty bonus per level, on top
+// of the shared growth above. Explained to the player in the Tower
+// Guide (shown at level 2, and from the main menu). `label` is
+// presentation; the growth value comes from BALANCE.towerUpgrades.
+const SPECIALTY_LABELS = {
+  laser:   "+ extra range per level",
+  pulse:   "+ bigger explosions per level",
+  slow:    "+ faster firing per level",
+  railgun: "+ extra damage per level",
+  rocket:  "+ bigger blasts per level",
 };
+
+export const TOWER_UPGRADES = {
+  ...BALANCE.towerUpgrades,
+  specialties: {},
+};
+for (const id of Object.keys(BALANCE.towerUpgrades.specialties)) {
+  TOWER_UPGRADES.specialties[id] = {
+    ...BALANCE.towerUpgrades.specialties[id],
+    label: SPECIALTY_LABELS[id],
+  };
+}
 
 // ---------- Economy ----------
-export const ECONOMY = {
-  moneyPerKillMultiplier: 1.0,  // global multiplier on all bounties
-  xpPerKillMultiplier: 1.0,     // global multiplier on all XP gains
-
-  // Cash interest (skill: interestRate + interestCap). At each wave-clear
-  // the player earns floor(money * rate), capped. Both are 0 until the
-  // matching skill nodes are bought — the per-tier sizes live in
-  // SKILL_VALUES.interestRate / .interestCap below. Applied in game.js.
-  interest: {
-    enabled: true,
-  },
-};
+// moneyPerKillMultiplier = global multiplier on all bounties.
+// xpPerKillMultiplier    = global multiplier on all XP gains.
+// Cash interest (skill: interestRate + interestCap). At each wave-clear
+// the player earns floor(money * rate), capped. Both are 0 until the
+// matching skill nodes are bought — the per-tier sizes live in
+// SKILL_VALUES.interestRate / .interestCap below. Applied in game.js.
+export const ECONOMY = BALANCE.economy;
 
 // ---------- Loot & equipment (see LOOT_DESIGN.md) ----------
-// Home for every loot/gear tunable. `xp` (P0) and `shards` (P1) are used
-// so far. Later phases (generator, drops, store, stash) add their
-// subsections here — keep every number in this object, never hardcode
-// one in logic.
+// Home for every loot/gear tunable. `xp` (P0) and `shards` (P1) are the
+// only migrated (Balance Lab EDIT) subsections — see balance-data.js.
+// Every other subsection below (combat/gen/drops/stash/equipGate/
+// autoEquip/store) is DEFERRED and stays a literal here through L1/L2.
 export const LOOT = {
   // XP redistribution: a kill's XP pool is split among every tower that
   // contributed to that enemy, by weight, instead of all going to the
   // final-hit tower. Damage dealt = 1 weight per point of damage; slow
   // applied = slowSecondsApplied * slowWeightPerSec. This is what finally
   // pays Slow towers (they rarely land the killing blow).
-  xp: {
-    slowWeightPerSec: 8,   // weight per second of slow applied
-  },
+  xp: BALANCE.loot.xp,
 
   // Shards ◆ — the persistent meta-currency for loot gear/store systems.
   // Earned per kill, win OR lose, so grinding/forfeiting still pays.
@@ -500,10 +346,7 @@ export const LOOT = {
   // see progression.js syncRoster) so small per-kill values aren't lost to
   // rounding. levelMult = 1 + perLevelMult*(levelNumber-1), so a full L1
   // clear (~271 tier-units of kills) lands ~33 shards; scales up by level.
-  shards: {
-    perKillBase: 0.12,
-    perLevelMult: 0.35,
-  },
+  shards: BALANCE.loot.shards,
 
   // ---- Equipped-item combat (P3) ----
   // Item affixes are percentages unless they are explicitly counts. These
@@ -815,10 +658,7 @@ export const SHAPE_SIDES = {
 //                        (+1 tower level), "mult" (xN.N)
 // The 8 ORIGINAL skills keep their ids, so existing state.skills carries
 // over unchanged; they just gained layout + graph metadata.
-export const SKILL_TIERS = {
-  maxTier: 5,
-  costs: [1, 1, 2, 2, 3],  // default cost of tier 1, 2, 3, 4, 5
-};
+export const SKILL_TIERS = BALANCE.skills.tiers;
 
 // Per-branch node accent color (economy/core are shared branches; each tower
 // branch draws in its own tower color, carried on the node itself).
@@ -834,32 +674,38 @@ export const SKILL_BRANCH_COLORS = {
 // box raises that tower's own level cap by one, 6..10). Tower-specific perks
 // (e.g. Railgun over-penetration) hang off the relevant branch. Tune the step
 // sizes / chain lengths / costs here; positions are computed in buildSkillGraph.
-export const TOWER_SKILL_SPEC = {
-  laser:   { name: "Laser",   color: "#35e0ff", icon: "laser",  stat: "damage",   damageStep: 0.10 },
-  pulse:   { name: "Pulse",   color: "#ff3fd4", icon: "pulse",  stat: "damage",   damageStep: 0.10 },
-  slow:    { name: "Slow",    color: "#4affa1", icon: "slow",   stat: "duration", damageStep: 0.10 },
-  railgun: { name: "Railgun", color: "#ff9d3f", icon: "rail",   stat: "damage",   damageStep: 0.10 },
-  rocket:  { name: "Rocket",  color: "#ff5e3a", icon: "rocket", stat: "damage",   damageStep: 0.10 },
+// Presentation-only (name, color, icon, stat); damageStep comes from
+// BALANCE.skills.tower below.
+const TOWER_SKILL_PRESENTATION = {
+  laser:   { name: "Laser",   color: "#35e0ff", icon: "laser",  stat: "damage" },
+  pulse:   { name: "Pulse",   color: "#ff3fd4", icon: "pulse",  stat: "damage" },
+  slow:    { name: "Slow",    color: "#4affa1", icon: "slow",   stat: "duration" },
+  railgun: { name: "Railgun", color: "#ff9d3f", icon: "rail",   stat: "damage" },
+  rocket:  { name: "Rocket",  color: "#ff5e3a", icon: "rocket", stat: "damage" },
 };
-export const TOWER_SKILL_LAYOUT = {
-  damageSteps: 5,               // boxes in each tower's damage chain
-  levelSteps: 5,                // boxes in each tower's level chain (levels 6..10)
-  levelCosts: [2, 2, 3, 3, 4],  // skill-point cost of the 1st..5th level box
-  damageCost: 1,                // cost of each damage box
-  rootCost: 1,                  // cost to unlock a tower branch's root
-};
+export const TOWER_SKILL_SPEC = {};
+for (const id of Object.keys(TOWER_SKILL_PRESENTATION)) {
+  TOWER_SKILL_SPEC[id] = { ...TOWER_SKILL_PRESENTATION[id], ...BALANCE.skills.tower[id] };
+}
+export const TOWER_SKILL_LAYOUT = BALANCE.skills.towerLayout;
 
 // The MONEY branch: a head that forks into one sub-branch chain per economy
 // stat (each box is one increment, e.g. +10% money). progression.js sums the
 // owned boxes per stat (ownedSkillCount) — the `eco_*` id prefix is the key.
-export const ECONOMY_SKILL_SPEC = {
-  eco_money:   { name: "Salvage Protocol", icon: "coin",     step: 0.10, kind: "pct", desc: "money per kill" },
-  eco_xp:      { name: "Combat Learning",  icon: "xp",       step: 0.10, kind: "pct", desc: "tower XP gain" },
-  eco_shard:   { name: "Shard Magnet",     icon: "shard",    step: 0.02, kind: "pct", desc: "shards per kill" },
-  eco_intrate: { name: "Compound Yield",   icon: "interest", step: 0.02, kind: "pct", desc: "cash interest per wave" },
-  eco_intcap:  { name: "Reserve Cap",      icon: "cap",      step: 50,   kind: "cap", desc: "max interest per wave" },
+// Presentation-only (name, icon, kind, desc); step comes from
+// BALANCE.skills.economy below.
+const ECONOMY_SKILL_PRESENTATION = {
+  eco_money:   { name: "Salvage Protocol", icon: "coin",     kind: "pct", desc: "money per kill" },
+  eco_xp:      { name: "Combat Learning",  icon: "xp",       kind: "pct", desc: "tower XP gain" },
+  eco_shard:   { name: "Shard Magnet",     icon: "shard",    kind: "pct", desc: "shards per kill" },
+  eco_intrate: { name: "Compound Yield",   icon: "interest", kind: "pct", desc: "cash interest per wave" },
+  eco_intcap:  { name: "Reserve Cap",      icon: "cap",      kind: "cap", desc: "max interest per wave" },
 };
-export const ECONOMY_LAYOUT = { steps: 5, boxCost: 1, rootCost: 1 };
+export const ECONOMY_SKILL_SPEC = {};
+for (const id of Object.keys(ECONOMY_SKILL_PRESENTATION)) {
+  ECONOMY_SKILL_SPEC[id] = { ...ECONOMY_SKILL_PRESENTATION[id], ...BALANCE.skills.economy[id] };
+}
+export const ECONOMY_LAYOUT = BALANCE.skills.economyLayout;
 
 // Build the skill graph + its viewbox from the specs above. Layout: every
 // branch HEAD sits in one row across the top (order: the five towers, then
@@ -956,10 +802,7 @@ export const SKILL_TREE_VIEWBOX = _skillGraph.viewbox;
 // a single multi-tier node) and the railgun over-penetration perk. Per-tower
 // damage/level and economy effects come from their specs (progression.js sums
 // the owned boxes).
-export const SKILL_VALUES = {
-  coreHealth: 5,          // +5 HP per tier
-  railPen: 0.20,          // +20% beam length per tier (x1.0 -> x2.0 at tier 5)
-};
+export const SKILL_VALUES = BALANCE.skills.values;
 
 // ---------- End-of-battle roast titles ----------
 // The results screen's big title is a randomly picked cheeky one-liner,

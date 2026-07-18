@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Balance Lab L2 — parity + schema probe</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; background: #0a0e14; color: #d7e2ef;
+    font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  header { padding: 16px 20px; border-bottom: 1px solid #1c2634; }
+  h1 { margin: 0 0 4px; font-size: 16px; color: #35e0ff; }
+  .sub { color: #7a8aa0; font-size: 12px; }
+  #summary { margin: 14px 20px; padding: 10px 14px; border-radius: 8px;
+    font-weight: 700; letter-spacing: .02em; white-space: pre-wrap; }
+  #summary.pass { background: #0d2a17; color: #7dff9a; border: 1px solid #1f6b3a; }
+  #summary.fail { background: #2a0d12; color: #ff8a98; border: 1px solid #7a2230; }
+  #summary.info { background: #12202f; color: #8fd0ff; border: 1px solid #234a6b; }
+  table { width: calc(100% - 40px); margin: 0 20px 28px; border-collapse: collapse; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid #172130;
+    vertical-align: top; }
+  th { color: #7a8aa0; font-weight: 600; font-size: 12px; text-transform: uppercase; }
+  td.st { width: 62px; font-weight: 700; }
+  tr.pass td.st { color: #5fe08a; }
+  tr.fail td.st { color: #ff6b7d; }
+  tr.fail { background: #1a0c10; }
+  td.detail { color: #90a0b6; white-space: pre-wrap; }
+  code { color: #ffe24a; }
+  h2 { margin: 24px 20px 8px; font-size: 14px; color: #7a8aa0; }
+  pre#json-output { margin: 0 20px 28px; padding: 12px; background: #0f151f;
+    border: 1px solid #1c2634; border-radius: 8px; max-height: 480px; overflow: auto;
+    font-size: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Balance Lab L2 — parity + schema probe</h1>
+  <div class="sub">Imports the real <code>src/levels.js</code>, canonicalizes
+    <code>LEVELS</code>/<code>WORLDS</code> (sorted object keys, array order
+    preserved), and deep-compares against the frozen pre-refactor baseline
+    (<code>balance-lab-l2-baseline.json</code>). Also runs a schema self-test
+    against <code>src/balance-schema.js</code>'s <code>validate()</code> once
+    <code>src/balance-data.js</code> carries the migrated <code>levels</code>/
+    <code>worlds</code> slices. Serve with <code>serve.ps1</code>; ES modules
+    don't run from <code>file://</code>.</div>
+</header>
+<div id="summary">Running…</div>
+<table id="results">
+  <thead><tr><th class="st">Result</th><th>Check</th><th>Detail</th></tr></thead>
+  <tbody></tbody>
+</table>
+
+<h2>Schema self-test (validate() against real + corrupted data)</h2>
+<table id="schema-results">
+  <thead><tr><th class="st">Result</th><th>Check</th><th>Detail</th></tr></thead>
+  <tbody></tbody>
+</table>
+
+<h2>window.__L2_EXPORTS__ (canonical JSON — copy this to freeze/update the baseline)</h2>
+<pre id="json-output">(populating…)</pre>
+
+<script type="module">
+import { LEVELS, WORLDS } from "/src/levels.js";
+
+// Stable-key JSON: recursively sort object keys so comparison (and the
+// frozen baseline file) is independent of source property insertion order.
+// Arrays keep their element order (order is load-bearing: wave/group
+// sequencing, path corner order, blocked-tile list, nodePos<->levelIds).
+function canonicalize(v) {
+  if (Array.isArray(v)) return v.map(canonicalize);
+  if (v && typeof v === "object") {
+    const out = {};
+    for (const k of Object.keys(v).sort()) out[k] = canonicalize(v[k]);
+    return out;
+  }
+  return v;
+}
+
+const RAW_EXPORTS = { LEVELS, WORLDS };
+const EXPORTS = canonicalize(RAW_EXPORTS);
+window.__L2_EXPORTS__ = EXPORTS;
+document.getElementById("json-output").textContent = JSON.stringify(EXPORTS, null, 2);
+
+// ---- deep diff against the frozen baseline (if present) ----
+function deepDiff(after, before, path, diffs) {
+  if (after === before) return;
+  const aIsObj = after && typeof after === "object";
+  const bIsObj = before && typeof before === "object";
+  if (aIsObj && bIsObj) {
+    if (Array.isArray(after) !== Array.isArray(before)) {
+      diffs.push({ path, before, after, reason: "array/object mismatch" });
+      return;
+    }
+    if (Array.isArray(after)) {
+      const len = Math.max(after.length, before.length);
+      if (after.length !== before.length) diffs.push({ path: path + ".length", before: before.length, after: after.length, reason: "array length" });
+      for (let i = 0; i < len; i++) deepDiff(after[i], before[i], `${path}[${i}]`, diffs);
+      return;
+    }
+    const keys = new Set([...Object.keys(after), ...Object.keys(before)]);
+    for (const k of [...keys].sort()) {
+      const p = path ? `${path}.${k}` : k;
+      if (!(k in after)) { diffs.push({ path: p, before: before[k], after: undefined, reason: "missing in current" }); continue; }
+      if (!(k in before)) { diffs.push({ path: p, before: undefined, after: after[k], reason: "missing in baseline" }); continue; }
+      deepDiff(after[k], before[k], p, diffs);
+    }
+    return;
+  }
+  if (Number.isNaN(after) && Number.isNaN(before)) return;
+  diffs.push({ path, before, after, reason: "value mismatch" });
+}
+
+const rows = [];
+const summary = document.getElementById("summary");
+let baselineText = null;
+try {
+  const res = await fetch("./balance-lab-l2-baseline.json", { cache: "no-store" });
+  if (res.ok) baselineText = await res.text();
+} catch (e) { /* no baseline yet */ }
+
+if (baselineText === null) {
+  summary.className = "info";
+  summary.textContent = "CAPTURE MODE — balance-lab-l2-baseline.json not found yet.\n" +
+    "Copy the JSON below into that file to freeze the parity baseline before refactoring.";
+  window.__L2_PROBE__ = { mode: "capture", passed: 0, failed: 0, totalDiffs: 0, diffs: [] };
+  console.log("[L2 probe] capture mode — no baseline file found yet.");
+} else {
+  let baseline;
+  let parseError = null;
+  try { baseline = JSON.parse(baselineText); } catch (e) { parseError = String(e); }
+  const diffs = [];
+  if (parseError) {
+    diffs.push({ path: "(baseline file)", before: "valid JSON", after: parseError, reason: "baseline parse error" });
+  } else {
+    deepDiff(EXPORTS, baseline, "", diffs);
+  }
+
+  for (const key of Object.keys(RAW_EXPORTS)) {
+    const groupDiffs = diffs.filter((d) => d.path === key || d.path.startsWith(key + ".") || d.path.startsWith(key + "["));
+    if (groupDiffs.length === 0) {
+      rows.push({ name: key, pass: true, detail: "matches baseline" });
+    } else {
+      const detail = groupDiffs.map((d) =>
+        `${d.path || "(root)"}: current=${JSON.stringify(d.after)} baseline=${JSON.stringify(d.before)} (${d.reason})`
+      ).join("\n");
+      rows.push({ name: key, pass: false, detail });
+    }
+  }
+  const known = new Set(Object.keys(RAW_EXPORTS));
+  const orphanDiffs = diffs.filter((d) => !known.has(d.path.split(/[.[]/)[0]));
+  if (orphanDiffs.length) {
+    rows.push({ name: "(other)", pass: false,
+      detail: orphanDiffs.map((d) => `${d.path}: current=${JSON.stringify(d.after)} baseline=${JSON.stringify(d.before)}`).join("\n") });
+  }
+
+  // Explicit per-level spot-check rows for L1/L5/L10/L15 (master-plan
+  // acceptance line) — confirms they're actually in the compared set.
+  const spotIds = ["level_001", "level_005", "level_010", "level_015"];
+  for (const id of spotIds) {
+    const lvl = LEVELS.find((l) => l.id === id);
+    // LEVELS is an array; find its index to match diff paths like LEVELS[n].
+    const idx = LEVELS.findIndex((l) => l.id === id);
+    const idxDiffs = diffs.filter((d) => d.path.startsWith(`LEVELS[${idx}]`));
+    rows.push({
+      name: `spot-check ${id} (index ${idx})`,
+      pass: !!lvl && idxDiffs.length === 0,
+      detail: lvl ? (idxDiffs.length === 0 ? "present, matches baseline" : idxDiffs.map((d) => `${d.path}: current=${JSON.stringify(d.after)} baseline=${JSON.stringify(d.before)}`).join("\n")) : "NOT FOUND in LEVELS",
+    });
+  }
+
+  const failedGroups = rows.filter((r) => !r.pass).length;
+  const passedGroups = rows.length - failedGroups;
+  if (diffs.length === 0) {
+    summary.className = "pass";
+    summary.textContent = `ALL PASS — ${passedGroups}/${rows.length} checks match the baseline exactly (0 diffs across ${LEVELS.length} levels / ${WORLDS.length} worlds).`;
+  } else {
+    summary.className = "fail";
+    summary.textContent = `${failedGroups} FAILED of ${rows.length} checks — ${diffs.length} total field diff(s). See table below.`;
+  }
+  window.__L2_PROBE__ = { mode: "compare", passed: passedGroups, failed: failedGroups,
+    totalDiffs: diffs.length, diffs };
+  console.log(`[L2 probe] ${passedGroups}/${rows.length} checks match`, window.__L2_PROBE__);
+}
+
+const tbody = document.querySelector("#results tbody");
+for (const r of rows) {
+  const tr = document.createElement("tr");
+  tr.className = r.pass ? "pass" : "fail";
+  tr.innerHTML = `<td class="st">${r.pass ? "PASS" : "FAIL"}</td><td>${r.name}</td><td class="detail"></td>`;
+  tr.querySelector(".detail").textContent = r.detail;
+  tbody.appendChild(tr);
+}
+if (rows.length === 0) {
+  const tr = document.createElement("tr");
+  tr.innerHTML = `<td class="st">INFO</td><td>capture mode</td><td class="detail">No comparison rows — see summary above.</td>`;
+  tbody.appendChild(tr);
+}
+
+// ================= SCHEMA SELF-TEST =================
+// Only runs meaningfully once src/balance-data.js carries the migrated
+// `levels`/`worlds` slices and src/balance-schema.js validates them (L2
+// Steps 2-3). Before that, BALANCE.levels/worlds are absent and validate()
+// will correctly report them missing — that's expected pre-migration
+// signal, not a probe bug.
+const schemaRows = [];
+try {
+  const { BALANCE } = await import("/src/balance-data.js");
+  const { validate, deepClone } = await import("/src/balance-schema.js");
+
+  schemaRows.push((() => {
+    const r = validate(BALANCE);
+    return { name: "validate(BALANCE) on real data", pass: r.ok === true,
+      detail: r.ok ? "ok: true" : `errors: ${r.errors.join(" | ")}` };
+  })());
+
+  const expectFail = (name, mutate) => {
+    const clone = deepClone(BALANCE);
+    mutate(clone);
+    const r = validate(clone);
+    return { name, pass: r.ok === false,
+      detail: r.ok ? "UNEXPECTED: validate() accepted corrupted data" : `errors: ${r.errors.join(" | ")}` };
+  };
+
+  schemaRows.push(expectFail("rejects diagonal path corner", (c) => {
+    c.levels.level_001.pathCorners[1] = { x: c.levels.level_001.pathCorners[0].x + 1, y: c.levels.level_001.pathCorners[0].y + 1 };
+  }));
+
+  schemaRows.push(expectFail("rejects blocked tile on path", (c) => {
+    const corner = c.levels.level_001.pathCorners[0];
+    c.levels.level_001.blockedTiles.push({ x: corner.x, y: corner.y });
+  }));
+
+  schemaRows.push(expectFail("rejects wave group count:0", (c) => {
+    c.levels.level_001.waves[0].groups[0].count = 0;
+  }));
+
+  schemaRows.push(expectFail("rejects bad enemy type in wave group", (c) => {
+    c.levels.level_001.waves[0].groups[0].type = "not_a_real_enemy";
+  }));
+
+  schemaRows.push(expectFail("rejects broken world-links (duplicate level across worlds)", (c) => {
+    c.worlds.world_2.levelIds[0] = c.worlds.world_1.levelIds[0];
+  }));
+
+  window.__L2_SCHEMA_TEST__ = schemaRows;
+  console.log("[L2 probe] schema self-test", schemaRows);
+} catch (e) {
+  schemaRows.push({ name: "schema self-test", pass: false, detail: `threw: ${e && e.message || e}` });
+  window.__L2_SCHEMA_TEST__ = schemaRows;
+}
+
+const schemaTbody = document.querySelector("#schema-results tbody");
+for (const r of schemaRows) {
+  const tr = document.createElement("tr");
+  tr.className = r.pass ? "pass" : "fail";
+  tr.innerHTML = `<td class="st">${r.pass ? "PASS" : "FAIL"}</td><td>${r.name}</td><td class="detail"></td>`;
+  tr.querySelector(".detail").textContent = r.detail;
+  schemaTbody.appendChild(tr);
+}
+</script>
+</body>
+</html>

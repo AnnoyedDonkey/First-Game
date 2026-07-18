@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Balance Lab L0 — validation probe</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; background: #0a0e14; color: #d7e2ef;
+    font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  header { padding: 16px 20px; border-bottom: 1px solid #1c2634; }
+  h1 { margin: 0 0 4px; font-size: 16px; color: #35e0ff; }
+  .sub { color: #7a8aa0; font-size: 12px; }
+  #summary { margin: 14px 20px; padding: 10px 14px; border-radius: 8px;
+    font-weight: 700; letter-spacing: .02em; }
+  #summary.pass { background: #0d2a17; color: #7dff9a; border: 1px solid #1f6b3a; }
+  #summary.fail { background: #2a0d12; color: #ff8a98; border: 1px solid #7a2230; }
+  table { width: calc(100% - 40px); margin: 0 20px 28px; border-collapse: collapse; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid #172130;
+    vertical-align: top; }
+  th { color: #7a8aa0; font-weight: 600; font-size: 12px; text-transform: uppercase; }
+  td.st { width: 62px; font-weight: 700; }
+  tr.pass td.st { color: #5fe08a; }
+  tr.fail td.st { color: #ff6b7d; }
+  tr.fail { background: #1a0c10; }
+  td.detail { color: #90a0b6; }
+  code { color: #ffe24a; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Balance Lab L0 — validation probe</h1>
+  <div class="sub">Imports the real <code>src/config.js</code> + <code>src/levels.js</code>
+    and asserts the L0 schema contract (<code>BALANCE_LAB_L0.md</code>) against live data.
+    Serve with <code>serve.ps1</code>; ES modules don't run from <code>file://</code>.</div>
+</header>
+<div id="summary">Running…</div>
+<table id="results">
+  <thead><tr><th class="st">Result</th><th>Check</th><th>Detail</th></tr></thead>
+  <tbody></tbody>
+</table>
+
+<script type="module">
+import {
+  ENEMIES, TOWERS, TOWER_UPGRADES, ENDLESS, ENDLESS_REWARDS,
+  LEVEL_MILESTONES, WAVE_DEFAULTS,
+} from "/src/config.js";
+import { LEVELS, WORLDS } from "/src/levels.js";
+
+// ---- contract constants (must match BALANCE_LAB_L0.md) ----
+const EXPECT = { worlds: 3, levels: 15, waves: 159, groups: 313 };
+const DAMAGE_TYPES = new Set(["energy", "pulse", "control", "rail", "blast"]);
+const RARITIES = new Set(["common", "enhanced", "rare", "prismatic", "singularity"]);
+const enemyIds = new Set(Object.keys(ENEMIES));
+const towerIds = new Set(Object.keys(TOWERS));
+const levelIds = LEVELS.map((l) => l.id);
+const levelIdSet = new Set(levelIds);
+
+const rows = [];
+const check = (name, fn) => {
+  try {
+    const detail = fn();
+    rows.push({ name, pass: true, detail: detail || "ok" });
+  } catch (e) {
+    rows.push({ name, pass: false, detail: String(e && e.message || e) });
+  }
+};
+const assert = (cond, msg) => { if (!cond) throw new Error(msg); };
+const isInt = (n) => Number.isInteger(n);
+const uniq = (arr) => {
+  const seen = new Set(), dup = new Set();
+  for (const x of arr) { if (seen.has(x)) dup.add(x); else seen.add(x); }
+  return [...dup];
+};
+
+// ---- structural helpers ----
+function pathTiles(level) {
+  // Replicate the straight-segment fill: every tile between consecutive corners.
+  const set = new Set();
+  const c = level.pathCorners;
+  for (let i = 0; i < c.length - 1; i++) {
+    const a = c[i], b = c[i + 1];
+    assert(a.x === b.x || a.y === b.y,
+      `${level.id} path segment ${i} is diagonal (${a.x},${a.y})->(${b.x},${b.y})`);
+    assert(!(a.x === b.x && a.y === b.y),
+      `${level.id} path segment ${i} is zero-length`);
+    if (a.x === b.x) {
+      const lo = Math.min(a.y, b.y), hi = Math.max(a.y, b.y);
+      for (let y = lo; y <= hi; y++) set.add(`${a.x},${y}`);
+    } else {
+      const lo = Math.min(a.x, b.x), hi = Math.max(a.x, b.x);
+      for (let x = lo; x <= hi; x++) set.add(`${x},${a.y}`);
+    }
+  }
+  return set;
+}
+const inBounds = (t, lvl) =>
+  isInt(t.x) && isInt(t.y) && t.x >= 0 && t.x < lvl.gridWidth && t.y >= 0 && t.y < lvl.gridHeight;
+
+// ================= CHECKS =================
+
+check("Level count = 15", () => {
+  assert(LEVELS.length === EXPECT.levels, `got ${LEVELS.length}`);
+  return `${LEVELS.length} levels`;
+});
+
+check("World count = 3", () => {
+  assert(WORLDS.length === EXPECT.worlds, `got ${WORLDS.length}`);
+  return `${WORLDS.length} worlds`;
+});
+
+check("Wave & group totals = 159 / 313", () => {
+  let waves = 0, groups = 0;
+  for (const lvl of LEVELS) {
+    assert(Array.isArray(lvl.waves) && lvl.waves.length > 0, `${lvl.id} has no waves`);
+    waves += lvl.waves.length;
+    for (const w of lvl.waves) {
+      assert(Array.isArray(w.groups) && w.groups.length > 0, `${lvl.id} empty wave`);
+      groups += w.groups.length;
+    }
+  }
+  assert(waves === EXPECT.waves, `waves ${waves} != ${EXPECT.waves}`);
+  assert(groups === EXPECT.groups, `groups ${groups} != ${EXPECT.groups}`);
+  return `${waves} waves, ${groups} groups`;
+});
+
+check("Unique ids (enemy/tower/level/world)", () => {
+  assert(uniq([...enemyIds]).length === 0, "dup enemy id");
+  assert(uniq([...towerIds]).length === 0, "dup tower id");
+  const dl = uniq(levelIds); assert(dl.length === 0, `dup level id ${dl}`);
+  const dw = uniq(WORLDS.map((w) => w.id)); assert(dw.length === 0, `dup world id ${dw}`);
+  return "all unique";
+});
+
+check("Level ids match ^level_\\d{3}$", () => {
+  for (const id of levelIds) assert(/^level_\d{3}$/.test(id), `bad id ${id}`);
+  return "format ok";
+});
+
+check("Tower damageType ∈ DamageType enum", () => {
+  for (const [id, t] of Object.entries(TOWERS))
+    assert(DAMAGE_TYPES.has(t.damageType), `${id}: ${t.damageType}`);
+  return `${towerIds.size} towers`;
+});
+
+check("Enemy counters & split references resolve", () => {
+  for (const [id, e] of Object.entries(ENEMIES)) {
+    if (e.damageMult) for (const k of Object.keys(e.damageMult)) {
+      assert(DAMAGE_TYPES.has(k), `${id}.damageMult key ${k}`);
+      assert(e.damageMult[k] > 0, `${id}.damageMult.${k} <= 0`);
+    }
+    if (e.splitInto) {
+      assert(enemyIds.has(e.splitInto.type), `${id} splitInto.type ${e.splitInto.type}`);
+      assert(isInt(e.splitInto.count) && e.splitInto.count >= 1, `${id} splitInto.count`);
+    }
+    for (const f of ["baseHealth", "speed"]) assert(e[f] > 0, `${id}.${f} <= 0`);
+  }
+  return "counters + splits ok";
+});
+
+check("Every wave group is well-formed & type resolves", () => {
+  const bad = [];
+  for (const lvl of LEVELS) {
+    lvl.waves.forEach((w, wi) => {
+      for (const m of ["healthMult", "speedMult"])
+        if (w[m] !== undefined) assert(w[m] > 0, `${lvl.id} w${wi + 1} wave.${m} <= 0`);
+      w.groups.forEach((g, gi) => {
+        const where = `${lvl.id} w${wi + 1} g${gi + 1}`;
+        if (!enemyIds.has(g.type)) bad.push(`${where} type=${g.type}`);
+        assert(isInt(g.count) && g.count >= 1, `${where} count`);
+        for (const m of ["spawnInterval", "healthMult", "speedMult", "bountyMult", "xpMult"])
+          if (g[m] !== undefined) assert(g[m] > 0, `${where} ${m} <= 0`);
+        if (g.startDelay !== undefined) assert(g.startDelay >= 0, `${where} startDelay < 0`);
+      });
+    });
+  }
+  assert(bad.length === 0, bad.join("; "));
+  return "313 groups valid";
+});
+
+check("Only known enemy types spawn (info)", () => {
+  const used = new Set();
+  for (const lvl of LEVELS) for (const w of lvl.waves) for (const g of w.groups) used.add(g.type);
+  const never = [...enemyIds].filter((id) => !used.has(id));
+  return `spawned: ${[...used].sort().join(", ")} · never-spawned: ${never.join(", ") || "none"}`;
+});
+
+check("TOWER_UPGRADES arrays: length 9, xpThresholds ascending", () => {
+  const u = TOWER_UPGRADES;
+  assert(u.xpThresholds.length === 9, `xpThresholds len ${u.xpThresholds.length}`);
+  assert(u.upgradeCosts.length === 9, `upgradeCosts len ${u.upgradeCosts.length}`);
+  for (let i = 1; i < u.xpThresholds.length; i++)
+    assert(u.xpThresholds[i] > u.xpThresholds[i - 1], `xpThresholds not ascending at ${i}`);
+  for (const v of u.upgradeCosts) assert(v > 0, "upgradeCosts <= 0");
+  return "9/9, ascending";
+});
+
+check("Tower-upgrade specialties reference real towers", () => {
+  for (const id of Object.keys(TOWER_UPGRADES.specialties))
+    assert(towerIds.has(id), `specialty ${id} not a tower`);
+  return `${Object.keys(TOWER_UPGRADES.specialties).length} specialties`;
+});
+
+check("Endless tracks: thresholds ascending, rewards valid", () => {
+  const tracks = [ENDLESS_REWARDS.defaultTrack, ...Object.values(ENDLESS_REWARDS.tracksByLevel)];
+  for (const track of tracks) {
+    let prev = -Infinity;
+    const ids = track.map((m) => m.id);
+    assert(uniq(ids).length === 0, `dup milestone id in track: ${uniq(ids)}`);
+    for (const m of track) {
+      assert(isInt(m.threshold) && m.threshold >= 1, `threshold ${m.threshold}`);
+      assert(m.threshold > prev, `threshold not ascending: ${m.threshold}`); prev = m.threshold;
+      if (m.reward.kind === "shards") assert(isInt(m.reward.amount) && m.reward.amount > 0, `shards amount ${m.reward.amount}`);
+      else if (m.reward.kind === "loot") assert(RARITIES.has(m.reward.rarity), `loot rarity ${m.reward.rarity}`);
+      else throw new Error(`reward.kind ${m.reward.kind}`);
+    }
+  }
+  for (const k of Object.keys(ENDLESS_REWARDS.tracksByLevel))
+    assert(levelIdSet.has(k), `tracksByLevel key ${k} not a level`);
+  return "tracks ok";
+});
+
+check("Endless growth knobs sane", () => {
+  const e = ENDLESS;
+  assert(e.healthGrowthPerWave > 0 && e.countGrowthPerWave > 0, "growth <= 0");
+  assert(e.maxCountMult >= 1 && e.maxSpeedMult >= 1, "max mult < 1");
+  assert(e.minSpawnIntervalMult > 0 && e.minSpawnIntervalMult <= 1, "minSpawnIntervalMult range");
+  assert(e.intervalShrinkPerWave > 0 && e.intervalShrinkPerWave <= 1, "intervalShrink range");
+  assert(isInt(e.bossEvery) && e.bossEvery >= 1, "bossEvery");
+  return "ok";
+});
+
+check("Level-milestone keys are real levels; check tower lists resolve", () => {
+  for (const [lid, arr] of Object.entries(LEVEL_MILESTONES)) {
+    assert(levelIdSet.has(lid), `LEVEL_MILESTONES key ${lid} not a level`);
+    for (const m of arr) {
+      const r = m.reward || {};
+      assert(r.skillPoints !== undefined || r.shards !== undefined, `${m.id} reward empty`);
+      if (r.skillPoints !== undefined) assert(isInt(r.skillPoints) && r.skillPoints >= 0, `${m.id} skillPoints`);
+      if (r.shards !== undefined) assert(isInt(r.shards) && r.shards >= 0, `${m.id} shards`);
+      for (const key of ["onlyTowers", "withoutTowers"])
+        if (m.check[key]) for (const t of m.check[key])
+          assert(towerIds.has(t), `${m.id} check.${key} references ${t}`);
+    }
+  }
+  const allIds = Object.values(LEVEL_MILESTONES).flat().map((m) => m.id);
+  const d = uniq(allIds); assert(d.length === 0, `dup milestone id ${d}`);
+  return "milestones ok";
+});
+
+check("WAVE_DEFAULTS present & typed", () => {
+  const w = WAVE_DEFAULTS;
+  assert(w.timeBetweenWaves >= 0 && w.spawnInterval > 0, "numeric");
+  assert(typeof w.autoStartNextWave === "boolean" && typeof w.allowEarlyStart === "boolean", "bool");
+  return "ok";
+});
+
+check("World links cover level_001..015 once, in order", () => {
+  const flat = WORLDS.flatMap((w) => w.levelIds);
+  assert(flat.length === levelIds.length, `linked ${flat.length} vs ${levelIds.length} levels`);
+  for (const id of flat) assert(levelIdSet.has(id), `world links missing level ${id}`);
+  const d = uniq(flat); assert(d.length === 0, `level in two worlds: ${d}`);
+  assert(flat.join(",") === levelIds.join(","), `order mismatch:\n  worlds: ${flat.join(",")}\n  levels: ${levelIds.join(",")}`);
+  for (const w of WORLDS)
+    assert(w.nodePos.length === w.levelIds.length, `${w.id} nodePos ${w.nodePos.length} != levelIds ${w.levelIds.length}`);
+  return "1:1 mapping, order + nodePos ok";
+});
+
+check("Level economy fields typed & positive", () => {
+  for (const lvl of LEVELS) {
+    for (const f of ["gridWidth", "gridHeight", "startingMoney", "coreHealth"])
+      assert(isInt(lvl[f]) && lvl[f] > 0, `${lvl.id}.${f}`);
+    if (lvl.bountyMult !== undefined) assert(lvl.bountyMult > 0, `${lvl.id}.bountyMult`);
+    if (lvl.timeBetweenWaves !== undefined) assert(lvl.timeBetweenWaves >= 0, `${lvl.id}.timeBetweenWaves`);
+    if (lvl.autoStartNextWave !== undefined) assert(typeof lvl.autoStartNextWave === "boolean", `${lvl.id}.autoStartNextWave`);
+  }
+  return "ok";
+});
+
+check("Map structure: path straight+in-bounds, blocked off-path/in-bounds/unique", () => {
+  for (const lvl of LEVELS) {
+    assert(lvl.pathCorners.length >= 2, `${lvl.id} < 2 corners`);
+    for (const c of lvl.pathCorners) assert(inBounds(c, lvl), `${lvl.id} corner out of bounds (${c.x},${c.y})`);
+    const path = pathTiles(lvl); // also asserts straight/non-zero
+    const seen = new Set();
+    for (const b of lvl.blockedTiles) {
+      const k = `${b.x},${b.y}`;
+      assert(inBounds(b, lvl), `${lvl.id} blocked out of bounds (${k})`);
+      assert(!path.has(k), `${lvl.id} blocked tile ${k} sits on the path`);
+      assert(!seen.has(k), `${lvl.id} duplicate blocked tile ${k}`);
+      seen.add(k);
+    }
+  }
+  return "15 maps ok";
+});
+
+// ================= RENDER =================
+const tbody = document.querySelector("#results tbody");
+let failed = 0;
+for (const r of rows) {
+  if (!r.pass) failed++;
+  const tr = document.createElement("tr");
+  tr.className = r.pass ? "pass" : "fail";
+  tr.innerHTML =
+    `<td class="st">${r.pass ? "PASS" : "FAIL"}</td>` +
+    `<td>${r.name}</td>` +
+    `<td class="detail"></td>`;
+  tr.querySelector(".detail").textContent = r.detail;
+  tbody.appendChild(tr);
+}
+const sum = document.getElementById("summary");
+const total = rows.length;
+if (failed === 0) {
+  sum.className = "pass";
+  sum.textContent = `ALL PASS — ${total}/${total} checks. Contract represents the live data (${EXPECT.levels} levels, ${EXPECT.waves} waves, ${EXPECT.groups} groups).`;
+} else {
+  sum.className = "fail";
+  sum.textContent = `${failed} FAILED of ${total} checks — a red row is a mismatch between BALANCE_LAB_L0.md and the data.`;
+}
+window.__L0_PROBE__ = { total, failed, passed: total - failed,
+  rows: rows.map((r) => ({ name: r.name, pass: r.pass, detail: r.detail })) };
+console.log(`[L0 probe] ${total - failed}/${total} passed`, window.__L0_PROBE__);
+</script>
+</body>
+</html>

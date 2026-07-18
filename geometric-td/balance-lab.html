@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="dark" />
+  <title>Geometric TD — Balance Lab</title>
+  <link rel="stylesheet" href="./balance-lab.css" />
+</head>
+<body>
+  <header class="lab-header">
+    <div class="identity">
+      <p class="eyebrow">Geometric TD · local tooling</p>
+      <h1>Balance Lab</h1>
+      <p id="lab-summary" class="muted">Loading live balance data…</p>
+    </div>
+    <div class="header-actions">
+      <button id="reload-button" type="button">Reload from server</button>
+      <button id="reset-button" type="button">Reset draft</button>
+    </div>
+  </header>
+
+  <div class="toolbar" aria-label="Balance Lab controls">
+    <label class="search-control" for="lab-search">
+      <span>Search fields</span>
+      <input id="lab-search" type="search" placeholder="e.g. pierce or startingMoney" autocomplete="off" />
+    </label>
+    <p id="dirty-state" class="dirty-state" aria-live="polite">No unsaved changes</p>
+  </div>
+
+  <section class="save-bar" aria-label="Save balance revision">
+    <div class="save-status">
+      <strong id="save-dirty-count">No changes</strong>
+      <span id="save-validation" class="subtle">Checking draft…</span>
+    </div>
+    <label class="note-control" for="revision-note">
+      <span>Revision note <em>required</em></span>
+      <input id="revision-note" type="text" maxlength="240" placeholder="What changed and why?" autocomplete="off" />
+    </label>
+    <button id="save-button" type="button" disabled>Save revision</button>
+    <div id="save-message" class="save-message" aria-live="polite"></div>
+  </section>
+
+  <aside class="files-changed-panel" aria-labelledby="files-changed-title">
+    <div>
+      <p class="eyebrow">Predictable local writes</p>
+      <h2 id="files-changed-title">Files changed by a save</h2>
+      <p>Every save or restored revision changes this same reviewable set. The Lab never commits or pushes.</p>
+    </div>
+    <ul>
+      <li><code>src/balance-data.json</code></li>
+      <li><code>src/balance-data.js</code> <span>(generated)</span></li>
+      <li><code>balance-history/&lt;new-id&gt;.json</code> <span>(new snapshot)</span></li>
+      <li><code>balance-history/manifest.json</code></li>
+    </ul>
+  </aside>
+
+  <nav id="section-nav" class="section-nav" aria-label="Balance Lab sections">
+    <a href="#overview">Overview</a>
+    <a href="#towers">Towers</a>
+    <a href="#enemies">Enemies</a>
+    <a href="#upgrades">Upgrades &amp; Economy</a>
+    <a href="#campaign">Campaign Levels</a>
+    <a href="#endless">Endless</a>
+    <a href="#history">History</a>
+    <a href="#workflow">Workflow</a>
+    <a href="#changes">Changes</a>
+  </nav>
+
+  <main id="lab-mount" class="lab-main" aria-live="polite"></main>
+
+  <script type="module" src="./src/balance-lab.js"></script>
+</body>
+</html>
