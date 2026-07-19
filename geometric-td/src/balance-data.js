@@ -1085,7 +1085,7 @@ export const BALANCE = {
           "y": 1
         }
       ],
-      "bountyMult": 0.82,
+      "bountyMult": 0.86,
       "coreHealth": 12,
       "gridHeight": 12,
       "gridWidth": 8,
@@ -1119,7 +1119,7 @@ export const BALANCE = {
           "y": 6
         }
       ],
-      "startingMoney": 90,
+      "startingMoney": 105,
       "timeBetweenWaves": 5,
       "waves": [
         {
@@ -1416,9 +1416,8 @@ export const BALANCE = {
           "groups": [
             {
               "count": 16,
-              "healthMult": 4,
+              "healthMult": 3.2,
               "spawnInterval": 0.3,
-              "speedMult": 1.1,
               "type": "fast"
             }
           ]
@@ -1673,7 +1672,7 @@ export const BALANCE = {
           "y": 8
         }
       ],
-      "startingMoney": 240,
+      "startingMoney": 195,
       "timeBetweenWaves": 5,
       "waves": [
         {
@@ -1964,7 +1963,7 @@ export const BALANCE = {
           "y": 11
         }
       ],
-      "startingMoney": 130,
+      "startingMoney": 150,
       "timeBetweenWaves": 5,
       "waves": [
         {
@@ -1980,8 +1979,8 @@ export const BALANCE = {
         {
           "groups": [
             {
-              "count": 10,
-              "healthMult": 18.2,
+              "count": 8,
+              "healthMult": 10,
               "spawnInterval": 0.7,
               "type": "splitter"
             }
@@ -1991,7 +1990,7 @@ export const BALANCE = {
           "groups": [
             {
               "count": 10,
-              "healthMult": 22.75,
+              "healthMult": 16,
               "spawnInterval": 0.7,
               "type": "splitter"
             },
