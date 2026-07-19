@@ -4,7 +4,7 @@
     {
       "name": "td",
       "runtimeExecutable": "powershell",
-      "runtimeArgs": ["-ExecutionPolicy", "Bypass", "-File", "First Game/geometric-td/serve.ps1"],
+      "runtimeArgs": ["-ExecutionPolicy", "Bypass", "-File", "geometric-td/serve.ps1"],
       "port": 8420
     }
   ]

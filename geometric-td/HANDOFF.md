@@ -58,8 +58,9 @@ only, not implemented.
 
 - Local server: run `./serve.ps1`, then open `http://localhost:8420`.
   ES modules do not run correctly from `file://`.
-- Repository root is one folder above (`First Game/`); this folder is
-  `geometric-td/`. GitHub Pages deploys `main` from
+- Repository root is one folder above; this folder is `geometric-td/`. The
+  canonical working checkout is `C:\Projects\First-Game` (outside iCloud).
+  GitHub Pages deploys `main` from
   `https://github.com/AnnoyedDonkey/First-Game`.
 - Bump `src/version.js` for every player-facing push. The update nudge uses
   this stamp. Do not bump it for local-only Balance Lab tooling.
@@ -140,8 +141,10 @@ BALANCE_LAB_PLAN.md  approved Balance Lab L0-L7 plan
 - Do not capture/export canvas images for verification. Assert on game state,
   DOM, logic-level facts, and console cleanliness; visual review belongs on
   iPhone.
-- Sweep for iCloud sync-conflict filenames containing a ` 2` suffix before
-  committing.
+- Only if working from an iCloud-synced checkout (legacy; avoid — iCloud has
+  corrupted `.git` internals before): sweep for sync-conflict filenames with a
+  ` 2` suffix before committing, including inside `.git` itself. The
+  `C:\Projects\First-Game` checkout is not affected.
 
 ## Rendering and UI guardrails
 
