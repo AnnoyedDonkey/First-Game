@@ -1,9 +1,4 @@
-// GENERATED FILE - the Balance Lab rewrites the data block below on every save.
-// Edit balance values through the Lab (or balance-data.json), never here by hand.
-import { SCHEMA_VERSION } from "./balance-schema.js";
-
-// @BALANCE-DATA-START
-export const BALANCE = {
+{"schemaVersion":1,"createdAt":"2026-07-19T19:08:49Z","note":"Levels 3-5 difficulty reduction (too-hard fix). L3 health overshoot corrected (274k-\u003e38k HP); L4 eased ~15% (62k-\u003e54k); L5 top-end pulled down (351k-\u003e83k). Counts/types/spawn timing unchanged; only health multipliers lowered, mirroring the L1-2 softening.","data":{
   "economy": {
     "interest": {
       "enabled": true
@@ -4625,7 +4620,4 @@ export const BALANCE = {
       ]
     }
   }
-};
-// @BALANCE-DATA-END
-
-export { SCHEMA_VERSION };
+}}

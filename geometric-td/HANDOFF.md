@@ -11,10 +11,17 @@ three-world campaign; five tower classes; seven enemy types; RPG roster and
 mastery progression; skills; loot/equipment; campaign challenges; Endless;
 telemetry; and a GitHub Pages deployment.
 
-The current deployed build is `2026.07.17-1` (`2650204`). It includes the
-deliberately aggressive H1-H4 hard-mode pass: a Pulse nerf plus World 1-3 wave
-and economy hardening. **Do not stack another global difficulty change before
-fresh feedback arrives for this app version.** Compare telemetry by
+The current deployed build is `2026.07.19-1`. Baseline was the deliberately
+aggressive H1-H4 hard-mode pass (`2650204`, `2026.07.17-1`): a Pulse nerf plus
+World 1-3 wave and economy hardening. Player feedback then reported the campaign
+was too hard, so World 1 was softened back down in two steps: `2026.07.18-1`
+softened Level 2 (via the Balance Lab), and `2026.07.19-1` softened Levels 3-5.
+The L3-5 pass only lowered wave `healthMult` values (counts/types/spawn timing
+unchanged); it fixed a severe Level 3 overshoot (total wave HP 274k→38k, single
+basics were hitting ~1000 HP) and pulled down the Level 4/5 curves so World 1
+now ramps smoothly (~20k/34k/38k/54k/83k total wave HP across L1-L5). Worlds 2-3
+still carry the full H1-H4 hardening — **do not stack another global difficulty
+change on them before fresh feedback arrives.** Compare telemetry by
 `app_version`.
 
 The in-progress next build is the local-first Balance Lab. Read
