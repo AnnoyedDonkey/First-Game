@@ -1965,7 +1965,7 @@
           "groups": [
             {
               "count": 16,
-              "healthMult": 3.2,
+              "healthMult": 2.5,
               "spawnInterval": 0.5,
               "type": "basic"
             }
@@ -1975,7 +1975,7 @@
           "groups": [
             {
               "count": 8,
-              "healthMult": 10,
+              "healthMult": 4,
               "spawnInterval": 0.7,
               "type": "splitter"
             }
@@ -1985,13 +1985,13 @@
           "groups": [
             {
               "count": 10,
-              "healthMult": 16,
+              "healthMult": 5,
               "spawnInterval": 0.7,
               "type": "splitter"
             },
             {
               "count": 10,
-              "healthMult": 36.4,
+              "healthMult": 5,
               "spawnInterval": 0.32,
               "startDelay": 3,
               "type": "fast"
@@ -2002,13 +2002,13 @@
           "groups": [
             {
               "count": 9,
-              "healthMult": 38.7,
+              "healthMult": 6,
               "spawnInterval": 0.85,
               "type": "armored"
             },
             {
               "count": 8,
-              "healthMult": 25,
+              "healthMult": 5.5,
               "spawnInterval": 0.8,
               "startDelay": 4,
               "type": "splitter"
@@ -2019,7 +2019,7 @@
           "groups": [
             {
               "count": 16,
-              "healthMult": 31.9,
+              "healthMult": 6,
               "spawnInterval": 0.5,
               "type": "splitter"
             }
@@ -2029,12 +2029,12 @@
           "groups": [
             {
               "count": 1,
-              "healthMult": 49.4,
+              "healthMult": 9,
               "type": "boss"
             },
             {
               "count": 12,
-              "healthMult": 31.9,
+              "healthMult": 6.5,
               "spawnInterval": 0.55,
               "startDelay": 3,
               "type": "splitter"
@@ -2045,14 +2045,14 @@
           "groups": [
             {
               "count": 20,
-              "healthMult": 50.1,
+              "healthMult": 7,
               "spawnInterval": 0.28,
               "speedMult": 1.1,
               "type": "fast"
             },
             {
               "count": 10,
-              "healthMult": 45.5,
+              "healthMult": 7,
               "spawnInterval": 0.8,
               "startDelay": 3,
               "type": "armored"
@@ -2063,13 +2063,13 @@
           "groups": [
             {
               "count": 16,
-              "healthMult": 45.5,
+              "healthMult": 7.5,
               "spawnInterval": 0.45,
               "type": "splitter"
             },
             {
               "count": 18,
-              "healthMult": 72.8,
+              "healthMult": 8,
               "spawnInterval": 0.32,
               "startDelay": 4,
               "type": "basic"
@@ -2080,13 +2080,13 @@
           "groups": [
             {
               "count": 15,
-              "healthMult": 63.7,
+              "healthMult": 8.5,
               "spawnInterval": 0.6,
               "type": "armored"
             },
             {
               "count": 12,
-              "healthMult": 50.1,
+              "healthMult": 7.5,
               "spawnInterval": 0.5,
               "startDelay": 5,
               "type": "splitter"
@@ -2097,20 +2097,20 @@
           "groups": [
             {
               "count": 2,
-              "healthMult": 70.9,
+              "healthMult": 13,
               "spawnInterval": 6,
               "type": "boss"
             },
             {
               "count": 14,
-              "healthMult": 56.9,
+              "healthMult": 8.5,
               "spawnInterval": 0.45,
               "startDelay": 4,
               "type": "splitter"
             },
             {
               "count": 12,
-              "healthMult": 68.3,
+              "healthMult": 9,
               "spawnInterval": 0.3,
               "startDelay": 10,
               "type": "fast"
