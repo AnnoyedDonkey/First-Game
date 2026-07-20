@@ -2204,7 +2204,7 @@ export const BALANCE = {
           "groups": [
             {
               "count": 16,
-              "healthMult": 3.6,
+              "healthMult": 3,
               "spawnInterval": 0.5,
               "type": "basic"
             }
@@ -2214,7 +2214,7 @@ export const BALANCE = {
           "groups": [
             {
               "count": 6,
-              "healthMult": 11.2,
+              "healthMult": 5,
               "spawnInterval": 1.1,
               "type": "regenerator"
             }
@@ -2224,13 +2224,13 @@ export const BALANCE = {
           "groups": [
             {
               "count": 7,
-              "healthMult": 15.4,
+              "healthMult": 6.5,
               "spawnInterval": 1,
               "type": "regenerator"
             },
             {
               "count": 10,
-              "healthMult": 23.8,
+              "healthMult": 9,
               "spawnInterval": 0.3,
               "startDelay": 4,
               "type": "fast"
@@ -2241,13 +2241,13 @@ export const BALANCE = {
           "groups": [
             {
               "count": 9,
-              "healthMult": 18.2,
+              "healthMult": 7,
               "spawnInterval": 0.7,
               "type": "splitter"
             },
             {
               "count": 6,
-              "healthMult": 18.2,
+              "healthMult": 7,
               "spawnInterval": 1,
               "startDelay": 5,
               "type": "regenerator"
@@ -2258,13 +2258,13 @@ export const BALANCE = {
           "groups": [
             {
               "count": 11,
-              "healthMult": 26.6,
+              "healthMult": 9.5,
               "spawnInterval": 0.7,
               "type": "armored"
             },
             {
               "count": 7,
-              "healthMult": 20.4,
+              "healthMult": 8,
               "spawnInterval": 0.9,
               "startDelay": 4,
               "type": "regenerator"
@@ -2275,12 +2275,12 @@ export const BALANCE = {
           "groups": [
             {
               "count": 1,
-              "healthMult": 32.8,
+              "healthMult": 11.5,
               "type": "boss"
             },
             {
               "count": 8,
-              "healthMult": 23.8,
+              "healthMult": 9,
               "spawnInterval": 0.8,
               "startDelay": 3,
               "type": "regenerator"
@@ -2291,13 +2291,13 @@ export const BALANCE = {
           "groups": [
             {
               "count": 12,
-              "healthMult": 26.6,
+              "healthMult": 9.5,
               "spawnInterval": 0.7,
               "type": "regenerator"
             },
             {
               "count": 12,
-              "healthMult": 32.2,
+              "healthMult": 11,
               "spawnInterval": 0.28,
               "startDelay": 5,
               "type": "fast"
@@ -2308,13 +2308,13 @@ export const BALANCE = {
           "groups": [
             {
               "count": 26,
-              "healthMult": 40.6,
+              "healthMult": 13.5,
               "spawnInterval": 0.28,
               "type": "basic"
             },
             {
               "count": 10,
-              "healthMult": 26.6,
+              "healthMult": 9.5,
               "spawnInterval": 0.55,
               "startDelay": 4,
               "type": "splitter"
@@ -2325,13 +2325,13 @@ export const BALANCE = {
           "groups": [
             {
               "count": 16,
-              "healthMult": 37.8,
+              "healthMult": 13,
               "spawnInterval": 0.6,
               "type": "armored"
             },
             {
               "count": 10,
-              "healthMult": 30.8,
+              "healthMult": 11,
               "spawnInterval": 0.7,
               "startDelay": 4,
               "type": "regenerator"
@@ -2342,20 +2342,20 @@ export const BALANCE = {
           "groups": [
             {
               "count": 2,
-              "healthMult": 45.2,
+              "healthMult": 15,
               "spawnInterval": 6,
               "type": "boss"
             },
             {
               "count": 12,
-              "healthMult": 33.6,
+              "healthMult": 11.5,
               "spawnInterval": 0.6,
               "startDelay": 4,
               "type": "regenerator"
             },
             {
               "count": 14,
-              "healthMult": 32.2,
+              "healthMult": 11,
               "spawnInterval": 0.45,
               "startDelay": 10,
               "type": "splitter"
@@ -2444,13 +2444,13 @@ export const BALANCE = {
           "groups": [
             {
               "count": 8,
-              "healthMult": 2.8,
+              "healthMult": 3.5,
               "spawnInterval": 0.7,
               "type": "splitter"
             },
             {
               "count": 5,
-              "healthMult": 2.6,
+              "healthMult": 3.5,
               "spawnInterval": 1,
               "startDelay": 4,
               "type": "regenerator"
@@ -2461,7 +2461,7 @@ export const BALANCE = {
           "groups": [
             {
               "count": 18,
-              "healthMult": 33.25,
+              "healthMult": 11,
               "spawnInterval": 0.25,
               "speedMult": 1.1,
               "type": "fast"
@@ -2472,13 +2472,13 @@ export const BALANCE = {
           "groups": [
             {
               "count": 8,
-              "healthMult": 26.7,
+              "healthMult": 9.5,
               "spawnInterval": 0.8,
               "type": "regenerator"
             },
             {
               "count": 8,
-              "healthMult": 26.7,
+              "healthMult": 9.5,
               "spawnInterval": 0.7,
               "startDelay": 4,
               "type": "splitter"
@@ -2489,13 +2489,13 @@ export const BALANCE = {
           "groups": [
             {
               "count": 12,
-              "healthMult": 36.75,
+              "healthMult": 12,
               "spawnInterval": 0.65,
               "type": "armored"
             },
             {
               "count": 12,
-              "healthMult": 36.75,
+              "healthMult": 12,
               "spawnInterval": 0.3,
               "startDelay": 4,
               "type": "fast"
@@ -2506,13 +2506,13 @@ export const BALANCE = {
           "groups": [
             {
               "count": 1,
-              "healthMult": 28,
+              "healthMult": 10,
               "speedMult": 1.2,
               "type": "boss"
             },
             {
               "count": 10,
-              "healthMult": 31.5,
+              "healthMult": 10.5,
               "spawnInterval": 0.55,
               "startDelay": 3,
               "type": "splitter"
@@ -2523,13 +2523,13 @@ export const BALANCE = {
           "groups": [
             {
               "count": 26,
-              "healthMult": 56.5,
+              "healthMult": 17,
               "spawnInterval": 0.28,
               "type": "basic"
             },
             {
               "count": 8,
-              "healthMult": 31.5,
+              "healthMult": 10.5,
               "spawnInterval": 0.8,
               "startDelay": 4,
               "type": "regenerator"
@@ -2540,13 +2540,13 @@ export const BALANCE = {
           "groups": [
             {
               "count": 14,
-              "healthMult": 35,
+              "healthMult": 11.5,
               "spawnInterval": 0.45,
               "type": "splitter"
             },
             {
               "count": 10,
-              "healthMult": 45.1,
+              "healthMult": 14,
               "spawnInterval": 0.7,
               "startDelay": 4,
               "type": "armored"
@@ -2557,13 +2557,13 @@ export const BALANCE = {
           "groups": [
             {
               "count": 14,
-              "healthMult": 38.1,
+              "healthMult": 12.5,
               "spawnInterval": 0.55,
               "type": "regenerator"
             },
             {
               "count": 16,
-              "healthMult": 45.1,
+              "healthMult": 14,
               "spawnInterval": 0.25,
               "speedMult": 1.15,
               "startDelay": 5,
@@ -2575,20 +2575,20 @@ export const BALANCE = {
           "groups": [
             {
               "count": 2,
-              "healthMult": 36.4,
+              "healthMult": 12,
               "spawnInterval": 5,
               "type": "boss"
             },
             {
               "count": 12,
-              "healthMult": 39.9,
+              "healthMult": 13,
               "spawnInterval": 0.5,
               "startDelay": 5,
               "type": "splitter"
             },
             {
               "count": 8,
-              "healthMult": 43.4,
+              "healthMult": 13.5,
               "spawnInterval": 0.7,
               "startDelay": 12,
               "type": "regenerator"
@@ -2669,7 +2669,7 @@ export const BALANCE = {
           "groups": [
             {
               "count": 18,
-              "healthMult": 3.2,
+              "healthMult": 4,
               "spawnInterval": 0.3,
               "type": "fast"
             }
@@ -2679,14 +2679,14 @@ export const BALANCE = {
           "groups": [
             {
               "count": 16,
-              "healthMult": 32.3,
+              "healthMult": 12.5,
               "spawnInterval": 0.26,
               "speedMult": 1.15,
               "type": "fast"
             },
             {
               "count": 8,
-              "healthMult": 26.5,
+              "healthMult": 10.5,
               "spawnInterval": 0.7,
               "speedMult": 1.1,
               "startDelay": 3,
@@ -2698,14 +2698,14 @@ export const BALANCE = {
           "groups": [
             {
               "count": 12,
-              "healthMult": 35.3,
+              "healthMult": 13,
               "spawnInterval": 0.6,
               "speedMult": 1.15,
               "type": "armored"
             },
             {
               "count": 12,
-              "healthMult": 35.3,
+              "healthMult": 13,
               "spawnInterval": 0.28,
               "speedMult": 1.2,
               "startDelay": 4,
@@ -2717,14 +2717,14 @@ export const BALANCE = {
           "groups": [
             {
               "count": 10,
-              "healthMult": 29.4,
+              "healthMult": 11.5,
               "spawnInterval": 0.7,
               "speedMult": 1.2,
               "type": "regenerator"
             },
             {
               "count": 10,
-              "healthMult": 29.4,
+              "healthMult": 11.5,
               "spawnInterval": 0.55,
               "speedMult": 1.15,
               "startDelay": 4,
@@ -2736,13 +2736,13 @@ export const BALANCE = {
           "groups": [
             {
               "count": 1,
-              "healthMult": 25.6,
+              "healthMult": 10.5,
               "speedMult": 1.4,
               "type": "boss"
             },
             {
               "count": 18,
-              "healthMult": 38.2,
+              "healthMult": 14,
               "spawnInterval": 0.24,
               "speedMult": 1.2,
               "startDelay": 3,
@@ -2754,14 +2754,14 @@ export const BALANCE = {
           "groups": [
             {
               "count": 28,
-              "healthMult": 55.9,
+              "healthMult": 19,
               "spawnInterval": 0.24,
               "speedMult": 1.15,
               "type": "basic"
             },
             {
               "count": 12,
-              "healthMult": 33.9,
+              "healthMult": 12.5,
               "spawnInterval": 0.5,
               "speedMult": 1.15,
               "startDelay": 4,
@@ -2773,7 +2773,7 @@ export const BALANCE = {
           "groups": [
             {
               "count": 30,
-              "healthMult": 44.1,
+              "healthMult": 15.5,
               "spawnInterval": 0.17,
               "speedMult": 1.3,
               "type": "fast"
@@ -2784,14 +2784,14 @@ export const BALANCE = {
           "groups": [
             {
               "count": 18,
-              "healthMult": 45.6,
+              "healthMult": 16,
               "spawnInterval": 0.5,
               "speedMult": 1.2,
               "type": "armored"
             },
             {
               "count": 16,
-              "healthMult": 47,
+              "healthMult": 16.5,
               "spawnInterval": 0.22,
               "speedMult": 1.25,
               "startDelay": 5,
@@ -2803,14 +2803,14 @@ export const BALANCE = {
           "groups": [
             {
               "count": 2,
-              "healthMult": 33.6,
+              "healthMult": 12.5,
               "spawnInterval": 5,
               "speedMult": 1.35,
               "type": "boss"
             },
             {
               "count": 20,
-              "healthMult": 50,
+              "healthMult": 17.5,
               "spawnInterval": 0.2,
               "speedMult": 1.3,
               "startDelay": 4,
@@ -2818,7 +2818,7 @@ export const BALANCE = {
             },
             {
               "count": 12,
-              "healthMult": 41.2,
+              "healthMult": 15,
               "spawnInterval": 0.45,
               "speedMult": 1.2,
               "startDelay": 11,
@@ -2904,13 +2904,13 @@ export const BALANCE = {
           "groups": [
             {
               "count": 20,
-              "healthMult": 4.6,
+              "healthMult": 5,
               "spawnInterval": 0.38,
               "type": "basic"
             },
             {
               "count": 8,
-              "healthMult": 3.4,
+              "healthMult": 4.5,
               "spawnInterval": 0.7,
               "startDelay": 4,
               "type": "splitter"
@@ -2921,13 +2921,13 @@ export const BALANCE = {
           "groups": [
             {
               "count": 8,
-              "healthMult": 20,
+              "healthMult": 11.5,
               "spawnInterval": 0.8,
               "type": "regenerator"
             },
             {
               "count": 14,
-              "healthMult": 24.2,
+              "healthMult": 13.5,
               "spawnInterval": 0.28,
               "startDelay": 4,
               "type": "fast"
@@ -2938,13 +2938,13 @@ export const BALANCE = {
           "groups": [
             {
               "count": 15,
-              "healthMult": 27.3,
+              "healthMult": 15,
               "spawnInterval": 0.55,
               "type": "armored"
             },
             {
               "count": 10,
-              "healthMult": 22.1,
+              "healthMult": 12.5,
               "spawnInterval": 0.55,
               "startDelay": 4,
               "type": "splitter"
@@ -2955,12 +2955,12 @@ export const BALANCE = {
           "groups": [
             {
               "count": 1,
-              "healthMult": 21.3,
+              "healthMult": 12,
               "type": "boss"
             },
             {
               "count": 10,
-              "healthMult": 23.1,
+              "healthMult": 13,
               "spawnInterval": 0.7,
               "startDelay": 3,
               "type": "regenerator"
@@ -2971,13 +2971,13 @@ export const BALANCE = {
           "groups": [
             {
               "count": 32,
-              "healthMult": 44.1,
+              "healthMult": 22,
               "spawnInterval": 0.22,
               "type": "basic"
             },
             {
               "count": 12,
-              "healthMult": 26.3,
+              "healthMult": 14.5,
               "spawnInterval": 0.5,
               "startDelay": 4,
               "type": "splitter"
@@ -2988,14 +2988,14 @@ export const BALANCE = {
           "groups": [
             {
               "count": 24,
-              "healthMult": 33.6,
+              "healthMult": 17.5,
               "spawnInterval": 0.2,
               "speedMult": 1.2,
               "type": "fast"
             },
             {
               "count": 12,
-              "healthMult": 28.4,
+              "healthMult": 15,
               "spawnInterval": 0.6,
               "startDelay": 4,
               "type": "regenerator"
@@ -3006,13 +3006,13 @@ export const BALANCE = {
           "groups": [
             {
               "count": 22,
-              "healthMult": 37.8,
+              "healthMult": 19.5,
               "spawnInterval": 0.45,
               "type": "armored"
             },
             {
               "count": 12,
-              "healthMult": 29.4,
+              "healthMult": 15.5,
               "spawnInterval": 0.5,
               "startDelay": 6,
               "type": "splitter"
@@ -3023,13 +3023,13 @@ export const BALANCE = {
           "groups": [
             {
               "count": 2,
-              "healthMult": 25.2,
+              "healthMult": 14,
               "spawnInterval": 6,
               "type": "boss"
             },
             {
               "count": 12,
-              "healthMult": 30.5,
+              "healthMult": 16,
               "spawnInterval": 0.55,
               "startDelay": 4,
               "type": "regenerator"
@@ -3040,13 +3040,13 @@ export const BALANCE = {
           "groups": [
             {
               "count": 18,
-              "healthMult": 33.6,
+              "healthMult": 17.5,
               "spawnInterval": 0.4,
               "type": "splitter"
             },
             {
               "count": 18,
-              "healthMult": 39.9,
+              "healthMult": 20,
               "spawnInterval": 0.22,
               "speedMult": 1.25,
               "startDelay": 5,
@@ -3054,7 +3054,7 @@ export const BALANCE = {
             },
             {
               "count": 12,
-              "healthMult": 39.9,
+              "healthMult": 20,
               "spawnInterval": 0.55,
               "startDelay": 10,
               "type": "armored"
@@ -3065,21 +3065,21 @@ export const BALANCE = {
           "groups": [
             {
               "count": 3,
-              "healthMult": 29.1,
+              "healthMult": 15.5,
               "spawnInterval": 5,
               "speedMult": 1.15,
               "type": "boss"
             },
             {
               "count": 14,
-              "healthMult": 34.8,
+              "healthMult": 18,
               "spawnInterval": 0.5,
               "startDelay": 6,
               "type": "regenerator"
             },
             {
               "count": 14,
-              "healthMult": 36.9,
+              "healthMult": 19,
               "spawnInterval": 0.42,
               "startDelay": 14,
               "type": "splitter"
