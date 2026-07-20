@@ -2197,7 +2197,7 @@ export const BALANCE = {
           "y": 11
         }
       ],
-      "startingMoney": 130,
+      "startingMoney": 180,
       "timeBetweenWaves": 5,
       "waves": [
         {
@@ -2213,8 +2213,8 @@ export const BALANCE = {
         {
           "groups": [
             {
-              "count": 6,
-              "healthMult": 5,
+              "count": 4,
+              "healthMult": 4,
               "spawnInterval": 1.1,
               "type": "regenerator"
             }
