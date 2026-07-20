@@ -172,6 +172,19 @@ button.hud-item {
   flex-shrink: 0;
 }
 
+/* Discreet build stamp, bottom-right of the menu overlay. Non-interactive. */
+#version-tag {
+  position: absolute;
+  right: 10px;
+  bottom: calc(env(safe-area-inset-bottom) + 8px);
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  opacity: 0.5;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ---------- Update nudge banner ---------- */
 /* Fixed pill near the top; only visible when update.js detects a newer
    deployed build. Above every overlay so it's never hidden. */

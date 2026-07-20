@@ -21,6 +21,11 @@ let lastCheck = 0;
 const MIN_INTERVAL = 20000; // don't re-check more than once per 20s
 
 export function initUpdateCheck() {
+  // Discreet build stamp on the menu so the current version is always
+  // confirmable at a glance (esp. after a home-screen reload).
+  const tag = document.getElementById("version-tag");
+  if (tag) tag.textContent = "v" + APP_VERSION;
+
   banner = document.getElementById("update-banner");
   if (!banner) return;
 
