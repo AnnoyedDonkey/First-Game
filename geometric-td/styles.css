@@ -295,6 +295,10 @@ button.hud-item {
 
 #tutorial-card {
   position: absolute;
+  /* Above the spotlight's dimming veil (z-index 1) so the guidance text
+     floats bright ON the backdrop — the spotlight is an earlier-painting
+     sibling whose 999px box-shadow would otherwise dim this card. */
+  z-index: 2;
   left: 50%;
   width: 280px;
   max-width: calc(100% - 48px);
@@ -361,6 +365,9 @@ button.hud-item {
    ring's own box (the actual tray chip / tile / wave button) clear. */
 #tutorial-spotlight {
   position: absolute;
+  /* The dimming backdrop layer: sits below the card + skip (z-index 2) so
+     its 999px veil dims the game underneath but never the guidance UI. */
+  z-index: 1;
   border: 2px solid var(--neon-yellow);
   border-radius: 10px;
   box-shadow: 0 0 0 999px rgba(5, 6, 15, 0.45), 0 0 16px rgba(255, 226, 74, 0.6);
@@ -380,12 +387,16 @@ button.hud-item {
 
 #tutorial-skip {
   position: absolute;
+  /* Above the spotlight's dimming veil (z-index 1), same layer as the
+     card, so it reads as a live control in front — not greyed out behind
+     the backdrop. */
+  z-index: 2;
   top: calc(env(safe-area-inset-top) + 8px);
   right: 12px;
   pointer-events: auto;
-  background: rgba(5, 6, 15, 0.85);
-  color: var(--text-dim);
-  border: 1px solid var(--panel-border);
+  background: rgba(11, 14, 30, 0.95);
+  color: var(--text);
+  border: 1px solid var(--text-dim);
   border-radius: 999px;
   font-family: inherit;
   font-size: 10px;
