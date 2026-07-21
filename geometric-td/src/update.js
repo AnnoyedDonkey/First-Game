@@ -15,10 +15,20 @@
 // ============================================================
 
 import { APP_VERSION } from "./version.js";
+import { isTutorialActive, onTutorialChange } from "./tutorial.js";
 
 let banner = null;
 let lastCheck = 0;
 const MIN_INTERVAL = 20000; // don't re-check more than once per 20s
+
+// The first-play tutorial (T4) pins its own instructions + SKIP TUTORIAL
+// button to the same top strip this banner occupies. Both are correct in
+// isolation, but together the banner (z-index 100, deliberately above every
+// other overlay) visually stomps the tutorial's text right when a brand
+// new player needs it most. So: hold a detected update instead of showing
+// it while the tutorial owns that strip, and reveal it the moment the
+// tutorial finishes or is skipped.
+let pendingReveal = false;
 
 export function initUpdateCheck() {
   // Discreet build stamp on the menu so the current version is always
@@ -44,6 +54,13 @@ export function initUpdateCheck() {
     if (document.visibilityState === "visible") check();
   });
 
+  onTutorialChange(() => {
+    if (pendingReveal && !isTutorialActive()) {
+      pendingReveal = false;
+      banner.classList.remove("hidden");
+    }
+  });
+
   check();
 }
 
@@ -60,7 +77,8 @@ async function check() {
     const text = await res.text();
     const m = text.match(/APP_VERSION\s*=\s*["']([^"']+)["']/);
     if (m && m[1] !== APP_VERSION && banner) {
-      banner.classList.remove("hidden");
+      if (isTutorialActive()) pendingReveal = true;
+      else banner.classList.remove("hidden");
     }
   } catch (err) {
     // Offline or fetch blocked — silently ignore; never disrupt play.
