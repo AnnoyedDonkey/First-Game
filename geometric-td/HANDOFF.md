@@ -11,7 +11,7 @@ three-world campaign; five tower classes; seven enemy types; RPG roster and
 mastery progression; skills; loot/equipment; campaign challenges; Endless;
 telemetry; and a GitHub Pages deployment.
 
-The current deployed build is `2026.07.21-5`. Baseline was the deliberately
+The current deployed build is `2026.07.21-7`. Baseline was the deliberately
 aggressive H1-H4 hard-mode pass (`2650204`, `2026.07.17-1`): a Pulse nerf plus
 World 1-3 wave and economy hardening. Player feedback then reported the campaign
 was too hard, so difficulty was walked back world by world:
@@ -23,12 +23,22 @@ was too hard, so difficulty was walked back world by world:
   full wave-curve rebalances plus economy and regenerator-intro fixes. Latest
   telemetry confirms this landed — L9/L10 now rate `just_right`.
 
-**World 3 (L11-L15) still carries the full H1-H4 hardening on the original wave
-curves, but the `2026.07.19-9` telemetry round rated all five levels `too_easy`**
-(L15 a flawless clear) — the hardening is not translating into felt difficulty
-now that the roster/economy sit where they do. A first World 3 pass shipped in
-`2026.07.21-1` (moderate economy + pacing; watch L13); confirm the effect by
-comparing telemetry by `app_version` before deciding whether it needs more.
+World 3 has now had two balance passes. The first (`2026.07.21-1`, moderate
+economy + pacing) landed **L13 at `just_right`** (confirmed in the `-6`
+telemetry round). The second pass shipped in **`2026.07.21-7`** targeting what
+`-6` telemetry still showed: L11 and L15 rated `too_easy` (L15 a flawless
+0-leak clear banking 740), while L12 and L14 walled players on **waves 1-2 only**
+(losses died wc0/wc1 in <100s, then the same player cleared all 10 waves).
+The `-7` pass, done via `balance-data.json`:
+- **L11** — back half (waves 6-10) HP raised ~+10% weighted; openers untouched.
+- **L12 / L14** — waves 1-2 softened ~33% (opener survivability); waves 3-10
+  left exactly as-is.
+- **L13** — deliberately untouched (it's the success of the first pass).
+- **L15** — hardened ~+21% weighted with more bodies from wave 5 on, and the
+  12-wave finale turned into a real gauntlet (6 bosses + heavier
+  armored/regen/fast). `bountyMult` unchanged (0.52).
+Confirm the effect by comparing `-7` telemetry by `app_version`; watch that the
+L12/L14 openers are no longer brick walls and that L15 now costs core.
 
 Builds `2026.07.21-2` through `-5` were player-facing UI/UX fixes, no balance
 change: first-play tutorial polish (banner no longer overlaps SKIP TUTORIAL;
@@ -198,10 +208,12 @@ Balance Lab L0-L7 is complete; the legacy phase-by-phase entry below is retained
 for historical detail and its "L4 next" wording is superseded by this status.
 
 - **DONE - Balance Lab (L0-L7):** `BALANCE_LAB_PLAN.md`. All phases complete and verified: data/schema migration, the localhost-only save/restore API in `serve.ps1`, the editable `balance-lab.html` with revision history, and L7 QA/docs. Per-phase execution plans (L1-L7) and the L0-L2 migration probes/baselines are archived in `docs/archive/balance-lab/`. History is a single clean baseline; no player-facing change and nothing committed. Remaining step: a deliberate manual commit (workflow in `BALANCE_LAB_USAGE.md`).
-- **NEXT — World 3 pass:** the `2026.07.19-9` round rates L11-L15 all
-  `too_easy` (see Current state). Retune World 3 into a real campaign finale.
-  Compare ratings, core/leaks, remaining money, and tower composition by
-  `app_version` after the pass.
+- **WATCH — World 3 (second pass shipped `2026.07.21-7`):** L11/L15 hardened,
+  L12/L14 openers softened, L13 untouched (see Current state). Confirm with `-7`
+  telemetry: compare ratings, core/leaks, remaining money, and composition by
+  `app_version`. Open questions the `-6` sample raised but this pass did not
+  address — World 2 front (L6/L7 read `too_easy`) and L4 (1W/4L, rated
+  `too_hard`); revisit once `-7` W3 data lands.
 - **DEFERRED — Endless:** retune its ramp after campaign balance stabilizes.
 - **DEFERRED:** save export/import for iOS localStorage eviction; sound;
   additional tower classes (Tesla was the runner-up); pre-battle loadouts.

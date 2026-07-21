@@ -3224,13 +3224,13 @@
           "groups": [
             {
               "count": 2,
-              "healthMult": 9.8,
+              "healthMult": 11,
               "spawnInterval": 6,
               "type": "boss"
             },
             {
               "count": 12,
-              "healthMult": 14.4,
+              "healthMult": 16.5,
               "spawnInterval": 0.6,
               "startDelay": 3,
               "type": "armored"
@@ -3241,13 +3241,13 @@
           "groups": [
             {
               "count": 20,
-              "healthMult": 15.2,
+              "healthMult": 17.5,
               "spawnInterval": 0.5,
               "type": "armored"
             },
             {
               "count": 14,
-              "healthMult": 13.8,
+              "healthMult": 15.5,
               "spawnInterval": 0.21,
               "startDelay": 5,
               "type": "fast"
@@ -3258,13 +3258,13 @@
           "groups": [
             {
               "count": 14,
-              "healthMult": 10.9,
+              "healthMult": 12.5,
               "spawnInterval": 0.6,
               "type": "regenerator"
             },
             {
               "count": 12,
-              "healthMult": 10.9,
+              "healthMult": 12.5,
               "spawnInterval": 0.5,
               "startDelay": 4,
               "type": "splitter"
@@ -3275,20 +3275,20 @@
           "groups": [
             {
               "count": 2,
-              "healthMult": 11.5,
+              "healthMult": 13,
               "spawnInterval": 5,
               "type": "boss"
             },
             {
               "count": 24,
-              "healthMult": 20.9,
+              "healthMult": 24,
               "spawnInterval": 0.28,
               "startDelay": 3,
               "type": "basic"
             },
             {
               "count": 16,
-              "healthMult": 17.9,
+              "healthMult": 20.5,
               "spawnInterval": 0.2,
               "startDelay": 10,
               "type": "fast"
@@ -3299,21 +3299,21 @@
           "groups": [
             {
               "count": 3,
-              "healthMult": 12.4,
+              "healthMult": 14,
               "spawnInterval": 5,
               "speedMult": 1.1,
               "type": "boss"
             },
             {
               "count": 14,
-              "healthMult": 20,
+              "healthMult": 23,
               "spawnInterval": 0.55,
               "startDelay": 6,
               "type": "armored"
             },
             {
               "count": 14,
-              "healthMult": 16.5,
+              "healthMult": 19,
               "spawnInterval": 0.45,
               "startDelay": 12,
               "type": "splitter"
@@ -3397,8 +3397,8 @@
         {
           "groups": [
             {
-              "count": 12,
-              "healthMult": 4,
+              "count": 9,
+              "healthMult": 3.4,
               "spawnInterval": 0.55,
               "type": "splitter"
             }
@@ -3407,14 +3407,14 @@
         {
           "groups": [
             {
-              "count": 8,
-              "healthMult": 7.6,
+              "count": 6,
+              "healthMult": 6.5,
               "spawnInterval": 0.8,
               "type": "regenerator"
             },
             {
-              "count": 12,
-              "healthMult": 10.1,
+              "count": 10,
+              "healthMult": 8.6,
               "spawnInterval": 0.28,
               "startDelay": 4,
               "type": "fast"
@@ -3896,14 +3896,14 @@
         {
           "groups": [
             {
-              "count": 20,
-              "healthMult": 5,
+              "count": 18,
+              "healthMult": 4.4,
               "spawnInterval": 0.35,
               "type": "basic"
             },
             {
-              "count": 8,
-              "healthMult": 4,
+              "count": 6,
+              "healthMult": 3.5,
               "spawnInterval": 0.6,
               "startDelay": 4,
               "type": "splitter"
@@ -3913,14 +3913,14 @@
         {
           "groups": [
             {
-              "count": 14,
-              "healthMult": 11.3,
+              "count": 11,
+              "healthMult": 9.5,
               "spawnInterval": 0.55,
               "type": "armored"
             },
             {
-              "count": 12,
-              "healthMult": 10.9,
+              "count": 10,
+              "healthMult": 9.3,
               "spawnInterval": 0.28,
               "startDelay": 4,
               "type": "fast"
@@ -4208,12 +4208,12 @@
           "groups": [
             {
               "count": 1,
-              "healthMult": 10.4,
+              "healthMult": 11.5,
               "type": "boss"
             },
             {
               "count": 12,
-              "healthMult": 13,
+              "healthMult": 14.5,
               "spawnInterval": 0.6,
               "startDelay": 3,
               "type": "regenerator"
@@ -4223,15 +4223,15 @@
         {
           "groups": [
             {
-              "count": 28,
-              "healthMult": 15.2,
+              "count": 30,
+              "healthMult": 17.5,
               "spawnInterval": 0.15,
               "speedMult": 1.2,
               "type": "fast"
             },
             {
               "count": 14,
-              "healthMult": 12.2,
+              "healthMult": 14,
               "spawnInterval": 0.45,
               "startDelay": 4,
               "type": "splitter"
@@ -4241,14 +4241,14 @@
         {
           "groups": [
             {
-              "count": 22,
-              "healthMult": 16.5,
+              "count": 24,
+              "healthMult": 19,
               "spawnInterval": 0.45,
               "type": "armored"
             },
             {
               "count": 12,
-              "healthMult": 12.5,
+              "healthMult": 14.5,
               "spawnInterval": 0.6,
               "startDelay": 4,
               "type": "regenerator"
@@ -4259,13 +4259,13 @@
           "groups": [
             {
               "count": 2,
-              "healthMult": 11.5,
+              "healthMult": 13,
               "spawnInterval": 6,
               "type": "boss"
             },
             {
-              "count": 28,
-              "healthMult": 22.6,
+              "count": 30,
+              "healthMult": 26,
               "spawnInterval": 0.26,
               "startDelay": 3,
               "type": "basic"
@@ -4276,13 +4276,13 @@
           "groups": [
             {
               "count": 22,
-              "healthMult": 14.7,
+              "healthMult": 17,
               "spawnInterval": 0.38,
               "type": "splitter"
             },
             {
-              "count": 20,
-              "healthMult": 16.5,
+              "count": 22,
+              "healthMult": 19,
               "spawnInterval": 0.18,
               "speedMult": 1.25,
               "startDelay": 4,
@@ -4293,14 +4293,14 @@
         {
           "groups": [
             {
-              "count": 24,
-              "healthMult": 18.1,
+              "count": 26,
+              "healthMult": 21,
               "spawnInterval": 0.42,
               "type": "armored"
             },
             {
               "count": 14,
-              "healthMult": 13.8,
+              "healthMult": 16,
               "spawnInterval": 0.55,
               "startDelay": 5,
               "type": "regenerator"
@@ -4311,20 +4311,20 @@
           "groups": [
             {
               "count": 3,
-              "healthMult": 12.4,
+              "healthMult": 14,
               "spawnInterval": 5,
               "type": "boss"
             },
             {
               "count": 18,
-              "healthMult": 17.6,
+              "healthMult": 20,
               "spawnInterval": 0.42,
               "startDelay": 5,
               "type": "splitter"
             },
             {
-              "count": 20,
-              "healthMult": 20,
+              "count": 23,
+              "healthMult": 23,
               "spawnInterval": 0.18,
               "speedMult": 1.25,
               "startDelay": 11,
@@ -4336,20 +4336,20 @@
           "groups": [
             {
               "count": 18,
-              "healthMult": 14.7,
+              "healthMult": 17,
               "spawnInterval": 0.5,
               "type": "regenerator"
             },
             {
-              "count": 18,
-              "healthMult": 19,
+              "count": 22,
+              "healthMult": 22,
               "spawnInterval": 0.48,
               "startDelay": 4,
               "type": "armored"
             },
             {
-              "count": 16,
-              "healthMult": 15.5,
+              "count": 18,
+              "healthMult": 18,
               "spawnInterval": 0.42,
               "startDelay": 10,
               "type": "splitter"
@@ -4359,29 +4359,29 @@
         {
           "groups": [
             {
-              "count": 5,
-              "healthMult": 13.5,
+              "count": 6,
+              "healthMult": 15.5,
               "spawnInterval": 5,
               "speedMult": 1.1,
               "type": "boss"
             },
             {
-              "count": 16,
-              "healthMult": 22.6,
+              "count": 18,
+              "healthMult": 26,
               "spawnInterval": 0.5,
               "startDelay": 6,
               "type": "armored"
             },
             {
               "count": 14,
-              "healthMult": 17,
+              "healthMult": 20,
               "spawnInterval": 0.55,
               "startDelay": 12,
               "type": "regenerator"
             },
             {
-              "count": 18,
-              "healthMult": 20.9,
+              "count": 20,
+              "healthMult": 24,
               "spawnInterval": 0.18,
               "speedMult": 1.3,
               "startDelay": 18,
