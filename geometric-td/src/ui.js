@@ -1529,6 +1529,11 @@ function openTowerStatSheet(towerName) {
   const def = TOWERS[rec.type];
   const stats = careerStatsFor(rec);
   const gear = normalizeGear(rec.gear);
+  const slowStats = stats.slowPercent == null ? "" :
+    `<div class="gear-stat-box"><div class="k">SLOW AMOUNT</div>` +
+    `<div class="v" style="color:${def.color}">${Math.round(stats.slowPercent * 100)}%</div></div>` +
+    `<div class="gear-stat-box"><div class="k">SLOW DURATION</div>` +
+    `<div class="v" style="color:${def.color}">${stats.slowDuration.toFixed(1)}s</div></div>`;
   const bonuses = GEAR_SLOTS.map((slot) => gear[slot]).filter(Boolean).map((item) => {
     const color = RARITY_COLOR[item.rarity];
     return `<div class="gear-bonus-line" style="border-color:${color}">` +
@@ -1546,6 +1551,7 @@ function openTowerStatSheet(towerName) {
     `<div class="gear-stat-box"><div class="k">FIRE RATE</div><div class="v">${stats.fireRate.toFixed(1)}/s</div></div>` +
     `<div class="gear-stat-box"><div class="k">DPS</div><div class="v" style="color:${def.color}">${Math.round(stats.dps)}</div></div>` +
     `<div class="gear-stat-box"><div class="k">RANGE</div><div class="v">${def.baseRange >= 50 ? "GLOBAL" : stats.range.toFixed(1)}</div></div>` +
+    slowStats +
     `</div>` +
     `<div class="gear-picker-label">PERMANENT BONUSES</div>` +
     `<div class="gear-bonus-line" style="border-color:var(--neon-yellow)">` +

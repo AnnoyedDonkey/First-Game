@@ -176,13 +176,20 @@ export function careerStatsFor(rec) {
     (Math.pow(1 + g.fireRateGrowth, lv) *
       Math.pow(1 + (spec.fireRateGrowth || 0), lv) *
       (1 + gs.fireRate / 100));
+  const slowPercent = def.slowPercent != null
+    ? Math.min(LOOT.combat.maxSlowPercent / 100, def.slowPercent * (1 + gs.slowPotency / 100))
+    : null;
+  const slowDuration = def.slowDuration != null
+    ? def.slowDuration * Math.pow(1 + g.slowGrowth, lv) *
+      getSlowDurationMult() * (1 + gs.slowDuration / 100)
+    : null;
   const specStat = spec.damageGrowth ? "damageGrowth"
     : spec.rangeGrowth ? "rangeGrowth"
     : spec.fireRateGrowth ? "fireRateGrowth"
     : spec.splashGrowth ? "splashGrowth" : null;
   const specialtyPct = specStat ? Math.round((Math.pow(1 + spec[specStat], lv) - 1) * 100) : 0;
   return {
-    damage, range, fireInterval,
+    damage, range, fireInterval, slowPercent, slowDuration,
     fireRate: 1 / fireInterval,
     dps: damage / fireInterval,
     masteryRank,
