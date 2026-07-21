@@ -4434,9 +4434,9 @@ export const BALANCE = {
       "costs": [
         1,
         1,
+        1,
         2,
-        2,
-        3
+        2
       ],
       "maxTier": 5
     },
@@ -4461,11 +4461,11 @@ export const BALANCE = {
       "damageCost": 1,
       "damageSteps": 5,
       "levelCosts": [
+        1,
+        1,
+        1,
         2,
-        2,
-        3,
-        3,
-        4
+        2
       ],
       "levelSteps": 5,
       "rootCost": 1

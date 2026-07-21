@@ -1615,6 +1615,7 @@ button.hud-item {
   flex-shrink: 0;
 }
 .store-wallet b { color: var(--neon-yellow); font-weight: 600; }
+.store-skill-balance { color: var(--neon-cyan); }
 
 #store-scroll {
   width: 100%;
@@ -1635,6 +1636,28 @@ button.hud-item {
    the tall unlock block's height). */
 #store-actions { margin-bottom: 10px; flex-direction: column; align-items: stretch; }
 #store-actions .store-reroll { flex: 0 0 auto; align-self: stretch; }
+.store-skill-point {
+  width: 100%;
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 12px;
+  border: 1px solid var(--neon-cyan);
+  border-radius: 9px;
+  background: rgba(53, 224, 255, 0.07);
+  color: var(--text);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.store-skill-icon { color: var(--neon-cyan); font-size: 26px; text-shadow: 0 0 12px rgba(53, 224, 255, 0.7); }
+.store-skill-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.store-skill-copy b { color: var(--neon-cyan); font-size: 12px; letter-spacing: 1.5px; }
+.store-skill-copy small { color: var(--text-dim); font-size: 8px; letter-spacing: 1px; }
+.store-skill-price { color: var(--neon-yellow); font-size: 13px; letter-spacing: 1px; flex-shrink: 0; }
+.store-skill-price.cannot-afford { color: var(--neon-red); }
+.store-skill-title { color: var(--neon-cyan); text-shadow: 0 0 10px rgba(53, 224, 255, 0.4); }
 
 .store-unlock-row { margin-bottom: 12px; }
 .store-unlock-label {

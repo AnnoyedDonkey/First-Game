@@ -23,6 +23,7 @@ import {
   discardPendingLoot, sellStashItem, sellPendingItem, sellAllStashRarity,
   equipStashItem, unequipToStash,
   getStoreStock, storeRerollCost, rerollStore, buyStoreItem,
+  storeSkillPointCost, buyStoreSkillPoint,
   getStoreUnlocks, buyStoreUnlock,
   countUnseenStash, isItemSeen, markItemSeen,
 } from "./progression.js";
@@ -1898,6 +1899,26 @@ function openUnlockSheet(rarity) {
   }
 }
 
+function openSkillPointStoreSheet() {
+  const cost = storeSkillPointCost();
+  const canAfford = getShards() >= cost;
+  el.storeSheet.innerHTML =
+    `<div class="gear-sheet-title store-skill-title">&#9733; BUY SKILL POINT</div>` +
+    `<div class="gear-sheet-sub">Adds 1 permanent point to spend in the Skill Tree. ` +
+    `The price rises after each purchase, up to &#9670;${LOOT.store.skillPointCost.cap}.</div>` +
+    `<div class="gear-sheet-actions">` +
+    `<button class="gear-sheet-btn store-buy" id="store-skill-confirm"${canAfford ? "" : " disabled"}>` +
+    `BUY 1 POINT &mdash; &#9670;${cost}</button></div>`;
+  el.storeSheetOverlay.classList.remove("hidden");
+  if (canAfford) {
+    document.getElementById("store-skill-confirm").addEventListener("click", () => {
+      buyStoreSkillPoint();
+      closeStoreSheet();
+      renderStorePanel();
+    });
+  }
+}
+
 function renderStorePanel() {
   const scrollTop = el.storeScroll.scrollTop;
   const stock = getStoreStock();
@@ -1905,9 +1926,22 @@ function renderStorePanel() {
   const rerollCost = storeRerollCost();
   const shards = getShards();
   const unlocks = getStoreUnlocks();
-  el.storeWallet.innerHTML = `<b>&#9670; ${shards}</b> &nbsp;&middot;&nbsp; STASH ${getStash().length}/${LOOT.stash.stashSize}`;
+  el.storeWallet.innerHTML = `<b>&#9670; ${shards}</b> &nbsp;&middot;&nbsp; ` +
+    `<span class="store-skill-balance">&#9733; ${getSkillPoints()} SKILL PT</span> &nbsp;&middot;&nbsp; ` +
+    `STASH ${getStash().length}/${LOOT.stash.stashSize}`;
 
   el.storeActions.innerHTML = "";
+
+  const skillCost = storeSkillPointCost();
+  const skillPoint = document.createElement("button");
+  skillPoint.className = "store-skill-point";
+  skillPoint.innerHTML =
+    `<span class="store-skill-icon">&#9733;</span>` +
+    `<span class="store-skill-copy"><b>BUY SKILL POINT</b>` +
+    `<small>PERMANENT &middot; USE IN THE SKILL TREE</small></span>` +
+    `<span class="store-skill-price${shards < skillCost ? " cannot-afford" : ""}">&#9670;${skillCost}</span>`;
+  skillPoint.addEventListener("click", openSkillPointStoreSheet);
+  el.storeActions.appendChild(skillPoint);
 
   // Unlock row — shows locked rarities as tap-to-buy tiles
   const rarityUnlocks = LOOT.store.rarityUnlocks;
@@ -2285,7 +2319,7 @@ function bindSkillTreeGestures() {
 function renderSkillTree(onSkillBought, recenter = false) {
   const points = getSkillPoints();
   el.skillPointsLine.innerHTML =
-    `AVAILABLE POINTS: <b>${points}</b> &mdash; win battles to earn more &middot; pinch or &plusmn; to zoom`;
+    `AVAILABLE POINTS: <b>${points}</b> &mdash; win battles or buy in Store &middot; pinch or &plusmn; to zoom`;
   el.skillList.classList.add("skill-tree-host");
   el.skillList.innerHTML =
     `<div class="skill-tree-scroll">${buildSkillTreeSvg()}</div>` +
@@ -2341,7 +2375,9 @@ function openSkillSheet(id, onSkillBought) {
   // also append the node's descriptive noun (that would read redundantly).
   const tail = (node.kind === "unlock" || node.kind === "level") ? "" : ` ${node.desc}`;
   let effectLine;
-  if (cost === null) {
+  if (node.free) {
+    effectLine = "Branch unlocked automatically &mdash; FREE";
+  } else if (cost === null) {
     effectLine = `${skillEffectText(id, tier)}${tail} &mdash; MAXED`;
   } else if (tier === 0) {
     effectLine = `next: ${skillEffectText(id, 1)}${tail}`;
@@ -2351,7 +2387,9 @@ function openSkillSheet(id, onSkillBought) {
 
   // Buy button label / disabled reasoning.
   let btnLabel, disabled = false, lockNote = "";
-  if (cost === null) {
+  if (node.free) {
+    btnLabel = "UNLOCKED &mdash; FREE"; disabled = true;
+  } else if (cost === null) {
     btnLabel = "MAXED"; disabled = true;
   } else if (!unlocked) {
     const parent = SKILLS[node.parent];

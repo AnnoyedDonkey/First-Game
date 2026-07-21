@@ -33,6 +33,7 @@ state.pendingLoot ||= [];
 state.store ||= { stock: [], rerolls: 0 };
 state.store.stock ||= [];
 state.store.rerolls ??= 0;
+state.store.skillPointPurchases ??= 0;
 state.endlessRewards ||= {};
 state.seenLoot ||= [];
 state.storeUnlocks ||= [];
@@ -48,6 +49,7 @@ if (!state.tutorialDone && (state.completedLevels.length > 0 || state.roster.len
 }
 state.skills ||= {};
 migrateSkillGraph(); // fold pre-per-tower skills into the new tower branches
+migrateFreeSkillRoots(); // refund formerly paid branch-head unlocks once
 backfillGear();
 migrateRosterNames();
 
@@ -86,7 +88,6 @@ function migrateSkillGraph() {
   for (const [t, oldId] of Object.entries(oldDamage)) {
     const tier = sk[oldId] | 0;
     if (tier >= 1) {
-      own(`${t}_root`);
       for (let i = 1; i <= Math.min(tier, TOWER_SKILL_LAYOUT.damageSteps); i++) own(`${t}_dmg${i}`);
       drop(oldId);
     }
@@ -96,7 +97,6 @@ function migrateSkillGraph() {
   const capOwned = capNodes.filter((id) => (sk[id] | 0) >= 1).length;
   if (capOwned > 0) {
     for (const t of Object.keys(TOWER_SKILL_SPEC)) {
-      own(`${t}_root`);
       for (let k = 0; k < Math.min(capOwned, TOWER_SKILL_LAYOUT.levelSteps); k++) own(`${t}_lvl${6 + k}`);
     }
   }
@@ -108,22 +108,39 @@ function migrateSkillGraph() {
     eco_money: "moneyPerKill", eco_xp: "xpGain", eco_shard: "shardFind",
     eco_intrate: "interestRate", eco_intcap: "interestCap",
   };
-  let anyEco = false;
   for (const [key, oldId] of Object.entries(oldEco)) {
     const tier = sk[oldId] | 0;
     if (tier >= 1) {
       for (let i = 1; i <= Math.min(tier, ECONOMY_LAYOUT.steps); i++) own(`${key}${i}`);
       drop(oldId);
-      anyEco = true;
     }
   }
-  if (anyEco) own("money_root");
-
-  // railPen kept its id; make sure its railgun root is owned so it isn't
-  // orphaned/locked after the reshuffle.
-  if ((sk.railPen | 0) >= 1) own("railgun_root");
+  // Old Over-Penetration was one five-tier node. Preserve its effective tier
+  // by expanding it into the new one-box-per-increment chain.
+  const oldRailPenTier = sk.railPen | 0;
+  if (oldRailPenTier >= 1) {
+    for (let i = 1; i <= Math.min(oldRailPenTier, SKILL_TIERS.maxTier); i++) own(`railPen${i}`);
+    drop("railPen");
+  }
 
   if (changed) writeSave(state);
+}
+
+// Branch heads used to cost one point but had no effect. They are now free,
+// always-owned navigation nodes. Refund saved purchases and remove their
+// obsolete entries so this migration is idempotent.
+function migrateFreeSkillRoots() {
+  const sk = state.skills;
+  let refund = 0;
+  for (const [id, node] of Object.entries(SKILLS)) {
+    if (!node.free || !(sk[id] >= 1)) continue;
+    delete sk[id];
+    refund += 1; // historical branch-head price
+  }
+  if (refund > 0) {
+    state.skillPoints += refund;
+    writeSave(state);
+  }
 }
 
 // Count owned single-tier skill nodes whose id starts with `prefix`
@@ -158,6 +175,7 @@ export function getProgress() {
 // ---------- Skill tree (5 tiers per skill) ----------
 
 export function getSkillTier(id) {
+  if (SKILLS[id]?.free) return 1;
   return state.skills[id] || 0;
 }
 
@@ -250,7 +268,7 @@ export function getSkillShardFindMult() {
 
 // Railgun beam-length multiplier (over-penetration): x1.0 up to x2.0.
 export function getRailBeamLengthMult() {
-  return 1 + SKILL_VALUES.railPen * getSkillTier("railPen");
+  return 1 + SKILL_VALUES.railPen * ownedSkillCount("railPen");
 }
 
 export function getMoneyMult() {
@@ -375,9 +393,10 @@ function generateStoreStock() {
 }
 
 function normalizeStore() {
-  state.store ||= { stock: [], rerolls: 0 };
+  state.store ||= { stock: [], rerolls: 0, skillPointPurchases: 0 };
   state.store.stock ||= [];
   state.store.rerolls ??= 0;
+  state.store.skillPointPurchases ??= 0;
   if (!state.store.stock.length) {
     generateStoreStock();
     writeSave(state);
@@ -402,6 +421,24 @@ export function rerollStore() {
   generateStoreStock();
   writeSave(state);
   return { ok: true, cost, stock: state.store.stock };
+}
+
+export function storeSkillPointCost() {
+  normalizeStore();
+  const purchased = state.store.skillPointPurchases;
+  const curve = LOOT.store.skillPointCost;
+  if (purchased === 0) return curve.first;
+  return Math.min(curve.cap, curve.second + (purchased - 1) * curve.increment);
+}
+
+export function buyStoreSkillPoint() {
+  const cost = storeSkillPointCost();
+  if (state.shards < cost) return { ok: false, reason: "shards", cost };
+  state.shards -= cost;
+  state.skillPoints += 1;
+  state.store.skillPointPurchases += 1;
+  writeSave(state);
+  return { ok: true, cost, skillPoints: state.skillPoints };
 }
 
 export function buyStoreItem(itemId) {
@@ -826,9 +863,10 @@ export function resetProgress() {
   state.shards ??= 0;
   state.stash ||= [];
   state.pendingLoot ||= [];
-  state.store ||= { stock: [], rerolls: 0 };
+  state.store ||= { stock: [], rerolls: 0, skillPointPurchases: 0 };
   state.store.stock ||= [];
   state.store.rerolls ??= 0;
+  state.store.skillPointPurchases ??= 0;
   state.endlessRewards ||= {};
   state.seenLoot ||= [];
   backfillGear();

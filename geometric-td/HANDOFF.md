@@ -11,7 +11,17 @@ three-world campaign; five tower classes; seven enemy types; RPG roster and
 mastery progression; skills; loot/equipment; campaign challenges; Endless;
 telemetry; and a GitHub Pages deployment.
 
-The current deployed build is `2026.07.21-7`. Baseline was the deliberately
+The current deployed build is `2026.07.21-9`. Builds `2026.07.21-8` and `-9`
+added player-facing gear/skill quality-of-life: equipped gear can now be
+replaced through the existing compatible-picker + COMPARE flow; gear traits
+have tappable descriptions; the Store sells permanent Skill Points on a
+50/100/+100-to-1000 Shard curve; skill-tree branch heads are free (previously
+purchased heads are refunded once); five-box branch costs are now 1/1/1/2/2;
+and Railgun Over-Penetration is a five-box third branch under its head. The
+Skill Point purchase count is save-backed at `store.skillPointPurchases` with
+both a `save.js` default and `progression.js` backfill.
+
+Baseline was the deliberately
 aggressive H1-H4 hard-mode pass (`2650204`, `2026.07.17-1`): a Pulse nerf plus
 World 1-3 wave and economy hardening. Player feedback then reported the campaign
 was too hard, so difficulty was walked back world by world:

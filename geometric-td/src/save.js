@@ -18,7 +18,7 @@ const DEFAULT_SAVE = {
   shards: 0,             // Shards ◆ — persistent loot-store currency (LOOT_DESIGN.md)
   stash: [],              // owned unequipped items
   pendingLoot: [],        // unclaimed end-of-run drops shown in triage
-  store: { stock: [], rerolls: 0 },
+  store: { stock: [], rerolls: 0, skillPointPurchases: 0 },
   storeUnlocks: [],   // rarities unlocked for store rolls: ["enhanced", "rare", ...]
   endlessRewards: {},
   levelMilestones: {}, // { levelId: [claimedMilestoneId, ...] } — per-level challenges (B5)

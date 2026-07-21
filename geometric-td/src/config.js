@@ -566,6 +566,9 @@ export const LOOT = {
     // Sized against the B1 ~33-shards/L1 economy: enhanced after ~3 clears,
     // prismatic needs higher-level farming.
     rarityUnlocks: { enhanced: 80, rare: 300, prismatic: 1200, singularity: 4000 },
+    // Permanent Skill Point purchase. The first is deliberately cheap; after
+    // the second purchase the price rises by a flat step until it reaches cap.
+    skillPointCost: { first: 50, second: 100, increment: 100, cap: 1000 },
   },
 };
 
@@ -649,6 +652,7 @@ export const SHAPE_SIDES = {
 //                        parent has >=1 tier (progression.buySkill). Already
 //                        -owned nodes keep upgrading regardless, so old saves
 //                        never get stuck.
+//   free                 branch-head nodes are always owned and cost no points
 //   pos {x,y}            coordinate in the SVG_TREE_VIEWBOX space (tunable)
 //   glyph               single char/emoji drawn on the node
 //   maxTier             tiers available (default SKILL_TIERS.maxTier = 5)
@@ -724,13 +728,17 @@ function buildSkillGraph() {
     maxY = Math.max(maxY, node.pos.y);
   };
   const labelFor = (step, kind) => kind === "cap" ? `+${step}` : `+${Math.round(step * 100)}%`;
+  const branchCost = (index) =>
+    SKILL_TIERS.costs[Math.min(index, SKILL_TIERS.costs.length - 1)];
 
   // ----- Tower branches (laser, pulse, slow, railgun, rocket) -----
   for (const [t, spec] of Object.entries(TOWER_SKILL_SPEC)) {
-    const dmgX = x, lvlX = x + COL, headX = x + COL / 2;
+    const hasPenBranch = t === "railgun";
+    const dmgX = x, lvlX = x + COL, penX = x + COL * 2;
+    const headX = x + (hasPenBranch ? COL : COL / 2);
     put(`${t}_root`, { name: `${spec.name} Core`, desc: `unlock ${spec.name} upgrades`, branch: t,
       color: spec.color, parent: null, pos: { x: headX, y: HEAD_Y }, icon: spec.icon,
-      maxTier: 1, costs: [TOWER_SKILL_LAYOUT.rootCost], kind: "unlock", tower: t, isRoot: true,
+      maxTier: 1, kind: "unlock", tower: t, isRoot: true, free: true,
       headLabel: spec.name.toUpperCase() });
 
     const statWord = spec.stat === "duration" ? "duration" : "damage";
@@ -739,7 +747,7 @@ function buildSkillGraph() {
     for (let i = 1; i <= TOWER_SKILL_LAYOUT.damageSteps; i++) {
       put(`${t}_dmg${i}`, { name: `${spec.name} ${statWord === "duration" ? "Duration" : "Damage"} ${i}`,
         desc: statWord, branch: t, color: spec.color, parent: p,
-        pos: { x: dmgX, y: HEAD_Y + i * ROW }, maxTier: 1, costs: [TOWER_SKILL_LAYOUT.damageCost],
+        pos: { x: dmgX, y: HEAD_Y + i * ROW }, maxTier: 1, costs: [branchCost(i - 1)],
         kind: "pct", tower: t, dmg: true, step: spec.damageStep, chainLabel: pctLabel });
       p = `${t}_dmg${i}`;
     }
@@ -749,18 +757,24 @@ function buildSkillGraph() {
       put(`${t}_lvl${lvl}`, { name: `${spec.name} Overclock ${lvl}`,
         desc: `raise ${spec.name} level cap to ${lvl}`, branch: t, color: spec.color, parent: p,
         pos: { x: lvlX, y: HEAD_Y + (k + 1) * ROW }, maxTier: 1,
-        costs: [TOWER_SKILL_LAYOUT.levelCosts[k] ?? 4], kind: "level", tower: t, lvl,
+        costs: [TOWER_SKILL_LAYOUT.levelCosts[k] ?? branchCost(k)], kind: "level", tower: t, lvl,
         icon: "level", chainLabel: `L${lvl}` });
       p = `${t}_lvl${lvl}`;
     }
-    // Railgun-only perk: over-penetration hangs off the end of the damage chain.
-    if (t === "railgun") {
-      put("railPen", { name: "Over-Penetration", desc: "Railgun beam length", branch: t,
-        color: spec.color, parent: `railgun_dmg${TOWER_SKILL_LAYOUT.damageSteps}`,
-        pos: { x: dmgX, y: HEAD_Y + (TOWER_SKILL_LAYOUT.damageSteps + 1) * ROW },
-        icon: "pierce", kind: "mult", tower: t });
+    // Railgun-only perk: a third chain directly under the Railgun branch head.
+    // Each beam-length increment is its own box, matching the other branches.
+    if (hasPenBranch) {
+      p = "railgun_root";
+      for (let i = 1; i <= SKILL_TIERS.maxTier; i++) {
+        put(`railPen${i}`, { name: `Over-Penetration ${i}`, desc: "Railgun beam length", branch: t,
+          color: spec.color, parent: p, pos: { x: penX, y: HEAD_Y + i * ROW },
+          maxTier: 1, costs: [branchCost(i - 1)], icon: "pierce", kind: "mult", tower: t,
+          step: BALANCE.skills.values.railPen,
+          chainLabel: `+${Math.round(BALANCE.skills.values.railPen * 100)}%` });
+        p = `railPen${i}`;
+      }
     }
-    x = lvlX + COL + BRANCH_GAP;
+    x = (hasPenBranch ? penX : lvlX) + COL + BRANCH_GAP;
   }
 
   // ----- Money branch: head + one chain per economy stat -----
@@ -768,7 +782,7 @@ function buildSkillGraph() {
   const ecoSpan = (ecoEntries.length - 1) * COL;
   put("money_root", { name: "Salvage Grid", desc: "unlock economy upgrades", branch: "economy",
     color: SKILL_BRANCH_COLORS.economy, parent: null, pos: { x: x + ecoSpan / 2, y: HEAD_Y },
-    icon: "coin", maxTier: 1, costs: [ECONOMY_LAYOUT.rootCost], kind: "unlock", isRoot: true,
+    icon: "coin", maxTier: 1, kind: "unlock", isRoot: true, free: true,
     headLabel: "MONEY" });
   ecoEntries.forEach(([key, spec], ci) => {
     const cx = x + ci * COL;
@@ -777,7 +791,7 @@ function buildSkillGraph() {
     for (let i = 1; i <= ECONOMY_LAYOUT.steps; i++) {
       put(`${key}${i}`, { name: `${spec.name} ${i}`, desc: spec.desc, branch: "economy",
         color: SKILL_BRANCH_COLORS.economy, parent: p, pos: { x: cx, y: HEAD_Y + i * ROW },
-        maxTier: 1, costs: [ECONOMY_LAYOUT.boxCost], kind: spec.kind, step: spec.step,
+        maxTier: 1, costs: [branchCost(i - 1)], kind: spec.kind, step: spec.step,
         eco: key, chainLabel: label });
       p = `${key}${i}`;
     }
