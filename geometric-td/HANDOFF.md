@@ -11,7 +11,7 @@ three-world campaign; five tower classes; seven enemy types; RPG roster and
 mastery progression; skills; loot/equipment; campaign challenges; Endless;
 telemetry; and a GitHub Pages deployment.
 
-The current deployed build is `2026.07.19-9`. Baseline was the deliberately
+The current deployed build is `2026.07.21-5`. Baseline was the deliberately
 aggressive H1-H4 hard-mode pass (`2650204`, `2026.07.17-1`): a Pulse nerf plus
 World 1-3 wave and economy hardening. Player feedback then reported the campaign
 was too hard, so difficulty was walked back world by world:
@@ -24,11 +24,21 @@ was too hard, so difficulty was walked back world by world:
   telemetry confirms this landed — L9/L10 now rate `just_right`.
 
 **World 3 (L11-L15) still carries the full H1-H4 hardening on the original wave
-curves, but the latest round (`2026.07.19-9`) rates all five levels `too_easy`**
+curves, but the `2026.07.19-9` telemetry round rated all five levels `too_easy`**
 (L15 a flawless clear) — the hardening is not translating into felt difficulty
-now that the roster/economy sit where they do. World 3 is the current tuning
-target: make it a satisfying campaign finale, not another brick wall. Compare
-telemetry by `app_version`.
+now that the roster/economy sit where they do. A first World 3 pass shipped in
+`2026.07.21-1` (moderate economy + pacing; watch L13); confirm the effect by
+comparing telemetry by `app_version` before deciding whether it needs more.
+
+Builds `2026.07.21-2` through `-5` were player-facing UI/UX fixes, no balance
+change: first-play tutorial polish (banner no longer overlaps SKIP TUTORIAL;
+placement no longer flashes past the blocked-tile step; instructions + skip
+now render above the spotlight's dimming veil instead of behind it), the
+TOWERS & GEAR GUIDE reworded from a wall of text into short lines and made
+mouse-wheel scrollable, and the skill tree now opens scrolled to the leftmost
+(Laser) branch instead of the middle. Tutorial state machine lives in
+`src/tutorial.js`; its copy + enable switch in `config.js` `TUTORIAL`;
+overlay layering in `styles.css` (`#tutorial-*`) and `src/ui.js`.
 
 The in-progress next build is the local-first Balance Lab. Read
 `BALANCE_LAB_PLAN.md`; phases L0-L7 define the data migration, local save API,
