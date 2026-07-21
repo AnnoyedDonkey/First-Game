@@ -1,6 +1,7 @@
 {
   "economy": {
     "interest": {
+      "baseCap": 50,
       "enabled": true
     },
     "moneyPerKillMultiplier": 1,

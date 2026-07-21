@@ -6,6 +6,7 @@ import { SCHEMA_VERSION } from "./balance-schema.js";
 export const BALANCE = {
   "economy": {
     "interest": {
+      "baseCap": 50,
       "enabled": true
     },
     "moneyPerKillMultiplier": 1,

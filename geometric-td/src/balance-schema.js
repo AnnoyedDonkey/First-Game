@@ -238,6 +238,8 @@ export function validate(data) {
     if (!isPosNum(e.xpPerKillMultiplier)) err(`economy.xpPerKillMultiplier: must be a number > 0 (got ${e.xpPerKillMultiplier})`);
     if (!e.interest || typeof e.interest !== "object" || !isBool(e.interest.enabled))
       err(`economy.interest.enabled: must be a boolean`);
+    else if (!isNonNegNum(e.interest.baseCap))
+      err(`economy.interest.baseCap: must be a number >= 0 (got ${e.interest.baseCap})`);
   }
 
   // ---------------- waveDefaults ----------------

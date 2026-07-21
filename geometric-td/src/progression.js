@@ -10,7 +10,7 @@
 
 import {
   endlessTrackFor, LOOT, SKILLS, SKILL_VALUES, SKILL_TIERS, TOWER_UPGRADES, TOWERS,
-  TOWER_SKILL_SPEC, TOWER_SKILL_LAYOUT, ECONOMY_SKILL_SPEC, ECONOMY_LAYOUT,
+  TOWER_SKILL_SPEC, TOWER_SKILL_LAYOUT, ECONOMY_SKILL_SPEC, ECONOMY_LAYOUT, ECONOMY,
 } from "./config.js";
 import { levelMilestonesFor, updateMilestoneResults } from "./milestones.js";
 import { loadSave, writeSave, clearSave } from "./save.js";
@@ -234,8 +234,13 @@ function ecoSum(key) {
 export function getInterestRate() {
   return ecoSum("eco_intrate");
 }
+// Cap = a data-driven base (economy.interest.baseCap) PLUS the owned Reserve
+// Cap boxes. The base makes Compound Yield pay out the moment it's bought —
+// without it, cap starts at 0 and min(interest, 0) zeroes the rate entirely
+// until Reserve Cap is also purchased. game.js still gates on rate > 0, so the
+// base never grants interest to a player who hasn't bought Compound Yield.
 export function getInterestCap() {
-  return ecoSum("eco_intcap");
+  return (ECONOMY.interest?.baseCap || 0) + ecoSum("eco_intcap");
 }
 
 // Account-wide shard-find multiplier (composes with per-tower gear shardFind).
