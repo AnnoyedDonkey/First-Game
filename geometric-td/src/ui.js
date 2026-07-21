@@ -131,6 +131,16 @@ function forwardWheel(overlay, list) {
   overlay.addEventListener(
     "wheel",
     (e) => {
+      // If the pointer is over a DIFFERENT scrollable region stacked on top
+      // of the list — e.g. an open bottom sheet like the TOWERS & GEAR GUIDE
+      // (#gear-sheet) — let that region scroll natively instead of hijacking
+      // the wheel to the (hidden) list behind it.
+      for (let node = e.target; node && node !== overlay; node = node.parentElement) {
+        if (node !== list && node.scrollHeight > node.clientHeight) {
+          const oy = getComputedStyle(node).overflowY;
+          if (oy === "auto" || oy === "scroll") return;
+        }
+      }
       list.scrollTop += e.deltaY;
       e.preventDefault();
     },
@@ -2140,7 +2150,10 @@ function layoutSkillTree(recenter) {
   svg.style.width = (vb.w * fit * skillZoom) + "px";
   svg.style.height = (vb.h * fit * skillZoom) + "px";
   if (recenter) {
-    pane.scrollLeft = Math.max(0, (svg.clientWidth - cw) / 2);
+    // Open on the LEFTMOST branch — the Laser tower — so the first tower the
+    // player sees is the Laser (the starting tower), not the middle of the
+    // tree that horizontal centering used to land on.
+    pane.scrollLeft = 0;
     pane.scrollTop = 0;
     skillScroll = { left: pane.scrollLeft, top: pane.scrollTop };
   } else {
