@@ -3105,7 +3105,7 @@ export const BALANCE = {
           "y": 3
         }
       ],
-      "bountyMult": 0.58,
+      "bountyMult": 0.52,
       "coreHealth": 12,
       "gridHeight": 12,
       "gridWidth": 8,
@@ -3143,7 +3143,7 @@ export const BALANCE = {
           "y": 6
         }
       ],
-      "startingMoney": 240,
+      "startingMoney": 220,
       "timeBetweenWaves": 5,
       "waves": [
         {
@@ -3252,7 +3252,7 @@ export const BALANCE = {
             {
               "count": 14,
               "healthMult": 13.8,
-              "spawnInterval": 0.26,
+              "spawnInterval": 0.21,
               "startDelay": 5,
               "type": "fast"
             }
@@ -3293,7 +3293,7 @@ export const BALANCE = {
             {
               "count": 16,
               "healthMult": 17.9,
-              "spawnInterval": 0.24,
+              "spawnInterval": 0.2,
               "startDelay": 10,
               "type": "fast"
             }
@@ -3353,7 +3353,7 @@ export const BALANCE = {
           "y": 2
         }
       ],
-      "bountyMult": 0.58,
+      "bountyMult": 0.52,
       "coreHealth": 10,
       "gridHeight": 12,
       "gridWidth": 8,
@@ -3395,7 +3395,7 @@ export const BALANCE = {
           "y": 11
         }
       ],
-      "startingMoney": 220,
+      "startingMoney": 205,
       "timeBetweenWaves": 5,
       "waves": [
         {
@@ -3490,7 +3490,7 @@ export const BALANCE = {
             {
               "count": 26,
               "healthMult": 13.3,
-              "spawnInterval": 0.2,
+              "spawnInterval": 0.16,
               "speedMult": 1.2,
               "type": "fast"
             },
@@ -3537,7 +3537,7 @@ export const BALANCE = {
             {
               "count": 16,
               "healthMult": 16.4,
-              "spawnInterval": 0.24,
+              "spawnInterval": 0.2,
               "startDelay": 10,
               "type": "fast"
             }
@@ -3596,7 +3596,7 @@ export const BALANCE = {
           "y": 9
         }
       ],
-      "bountyMult": 0.58,
+      "bountyMult": 0.52,
       "coreHealth": 10,
       "gridHeight": 12,
       "gridWidth": 8,
@@ -3634,7 +3634,7 @@ export const BALANCE = {
           "y": 11
         }
       ],
-      "startingMoney": 200,
+      "startingMoney": 190,
       "timeBetweenWaves": 5,
       "waves": [
         {
@@ -3710,7 +3710,7 @@ export const BALANCE = {
             {
               "count": 20,
               "healthMult": 14,
-              "spawnInterval": 0.24,
+              "spawnInterval": 0.2,
               "speedMult": 1.2,
               "startDelay": 3,
               "type": "fast"
@@ -3722,7 +3722,7 @@ export const BALANCE = {
             {
               "count": 30,
               "healthMult": 13.2,
-              "spawnInterval": 0.16,
+              "spawnInterval": 0.13,
               "speedMult": 1.3,
               "type": "fast"
             }
@@ -3739,7 +3739,7 @@ export const BALANCE = {
             {
               "count": 16,
               "healthMult": 13.5,
-              "spawnInterval": 0.24,
+              "spawnInterval": 0.2,
               "speedMult": 1.2,
               "startDelay": 4,
               "type": "fast"
@@ -3775,7 +3775,7 @@ export const BALANCE = {
             {
               "count": 22,
               "healthMult": 17.2,
-              "spawnInterval": 0.22,
+              "spawnInterval": 0.18,
               "speedMult": 1.25,
               "startDelay": 4,
               "type": "fast"
@@ -3801,7 +3801,7 @@ export const BALANCE = {
             {
               "count": 26,
               "healthMult": 18.5,
-              "spawnInterval": 0.2,
+              "spawnInterval": 0.16,
               "speedMult": 1.3,
               "startDelay": 4,
               "type": "fast"
@@ -3844,7 +3844,7 @@ export const BALANCE = {
           "y": 0
         }
       ],
-      "bountyMult": 0.58,
+      "bountyMult": 0.52,
       "coreHealth": 10,
       "gridHeight": 12,
       "gridWidth": 8,
@@ -3894,7 +3894,7 @@ export const BALANCE = {
           "y": 11
         }
       ],
-      "startingMoney": 240,
+      "startingMoney": 220,
       "timeBetweenWaves": 5,
       "waves": [
         {
@@ -3969,7 +3969,7 @@ export const BALANCE = {
             {
               "count": 26,
               "healthMult": 13.3,
-              "spawnInterval": 0.2,
+              "spawnInterval": 0.16,
               "speedMult": 1.2,
               "type": "fast"
             },
@@ -4027,7 +4027,7 @@ export const BALANCE = {
             {
               "count": 20,
               "healthMult": 16.9,
-              "spawnInterval": 0.24,
+              "spawnInterval": 0.2,
               "speedMult": 1.2,
               "startDelay": 4,
               "type": "fast"
@@ -4052,7 +4052,7 @@ export const BALANCE = {
             {
               "count": 18,
               "healthMult": 14.9,
-              "spawnInterval": 0.24,
+              "spawnInterval": 0.2,
               "speedMult": 1.25,
               "startDelay": 11,
               "type": "fast"
@@ -4112,7 +4112,7 @@ export const BALANCE = {
           "y": 10
         }
       ],
-      "bountyMult": 0.58,
+      "bountyMult": 0.52,
       "coreHealth": 12,
       "gridHeight": 12,
       "gridWidth": 8,
@@ -4154,7 +4154,7 @@ export const BALANCE = {
           "y": 5
         }
       ],
-      "startingMoney": 300,
+      "startingMoney": 270,
       "timeBetweenWaves": 5,
       "waves": [
         {
@@ -4229,7 +4229,7 @@ export const BALANCE = {
             {
               "count": 28,
               "healthMult": 15.2,
-              "spawnInterval": 0.18,
+              "spawnInterval": 0.15,
               "speedMult": 1.2,
               "type": "fast"
             },
@@ -4287,7 +4287,7 @@ export const BALANCE = {
             {
               "count": 20,
               "healthMult": 16.5,
-              "spawnInterval": 0.22,
+              "spawnInterval": 0.18,
               "speedMult": 1.25,
               "startDelay": 4,
               "type": "fast"
@@ -4329,7 +4329,7 @@ export const BALANCE = {
             {
               "count": 20,
               "healthMult": 20,
-              "spawnInterval": 0.22,
+              "spawnInterval": 0.18,
               "speedMult": 1.25,
               "startDelay": 11,
               "type": "fast"
@@ -4363,7 +4363,7 @@ export const BALANCE = {
         {
           "groups": [
             {
-              "count": 4,
+              "count": 5,
               "healthMult": 13.5,
               "spawnInterval": 5,
               "speedMult": 1.1,
@@ -4386,7 +4386,7 @@ export const BALANCE = {
             {
               "count": 18,
               "healthMult": 20.9,
-              "spawnInterval": 0.22,
+              "spawnInterval": 0.18,
               "speedMult": 1.3,
               "startDelay": 18,
               "type": "fast"

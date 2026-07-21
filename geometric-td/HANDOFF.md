@@ -4,25 +4,31 @@ Read this first when working on the project. Historical release detail lives
 in `docs/archive/HANDOFF_HISTORY_2026-07.md`; the original pre-cleanup
 handoff is preserved in Git at commit `2650204`.
 
-## Current state — 2026-07-18
+## Current state — 2026-07-21
 
 Geometric TD is a portrait, mobile-browser tower defense with a 15-level,
 three-world campaign; five tower classes; seven enemy types; RPG roster and
 mastery progression; skills; loot/equipment; campaign challenges; Endless;
 telemetry; and a GitHub Pages deployment.
 
-The current deployed build is `2026.07.19-1`. Baseline was the deliberately
+The current deployed build is `2026.07.19-9`. Baseline was the deliberately
 aggressive H1-H4 hard-mode pass (`2650204`, `2026.07.17-1`): a Pulse nerf plus
 World 1-3 wave and economy hardening. Player feedback then reported the campaign
-was too hard, so World 1 was softened back down in two steps: `2026.07.18-1`
-softened Level 2 (via the Balance Lab), and `2026.07.19-1` softened Levels 3-5.
-The L3-5 pass only lowered wave `healthMult` values (counts/types/spawn timing
-unchanged); it fixed a severe Level 3 overshoot (total wave HP 274k→38k, single
-basics were hitting ~1000 HP) and pulled down the Level 4/5 curves so World 1
-now ramps smoothly (~20k/34k/38k/54k/83k total wave HP across L1-L5). Worlds 2-3
-still carry the full H1-H4 hardening — **do not stack another global difficulty
-change on them before fresh feedback arrives.** Compare telemetry by
-`app_version`.
+was too hard, so difficulty was walked back world by world:
+- **World 1** softened in two steps — `2026.07.18-1` (Level 2 via the Balance
+  Lab) and `2026.07.19-1` (Levels 3-5, `healthMult` only). L3 fixed a severe
+  overshoot (total wave HP 274k→38k) and L4/L5 were pulled down so World 1 now
+  ramps smoothly (~20k/34k/38k/54k/83k across L1-L5).
+- **World 2** rescaled next (`2026.07.19-3` through `-9`, commits for L6-L10):
+  full wave-curve rebalances plus economy and regenerator-intro fixes. Latest
+  telemetry confirms this landed — L9/L10 now rate `just_right`.
+
+**World 3 (L11-L15) still carries the full H1-H4 hardening on the original wave
+curves, but the latest round (`2026.07.19-9`) rates all five levels `too_easy`**
+(L15 a flawless clear) — the hardening is not translating into felt difficulty
+now that the roster/economy sit where they do. World 3 is the current tuning
+target: make it a satisfying campaign finale, not another brick wall. Compare
+telemetry by `app_version`.
 
 The in-progress next build is the local-first Balance Lab. Read
 `BALANCE_LAB_PLAN.md`; phases L0-L7 define the data migration, local save API,
@@ -182,9 +188,10 @@ Balance Lab L0-L7 is complete; the legacy phase-by-phase entry below is retained
 for historical detail and its "L4 next" wording is superseded by this status.
 
 - **DONE - Balance Lab (L0-L7):** `BALANCE_LAB_PLAN.md`. All phases complete and verified: data/schema migration, the localhost-only save/restore API in `serve.ps1`, the editable `balance-lab.html` with revision history, and L7 QA/docs. Per-phase execution plans (L1-L7) and the L0-L2 migration probes/baselines are archived in `docs/archive/balance-lab/`. History is a single clean baseline; no player-facing change and nothing committed. Remaining step: a deliberate manual commit (workflow in `BALANCE_LAB_USAGE.md`).
-- **NEXT — feedback:** collect a new campaign replay against `2026.07.17-1`.
-  Compare ratings, core/leaks, remaining money, tower composition, and notes
-  against the pre-H1-H4 telemetry before another balance pass.
+- **NEXT — World 3 pass:** the `2026.07.19-9` round rates L11-L15 all
+  `too_easy` (see Current state). Retune World 3 into a real campaign finale.
+  Compare ratings, core/leaks, remaining money, and tower composition by
+  `app_version` after the pass.
 - **DEFERRED — Endless:** retune its ramp after campaign balance stabilizes.
 - **DEFERRED:** save export/import for iOS localStorage eviction; sound;
   additional tower classes (Tesla was the runner-up); pre-battle loadouts.
