@@ -314,11 +314,17 @@ button.hud-item {
 }
 
 /* Banner placement (tray/tile/wave-button spotlight steps): a compact
-   pill pinned near the top, out of the way of the highlighted element. */
+   pill pinned near the top, out of the way of the highlighted element.
+   Constrained between the left edge and #tutorial-skip's reserved corner
+   (instead of true 50% centering) so it can never grow into the skip
+   button regardless of step text length. */
 #tutorial-card.banner {
   top: calc(env(safe-area-inset-top) + 14px);
-  transform: translateX(-50%);
-  width: auto;
+  left: 12px;
+  right: 140px;
+  transform: none;
+  width: fit-content;
+  margin: 0 auto;
   padding: 9px 16px;
   border-color: var(--neon-yellow);
   box-shadow: 0 0 18px rgba(255, 226, 74, 0.3);
@@ -334,7 +340,9 @@ button.hud-item {
   color: var(--neon-yellow);
   font-size: 12px;
   letter-spacing: 1px;
-  white-space: nowrap;
+  /* Prefers one line, but the fit-content/right-constrained banner (above)
+     can wrap instead of overflowing into #tutorial-skip on narrow screens. */
+  white-space: normal;
 }
 
 #tutorial-card-cta {
@@ -1495,6 +1503,26 @@ button.hud-item {
 }
 .gear-bonus-line .src { color: var(--text-dim); font-size: 9px; letter-spacing: 1.5px; display: block; }
 .gear-guide-text { font-size: 11px; color: var(--text-dim); line-height: 1.6; margin-bottom: 12px; }
+
+/* Short scannable lines instead of one dense paragraph (the `?` guide's
+   top summary). Each item is its own row so the sheet reads as a list,
+   not a wall of text. */
+.gear-guide-list { margin-bottom: 14px; }
+.gear-guide-item {
+  display: flex;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--text-dim);
+  line-height: 1.45;
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.gear-guide-item:last-child { border-bottom: none; }
+.gear-guide-item::before {
+  content: "▸";
+  color: var(--neon-yellow);
+  flex-shrink: 0;
+}
 
 /* ---------- Store overlay (GEAR_UI_DESIGN.md U5) ----------
    Reuses the gear screen's tile grid + bottom-sheet components (same CSS

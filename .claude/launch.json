@@ -5,7 +5,8 @@
       "name": "td",
       "runtimeExecutable": "powershell",
       "runtimeArgs": ["-ExecutionPolicy", "Bypass", "-File", "geometric-td/serve.ps1"],
-      "port": 8420
+      "port": 8420,
+      "autoPort": true
     }
   ]
 }

@@ -1484,16 +1484,20 @@ function openTowerStatSheet(towerName) {
   document.getElementById("sheet-close").addEventListener("click", closeSheet);
 }
 
+const GEAR_GUIDE_LINES = [
+  "Level up towers for more damage, range, and fire rate.",
+  "Each class has a permanent SPECIALTY — once earned it sticks, even on a redeployed veteran.",
+  "Past level 5, XP still counts: every &#9733; MASTERY rank adds permanent damage.",
+  "&#9733;1 MASTERY unlocks new gear (gear equipped earlier keeps working below that).",
+  "Tap a name for its stat sheet, an empty slot to equip, or a filled slot to inspect.",
+];
+
 export function openGearHelpSheet() {
   el.gearSheet.innerHTML =
     `<div class="gear-sheet-title" style="color:var(--neon-yellow)">TOWERS &amp; GEAR GUIDE</div>` +
-    `<div class="gear-guide-text">Every level-up improves damage, range and fire rate — and each ` +
-    `class has a permanent SPECIALTY that follows its career-best level forever, even before ` +
-    `re-upgrading a redeployed veteran. Past level 5, XP keeps counting: every &#9733; MASTERY rank ` +
-    `earned is a permanent damage bonus — grinding earlier levels makes towers stronger. A tower ` +
-    `can't equip anything NEW until it reaches &#9733;1 MASTERY (gear already worn before that keeps ` +
-    `working). Tap a tower's name for its full stat sheet, an empty slot to equip from the stash, or ` +
-    `a filled slot to inspect or unequip.</div>` +
+    `<div class="gear-guide-list">` +
+    GEAR_GUIDE_LINES.map((line) => `<div class="gear-guide-item">${line}</div>`).join("") +
+    `</div>` +
     guideExtrasHtml() +
     `<div class="gear-sheet-actions"><button class="gear-sheet-btn" id="sheet-close">CLOSE</button></div>`;
   openSheet();
@@ -2621,7 +2625,14 @@ function renderTutorialStep() {
 onTutorialChange(renderTutorialStep);
 
 if (el.tutorialFreezeCatcher) {
-  el.tutorialFreezeCatcher.addEventListener("click", () => advanceTutorial());
+  // pointerdown (not click): the real placement tap that gates a step change
+  // is itself handled on pointerdown (input.js), and can synchronously make
+  // this catcher visible mid-gesture. Listening on click let that same tap's
+  // trailing click land on the now-visible catcher and instantly skip the
+  // very next freeze step; pointerdown can't retroactively hit an element
+  // that wasn't there when the gesture started, so only a genuinely new tap
+  // advances it.
+  el.tutorialFreezeCatcher.addEventListener("pointerdown", () => advanceTutorial());
 }
 if (el.tutorialSkip) {
   el.tutorialSkip.addEventListener("click", () => skipTutorial());
