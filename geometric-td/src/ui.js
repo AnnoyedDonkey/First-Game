@@ -1081,6 +1081,61 @@ function affixLabel(def, stat) {
   return ((def && def.name) || stat).replace(/ %| \+N$/, "");
 }
 
+const AFFIX_DESCRIPTIONS = {
+  range: "Increases the tower's targeting range.",
+  critChance: "Increases the chance that each hit is a critical hit.",
+  critDamage: "Increases the bonus damage dealt by critical hits.",
+  damage: "Increases all damage dealt by the tower.",
+  projSpeed: "Makes the tower's projectiles travel faster.",
+  pierce: "Adds to Pierce, allowing supported attacks to hit more enemies in a line.",
+  splash: "Increases the radius of the tower's explosions.",
+  fireRate: "Makes the tower attack more often.",
+  slowPotency: "Increases how much this Slow tower reduces enemy speed, up to the slow cap.",
+  slowDuration: "Increases how long this Slow tower's slowing effect lasts.",
+  overcharge: "Adds a chance for each attack to fire a free extra volley.",
+  xpGain: "Increases the career XP this tower receives from enemies it helps defeat.",
+  shardFind: "Increases the Shards earned from enemies this tower helps defeat.",
+  bounty: "Increases battle money earned when this tower lands the killing blow.",
+};
+
+function uniqueDescription(uniqueId) {
+  const minor = LOOT.gen.uniques.minor.find((u) => u.id === uniqueId);
+  switch (uniqueId) {
+    case "doubleShot": return `Gives this tower a +${minor.value}% chance to fire a free extra volley.`;
+    case "critEdge": return `Gives this tower +${minor.value}% critical-hit chance.`;
+    case "piercer": return `Adds +${minor.value} to this tower's Pierce stat.`;
+    case "vulnMark": return `Enemies slowed by this tower take +${minor.value}% damage from all sources for the duration of the slow.`;
+    case "prismLens": return `Shots split toward a second target for ${LOOT.combat.prismLensDamage}% damage.`;
+    case "entropyEmitter": return "Resisted hits deal full damage, ignoring the enemy's damage-type resistance.";
+    case "executionersArray": return `Deals +${LOOT.combat.executionDamage}% damage to enemies below ${LOOT.combat.executionHealthBelow}% health.`;
+    case "overflowCore": return `Every ${LOOT.combat.overflowEveryShots}th attack fires a free extra volley.`;
+    case "gravityWell": return "Slow attacks affect enemies near the target and drag them backward along the path.";
+    case "fractalWarhead": return `Explosions create ${LOOT.combat.fractalBomblets} secondary bomblets, each dealing ${LOOT.combat.fractalDamage}% of the main blast's damage.`;
+    case "cascadeRail": return `Adds +${LOOT.combat.cascadeBonusPierce} Pierce; each enemy pierced adds +${LOOT.combat.cascadeDamageRamp}% damage to the next enemy in line.`;
+    default: return "A special gear characteristic with a unique combat effect.";
+  }
+}
+
+function traitToggleHtml(label, kind, key) {
+  return `<button type="button" class="gear-trait-toggle" data-trait-kind="${kind}" data-trait-key="${key}" aria-expanded="false">` +
+    `<span>${escapeHtml(label)}</span><span class="gear-trait-arrow" aria-hidden="true">&#8250;</span></button>`;
+}
+
+function bindTraitDisclosures(root = el.gearSheet) {
+  root.querySelectorAll(".gear-trait-toggle").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const description = btn.dataset.traitKind === "unique"
+        ? uniqueDescription(btn.dataset.traitKey)
+        : AFFIX_DESCRIPTIONS[btn.dataset.traitKey] || "This characteristic improves the listed tower stat.";
+      const detail = btn.closest(".gear-affix").querySelector(".gear-trait-desc");
+      const opening = detail.classList.contains("hidden");
+      detail.textContent = description;
+      detail.classList.toggle("hidden", !opening);
+      btn.setAttribute("aria-expanded", String(opening));
+    });
+  });
+}
+
 // One line summarizing an item ("◈ Cascade Rail / Damage +28% / Projectile
 // Speed +31%"), for picker rows and gear-bonus lines.
 function itemAffixSummary(item) {
@@ -1101,13 +1156,17 @@ function itemAffixRowsHtml(item) {
   if (unique) {
     const cls = item.rarity === "singularity" ? "unique" : "uniqueP";
     const kind = item.rarity === "singularity" ? "UNIQUE" : "MINOR";
-    rows.push(`<div class="gear-affix ${cls}"><span>${kind}: ${escapeHtml(unique)}</span></div>`);
+    rows.push(`<div class="gear-affix ${cls}"><div class="gear-affix-main">` +
+      traitToggleHtml(`${kind}: ${unique}`, "unique", item.unique) +
+      `</div><div class="gear-trait-desc hidden"></div></div>`);
   }
   for (const a of item.affixes || []) {
     const def = affixDef(a.stat);
     rows.push(
-      `<div class="gear-affix"><span>${escapeHtml(affixLabel(def, a.stat))}</span>` +
-      `<span class="val">+${a.value}${def && def.int ? "" : "%"}</span></div>`
+      `<div class="gear-affix"><div class="gear-affix-main">` +
+      traitToggleHtml(affixLabel(def, a.stat), "affix", a.stat) +
+      `<span class="val">+${a.value}${def && def.int ? "" : "%"}</span>` +
+      `</div><div class="gear-trait-desc hidden"></div></div>`
     );
   }
   return `<div class="gear-affix-list">${rows.join("")}</div>`;
@@ -1245,7 +1304,9 @@ function openItemSheet({ stashId, towerName, slot }) {
   const needsConfirm = item.rarity === "prismatic" || item.rarity === "singularity";
   const sellVal = LOOT.gen.sellValues[item.rarity] || 0;
   const actionsHtml = equippedOn
-    ? `<div class="gear-sheet-actions"><button class="gear-sheet-btn" id="sheet-unequip">UNEQUIP</button></div>`
+    ? `<div class="gear-sheet-actions">` +
+      `<button class="gear-sheet-btn" id="sheet-replace">REPLACE</button>` +
+      `<button class="gear-sheet-btn" id="sheet-unequip">UNEQUIP</button></div>`
     : `<div class="gear-sheet-actions">` +
       `<button class="gear-sheet-btn" id="sheet-equip">EQUIP</button>` +
       `<button class="gear-sheet-btn sell" id="sheet-sell">SELL &#9670;${sellVal}</button>` +
@@ -1258,8 +1319,12 @@ function openItemSheet({ stashId, towerName, slot }) {
     itemAffixRowsHtml(item) +
     actionsHtml;
   openSheet();
+  bindTraitDisclosures();
 
   if (equippedOn) {
+    document.getElementById("sheet-replace").addEventListener("click", () => {
+      openPickerSheet(equippedOn.name, item.slot);
+    });
     document.getElementById("sheet-unequip").addEventListener("click", () => {
       unequipToStash(equippedOn.name, item.slot);
       closeSheet();
@@ -1294,6 +1359,7 @@ function openPendingItemSheet(itemId) {
     itemAffixRowsHtml(item) +
     `<div class="gear-sheet-actions"><button class="gear-sheet-btn sell" id="sheet-sell-pending">SELL &#9670;${sellVal}</button></div>`;
   openSheet();
+  bindTraitDisclosures();
   document.getElementById("sheet-sell-pending").addEventListener("click", () => {
     sellPendingItem(item.id);
     closeSheet();
@@ -1372,6 +1438,7 @@ function openPickerSheet(towerName, slot) {
   const rec = getProgress().roster.find((r) => r.name === towerName);
   if (!rec) return;
   const def = TOWERS[rec.type];
+  const current = normalizeGear(rec.gear)[slot];
   const candidates = getStash()
     .filter((it) => it.slot === slot && canEquipItem(rec, it).ok)
     .sort((a, b) => RARITY_ORDER.indexOf(a.rarity) - RARITY_ORDER.indexOf(b.rarity));
@@ -1390,7 +1457,7 @@ function openPickerSheet(towerName, slot) {
   el.gearSheet.innerHTML =
     `<div class="gear-sheet-title" style="color:${def.color}">` +
     `${slotGlyph(slot, def.color)} ${escapeHtml(rec.name)} &middot; ${SLOT_LABEL[slot]}</div>` +
-    `<div class="gear-sheet-sub">EMPTY SLOT &middot; PICK FROM STASH</div>` +
+    `<div class="gear-sheet-sub">${current ? "REPLACE EQUIPPED GEAR" : "EMPTY SLOT"} &middot; PICK FROM STASH</div>` +
     `<div class="gear-picker-label">${candidates.length ? "COMPATIBLE IN STASH" : "NOTHING COMPATIBLE"}</div>` +
     rows +
     `<div class="gear-sheet-actions" style="margin-top:6px"><button class="gear-sheet-btn danger" id="sheet-cancel">CANCEL</button></div>`;
@@ -1404,9 +1471,7 @@ function openPickerSheet(towerName, slot) {
         closeSheet();
         renderGearPanel();
       };
-      // The picker only opens on empty slots today, but guard the displacing
-      // case: if this slot is already filled, compare before swapping.
-      const current = normalizeGear(rec.gear)[slot];
+      // Filled slots always compare before swapping; empty slots equip directly.
       const incoming = candidates.find((c) => c.id === btn.dataset.equipItem);
       if (current && incoming) openCompareSheet(current, incoming, { onEquip: doEquip });
       else doEquip();
