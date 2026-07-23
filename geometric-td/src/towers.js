@@ -11,6 +11,7 @@ import { spawnPulseOrb, spawnRocket } from "./projectiles.js";
 import {
   getTowerDamageMult, getSlowDurationMult, getSlowPotencyMult, takeRosterUnit, isTowerUnlocked,
   getTowerLevelCap, getRailBeamLengthMult, getLaserFireRateMult, getPulseBlastRadiusMult,
+  getRocketBlastRadiusMult,
 } from "./progression.js";
 import { emitHitSparks } from "./particles.js";
 import {
@@ -110,12 +111,14 @@ function recomputeStats(tower, grid) {
       (1 + gs.fireRate / 100) *
       (tower.type === "laser" ? getLaserFireRateMult() : 1));
   if (def.splashRadius) {
+    const splashSkillMult = tower.type === "pulse" ? getPulseBlastRadiusMult()
+      : tower.type === "rocket" ? getRocketBlastRadiusMult() : 1;
     tower.splashRadius =
       def.splashRadius * grid.tileSize *
       Math.pow(1 + g.splashGrowth, lv) *
       Math.pow(1 + (spec.splashGrowth || 0), specLv) *
       (1 + gs.splash / 100) *
-      (tower.type === "pulse" ? getPulseBlastRadiusMult() : 1);
+      splashSkillMult;
   }
   if (def.slowPercent) {
     tower.slowPercent = Math.min(

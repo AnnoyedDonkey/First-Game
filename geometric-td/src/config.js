@@ -700,10 +700,11 @@ export const TOWER_SKILL_LAYOUT = BALANCE.skills.towerLayout;
 // progression.js exposes one getter per entry (e.g. getRailBeamLengthMult),
 // applied at its specific use site in towers.js — not every tower needs one.
 const TOWER_THIRD_BRANCH = {
-  railgun: { idPrefix: "railPen",    name: "Over-Penetration", desc: "Railgun beam length", icon: "pierce", valueKey: "railPen" },
-  slow:    { idPrefix: "slowPot",    name: "Slow Potency",     desc: "Slow Amount",         icon: "slow",   valueKey: "slowPot" },
-  laser:   { idPrefix: "laserRate",  name: "Rapid Fire",       desc: "Laser fire rate",     icon: "laser",  valueKey: "laserRate" },
-  pulse:   { idPrefix: "pulseBlast", name: "Blast Radius",     desc: "Pulse splash radius", icon: "pulse",  valueKey: "pulseBlast" },
+  railgun: { idPrefix: "railPen",     name: "Over-Penetration", desc: "Railgun beam length",  icon: "pierce", valueKey: "railPen" },
+  slow:    { idPrefix: "slowPot",     name: "Slow Potency",     desc: "Slow Amount",          icon: "slow",   valueKey: "slowPot" },
+  laser:   { idPrefix: "laserRate",   name: "Rapid Fire",       desc: "Laser fire rate",      icon: "laser",  valueKey: "laserRate" },
+  pulse:   { idPrefix: "pulseBlast",  name: "Blast Radius",     desc: "Pulse splash radius",  icon: "pulse",  valueKey: "pulseBlast" },
+  rocket:  { idPrefix: "rocketBlast", name: "Payload Yield",    desc: "Rocket splash radius", icon: "rocket", valueKey: "rocketBlast" },
 };
 
 // The MONEY branch: a head that forks into one sub-branch chain per economy

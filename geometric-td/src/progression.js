@@ -343,6 +343,11 @@ export function getPulseBlastRadiusMult() {
   return 1 + SKILL_VALUES.pulseBlast * ownedSkillCount("pulseBlast");
 }
 
+// The Rocket tower's third chain (Payload Yield) feeds splash-radius multiplier.
+export function getRocketBlastRadiusMult() {
+  return 1 + SKILL_VALUES.rocketBlast * ownedSkillCount("rocketBlast");
+}
+
 // ---------- Roster ----------
 
 // Best not-yet-deployed roster unit of a type (veterans first).

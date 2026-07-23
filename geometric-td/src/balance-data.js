@@ -4475,6 +4475,7 @@ export const BALANCE = {
       "laserRate": 0.1,
       "pulseBlast": 0.1,
       "railPen": 0.2,
+      "rocketBlast": 0.1,
       "slowPot": 0.1
     }
   },
