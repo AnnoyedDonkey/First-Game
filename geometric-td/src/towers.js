@@ -9,7 +9,7 @@ import { TOWERS, TOWER_UPGRADES, LOOT } from "./config.js";
 import { enemyPosition, damageEnemy, slowEnemy } from "./enemies.js";
 import { spawnPulseOrb, spawnRocket } from "./projectiles.js";
 import {
-  getTowerDamageMult, getSlowDurationMult, takeRosterUnit, isTowerUnlocked,
+  getTowerDamageMult, getSlowDurationMult, getSlowPotencyMult, takeRosterUnit, isTowerUnlocked,
   getTowerLevelCap, getRailBeamLengthMult,
 } from "./progression.js";
 import { emitHitSparks } from "./particles.js";
@@ -118,7 +118,7 @@ function recomputeStats(tower, grid) {
   if (def.slowPercent) {
     tower.slowPercent = Math.min(
       LOOT.combat.maxSlowPercent / 100,
-      def.slowPercent * (1 + gs.slowPotency / 100)
+      def.slowPercent * getSlowPotencyMult() * (1 + gs.slowPotency / 100)
     );
     tower.slowDuration =
       def.slowDuration * Math.pow(1 + g.slowGrowth, lv) *
@@ -177,7 +177,7 @@ export function careerStatsFor(rec) {
       Math.pow(1 + (spec.fireRateGrowth || 0), lv) *
       (1 + gs.fireRate / 100));
   const slowPercent = def.slowPercent != null
-    ? Math.min(LOOT.combat.maxSlowPercent / 100, def.slowPercent * (1 + gs.slowPotency / 100))
+    ? Math.min(LOOT.combat.maxSlowPercent / 100, def.slowPercent * getSlowPotencyMult() * (1 + gs.slowPotency / 100))
     : null;
   const slowDuration = def.slowDuration != null
     ? def.slowDuration * Math.pow(1 + g.slowGrowth, lv) *

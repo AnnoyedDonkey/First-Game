@@ -327,6 +327,12 @@ export function getSlowDurationMult() {
   return 1 + spec.damageStep * ownedSkillCount("slow_dmg");
 }
 
+// The Slow tower's third chain (Slow Potency) feeds slow-effect strength
+// (% speed reduction), same shape as getRailBeamLengthMult above.
+export function getSlowPotencyMult() {
+  return 1 + SKILL_VALUES.slowPot * ownedSkillCount("slowPot");
+}
+
 // ---------- Roster ----------
 
 // Best not-yet-deployed roster unit of a type (veterans first).

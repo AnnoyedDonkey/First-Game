@@ -4472,7 +4472,8 @@ export const BALANCE = {
     },
     "values": {
       "coreHealth": 5,
-      "railPen": 0.2
+      "railPen": 0.2,
+      "slowPot": 0.1
     }
   },
   "towerUpgrades": {
