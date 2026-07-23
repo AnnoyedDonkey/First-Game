@@ -2119,6 +2119,28 @@ function skillIconBody(icon, color) {
         `<circle cx="66" cy="66" r="9" ${s}/>`;
     case "cap": // capped reservoir bar
       return `<rect x="30" y="42" width="40" height="44" rx="4" ${s}/><line x1="20" y1="30" x2="80" y2="30" ${s}/>`;
+    case "damage": // 8-ray impact burst (shared by every tower's damage chain)
+      return `<line x1="66" y1="50" x2="90" y2="50" ${s}/><line x1="61.3" y1="61.3" x2="78.3" y2="78.3" ${s}/>` +
+        `<line x1="50" y1="66" x2="50" y2="90" ${s}/><line x1="38.7" y1="61.3" x2="21.7" y2="78.3" ${s}/>` +
+        `<line x1="34" y1="50" x2="10" y2="50" ${s}/><line x1="38.7" y1="38.7" x2="21.7" y2="21.7" ${s}/>` +
+        `<line x1="50" y1="34" x2="50" y2="10" ${s}/><line x1="61.3" y1="38.7" x2="78.3" y2="21.7" ${s}/>` +
+        dot(50, 50, 7);
+    case "haste": // lightning bolt (attack speed)
+      return `<polygon points="58,8 26,56 46,56 40,92 76,42 54,42" ${s}/>`;
+    case "duration": // hourglass + a "more time" plus badge
+      return `<polygon points="24,18 66,18 48,50 66,82 24,82 42,50" ${s}/>` +
+        `<line x1="78" y1="14" x2="78" y2="34" ${s}/><line x1="68" y1="24" x2="88" y2="24" ${s}/>`;
+    case "potency": // downward arrow driven into a floor (slow intensity)
+      return `<line x1="50" y1="12" x2="50" y2="60" ${s}/><polyline points="30,42 50,62 70,42" ${s}/>` +
+        `<line x1="22" y1="80" x2="78" y2="80" ${s}/>`;
+    case "overpen": // beam punching through TWO plates (over-penetration)
+      return `<line x1="8" y1="50" x2="92" y2="50" ${s}/><polyline points="70,32 96,50 70,68" ${s}/>` +
+        `<line x1="34" y1="22" x2="34" y2="78" stroke="${color}" fill="none" stroke-width="5" stroke-dasharray="6 6"/>` +
+        `<line x1="58" y1="22" x2="58" y2="78" stroke="${color}" fill="none" stroke-width="5" stroke-dasharray="6 6"/>`;
+    case "yield": // blast radius growing past its original edge
+      return `<circle cx="50" cy="50" r="16" ${s}/>` +
+        `<circle cx="50" cy="50" r="34" fill="none" stroke="${color}" stroke-width="5" stroke-dasharray="8 6"/>` +
+        dot(50, 50, 6);
     default:
       return dot(50, 50, 10);
   }

@@ -700,11 +700,11 @@ export const TOWER_SKILL_LAYOUT = BALANCE.skills.towerLayout;
 // progression.js exposes one getter per entry (e.g. getRailBeamLengthMult),
 // applied at its specific use site in towers.js — not every tower needs one.
 const TOWER_THIRD_BRANCH = {
-  railgun: { idPrefix: "railPen",     name: "Over-Penetration", desc: "Railgun beam length",  icon: "pierce", valueKey: "railPen" },
-  slow:    { idPrefix: "slowPot",     name: "Slow Potency",     desc: "Slow Amount",          icon: "slow",   valueKey: "slowPot" },
-  laser:   { idPrefix: "laserRate",   name: "Rapid Fire",       desc: "Laser fire rate",      icon: "laser",  valueKey: "laserRate" },
-  pulse:   { idPrefix: "pulseBlast",  name: "Blast Radius",     desc: "Pulse splash radius",  icon: "pulse",  valueKey: "pulseBlast" },
-  rocket:  { idPrefix: "rocketBlast", name: "Payload Yield",    desc: "Rocket splash radius", icon: "rocket", valueKey: "rocketBlast" },
+  railgun: { idPrefix: "railPen",     name: "Over-Penetration", desc: "Railgun beam length",  icon: "overpen", valueKey: "railPen" },
+  slow:    { idPrefix: "slowPot",     name: "Slow Potency",     desc: "Slow Amount",          icon: "potency", valueKey: "slowPot" },
+  laser:   { idPrefix: "laserRate",   name: "Rapid Fire",       desc: "Laser fire rate",      icon: "haste",   valueKey: "laserRate" },
+  pulse:   { idPrefix: "pulseBlast",  name: "Blast Radius",     desc: "Pulse splash radius",  icon: "pulse",   valueKey: "pulseBlast" },
+  rocket:  { idPrefix: "rocketBlast", name: "Payload Yield",    desc: "Rocket splash radius", icon: "yield",   valueKey: "rocketBlast" },
 };
 
 // The MONEY branch: a head that forks into one sub-branch chain per economy
@@ -764,7 +764,7 @@ function buildSkillGraph() {
         desc: statWord, branch: t, color: spec.color, parent: p,
         pos: { x: dmgX, y: HEAD_Y + i * ROW }, maxTier: 1, costs: [branchCost(i - 1)],
         kind: "pct", tower: t, dmg: true, step: spec.damageStep, chainLabel: pctLabel,
-        icon: spec.icon });
+        icon: statWord });
       p = `${t}_dmg${i}`;
     }
     p = `${t}_root`;
