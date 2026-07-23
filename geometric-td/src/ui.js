@@ -2177,14 +2177,22 @@ function buildSkillTreeSvg() {
     const available = !owned && isSkillUnlocked(id);
     const affordable = available && points >= (nextTierCost(id) || Infinity);
     const rx = x - R, ry = y - R, s = R * 2;
-    const iconSize = 12;
 
-    // Node contents: a short value label ("+10%", "L6") for the chain boxes,
-    // otherwise the vector icon. Fill flips to dark ink on a solid maxed tile.
-    const content = (fill) => node.chainLabel
-      ? `<text x="${x}" y="${y + 2.2}" text-anchor="middle" font-weight="700" ` +
-        `font-size="${node.chainLabel.length > 3 ? 5.4 : 7}" fill="${fill}">${node.chainLabel}</text>`
-      : skillIcon(node.icon, fill, x, y, iconSize);
+    // Node contents: the vector icon, plus (when the node has a value worth
+    // showing) a small tag near the box's bottom edge — "+10%", "L6", or a
+    // tier badge like "3/5" for true multi-tier nodes (Core Plating). Both
+    // stay INSIDE the box footprint so tight vertical chains (ROW=22 vs an
+    // 18-unit box) never risk the tag colliding with the next box down.
+    const tag = node.chainLabel || (max > 1 ? `${tier}/${max}` : "");
+    const content = (fill) => {
+      const iconY = tag ? y - 2.6 : y;
+      let out = skillIcon(node.icon, fill, x, iconY, tag ? 10 : 12);
+      if (tag) {
+        out += `<text x="${x}" y="${y + R - 2}" text-anchor="middle" font-weight="700" ` +
+          `font-size="${tag.length > 3 ? 3.6 : 4.2}" fill="${fill}">${tag}</text>`;
+      }
+      return out;
+    };
 
     // Soft outer glow behind the tile (only lit states) — mimics the gear
     // tile's box-shadow without fattening the crisp border above.
@@ -2213,10 +2221,6 @@ function buildSkillTreeSvg() {
         content("rgba(140,160,190,.6)");
     }
 
-    // Multi-tier progress badge (e.g. 3/5) below the node.
-    if (max > 1) {
-      svg += `<text x="${x}" y="${y + R + 5.4}" text-anchor="middle" font-size="4.6" fill="${owned ? color : "rgba(150,170,200,.6)"}">${tier}/${max}</text>`;
-    }
     // Branch-head label above the top-row heads (LASER / PULSE / MONEY / …).
     if (node.headLabel) {
       svg += `<text x="${x}" y="${y - R - 3}" text-anchor="middle" font-size="4.8" font-weight="700" letter-spacing="0.4" fill="${color}" opacity=".92">${node.headLabel}</text>`;

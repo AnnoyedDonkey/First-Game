@@ -763,7 +763,8 @@ function buildSkillGraph() {
       put(`${t}_dmg${i}`, { name: `${spec.name} ${statWord === "duration" ? "Duration" : "Damage"} ${i}`,
         desc: statWord, branch: t, color: spec.color, parent: p,
         pos: { x: dmgX, y: HEAD_Y + i * ROW }, maxTier: 1, costs: [branchCost(i - 1)],
-        kind: "pct", tower: t, dmg: true, step: spec.damageStep, chainLabel: pctLabel });
+        kind: "pct", tower: t, dmg: true, step: spec.damageStep, chainLabel: pctLabel,
+        icon: spec.icon });
       p = `${t}_dmg${i}`;
     }
     p = `${t}_root`;
@@ -809,7 +810,7 @@ function buildSkillGraph() {
       put(`${key}${i}`, { name: `${spec.name} ${i}`, desc: spec.desc, branch: "economy",
         color: SKILL_BRANCH_COLORS.economy, parent: p, pos: { x: cx, y: HEAD_Y + i * ROW },
         maxTier: 1, costs: [branchCost(i - 1)], kind: spec.kind, step: spec.step,
-        eco: key, chainLabel: label });
+        eco: key, chainLabel: label, icon: spec.icon });
       p = `${key}${i}`;
     }
   });
