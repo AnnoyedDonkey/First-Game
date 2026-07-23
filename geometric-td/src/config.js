@@ -676,11 +676,10 @@ export const SKILL_BRANCH_COLORS = {
 // into a DAMAGE chain (every box adds `damageStep` to that tower's offensive
 // stat — damage, or slow duration for the Slow tower) and a LEVEL chain (every
 // box raises that tower's own level cap by one, 6..10). Tower-specific perks
-// hang off a third chain under the branch head: Railgun gets Over-Penetration
-// (beam length), Slow gets Slow Potency (slow %). Tune the step sizes / chain
-// lengths / costs here; positions are computed in buildSkillGraph.
-// Presentation-only (name, color, icon, stat); damageStep comes from
-// BALANCE.skills.tower below.
+// hang off a THIRD chain under the branch head — see TOWER_THIRD_BRANCH below.
+// Tune the step sizes / chain lengths / costs here; positions are computed
+// in buildSkillGraph. Presentation-only (name, color, icon, stat); damageStep
+// comes from BALANCE.skills.tower below.
 const TOWER_SKILL_PRESENTATION = {
   laser:   { name: "Laser",   color: "#35e0ff", icon: "laser",  stat: "damage" },
   pulse:   { name: "Pulse",   color: "#ff3fd4", icon: "pulse",  stat: "damage" },
@@ -693,6 +692,19 @@ for (const id of Object.keys(TOWER_SKILL_PRESENTATION)) {
   TOWER_SKILL_SPEC[id] = { ...TOWER_SKILL_PRESENTATION[id], ...BALANCE.skills.tower[id] };
 }
 export const TOWER_SKILL_LAYOUT = BALANCE.skills.towerLayout;
+
+// Optional THIRD chain per tower (down-right of the level chain): a single
+// extra perk stat, one increment per box, same shape as the damage/level
+// chains. `idPrefix` names the SKILLS/save-state ids (e.g. "railPen3");
+// `valueKey` reads its per-box step from BALANCE.skills.values below.
+// progression.js exposes one getter per entry (e.g. getRailBeamLengthMult),
+// applied at its specific use site in towers.js — not every tower needs one.
+const TOWER_THIRD_BRANCH = {
+  railgun: { idPrefix: "railPen",    name: "Over-Penetration", desc: "Railgun beam length", icon: "pierce", valueKey: "railPen" },
+  slow:    { idPrefix: "slowPot",    name: "Slow Potency",     desc: "Slow Amount",         icon: "slow",   valueKey: "slowPot" },
+  laser:   { idPrefix: "laserRate",  name: "Rapid Fire",       desc: "Laser fire rate",     icon: "laser",  valueKey: "laserRate" },
+  pulse:   { idPrefix: "pulseBlast", name: "Blast Radius",     desc: "Pulse splash radius", icon: "pulse",  valueKey: "pulseBlast" },
+};
 
 // The MONEY branch: a head that forks into one sub-branch chain per economy
 // stat (each box is one increment, e.g. +10% money). progression.js sums the
@@ -734,7 +746,8 @@ function buildSkillGraph() {
 
   // ----- Tower branches (laser, pulse, slow, railgun, rocket) -----
   for (const [t, spec] of Object.entries(TOWER_SKILL_SPEC)) {
-    const hasThirdBranch = t === "railgun" || t === "slow";
+    const thirdSpec = TOWER_THIRD_BRANCH[t];
+    const hasThirdBranch = !!thirdSpec;
     const dmgX = x, lvlX = x + COL, penX = x + COL * 2;
     const headX = x + (hasThirdBranch ? COL : COL / 2);
     put(`${t}_root`, { name: `${spec.name} Core`, desc: `unlock ${spec.name} upgrades`, branch: t,
@@ -762,28 +775,19 @@ function buildSkillGraph() {
         icon: "level", chainLabel: `L${lvl}` });
       p = `${t}_lvl${lvl}`;
     }
-    // Railgun/Slow-only perk: a third chain directly under the branch head.
-    // Railgun gets beam-length (Over-Penetration); Slow gets slow-percent
-    // (Slow Potency) — each increment is its own box, matching the other
-    // branches. Slow Duration already lives in the dmg chain above (statWord).
-    if (hasThirdBranch) {
+    // Optional third chain directly under the branch head (TOWER_THIRD_BRANCH
+    // above) — each increment is its own box, matching the other branches.
+    if (thirdSpec) {
+      const step = BALANCE.skills.values[thirdSpec.valueKey];
+      const chainLabel = `+${Math.round(step * 100)}%`;
       p = `${t}_root`;
       for (let i = 1; i <= SKILL_TIERS.maxTier; i++) {
-        if (t === "railgun") {
-          put(`railPen${i}`, { name: `Over-Penetration ${i}`, desc: "Railgun beam length", branch: t,
-            color: spec.color, parent: p, pos: { x: penX, y: HEAD_Y + i * ROW },
-            maxTier: 1, costs: [branchCost(i - 1)], icon: "pierce", kind: "mult", tower: t,
-            step: BALANCE.skills.values.railPen,
-            chainLabel: `+${Math.round(BALANCE.skills.values.railPen * 100)}%` });
-          p = `railPen${i}`;
-        } else {
-          put(`slowPot${i}`, { name: `Slow Potency ${i}`, desc: "Slow Amount", branch: t,
-            color: spec.color, parent: p, pos: { x: penX, y: HEAD_Y + i * ROW },
-            maxTier: 1, costs: [branchCost(i - 1)], icon: "slow", kind: "mult", tower: t,
-            step: BALANCE.skills.values.slowPot,
-            chainLabel: `+${Math.round(BALANCE.skills.values.slowPot * 100)}%` });
-          p = `slowPot${i}`;
-        }
+        const id = `${thirdSpec.idPrefix}${i}`;
+        put(id, { name: `${thirdSpec.name} ${i}`, desc: thirdSpec.desc, branch: t,
+          color: spec.color, parent: p, pos: { x: penX, y: HEAD_Y + i * ROW },
+          maxTier: 1, costs: [branchCost(i - 1)], icon: thirdSpec.icon, kind: "mult", tower: t,
+          step, chainLabel });
+        p = id;
       }
     }
     x = (hasThirdBranch ? penX : lvlX) + COL + BRANCH_GAP;

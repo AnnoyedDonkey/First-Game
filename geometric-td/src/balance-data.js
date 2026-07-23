@@ -4472,6 +4472,8 @@ export const BALANCE = {
     },
     "values": {
       "coreHealth": 5,
+      "laserRate": 0.1,
+      "pulseBlast": 0.1,
       "railPen": 0.2,
       "slowPot": 0.1
     }

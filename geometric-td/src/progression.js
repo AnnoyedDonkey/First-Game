@@ -333,6 +333,16 @@ export function getSlowPotencyMult() {
   return 1 + SKILL_VALUES.slowPot * ownedSkillCount("slowPot");
 }
 
+// The Laser tower's third chain (Rapid Fire) feeds fire-rate multiplier.
+export function getLaserFireRateMult() {
+  return 1 + SKILL_VALUES.laserRate * ownedSkillCount("laserRate");
+}
+
+// The Pulse tower's third chain (Blast Radius) feeds splash-radius multiplier.
+export function getPulseBlastRadiusMult() {
+  return 1 + SKILL_VALUES.pulseBlast * ownedSkillCount("pulseBlast");
+}
+
 // ---------- Roster ----------
 
 // Best not-yet-deployed roster unit of a type (veterans first).

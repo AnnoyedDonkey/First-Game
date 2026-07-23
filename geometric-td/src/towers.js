@@ -10,7 +10,7 @@ import { enemyPosition, damageEnemy, slowEnemy } from "./enemies.js";
 import { spawnPulseOrb, spawnRocket } from "./projectiles.js";
 import {
   getTowerDamageMult, getSlowDurationMult, getSlowPotencyMult, takeRosterUnit, isTowerUnlocked,
-  getTowerLevelCap, getRailBeamLengthMult,
+  getTowerLevelCap, getRailBeamLengthMult, getLaserFireRateMult, getPulseBlastRadiusMult,
 } from "./progression.js";
 import { emitHitSparks } from "./particles.js";
 import {
@@ -107,13 +107,15 @@ function recomputeStats(tower, grid) {
     def.baseFireRate /
     (Math.pow(1 + g.fireRateGrowth, lv) *
       Math.pow(1 + (spec.fireRateGrowth || 0), specLv) *
-      (1 + gs.fireRate / 100));
+      (1 + gs.fireRate / 100) *
+      (tower.type === "laser" ? getLaserFireRateMult() : 1));
   if (def.splashRadius) {
     tower.splashRadius =
       def.splashRadius * grid.tileSize *
       Math.pow(1 + g.splashGrowth, lv) *
       Math.pow(1 + (spec.splashGrowth || 0), specLv) *
-      (1 + gs.splash / 100);
+      (1 + gs.splash / 100) *
+      (tower.type === "pulse" ? getPulseBlastRadiusMult() : 1);
   }
   if (def.slowPercent) {
     tower.slowPercent = Math.min(
@@ -175,7 +177,8 @@ export function careerStatsFor(rec) {
     def.baseFireRate /
     (Math.pow(1 + g.fireRateGrowth, lv) *
       Math.pow(1 + (spec.fireRateGrowth || 0), lv) *
-      (1 + gs.fireRate / 100));
+      (1 + gs.fireRate / 100) *
+      (rec.type === "laser" ? getLaserFireRateMult() : 1));
   const slowPercent = def.slowPercent != null
     ? Math.min(LOOT.combat.maxSlowPercent / 100, def.slowPercent * getSlowPotencyMult() * (1 + gs.slowPotency / 100))
     : null;

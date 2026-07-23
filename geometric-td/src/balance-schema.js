@@ -413,6 +413,8 @@ export function validate(data) {
       if (!isNonNegNum(s.values.coreHealth)) err(`skills.values.coreHealth: must be a number >= 0 (got ${s.values.coreHealth})`);
       if (!isNonNegNum(s.values.railPen)) err(`skills.values.railPen: must be a number >= 0 (got ${s.values.railPen})`);
       if (!isNonNegNum(s.values.slowPot)) err(`skills.values.slowPot: must be a number >= 0 (got ${s.values.slowPot})`);
+      if (!isNonNegNum(s.values.laserRate)) err(`skills.values.laserRate: must be a number >= 0 (got ${s.values.laserRate})`);
+      if (!isNonNegNum(s.values.pulseBlast)) err(`skills.values.pulseBlast: must be a number >= 0 (got ${s.values.pulseBlast})`);
     }
   }
 
