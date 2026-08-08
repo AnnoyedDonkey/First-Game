@@ -4584,7 +4584,7 @@ export const BALANCE = {
         }
       ],
       "startingMoney": 200,
-      "wormholes": [{"enter":{"x":6,"y":3},"exit":{"x":3,"y":7},"types":["splitter","splitling"]}],
+      "wormholes": [{"enter":{"x":6,"y":0},"exit":{"x":6,"y":3},"types":["splitter","splitling"]}],
       "waves": [
  {"groups":[{"type":"splitter","count":18,"healthMult":7,"spawnInterval":0.5},{"type":"basic","count":12,"healthMult":8,"spawnInterval":0.5,"startDelay":3}]},
  {"groups":[{"type":"splitter","count":22,"healthMult":9,"spawnInterval":0.42},{"type":"splitling","count":22,"healthMult":7,"spawnInterval":0.28,"startDelay":3}]},
