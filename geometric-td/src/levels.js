@@ -206,6 +206,71 @@ const LEVEL_PRESENTATION = {
       pathFlow: "rgba(255, 255, 255, 0.8)",
     },
   },
+  level_016: {
+    name: "Photon Weave",
+    desc: "A blinding serpentine packed edge to edge. Fast movers pour through — cheap Lasers, planted thick, are made for this.",
+    palette: {
+      background: "#14100a",
+      gridLine: "rgba(255, 214, 120, 0.08)",
+      gridLineMajor: "rgba(255, 214, 120, 0.16)",
+      buildableDot: "rgba(255, 226, 140, 0.22)",
+      pathChannel: "rgba(40, 32, 10, 0.9)",
+      pathEdge: "rgba(255, 214, 120, 0.55)",
+      pathFlow: "rgba(255, 240, 180, 0.7)",
+    },
+  },
+  level_017: {
+    name: "Tar Pit",
+    desc: "Three long lanes, and everything sprints. Slow it or watch it blow past — a chilled enemy is a dead enemy, and vulnerable too.",
+    palette: {
+      background: "#0a0e14",
+      gridLine: "rgba(200, 220, 255, 0.08)",
+      gridLineMajor: "rgba(200, 220, 255, 0.16)",
+      buildableDot: "rgba(220, 235, 255, 0.22)",
+      pathChannel: "rgba(16, 26, 40, 0.9)",
+      pathEdge: "rgba(200, 220, 255, 0.55)",
+      pathFlow: "rgba(235, 245, 255, 0.72)",
+    },
+  },
+  level_018: {
+    name: "Splinter Cluster",
+    desc: "A spiral that packs the swarm tight at every turn. Splitters burst into clusters — Pulse splash turns one shot into a chain reaction.",
+    palette: {
+      background: "#100a16",
+      gridLine: "rgba(210, 180, 255, 0.08)",
+      gridLineMajor: "rgba(210, 180, 255, 0.16)",
+      buildableDot: "rgba(225, 200, 255, 0.22)",
+      pathChannel: "rgba(30, 18, 44, 0.9)",
+      pathEdge: "rgba(210, 180, 255, 0.55)",
+      pathFlow: "rgba(235, 215, 255, 0.7)",
+    },
+  },
+  level_019: {
+    name: "Rail Yard",
+    desc: "Four long, dead-straight lanes. Line a Railgun down a column and its shot spears the whole file — armor and regen alike fold to rail.",
+    palette: {
+      background: "#0c0e10",
+      gridLine: "rgba(200, 210, 220, 0.09)",
+      gridLineMajor: "rgba(200, 210, 220, 0.18)",
+      buildableDot: "rgba(220, 228, 236, 0.24)",
+      pathChannel: "rgba(22, 26, 30, 0.9)",
+      pathEdge: "rgba(205, 215, 225, 0.6)",
+      pathFlow: "rgba(235, 242, 248, 0.74)",
+    },
+  },
+  level_020: {
+    name: "No Man's Land",
+    desc: "The track vanishes into a sealed core no ground tower can touch. Only the Rocket's reach crosses the void — and the void is full of bosses.",
+    palette: {
+      background: "#12100a",
+      gridLine: "rgba(255, 235, 170, 0.10)",
+      gridLineMajor: "rgba(255, 245, 210, 0.20)",
+      buildableDot: "rgba(255, 240, 190, 0.26)",
+      pathChannel: "rgba(34, 28, 12, 0.9)",
+      pathEdge: "rgba(255, 235, 170, 0.6)",
+      pathFlow: "rgba(255, 250, 225, 0.8)",
+    },
+  },
 };
 
 // Explicit campaign order — the array order LEVELS/game code relies on.
@@ -215,6 +280,7 @@ const LEVEL_ID_ORDER = [
   "level_001", "level_002", "level_003", "level_004", "level_005",
   "level_006", "level_007", "level_008", "level_009", "level_010",
   "level_011", "level_012", "level_013", "level_014", "level_015",
+  "level_016", "level_017", "level_018", "level_019", "level_020",
 ];
 
 // Merge BALANCE.levels[id] (numbers/structure) with LEVEL_PRESENTATION[id]
@@ -302,9 +368,22 @@ const WORLD_PRESENTATION = {
       { x: 64, y: 104 },
     ],
   },
+  world_4: {
+    name: "SINGULARITY",
+    accent: "#ffd76a",
+    accent2: "#f2f4ff",
+    boardStyle: "prism",
+    nodePos: [
+      { x: 50, y: 14 },
+      { x: 24, y: 40 },
+      { x: 70, y: 60 },
+      { x: 30, y: 88 },
+      { x: 62, y: 112 },
+    ],
+  },
 };
 
-const WORLD_ID_ORDER = ["world_1", "world_2", "world_3"];
+const WORLD_ID_ORDER = ["world_1", "world_2", "world_3", "world_4"];
 
 function buildWorld(id) {
   const pres = WORLD_PRESENTATION[id];

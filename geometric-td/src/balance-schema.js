@@ -20,7 +20,7 @@
 
 export const SCHEMA_VERSION = 1;
 
-// The 15 campaign level ids, literal (L1 must not import levels.js — see
+// The 20 campaign level ids, literal (L1 must not import levels.js — see
 // BALANCE_LAB_L1_PLAN.md Step 2). Used only to validate that references
 // like `endlessRewards.tracksByLevel` / `levelMilestones` keys point at a
 // real level. L2 can swap this for a derived value once levels.js is
@@ -30,6 +30,7 @@ export const KNOWN_LEVEL_IDS = [
   "level_001", "level_002", "level_003", "level_004", "level_005",
   "level_006", "level_007", "level_008", "level_009", "level_010",
   "level_011", "level_012", "level_013", "level_014", "level_015",
+  "level_016", "level_017", "level_018", "level_019", "level_020",
 ];
 
 const DAMAGE_TYPES = new Set(["energy", "pulse", "control", "rail", "blast"]);
