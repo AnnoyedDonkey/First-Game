@@ -4517,7 +4517,7 @@
         }
       ],
       "startingMoney": 210,
-      "fields": [{"tiles":[{"x":2,"y":2},{"x":2,"y":3},{"x":2,"y":4}],"speedMult":1.7},{"tiles":[{"x":2,"y":6},{"x":2,"y":7},{"x":2,"y":8},{"x":2,"y":9}],"speedMult":0.45}],
+      "fields": [{"tiles":[{"x":2,"y":2},{"x":2,"y":3},{"x":2,"y":4}],"speedMult":1.7},{"tiles":[{"x":4,"y":4},{"x":4,"y":5},{"x":4,"y":6},{"x":4,"y":7}],"speedMult":0.45}],
       "waves": [
  {"groups":[{"type":"fast","count":16,"healthMult":8,"spawnInterval":0.5},{"type":"armored","count":6,"healthMult":6,"spawnInterval":0.9,"startDelay":4}]},
  {"groups":[{"type":"fast","count":20,"healthMult":9,"spawnInterval":0.45,"speedMult":1.15},{"type":"armored","count":10,"healthMult":7,"spawnInterval":0.8,"startDelay":3}]},
