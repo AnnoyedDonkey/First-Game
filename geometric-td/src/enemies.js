@@ -66,6 +66,38 @@ export function updateEnemies(game, dt) {
       }
     }
 
+    // Wormholes: crossing an `enter` distance snaps the enemy forward to the
+    // paired `exit`, carrying the overshoot so movement stays smooth. Each
+    // portal fires at most once per enemy (e._warped), and only while between
+    // enter and exit — so children spawned past the exit never warp backward.
+    const holes = grid.wormholes;
+    if (holes && holes.length) {
+      for (let wi = 0; wi < holes.length; wi++) {
+        const wh = holes[wi];
+        if (wh.enterDist < 0 || wh.exitDist < 0 || wh.exitDist <= wh.enterDist) continue;
+        if (
+          e.distance >= wh.enterDist &&
+          e.distance < wh.exitDist &&
+          !(e._warped && e._warped.has(wi))
+        ) {
+          (e._warped ||= new Set()).add(wi);
+          const overshoot = e.distance - wh.enterDist;
+          e.distance = wh.exitDist + overshoot;
+          const w = VFX.wormhole;
+          for (const pos of [wh.enterPos, wh.exitPos]) {
+            game.springGrid.applyShock(
+              pos.x, pos.y, grid.tileSize * VFX.warp.shockRadiusTiles, w.flashShock
+            );
+            game.effects.push({
+              kind: "ring", x: pos.x, y: pos.y, color: w.color,
+              radius: grid.tileSize * 0.7, ttl: w.flashTtl, maxTtl: w.flashTtl,
+            });
+          }
+          break; // at most one warp per enemy per frame
+        }
+      }
+    }
+
     if (e.distance >= grid.totalPathLength) {
       e.alive = false;
       leaked.push(e);

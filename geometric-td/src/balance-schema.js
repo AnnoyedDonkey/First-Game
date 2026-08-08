@@ -499,6 +499,24 @@ export function validate(data) {
         }
       }
 
+      // ---- wormholes (optional): paired portals that teleport an enemy
+      // from `enter` to `exit` along the path. Both ends must lie on the path.
+      if (lvl.wormholes !== undefined) {
+        if (!Array.isArray(lvl.wormholes)) {
+          err(`${p}.wormholes: must be an array`);
+        } else {
+          lvl.wormholes.forEach((wh, i) => {
+            const whp = `${p}.wormholes[${i}]`;
+            if (!wh || typeof wh !== "object") { err(`${whp}: not an object`); return; }
+            for (const end of ["enter", "exit"]) {
+              const t = wh[end];
+              if (!inBounds(t, lvl)) { err(`${whp}.${end}: tile out of bounds (${t && t.x},${t && t.y})`); continue; }
+              if (path && !path.has(`${t.x},${t.y}`)) err(`${whp}.${end}: tile (${t.x},${t.y}) is not on the path`);
+            }
+          });
+        }
+      }
+
       // ---- waves / groups ----
       if (!Array.isArray(lvl.waves) || lvl.waves.length === 0) {
         err(`${p}.waves: must be a non-empty array`);

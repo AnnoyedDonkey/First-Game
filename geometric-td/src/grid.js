@@ -52,6 +52,28 @@ export function createGridModel(level, tileSize) {
     segmentStarts.push(totalPathLength);
   }
 
+  // Wormholes: paired portals that teleport an enemy from `enter` to `exit`
+  // along the path. Consecutive path tiles are one tileSize apart, so a tile's
+  // distance is (its index in pathTiles) * tileSize. First occurrence wins if
+  // the path crosses itself. Both ends are validated on-path by balance-schema.
+  const tileDist = (tx, ty) => {
+    const i = pathTiles.findIndex((t) => t.x === tx && t.y === ty);
+    return i < 0 ? -1 : i * tileSize;
+  };
+  const wormholes = (level.wormholes || []).map((wh) => {
+    const enterDist = tileDist(wh.enter.x, wh.enter.y);
+    const exitDist = tileDist(wh.exit.x, wh.exit.y);
+    if (enterDist < 0 || exitDist < 0) {
+      console.error(`[grid] wormhole end not on path: ${JSON.stringify(wh)}`);
+    }
+    return {
+      enterDist,
+      exitDist,
+      enterPos: { x: (wh.enter.x + 0.5) * tileSize, y: (wh.enter.y + 0.5) * tileSize },
+      exitPos: { x: (wh.exit.x + 0.5) * tileSize, y: (wh.exit.y + 0.5) * tileSize },
+    };
+  });
+
   return {
     width: level.gridWidth,
     height: level.gridHeight,
@@ -60,6 +82,7 @@ export function createGridModel(level, tileSize) {
     pathPoints,
     segmentStarts,
     totalPathLength,
+    wormholes,
 
     isInside(x, y) {
       return x >= 0 && y >= 0 && x < level.gridWidth && y < level.gridHeight;

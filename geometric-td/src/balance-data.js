@@ -4469,6 +4469,7 @@ export const BALANCE = {
         }
       ],
       "startingMoney": 180,
+      "wormholes": [{"enter":{"x":5,"y":5},"exit":{"x":2,"y":7}}],
       "waves": [
  {"groups":[{"type":"fast","count":26,"healthMult":10,"spawnInterval":0.45}]},
  {"groups":[{"type":"fast","count":34,"healthMult":12,"spawnInterval":0.4},{"type":"basic","count":14,"healthMult":12,"spawnInterval":0.45,"startDelay":3}]},
@@ -4583,6 +4584,7 @@ export const BALANCE = {
         }
       ],
       "startingMoney": 200,
+      "wormholes": [{"enter":{"x":6,"y":3},"exit":{"x":3,"y":7}}],
       "waves": [
  {"groups":[{"type":"splitter","count":18,"healthMult":7,"spawnInterval":0.5},{"type":"basic","count":12,"healthMult":8,"spawnInterval":0.5,"startDelay":3}]},
  {"groups":[{"type":"splitter","count":22,"healthMult":9,"spawnInterval":0.42},{"type":"splitling","count":22,"healthMult":7,"spawnInterval":0.28,"startDelay":3}]},

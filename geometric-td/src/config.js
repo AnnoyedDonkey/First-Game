@@ -635,6 +635,17 @@ export const VFX = {
     leakShock: 320,        // the core "flinches" when damaged
     shockRadiusTiles: 2.0, // impulse falloff radius
   },
+
+  // Wormholes: paired path portals that teleport an enemy from `enter` to
+  // `exit` (level data `wormholes: [{enter:{x,y}, exit:{x,y}}]`). Enemy
+  // movement in enemies.js; portal rendering in renderer.js drawWormholes.
+  wormhole: {
+    color: "#c060ff",       // singularity violet — enter/exit rings + warp flash
+    ringRadiusTiles: 0.46,  // portal sprite radius as a fraction of a tile
+    spinRate: 1.6,          // radians/sec the portal rings rotate
+    flashTtl: 0.45,         // seconds of the warp burst at both ends
+    flashShock: 220,        // spring-grid impulse when an enemy warps
+  },
 };
 
 // Polygon sides for each enemy shape (renderer + shard explosions).

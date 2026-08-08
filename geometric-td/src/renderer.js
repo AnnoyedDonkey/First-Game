@@ -285,6 +285,7 @@ export function render(ctx, game, time, uiState = {}) {
   drawPath(ctx, grid, time);
   drawBlockedTiles(ctx, grid);
   drawPortal(ctx, grid, time);
+  drawWormholes(ctx, grid, time);
   drawCore(ctx, game, time);
   drawPlacementPreview(ctx, game, uiState);
   drawTowers(ctx, game, uiState);
@@ -511,6 +512,33 @@ function drawPortal(ctx, grid, time) {
     ctx.rotate(dir * time * 0.8);
     ctx.strokeRect(-r, -r, r * 2, r * 2);
     ctx.restore();
+  }
+  ctx.restore();
+}
+
+// Wormholes: paired path portals (config VFX.wormhole). Each end is a ring
+// with two counter-rotating triangles — a violet "singularity" swirl. Enemies
+// crossing the enter end are teleported to the exit end (see enemies.js).
+function drawWormholes(ctx, grid, time) {
+  const holes = grid.wormholes;
+  if (!holes || !holes.length) return;
+  const w = VFX.wormhole;
+  const r = grid.tileSize * w.ringRadiusTiles;
+  ctx.save();
+  ctx.strokeStyle = w.color;
+  ctx.shadowColor = w.color;
+  ctx.shadowBlur = 12;
+  ctx.lineWidth = 1.6;
+  for (const wh of holes) {
+    for (const p of [wh.enterPos, wh.exitPos]) {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+      ctx.stroke();
+      for (const dir of [1, -1]) {
+        drawPolygon(ctx, p.x, p.y, r * 0.6, 3, dir * time * w.spinRate);
+        ctx.stroke();
+      }
+    }
   }
   ctx.restore();
 }
