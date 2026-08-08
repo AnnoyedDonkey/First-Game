@@ -4464,10 +4464,10 @@
         }
       ],
       "startingMoney": 180,
-      "wormholes": [{"enter":{"x":5,"y":5},"exit":{"x":2,"y":7},"types":["fast"]}],
+      "wormholes": [{"enter":{"x":6,"y":1},"exit":{"x":1,"y":5},"types":["fast"]}],
       "waves": [
- {"groups":[{"type":"fast","count":26,"healthMult":10,"spawnInterval":0.45}]},
- {"groups":[{"type":"fast","count":34,"healthMult":12,"spawnInterval":0.4},{"type":"basic","count":14,"healthMult":12,"spawnInterval":0.45,"startDelay":3}]},
+ {"groups":[{"type":"basic","count":26,"healthMult":6,"spawnInterval":0.45}]},
+ {"groups":[{"type":"basic","count":32,"healthMult":8,"spawnInterval":0.4},{"type":"armored","count":6,"healthMult":7,"spawnInterval":0.6,"startDelay":3}]},
  {"groups":[{"type":"fast","count":44,"healthMult":14,"spawnInterval":0.32,"speedMult":1.15}]},
  {"groups":[{"type":"basic","count":28,"healthMult":18,"spawnInterval":0.4},{"type":"fast","count":34,"healthMult":14,"spawnInterval":0.32,"startDelay":3}]},
  {"groups":[{"type":"boss","count":1,"healthMult":26},{"type":"fast","count":38,"healthMult":16,"spawnInterval":0.32,"startDelay":2}]},
