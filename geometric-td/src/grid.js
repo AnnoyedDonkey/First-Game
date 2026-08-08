@@ -90,6 +90,20 @@ export function createGridModel(level, tileSize) {
     }
   }
 
+  // Conduit build tiles: per-tile tower buffs, flattened like fields.
+  const conduitMap = new Map();
+  const conduitTiles = [];
+  for (const c of level.conduits || []) {
+    const damageMult = c.damageMult ?? 1;
+    const rangeMult = c.rangeMult ?? 1;
+    const fireRateMult = c.fireRateMult ?? 1;
+    for (const t of c.tiles || []) {
+      const k = key(t.x, t.y);
+      conduitMap.set(k, { damageMult, rangeMult, fireRateMult });
+      conduitTiles.push({ x: t.x, y: t.y, damageMult, rangeMult, fireRateMult });
+    }
+  }
+
   return {
     width: level.gridWidth,
     height: level.gridHeight,
@@ -102,6 +116,10 @@ export function createGridModel(level, tileSize) {
     fieldTiles,
     fieldAt(x, y) {
       return fieldMap.get(key(x, y)) || null;
+    },
+    conduitTiles,
+    conduitAt(x, y) {
+      return conduitMap.get(key(x, y)) || null;
     },
 
     isInside(x, y) {

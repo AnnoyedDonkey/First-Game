@@ -661,6 +661,18 @@ export const VFX = {
     edgeAlpha: 0.5,         // tile outline alpha
     pulseRate: 2.2,         // radians/sec the wash pulses
   },
+
+  // Conduit build tiles: a tower placed here gains the conduit's multipliers
+  // (level data `conduits: [{tiles, damageMult?, rangeMult?, fireRateMult?}]`).
+  // Buff applied in towers.js recomputeStats; node drawn by renderer.js
+  // drawConduits; a tap explains it (ui.js).
+  conduit: {
+    color: "#3affc0",        // energized mint-green power node
+    fillAlpha: 0.18,
+    edgeAlpha: 0.6,
+    pulseRate: 3.0,
+    nodeRadiusTiles: 0.3,
+  },
 };
 
 // Polygon sides for each enemy shape (renderer + shard explosions).

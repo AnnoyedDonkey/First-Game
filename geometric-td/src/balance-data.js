@@ -4470,6 +4470,7 @@ export const BALANCE = {
       ],
       "startingMoney": 180,
       "wormholes": [{"enter":{"x":6,"y":1},"exit":{"x":1,"y":5},"types":["fast"]}],
+      "conduits": [{"tiles":[{"x":3,"y":4}],"damageMult":1.5}],
       "waves": [
  {"groups":[{"type":"basic","count":26,"healthMult":6,"spawnInterval":0.45}]},
  {"groups":[{"type":"basic","count":32,"healthMult":8,"spawnInterval":0.4},{"type":"armored","count":6,"healthMult":7,"spawnInterval":0.6,"startDelay":3}]},

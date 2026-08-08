@@ -285,6 +285,7 @@ export function render(ctx, game, time, uiState = {}) {
   drawPath(ctx, grid, time);
   drawBlockedTiles(ctx, grid);
   drawFields(ctx, grid, time);
+  drawConduits(ctx, grid, time);
   drawPortal(ctx, grid, time);
   drawWormholes(ctx, grid, time);
   drawCore(ctx, game, time);
@@ -546,6 +547,31 @@ function drawFields(ctx, grid, time) {
     ctx.strokeStyle = col;
     ctx.lineWidth = 1.4;
     ctx.strokeRect(x + 2, y + 2, ts - 4, ts - 4);
+  }
+  ctx.restore();
+}
+
+// Conduit build tiles: a pulsing hexagonal power node marking a tile that
+// buffs the tower placed on it (config VFX.conduit). Drawn before towers so a
+// deployed tower sits on top of its node. A tap explains the exact buff (ui.js).
+function drawConduits(ctx, grid, time) {
+  const tiles = grid.conduitTiles;
+  if (!tiles || !tiles.length) return;
+  const ts = grid.tileSize;
+  const k = VFX.conduit;
+  const pulse = 0.7 + 0.3 * (0.5 + 0.5 * Math.sin(time * k.pulseRate));
+  ctx.save();
+  ctx.strokeStyle = k.color;
+  ctx.fillStyle = k.color;
+  for (const c of tiles) {
+    const cx = (c.x + 0.5) * ts;
+    const cy = (c.y + 0.5) * ts;
+    ctx.globalAlpha = k.fillAlpha * pulse;
+    ctx.fillRect(c.x * ts + 3, c.y * ts + 3, ts - 6, ts - 6);
+    ctx.globalAlpha = k.edgeAlpha;
+    ctx.lineWidth = 1.6;
+    drawPolygon(ctx, cx, cy, ts * k.nodeRadiusTiles, 6, time * 0.6);
+    ctx.stroke();
   }
   ctx.restore();
 }

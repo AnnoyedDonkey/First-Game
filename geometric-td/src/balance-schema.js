@@ -552,6 +552,37 @@ export function validate(data) {
         }
       }
 
+      // ---- conduits (optional): BUILDABLE tiles that buff a tower placed on
+      // them (damageMult / rangeMult / fireRateMult). Must be buildable (not
+      // on the path, not blocked); at least one multiplier required.
+      if (lvl.conduits !== undefined) {
+        if (!Array.isArray(lvl.conduits)) {
+          err(`${p}.conduits: must be an array`);
+        } else {
+          const blockedSet = new Set(
+            (Array.isArray(lvl.blockedTiles) ? lvl.blockedTiles : []).map((b) => `${b.x},${b.y}`)
+          );
+          lvl.conduits.forEach((c, i) => {
+            const cp = `${p}.conduits[${i}]`;
+            if (!c || typeof c !== "object") { err(`${cp}: not an object`); return; }
+            if (!Array.isArray(c.tiles) || c.tiles.length === 0) {
+              err(`${cp}.tiles: must be a non-empty array`);
+            } else {
+              for (const t of c.tiles) {
+                if (!inBounds(t, lvl)) { err(`${cp}.tiles: tile out of bounds (${t && t.x},${t && t.y})`); continue; }
+                const k = `${t.x},${t.y}`;
+                if (path && path.has(k)) err(`${cp}.tiles: tile (${k}) is on the path (must be buildable)`);
+                if (blockedSet.has(k)) err(`${cp}.tiles: tile (${k}) is blocked (must be buildable)`);
+              }
+            }
+            for (const m of ["damageMult", "rangeMult", "fireRateMult"])
+              if (c[m] !== undefined && !isPosNum(c[m])) err(`${cp}.${m}: must be a number > 0 (got ${c[m]})`);
+            if (c.damageMult === undefined && c.rangeMult === undefined && c.fireRateMult === undefined)
+              err(`${cp}: must set at least one of damageMult/rangeMult/fireRateMult`);
+          });
+        }
+      }
+
       // ---- waves / groups ----
       if (!Array.isArray(lvl.waves) || lvl.waves.length === 0) {
         err(`${p}.waves: must be a non-empty array`);

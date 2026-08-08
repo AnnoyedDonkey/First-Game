@@ -2743,6 +2743,14 @@ function describeWormhole(wh) {
   return `WORMHOLE — teleports ${names} enemies along the path`;
 }
 
+function describeConduit(c) {
+  const parts = [];
+  if (c.damageMult > 1) parts.push(`+${Math.round((c.damageMult - 1) * 100)}% damage`);
+  if (c.rangeMult > 1) parts.push(`+${Math.round((c.rangeMult - 1) * 100)}% range`);
+  if (c.fireRateMult > 1) parts.push(`+${Math.round((c.fireRateMult - 1) * 100)}% fire rate`);
+  return `CONDUIT — a tower built here gets ${parts.join(", ") || "a bonus"}`;
+}
+
 export function maybeShowTileInfo(game, x, y) {
   if (!game || !game.grid) return false;
   const grid = game.grid;
@@ -2757,6 +2765,8 @@ export function maybeShowTileInfo(game, x, y) {
   }
   const f = grid.fieldAt(x, y);
   if (f) { showMilestoneToast(describeField(f)); return true; }
+  const c = grid.conduitAt && grid.conduitAt(x, y);
+  if (c) { showMilestoneToast(describeConduit(c)); return true; }
   return false;
 }
 

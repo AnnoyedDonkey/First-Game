@@ -307,6 +307,7 @@ function buildLevel(id) {
   level.blockedTiles = data.blockedTiles;
   if (data.wormholes !== undefined) level.wormholes = data.wormholes;
   if (data.fields !== undefined) level.fields = data.fields;
+  if (data.conduits !== undefined) level.conduits = data.conduits;
   level.waves = data.waves;
   return level;
 }

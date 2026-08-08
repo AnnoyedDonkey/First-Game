@@ -145,6 +145,16 @@ function recomputeStats(tower, grid) {
   tower.xpGainMult = 1 + gs.xpGain / 100;
   tower.shardFindMult = 1 + gs.shardFind / 100;
   tower.bountyMult = 1 + gs.bounty / 100;
+
+  // Conduit build tile: a tower standing on one gains its multipliers. Applied
+  // last so it scales the fully-computed stats; recomputeStats runs on every
+  // build/upgrade/skill change, so this stays correct without extra tracking.
+  const conduit = grid.conduitAt && grid.conduitAt(tower.tileX, tower.tileY);
+  if (conduit) {
+    tower.damage *= conduit.damageMult;
+    tower.range *= conduit.rangeMult;
+    tower.fireInterval /= conduit.fireRateMult;
+  }
 }
 
 // Re-exported for the existing UI imports; implementation lives beside the
