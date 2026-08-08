@@ -4518,7 +4518,8 @@
         }
       ],
       "startingMoney": 210,
-      "fields": [{"tiles":[{"x":2,"y":2},{"x":2,"y":3},{"x":2,"y":4}],"speedMult":1.7},{"tiles":[{"x":4,"y":4},{"x":4,"y":5},{"x":4,"y":6},{"x":4,"y":7}],"speedMult":0.45}],
+      "fields": [{"tiles":[{"x":2,"y":2},{"x":2,"y":3},{"x":2,"y":4}],"speedMult":1.7},{"tiles":[{"x":4,"y":4},{"x":4,"y":5},{"x":4,"y":6},{"x":4,"y":7}],"speedMult":0.45},{"tiles":[{"x":6,"y":8},{"x":6,"y":9},{"x":6,"y":10}],"damageMult":0.6}],
+      "conduits": [{"tiles":[{"x":1,"y":6}],"damageMult":1.5}],
       "waves": [
  {"groups":[{"type":"fast","count":16,"healthMult":8,"spawnInterval":0.5},{"type":"armored","count":6,"healthMult":6,"spawnInterval":0.9,"startDelay":4}],"healthMult":2},
  {"groups":[{"type":"fast","count":20,"healthMult":9,"spawnInterval":0.45,"speedMult":1.15},{"type":"armored","count":10,"healthMult":7,"spawnInterval":0.8,"startDelay":3}],"healthMult":2},
@@ -4582,6 +4583,8 @@
       ],
       "startingMoney": 200,
       "wormholes": [{"enter":{"x":6,"y":0},"exit":{"x":6,"y":3},"types":["splitter","splitling"]}],
+      "fields": [{"tiles":[{"x":7,"y":4},{"x":7,"y":5},{"x":7,"y":6}],"speedMult":1.6}],
+      "conduits": [{"tiles":[{"x":4,"y":7}],"damageMult":1.5}],
       "waves": [
  {"groups":[{"type":"splitter","count":18,"healthMult":7,"spawnInterval":0.5},{"type":"basic","count":12,"healthMult":8,"spawnInterval":0.5,"startDelay":3}]},
  {"groups":[{"type":"splitter","count":22,"healthMult":9,"spawnInterval":0.42},{"type":"splitling","count":22,"healthMult":7,"spawnInterval":0.28,"startDelay":3}]},
@@ -4640,6 +4643,8 @@
         }
       ],
       "startingMoney": 240,
+      "fields": [{"tiles":[{"x":4,"y":5},{"x":4,"y":6},{"x":4,"y":7}],"speedMult":1.6}],
+      "conduits": [{"tiles":[{"x":3,"y":5}],"fireRateMult":1.5}],
       "waves": [
  {"groups":[{"type":"armored","count":14,"healthMult":9,"spawnInterval":0.6}]},
  {"groups":[{"type":"regenerator","count":12,"healthMult":9,"spawnInterval":0.62},{"type":"armored","count":12,"healthMult":9,"spawnInterval":0.6,"startDelay":4}]},
@@ -4900,6 +4905,8 @@
         }
       ],
       "startingMoney": 260,
+      "fields": [{"tiles":[{"x":6,"y":5},{"x":6,"y":6},{"x":6,"y":7}],"damageMult":0.6}],
+      "conduits": [{"tiles":[{"x":5,"y":1}],"damageMult":1.5}],
       "waves": [
  {"groups":[{"type":"splitter","count":10,"healthMult":6,"spawnInterval":0.55},{"type":"basic","count":10,"healthMult":6,"spawnInterval":0.5,"startDelay":3}]},
  {"groups":[{"type":"splitter","count":14,"healthMult":8,"spawnInterval":0.5},{"type":"boss","count":1,"healthMult":12,"startDelay":4}]},
