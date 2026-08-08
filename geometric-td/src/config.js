@@ -646,6 +646,21 @@ export const VFX = {
     flashTtl: 0.45,         // seconds of the warp burst at both ends
     flashShock: 220,        // spring-grid impulse when an enemy warps
   },
+
+  // Special "field" tiles that alter enemies passing over them (level data
+  // `fields: [{tiles, speedMult?, damageMult?}]`). speedPad = faster, tar =
+  // slower; weak = takes more damage, shield = takes less. Rendered by
+  // renderer.js drawFields; movement/damage applied in enemies.js. Colors are
+  // chosen by which effect dominates (see fieldLook in renderer.js).
+  field: {
+    padColor: "#ff8a3c",    // speed pad — warm orange (danger: go fast)
+    tarColor: "#4aa8ff",    // tar / slow field — cool blue (safe: kill zone)
+    weakColor: "#ff4a5e",   // vulnerability — red (hit them here)
+    shieldColor: "#8a94a8", // shield — grey (can't hurt them here)
+    fillAlpha: 0.16,        // tile wash alpha
+    edgeAlpha: 0.5,         // tile outline alpha
+    pulseRate: 2.2,         // radians/sec the wash pulses
+  },
 };
 
 // Polygon sides for each enemy shape (renderer + shard explosions).

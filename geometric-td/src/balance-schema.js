@@ -527,6 +527,31 @@ export function validate(data) {
         }
       }
 
+      // ---- fields (optional): zones of path tiles that alter enemies passing
+      // over them. speedMult scales movement (>1 pad, <1 tar); damageMult
+      // scales damage taken (>1 vulnerable, <1 shielded). At least one required.
+      if (lvl.fields !== undefined) {
+        if (!Array.isArray(lvl.fields)) {
+          err(`${p}.fields: must be an array`);
+        } else {
+          lvl.fields.forEach((f, i) => {
+            const fp = `${p}.fields[${i}]`;
+            if (!f || typeof f !== "object") { err(`${fp}: not an object`); return; }
+            if (!Array.isArray(f.tiles) || f.tiles.length === 0) {
+              err(`${fp}.tiles: must be a non-empty array`);
+            } else {
+              for (const t of f.tiles) {
+                if (!inBounds(t, lvl)) { err(`${fp}.tiles: tile out of bounds (${t && t.x},${t && t.y})`); continue; }
+                if (path && !path.has(`${t.x},${t.y}`)) err(`${fp}.tiles: tile (${t.x},${t.y}) is not on the path`);
+              }
+            }
+            if (f.speedMult !== undefined && !isPosNum(f.speedMult)) err(`${fp}.speedMult: must be a number > 0 (got ${f.speedMult})`);
+            if (f.damageMult !== undefined && !isPosNum(f.damageMult)) err(`${fp}.damageMult: must be a number > 0 (got ${f.damageMult})`);
+            if (f.speedMult === undefined && f.damageMult === undefined) err(`${fp}: must set speedMult and/or damageMult`);
+          });
+        }
+      }
+
       // ---- waves / groups ----
       if (!Array.isArray(lvl.waves) || lvl.waves.length === 0) {
         err(`${p}.waves: must be a non-empty array`);

@@ -2723,6 +2723,43 @@ export function showMilestoneToast(text) {
   if (!toastActive) runNextToast();
 }
 
+// ---- Special-tile tooltip ----
+// Tapping a wormhole portal or a field tile (with nothing armed and no tower
+// there) explains what it does, reusing the milestone toast banner.
+function describeField(f) {
+  const parts = [];
+  let label = "FORCE FIELD";
+  if (f.speedMult > 1) { label = "SPEED PAD"; parts.push(`enemies move ${Math.round((f.speedMult - 1) * 100)}% faster`); }
+  else if (f.speedMult < 1) { label = "TAR FIELD"; parts.push(`enemies move ${Math.round((1 - f.speedMult) * 100)}% slower`); }
+  if (f.damageMult > 1) { if (label === "FORCE FIELD") label = "WEAK ZONE"; parts.push(`they take ${Math.round((f.damageMult - 1) * 100)}% more damage`); }
+  else if (f.damageMult < 1) { if (label === "FORCE FIELD") label = "SHIELD ZONE"; parts.push(`they take ${Math.round((1 - f.damageMult) * 100)}% less damage`); }
+  return `${label} — ${parts.join(", ")} here`;
+}
+
+function describeWormhole(wh) {
+  const names = wh.types
+    ? wh.types.map((t) => (ENEMIES[t] && ENEMIES[t].name) || t).join(" & ")
+    : "all";
+  return `WORMHOLE — teleports ${names} enemies along the path`;
+}
+
+export function maybeShowTileInfo(game, x, y) {
+  if (!game || !game.grid) return false;
+  const grid = game.grid;
+  const ts = grid.tileSize;
+  for (const wh of grid.wormholes || []) {
+    for (const pos of [wh.enterPos, wh.exitPos]) {
+      if (Math.floor(pos.x / ts) === x && Math.floor(pos.y / ts) === y) {
+        showMilestoneToast(describeWormhole(wh));
+        return true;
+      }
+    }
+  }
+  const f = grid.fieldAt(x, y);
+  if (f) { showMilestoneToast(describeField(f)); return true; }
+  return false;
+}
+
 function runNextToast() {
   const t = el.milestoneToast;
   if (!t || toastQueue.length === 0) { toastActive = false; return; }

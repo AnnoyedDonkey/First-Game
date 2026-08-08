@@ -75,6 +75,21 @@ export function createGridModel(level, tileSize) {
     };
   });
 
+  // Field tiles: per-tile speed/damage multipliers for enemies passing over.
+  // Authored as zones (shared multipliers); flattened to a per-tile map for
+  // O(1) lookup during movement/damage, plus a flat list for the renderer.
+  const fieldMap = new Map();
+  const fieldTiles = [];
+  for (const f of level.fields || []) {
+    const speedMult = f.speedMult ?? 1;
+    const damageMult = f.damageMult ?? 1;
+    for (const t of f.tiles || []) {
+      const k = key(t.x, t.y);
+      fieldMap.set(k, { speedMult, damageMult });
+      fieldTiles.push({ x: t.x, y: t.y, speedMult, damageMult });
+    }
+  }
+
   return {
     width: level.gridWidth,
     height: level.gridHeight,
@@ -84,6 +99,10 @@ export function createGridModel(level, tileSize) {
     segmentStarts,
     totalPathLength,
     wormholes,
+    fieldTiles,
+    fieldAt(x, y) {
+      return fieldMap.get(key(x, y)) || null;
+    },
 
     isInside(x, y) {
       return x >= 0 && y >= 0 && x < level.gridWidth && y < level.gridHeight;

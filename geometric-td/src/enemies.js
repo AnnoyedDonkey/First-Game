@@ -49,7 +49,13 @@ export function updateEnemies(game, dt) {
     if (!e.alive) continue;
 
     const slow = game.time < e.slowUntil ? e.slowFactor : 1;
-    e.distance += e.speedTilesPerSec * slow * grid.tileSize * dt;
+    // Field tile under the enemy right now: speed pad / tar scales movement;
+    // weak / shield is stashed for damageEnemy to read this frame.
+    const fpos = grid.positionOnPath(e.distance);
+    const field = grid.fieldAt(Math.floor(fpos.x / grid.tileSize), Math.floor(fpos.y / grid.tileSize));
+    e._fieldDmg = field ? field.damageMult : 1;
+    const fieldSpeed = field ? field.speedMult : 1;
+    e.distance += e.speedTilesPerSec * slow * fieldSpeed * grid.tileSize * dt;
     if (e.hitFlash > 0) e.hitFlash -= dt;
 
     // Regenerators heal while alive (and pulse a soft ring).
@@ -198,6 +204,9 @@ export function damageEnemy(game, enemy, sourceTower, amount) {
   let vulnMult = game.time < enemy.vulnUntil ? enemy.vulnMult : 1;
   if (game.time < (enemy.gearVulnUntil || 0)) vulnMult += enemy.gearVulnBonus || 0;
   dmg *= vulnMult;
+  // Field tiles: a weak zone (damageMult > 1) or shield zone (< 1) under the
+  // enemy right now, refreshed each frame in updateEnemies.
+  dmg *= enemy._fieldDmg || 1;
 
   enemy.health -= dmg;
   enemy.hitFlash = 0.1;

@@ -284,6 +284,7 @@ export function render(ctx, game, time, uiState = {}) {
   drawWarpGrid(ctx, game);
   drawPath(ctx, grid, time);
   drawBlockedTiles(ctx, grid);
+  drawFields(ctx, grid, time);
   drawPortal(ctx, grid, time);
   drawWormholes(ctx, grid, time);
   drawCore(ctx, game, time);
@@ -512,6 +513,39 @@ function drawPortal(ctx, grid, time) {
     ctx.rotate(dir * time * 0.8);
     ctx.strokeRect(-r, -r, r * 2, r * 2);
     ctx.restore();
+  }
+  ctx.restore();
+}
+
+// Field tiles: a tinted, gently pulsing wash + outline on each special path
+// tile, color-coded by its dominant effect (config VFX.field). A tap shows a
+// tooltip (ui.js) explaining the exact numbers.
+export function fieldColor(f) {
+  const k = VFX.field;
+  if (f.speedMult > 1) return k.padColor;
+  if (f.speedMult < 1) return k.tarColor;
+  if (f.damageMult > 1) return k.weakColor;
+  if (f.damageMult < 1) return k.shieldColor;
+  return k.tarColor;
+}
+function drawFields(ctx, grid, time) {
+  const tiles = grid.fieldTiles;
+  if (!tiles || !tiles.length) return;
+  const ts = grid.tileSize;
+  const k = VFX.field;
+  const pulse = 0.75 + 0.25 * (0.5 + 0.5 * Math.sin(time * k.pulseRate));
+  ctx.save();
+  for (const f of tiles) {
+    const col = fieldColor(f);
+    const x = f.x * ts;
+    const y = f.y * ts;
+    ctx.globalAlpha = k.fillAlpha * pulse;
+    ctx.fillStyle = col;
+    ctx.fillRect(x + 2, y + 2, ts - 4, ts - 4);
+    ctx.globalAlpha = k.edgeAlpha;
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 1.4;
+    ctx.strokeRect(x + 2, y + 2, ts - 4, ts - 4);
   }
   ctx.restore();
 }

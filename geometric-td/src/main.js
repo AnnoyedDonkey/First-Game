@@ -21,7 +21,7 @@ import {
   updateUpgradePanel, onUpgradeButtonTap, onSellButtonTap,
   initSkillTree, showLevelSelect, openSkillTree, hideOverlay,
   initSpeedControls, openTowerGuide, onExitButtonTap, openLeaderboard,
-  openGearPanel, showMilestoneToast, updateTutorialOverlay,
+  openGearPanel, showMilestoneToast, updateTutorialOverlay, maybeShowTileInfo,
 } from "./ui.js";
 import { submitScore, isEnabled as lbEnabled } from "./leaderboard.js";
 import {
@@ -202,8 +202,10 @@ bindCanvasInput(canvas, {
       }
       // Stay armed after success so you can place several in a row.
     } else {
-      // No type armed: tap selects/deselects an existing tower.
+      // No type armed: tap selects/deselects an existing tower. Tapping a
+      // special tile (wormhole / field) with no tower there explains it.
       uiState.selectedTower = towerAt(game, x, y);
+      if (!uiState.selectedTower) maybeShowTileInfo(game, x, y);
     }
   },
   onHover(p) {
