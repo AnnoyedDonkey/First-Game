@@ -4418,7 +4418,7 @@ export const BALANCE = {
     },
     "level_016": {
       "blockedTiles": [],
-      "bountyMult": 0.45,
+      "bountyMult": 0.38,
       "coreHealth": 12,
       "gridHeight": 12,
       "gridWidth": 8,
@@ -4470,16 +4470,16 @@ export const BALANCE = {
       ],
       "startingMoney": 180,
       "waves": [
- {"groups":[{"type":"fast","count":22,"healthMult":8,"spawnInterval":0.5}]},
- {"groups":[{"type":"fast","count":26,"healthMult":10,"spawnInterval":0.42},{"type":"basic","count":12,"healthMult":10,"spawnInterval":0.5,"startDelay":3}]},
- {"groups":[{"type":"fast","count":34,"healthMult":12,"spawnInterval":0.35,"speedMult":1.1}]},
- {"groups":[{"type":"basic","count":22,"healthMult":15,"spawnInterval":0.4},{"type":"fast","count":26,"healthMult":12,"spawnInterval":0.35,"startDelay":3}]},
- {"groups":[{"type":"boss","count":1,"healthMult":20},{"type":"fast","count":30,"healthMult":14,"spawnInterval":0.35,"startDelay":2}]},
- {"groups":[{"type":"fast","count":50,"healthMult":15,"spawnInterval":0.28,"speedMult":1.2}]},
- {"groups":[{"type":"basic","count":26,"healthMult":20,"spawnInterval":0.4},{"type":"fast","count":34,"healthMult":15,"spawnInterval":0.3,"startDelay":4}]},
- {"groups":[{"type":"fast","count":58,"healthMult":17,"spawnInterval":0.24,"speedMult":1.25}]},
- {"groups":[{"type":"boss","count":2,"healthMult":22,"spawnInterval":3},{"type":"fast","count":38,"healthMult":17,"spawnInterval":0.3,"startDelay":3}]},
- {"groups":[{"type":"fast","count":48,"healthMult":20,"spawnInterval":0.22,"speedMult":1.3},{"type":"basic","count":24,"healthMult":24,"spawnInterval":0.4,"startDelay":4},{"type":"boss","count":2,"healthMult":24,"spawnInterval":3,"startDelay":10}]}
+ {"groups":[{"type":"fast","count":26,"healthMult":10,"spawnInterval":0.45}]},
+ {"groups":[{"type":"fast","count":34,"healthMult":12,"spawnInterval":0.4},{"type":"basic","count":14,"healthMult":12,"spawnInterval":0.45,"startDelay":3}]},
+ {"groups":[{"type":"fast","count":44,"healthMult":14,"spawnInterval":0.32,"speedMult":1.15}]},
+ {"groups":[{"type":"basic","count":28,"healthMult":18,"spawnInterval":0.4},{"type":"fast","count":34,"healthMult":14,"spawnInterval":0.32,"startDelay":3}]},
+ {"groups":[{"type":"boss","count":1,"healthMult":26},{"type":"fast","count":38,"healthMult":16,"spawnInterval":0.32,"startDelay":2}]},
+ {"groups":[{"type":"fast","count":64,"healthMult":18,"spawnInterval":0.24,"speedMult":1.25}]},
+ {"groups":[{"type":"basic","count":32,"healthMult":26,"spawnInterval":0.38},{"type":"fast","count":46,"healthMult":18,"spawnInterval":0.28,"startDelay":4}]},
+ {"groups":[{"type":"fast","count":76,"healthMult":20,"spawnInterval":0.2,"speedMult":1.3}]},
+ {"groups":[{"type":"boss","count":3,"healthMult":28,"spawnInterval":3},{"type":"fast","count":52,"healthMult":20,"spawnInterval":0.26,"startDelay":3}]},
+ {"groups":[{"type":"fast","count":64,"healthMult":24,"spawnInterval":0.18,"speedMult":1.35},{"type":"basic","count":30,"healthMult":28,"spawnInterval":0.38,"startDelay":4},{"type":"boss","count":3,"healthMult":30,"spawnInterval":3,"startDelay":10}]}
       ]
     },
     "level_017": {
@@ -4606,21 +4606,21 @@ export const BALANCE = {
       ],
       "startingMoney": 210,
       "waves": [
- {"groups":[{"type":"fast","count":14,"healthMult":7,"spawnInterval":0.5},{"type":"armored","count":5,"healthMult":5,"spawnInterval":0.9,"startDelay":4}]},
- {"groups":[{"type":"fast","count":18,"healthMult":8,"spawnInterval":0.45,"speedMult":1.15},{"type":"armored","count":8,"healthMult":6,"spawnInterval":0.8,"startDelay":3}]},
- {"groups":[{"type":"fast","count":22,"healthMult":9,"spawnInterval":0.4,"speedMult":1.2},{"type":"armored","count":6,"healthMult":8,"spawnInterval":0.8,"startDelay":4}]},
- {"groups":[{"type":"armored","count":12,"healthMult":9,"spawnInterval":0.7},{"type":"fast","count":22,"healthMult":9,"spawnInterval":0.4,"speedMult":1.2,"startDelay":4}]},
- {"groups":[{"type":"boss","count":1,"healthMult":14},{"type":"armored","count":16,"healthMult":8,"spawnInterval":0.65,"startDelay":3}]},
- {"groups":[{"type":"fast","count":30,"healthMult":11,"spawnInterval":0.32,"speedMult":1.3},{"type":"armored","count":12,"healthMult":10,"spawnInterval":0.65,"startDelay":4}]},
- {"groups":[{"type":"armored","count":16,"healthMult":13,"spawnInterval":0.6},{"type":"fast","count":28,"healthMult":11,"spawnInterval":0.3,"speedMult":1.3,"startDelay":4}]},
- {"groups":[{"type":"fast","count":34,"healthMult":12,"spawnInterval":0.28,"speedMult":1.35},{"type":"armored","count":14,"healthMult":11,"spawnInterval":0.6,"startDelay":4}]},
- {"groups":[{"type":"boss","count":2,"healthMult":15,"spawnInterval":3},{"type":"armored","count":20,"healthMult":11,"spawnInterval":0.55,"startDelay":4}]},
- {"groups":[{"type":"armored","count":18,"healthMult":14,"spawnInterval":0.55},{"type":"fast","count":34,"healthMult":13,"spawnInterval":0.26,"speedMult":1.4,"startDelay":3},{"type":"boss","count":2,"healthMult":16,"spawnInterval":3,"startDelay":10}]}
+ {"groups":[{"type":"fast","count":16,"healthMult":8,"spawnInterval":0.5},{"type":"armored","count":6,"healthMult":6,"spawnInterval":0.9,"startDelay":4}]},
+ {"groups":[{"type":"fast","count":20,"healthMult":9,"spawnInterval":0.45,"speedMult":1.15},{"type":"armored","count":10,"healthMult":7,"spawnInterval":0.8,"startDelay":3}]},
+ {"groups":[{"type":"fast","count":24,"healthMult":10,"spawnInterval":0.4,"speedMult":1.2},{"type":"armored","count":8,"healthMult":10,"spawnInterval":0.8,"startDelay":4}]},
+ {"groups":[{"type":"armored","count":16,"healthMult":11,"spawnInterval":0.7},{"type":"fast","count":24,"healthMult":10,"spawnInterval":0.4,"speedMult":1.2,"startDelay":4}]},
+ {"groups":[{"type":"boss","count":1,"healthMult":20},{"type":"armored","count":20,"healthMult":10,"spawnInterval":0.6,"startDelay":3}]},
+ {"groups":[{"type":"fast","count":34,"healthMult":13,"spawnInterval":0.3,"speedMult":1.3},{"type":"armored","count":16,"healthMult":12,"spawnInterval":0.6,"startDelay":4}]},
+ {"groups":[{"type":"armored","count":20,"healthMult":16,"spawnInterval":0.55},{"type":"fast","count":32,"healthMult":13,"spawnInterval":0.28,"speedMult":1.3,"startDelay":4}]},
+ {"groups":[{"type":"fast","count":38,"healthMult":14,"spawnInterval":0.26,"speedMult":1.35},{"type":"armored","count":18,"healthMult":13,"spawnInterval":0.55,"startDelay":4}]},
+ {"groups":[{"type":"boss","count":2,"healthMult":22,"spawnInterval":3},{"type":"armored","count":24,"healthMult":13,"spawnInterval":0.5,"startDelay":4}]},
+ {"groups":[{"type":"armored","count":22,"healthMult":16,"spawnInterval":0.5},{"type":"fast","count":38,"healthMult":15,"spawnInterval":0.24,"speedMult":1.4,"startDelay":3},{"type":"boss","count":3,"healthMult":20,"spawnInterval":3,"startDelay":10}]}
       ]
     },
     "level_018": {
       "blockedTiles": [],
-      "bountyMult": 0.55,
+      "bountyMult": 0.45,
       "coreHealth": 10,
       "gridHeight": 12,
       "gridWidth": 8,
@@ -4668,21 +4668,21 @@ export const BALANCE = {
       ],
       "startingMoney": 200,
       "waves": [
- {"groups":[{"type":"splitter","count":8,"healthMult":2.5,"spawnInterval":0.6},{"type":"basic","count":10,"healthMult":3,"spawnInterval":0.5,"startDelay":3}]},
- {"groups":[{"type":"splitter","count":12,"healthMult":3,"spawnInterval":0.55},{"type":"basic","count":8,"healthMult":4,"spawnInterval":0.5,"startDelay":3}]},
- {"groups":[{"type":"splitter","count":16,"healthMult":3.5,"spawnInterval":0.5}]},
- {"groups":[{"type":"splitter","count":10,"healthMult":4,"spawnInterval":0.55},{"type":"splitling","count":20,"healthMult":3,"spawnInterval":0.3,"startDelay":3}]},
- {"groups":[{"type":"boss","count":1,"healthMult":5},{"type":"splitter","count":12,"healthMult":4,"spawnInterval":0.5,"startDelay":3}]},
- {"groups":[{"type":"splitter","count":20,"healthMult":4.5,"spawnInterval":0.45}]},
- {"groups":[{"type":"splitter","count":14,"healthMult":5,"spawnInterval":0.5},{"type":"basic","count":16,"healthMult":6,"spawnInterval":0.4,"startDelay":4}]},
- {"groups":[{"type":"splitter","count":24,"healthMult":5,"spawnInterval":0.4}]},
- {"groups":[{"type":"boss","count":2,"healthMult":6,"spawnInterval":3},{"type":"splitter","count":16,"healthMult":5,"spawnInterval":0.45,"startDelay":3}]},
- {"groups":[{"type":"splitter","count":20,"healthMult":6,"spawnInterval":0.4},{"type":"splitling","count":30,"healthMult":5,"spawnInterval":0.25,"startDelay":4},{"type":"boss","count":2,"healthMult":7,"startDelay":10}]}
+ {"groups":[{"type":"splitter","count":16,"healthMult":5,"spawnInterval":0.5},{"type":"basic","count":10,"healthMult":6,"spawnInterval":0.5,"startDelay":3}]},
+ {"groups":[{"type":"splitter","count":20,"healthMult":6,"spawnInterval":0.45},{"type":"splitling","count":20,"healthMult":5,"spawnInterval":0.3,"startDelay":3}]},
+ {"groups":[{"type":"splitter","count":26,"healthMult":8,"spawnInterval":0.4}]},
+ {"groups":[{"type":"splitter","count":22,"healthMult":9,"spawnInterval":0.45},{"type":"splitling","count":30,"healthMult":6,"spawnInterval":0.28,"startDelay":3}]},
+ {"groups":[{"type":"boss","count":1,"healthMult":16},{"type":"splitter","count":20,"healthMult":9,"spawnInterval":0.4,"startDelay":3}]},
+ {"groups":[{"type":"splitter","count":34,"healthMult":10,"spawnInterval":0.35}]},
+ {"groups":[{"type":"splitter","count":26,"healthMult":12,"spawnInterval":0.4},{"type":"basic","count":20,"healthMult":13,"spawnInterval":0.4,"startDelay":4}]},
+ {"groups":[{"type":"splitter","count":40,"healthMult":12,"spawnInterval":0.32},{"type":"splitling","count":40,"healthMult":9,"spawnInterval":0.22,"startDelay":3}]},
+ {"groups":[{"type":"boss","count":2,"healthMult":19,"spawnInterval":3},{"type":"splitter","count":28,"healthMult":12,"spawnInterval":0.38,"startDelay":3}]},
+ {"groups":[{"type":"splitter","count":36,"healthMult":14,"spawnInterval":0.32},{"type":"splitling","count":50,"healthMult":11,"spawnInterval":0.2,"startDelay":4},{"type":"boss","count":2,"healthMult":21,"spawnInterval":3,"startDelay":10}]}
       ]
     },
     "level_019": {
       "blockedTiles": [],
-      "bountyMult": 0.55,
+      "bountyMult": 0.48,
       "coreHealth": 12,
       "gridHeight": 12,
       "gridWidth": 8,
@@ -4726,16 +4726,16 @@ export const BALANCE = {
       ],
       "startingMoney": 240,
       "waves": [
- {"groups":[{"type":"armored","count":8,"healthMult":3,"spawnInterval":0.7}]},
- {"groups":[{"type":"regenerator","count":6,"healthMult":3,"spawnInterval":0.75},{"type":"armored","count":6,"healthMult":3,"spawnInterval":0.7,"startDelay":4}]},
- {"groups":[{"type":"armored","count":12,"healthMult":4,"spawnInterval":0.6}]},
- {"groups":[{"type":"regenerator","count":10,"healthMult":4,"spawnInterval":0.65}]},
- {"groups":[{"type":"boss","count":1,"healthMult":6},{"type":"armored","count":8,"healthMult":4,"spawnInterval":0.65,"startDelay":3}]},
- {"groups":[{"type":"armored","count":14,"healthMult":5,"spawnInterval":0.6},{"type":"regenerator","count":8,"healthMult":5,"spawnInterval":0.65,"startDelay":4}]},
- {"groups":[{"type":"regenerator","count":12,"healthMult":6,"spawnInterval":0.6}]},
- {"groups":[{"type":"armored","count":16,"healthMult":6,"spawnInterval":0.55},{"type":"regenerator","count":10,"healthMult":5,"spawnInterval":0.6,"startDelay":4}]},
- {"groups":[{"type":"boss","count":2,"healthMult":7,"spawnInterval":3},{"type":"armored","count":12,"healthMult":6,"spawnInterval":0.55,"startDelay":3}]},
- {"groups":[{"type":"regenerator","count":14,"healthMult":7,"spawnInterval":0.55},{"type":"armored","count":16,"healthMult":7,"spawnInterval":0.5,"startDelay":4},{"type":"boss","count":2,"healthMult":8,"startDelay":10}]}
+ {"groups":[{"type":"armored","count":12,"healthMult":6,"spawnInterval":0.65}]},
+ {"groups":[{"type":"regenerator","count":10,"healthMult":6,"spawnInterval":0.7},{"type":"armored","count":10,"healthMult":6,"spawnInterval":0.65,"startDelay":4}]},
+ {"groups":[{"type":"armored","count":16,"healthMult":8,"spawnInterval":0.6}]},
+ {"groups":[{"type":"regenerator","count":14,"healthMult":8,"spawnInterval":0.62}]},
+ {"groups":[{"type":"boss","count":1,"healthMult":20},{"type":"armored","count":16,"healthMult":8,"spawnInterval":0.6,"startDelay":3}]},
+ {"groups":[{"type":"armored","count":20,"healthMult":11,"spawnInterval":0.55},{"type":"regenerator","count":12,"healthMult":10,"spawnInterval":0.6,"startDelay":4}]},
+ {"groups":[{"type":"regenerator","count":18,"healthMult":13,"spawnInterval":0.58}]},
+ {"groups":[{"type":"armored","count":24,"healthMult":12,"spawnInterval":0.5},{"type":"regenerator","count":14,"healthMult":11,"spawnInterval":0.58,"startDelay":4}]},
+ {"groups":[{"type":"boss","count":2,"healthMult":22,"spawnInterval":3},{"type":"armored","count":20,"healthMult":12,"spawnInterval":0.5,"startDelay":3}]},
+ {"groups":[{"type":"regenerator","count":20,"healthMult":15,"spawnInterval":0.55},{"type":"armored","count":24,"healthMult":14,"spawnInterval":0.48,"startDelay":4},{"type":"boss","count":3,"healthMult":22,"spawnInterval":3,"startDelay":10}]}
       ]
     },
     "level_020": {
@@ -4945,7 +4945,7 @@ export const BALANCE = {
           "y": 11
         }
       ],
-      "bountyMult": 0.5,
+      "bountyMult": 0.45,
       "coreHealth": 12,
       "gridHeight": 12,
       "gridWidth": 8,
@@ -4985,18 +4985,18 @@ export const BALANCE = {
       ],
       "startingMoney": 260,
       "waves": [
- {"groups":[{"type":"splitter","count":6,"healthMult":3,"spawnInterval":0.6},{"type":"basic","count":8,"healthMult":3,"spawnInterval":0.5,"startDelay":3}]},
- {"groups":[{"type":"splitter","count":10,"healthMult":3.5,"spawnInterval":0.55},{"type":"boss","count":1,"healthMult":4,"startDelay":4}]},
- {"groups":[{"type":"splitter","count":14,"healthMult":4,"spawnInterval":0.5}]},
- {"groups":[{"type":"boss","count":2,"healthMult":5,"spawnInterval":3},{"type":"splitter","count":12,"healthMult":4,"spawnInterval":0.5,"startDelay":3}]},
- {"groups":[{"type":"splitter","count":20,"healthMult":4.5,"spawnInterval":0.4},{"type":"splitling","count":20,"healthMult":4,"spawnInterval":0.3,"startDelay":3}]},
- {"groups":[{"type":"boss","count":3,"healthMult":6,"spawnInterval":3},{"type":"splitter","count":14,"healthMult":4.5,"spawnInterval":0.45}]},
- {"groups":[{"type":"splitter","count":24,"healthMult":5,"spawnInterval":0.4},{"type":"boss","count":1,"healthMult":7,"startDelay":6}]},
- {"groups":[{"type":"boss","count":4,"healthMult":6,"spawnInterval":2.5},{"type":"splitter","count":18,"healthMult":5,"spawnInterval":0.45,"startDelay":4}]},
- {"groups":[{"type":"splitling","count":30,"healthMult":5,"spawnInterval":0.25},{"type":"splitter","count":16,"healthMult":5.5,"spawnInterval":0.45,"startDelay":3},{"type":"boss","count":2,"healthMult":7,"startDelay":8}]},
- {"groups":[{"type":"boss","count":4,"healthMult":7,"spawnInterval":2.5,"speedMult":1.1},{"type":"splitter","count":20,"healthMult":5.5,"spawnInterval":0.4,"startDelay":4}]},
- {"groups":[{"type":"splitling","count":40,"healthMult":5.5,"spawnInterval":0.22},{"type":"splitter","count":20,"healthMult":6,"spawnInterval":0.4,"startDelay":4},{"type":"boss","count":3,"healthMult":7,"startDelay":10}]},
- {"groups":[{"type":"boss","count":6,"healthMult":8,"spawnInterval":4},{"type":"splitter","count":24,"healthMult":6,"spawnInterval":0.4,"startDelay":5},{"type":"splitling","count":30,"healthMult":6,"spawnInterval":0.2,"speedMult":1.2,"startDelay":12},{"type":"boss","count":2,"healthMult":9,"startDelay":20}]}
+ {"groups":[{"type":"splitter","count":8,"healthMult":5,"spawnInterval":0.55},{"type":"basic","count":8,"healthMult":5,"spawnInterval":0.5,"startDelay":3}]},
+ {"groups":[{"type":"splitter","count":12,"healthMult":6,"spawnInterval":0.5},{"type":"boss","count":1,"healthMult":8,"startDelay":4}]},
+ {"groups":[{"type":"splitter","count":16,"healthMult":8,"spawnInterval":0.45},{"type":"splitling","count":16,"healthMult":6,"spawnInterval":0.3}]},
+ {"groups":[{"type":"boss","count":2,"healthMult":10,"spawnInterval":3},{"type":"splitter","count":14,"healthMult":8,"spawnInterval":0.45,"startDelay":3}]},
+ {"groups":[{"type":"splitter","count":22,"healthMult":9,"spawnInterval":0.4},{"type":"splitling","count":24,"healthMult":8,"spawnInterval":0.28,"startDelay":3}]},
+ {"groups":[{"type":"boss","count":3,"healthMult":12,"spawnInterval":3},{"type":"splitter","count":16,"healthMult":9,"spawnInterval":0.4}]},
+ {"groups":[{"type":"splitter","count":26,"healthMult":10,"spawnInterval":0.38},{"type":"boss","count":2,"healthMult":14,"spawnInterval":3,"startDelay":6}]},
+ {"groups":[{"type":"boss","count":4,"healthMult":13,"spawnInterval":2.5},{"type":"splitter","count":20,"healthMult":10,"spawnInterval":0.4,"startDelay":4}]},
+ {"groups":[{"type":"splitling","count":36,"healthMult":9,"spawnInterval":0.24},{"type":"splitter","count":22,"healthMult":11,"spawnInterval":0.38,"startDelay":3},{"type":"boss","count":3,"healthMult":14,"spawnInterval":3,"startDelay":8}]},
+ {"groups":[{"type":"boss","count":7,"healthMult":15,"spawnInterval":2.5,"speedMult":1.1},{"type":"splitter","count":24,"healthMult":11,"spawnInterval":0.38,"startDelay":4}]},
+ {"groups":[{"type":"splitling","count":48,"healthMult":10,"spawnInterval":0.22},{"type":"splitter","count":26,"healthMult":12,"spawnInterval":0.36,"startDelay":4},{"type":"boss","count":7,"healthMult":16,"spawnInterval":2.5,"startDelay":10}]},
+ {"groups":[{"type":"boss","count":13,"healthMult":18,"spawnInterval":2.5},{"type":"splitter","count":30,"healthMult":13,"spawnInterval":0.36,"startDelay":5},{"type":"splitling","count":40,"healthMult":11,"spawnInterval":0.2,"speedMult":1.2,"startDelay":12},{"type":"boss","count":5,"healthMult":19,"spawnInterval":3,"startDelay":20}]}
       ]
     }
   },
