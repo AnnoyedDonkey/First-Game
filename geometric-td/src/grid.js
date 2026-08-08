@@ -97,10 +97,11 @@ export function createGridModel(level, tileSize) {
     const damageMult = c.damageMult ?? 1;
     const rangeMult = c.rangeMult ?? 1;
     const fireRateMult = c.fireRateMult ?? 1;
+    const pierceBonus = c.pierceBonus ?? 0;
     for (const t of c.tiles || []) {
       const k = key(t.x, t.y);
-      conduitMap.set(k, { damageMult, rangeMult, fireRateMult });
-      conduitTiles.push({ x: t.x, y: t.y, damageMult, rangeMult, fireRateMult });
+      conduitMap.set(k, { damageMult, rangeMult, fireRateMult, pierceBonus });
+      conduitTiles.push({ x: t.x, y: t.y, damageMult, rangeMult, fireRateMult, pierceBonus });
     }
   }
 

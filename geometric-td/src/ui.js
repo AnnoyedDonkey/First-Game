@@ -2748,6 +2748,7 @@ function describeConduit(c) {
   if (c.damageMult > 1) parts.push(`+${Math.round((c.damageMult - 1) * 100)}% damage`);
   if (c.rangeMult > 1) parts.push(`+${Math.round((c.rangeMult - 1) * 100)}% range`);
   if (c.fireRateMult > 1) parts.push(`+${Math.round((c.fireRateMult - 1) * 100)}% fire rate`);
+  if (c.pierceBonus > 0) parts.push(`+${c.pierceBonus} pierce`);
   return `CONDUIT — a tower built here gets ${parts.join(", ") || "a bonus"}`;
 }
 

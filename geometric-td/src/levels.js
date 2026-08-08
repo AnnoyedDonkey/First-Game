@@ -246,8 +246,8 @@ const LEVEL_PRESENTATION = {
     },
   },
   level_019: {
-    name: "Rail Yard",
-    desc: "Four long, dead-straight lanes. Line a Railgun down a column and its shot spears the whole file — armor and regen alike fold to rail.",
+    name: "The Coil",
+    desc: "A bullseye spiral with one tiny turret platform at its heart. Plant a Railgun on the amplifier and a single shot spears clean through every ring — armor and regen fold to rail.",
     palette: {
       background: "#0c0e10",
       gridLine: "rgba(200, 210, 220, 0.09)",

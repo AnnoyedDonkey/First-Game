@@ -154,6 +154,7 @@ function recomputeStats(tower, grid) {
     tower.damage *= conduit.damageMult;
     tower.range *= conduit.rangeMult;
     tower.fireInterval /= conduit.fireRateMult;
+    if (conduit.pierceBonus) tower.pierce += conduit.pierceBonus;
   }
 }
 

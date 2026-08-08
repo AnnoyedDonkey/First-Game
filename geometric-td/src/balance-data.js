@@ -4609,47 +4609,10 @@ export const BALANCE = {
       "coreHealth": 12,
       "gridHeight": 12,
       "gridWidth": 8,
-      "pathCorners": [
-        {
-          "x": 0,
-          "y": 11
-        },
-        {
-          "x": 0,
-          "y": 1
-        },
-        {
-          "x": 2,
-          "y": 1
-        },
-        {
-          "x": 2,
-          "y": 11
-        },
-        {
-          "x": 4,
-          "y": 11
-        },
-        {
-          "x": 4,
-          "y": 1
-        },
-        {
-          "x": 6,
-          "y": 1
-        },
-        {
-          "x": 6,
-          "y": 11
-        },
-        {
-          "x": 7,
-          "y": 11
-        }
-      ],
+      "pathCorners": [{"x":0,"y":0},{"x":7,"y":0},{"x":7,"y":11},{"x":0,"y":11},{"x":0,"y":1},{"x":6,"y":1},{"x":6,"y":10},{"x":1,"y":10},{"x":1,"y":2},{"x":5,"y":2},{"x":5,"y":9},{"x":2,"y":9},{"x":2,"y":3},{"x":4,"y":3},{"x":4,"y":6}],
       "startingMoney": 240,
-      "fields": [{"tiles":[{"x":4,"y":5},{"x":4,"y":6},{"x":4,"y":7}],"speedMult":1.6}],
-      "conduits": [{"tiles":[{"x":3,"y":5}],"fireRateMult":1.5}],
+      "fields": [{"tiles":[{"x":2,"y":0},{"x":3,"y":0},{"x":4,"y":0}],"speedMult":1.6}],
+      "conduits": [{"tiles":[{"x":3,"y":6}],"pierceBonus":5,"rangeMult":1.3}],
       "waves": [
  {"groups":[{"type":"armored","count":14,"healthMult":9,"spawnInterval":0.6}]},
  {"groups":[{"type":"regenerator","count":12,"healthMult":9,"spawnInterval":0.62},{"type":"armored","count":12,"healthMult":9,"spawnInterval":0.6,"startDelay":4}]},

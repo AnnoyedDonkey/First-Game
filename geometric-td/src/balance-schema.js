@@ -577,8 +577,11 @@ export function validate(data) {
             }
             for (const m of ["damageMult", "rangeMult", "fireRateMult"])
               if (c[m] !== undefined && !isPosNum(c[m])) err(`${cp}.${m}: must be a number > 0 (got ${c[m]})`);
-            if (c.damageMult === undefined && c.rangeMult === undefined && c.fireRateMult === undefined)
-              err(`${cp}: must set at least one of damageMult/rangeMult/fireRateMult`);
+            if (c.pierceBonus !== undefined && !isNonNegNum(c.pierceBonus))
+              err(`${cp}.pierceBonus: must be a number >= 0 (got ${c.pierceBonus})`);
+            if (c.damageMult === undefined && c.rangeMult === undefined &&
+                c.fireRateMult === undefined && c.pierceBonus === undefined)
+              err(`${cp}: must set at least one of damageMult/rangeMult/fireRateMult/pierceBonus`);
           });
         }
       }
