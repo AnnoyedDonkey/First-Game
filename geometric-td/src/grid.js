@@ -71,6 +71,7 @@ export function createGridModel(level, tileSize) {
       exitDist,
       enterPos: { x: (wh.enter.x + 0.5) * tileSize, y: (wh.enter.y + 0.5) * tileSize },
       exitPos: { x: (wh.exit.x + 0.5) * tileSize, y: (wh.exit.y + 0.5) * tileSize },
+      types: Array.isArray(wh.types) ? wh.types : null, // null = warp everything
     };
   });
 

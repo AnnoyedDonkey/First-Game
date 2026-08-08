@@ -4,7 +4,7 @@
 
 import { enemyPosition } from "./enemies.js";
 import { isUpgradeEligible } from "./towers.js";
-import { SHAPE_SIDES, VFX } from "./config.js";
+import { SHAPE_SIDES, VFX, ENEMIES } from "./config.js";
 import { GEAR_SLOTS } from "./equipment.js";
 
 // Rarity accent colors for in-battle gear orbitals (B4). Mirrors the
@@ -525,11 +525,14 @@ function drawWormholes(ctx, grid, time) {
   const w = VFX.wormhole;
   const r = grid.tileSize * w.ringRadiusTiles;
   ctx.save();
-  ctx.strokeStyle = w.color;
-  ctx.shadowColor = w.color;
   ctx.shadowBlur = 12;
   ctx.lineWidth = 1.6;
   for (const wh of holes) {
+    // A filtered wormhole is tinted to the enemy type it teleports, so the
+    // color tells you at a glance which enemies it grabs (default violet).
+    const col = wh.types && ENEMIES[wh.types[0]] ? ENEMIES[wh.types[0]].color : w.color;
+    ctx.strokeStyle = col;
+    ctx.shadowColor = col;
     for (const p of [wh.enterPos, wh.exitPos]) {
       ctx.beginPath();
       ctx.arc(p.x, p.y, r, 0, Math.PI * 2);

@@ -75,6 +75,8 @@ export function updateEnemies(game, dt) {
       for (let wi = 0; wi < holes.length; wi++) {
         const wh = holes[wi];
         if (wh.enterDist < 0 || wh.exitDist < 0 || wh.exitDist <= wh.enterDist) continue;
+        // A filtered wormhole only warps its listed types; others walk through.
+        if (wh.types && !wh.types.includes(e.type)) continue;
         if (
           e.distance >= wh.enterDist &&
           e.distance < wh.exitDist &&
@@ -84,12 +86,15 @@ export function updateEnemies(game, dt) {
           const overshoot = e.distance - wh.enterDist;
           e.distance = wh.exitDist + overshoot;
           const w = VFX.wormhole;
+          // Burst matches the warping enemy's color (filtered holes are tinted
+          // to their enemy in the renderer; keep the flash consistent).
+          const flashColor = wh.types ? e.def.color : w.color;
           for (const pos of [wh.enterPos, wh.exitPos]) {
             game.springGrid.applyShock(
               pos.x, pos.y, grid.tileSize * VFX.warp.shockRadiusTiles, w.flashShock
             );
             game.effects.push({
-              kind: "ring", x: pos.x, y: pos.y, color: w.color,
+              kind: "ring", x: pos.x, y: pos.y, color: flashColor,
               radius: grid.tileSize * 0.7, ttl: w.flashTtl, maxTtl: w.flashTtl,
             });
           }

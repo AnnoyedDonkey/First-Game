@@ -513,6 +513,16 @@ export function validate(data) {
               if (!inBounds(t, lvl)) { err(`${whp}.${end}: tile out of bounds (${t && t.x},${t && t.y})`); continue; }
               if (path && !path.has(`${t.x},${t.y}`)) err(`${whp}.${end}: tile (${t.x},${t.y}) is not on the path`);
             }
+            // Optional enemy-type filter: only these types warp (others walk
+            // straight through). Omit to teleport every enemy.
+            if (wh.types !== undefined) {
+              if (!Array.isArray(wh.types) || wh.types.length === 0) {
+                err(`${whp}.types: must be a non-empty array when present`);
+              } else {
+                for (const ty of wh.types)
+                  if (!enemyIdsForLevels.has(ty)) err(`${whp}.types: "${ty}" is not a known enemy id`);
+              }
+            }
           });
         }
       }
