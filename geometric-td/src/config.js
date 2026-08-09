@@ -732,6 +732,7 @@ export const SKILL_TIERS = BALANCE.skills.tiers;
 export const SKILL_BRANCH_COLORS = {
   core: "#35e0ff",
   economy: "#ffe24a",
+  game: "#9d7bff",
 };
 
 // ---- Per-tower skill branches (data-driven; the graph below is GENERATED) ----
@@ -879,10 +880,30 @@ function buildSkillGraph() {
   });
   x += ecoSpan + COL + BRANCH_GAP;
 
-  // ----- Core branch: core plating (single multi-tier node) -----
-  put("coreHealth", { name: "Core Plating", desc: "AI Core health", branch: "core",
-    color: SKILL_BRANCH_COLORS.core, parent: null, pos: { x, y: HEAD_Y }, icon: "core",
-    isRoot: true, headLabel: "CORE" });
+  // ----- Game branch: head -> Core Plating (left) + Game Acceleration (right) -----
+  put("game_root", { name: "Game Systems", desc: "unlock game upgrades", branch: "game",
+    color: SKILL_BRANCH_COLORS.game, parent: null, pos: { x: x + COL / 2, y: HEAD_Y },
+    icon: "fast", maxTier: 1, kind: "unlock", isRoot: true, free: true,
+    headLabel: "GAME" });
+  // Core Plating — unchanged behavior (multi-tier, SKILL_VALUES.coreHealth,
+  // default maxTier 5 / costs [1,1,1,2,2]); now a child of the GAME head.
+  // Keep the same id so existing saves carry over untouched.
+  put("coreHealth", { name: "Core Plating", desc: "AI Core health", branch: "game",
+    color: SKILL_BRANCH_COLORS.game, parent: "game_root", pos: { x, y: HEAD_Y + ROW },
+    icon: "core" });
+  // Game Acceleration — sequential single-tier speed unlocks (ids gameSpeedN).
+  {
+    let gp = "game_root";
+    (BALANCE.skills.gameSpeed?.tiers ?? []).forEach((t, i) => {
+      const id = `gameSpeed${t.mult}`;
+      put(id, { name: `Game Speed ${t.mult}×`, desc: "unlock a faster game speed",
+        branch: "game", color: SKILL_BRANCH_COLORS.game, parent: gp,
+        pos: { x: x + COL, y: HEAD_Y + (i + 1) * ROW }, maxTier: 1, costs: [t.cost],
+        kind: "speed", speedMult: t.mult, chainLabel: `${t.mult}×`, icon: "fast" });
+      gp = id;
+    });
+  }
+  x += COL + COL + BRANCH_GAP;
 
   return { skills: S, viewbox: { w: maxX + MARGIN + R, h: maxY + MARGIN + R } };
 }
@@ -898,6 +919,10 @@ export const SKILL_TREE_VIEWBOX = _skillGraph.viewbox;
 // damage/level and economy effects come from their specs (progression.js sums
 // the owned boxes).
 export const SKILL_VALUES = BALANCE.skills.values;
+
+// Game Acceleration chain spec (base free speeds + purchasable higher tiers).
+// Read by progression.js's getUnlockedSpeeds() for the fast-forward control.
+export const GAME_SPEED_SKILL = BALANCE.skills.gameSpeed;
 
 // ---------- End-of-battle roast titles ----------
 // The results screen's big title is a randomly picked cheeky one-liner,

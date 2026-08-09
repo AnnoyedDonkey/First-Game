@@ -4927,6 +4927,16 @@ export const BALANCE = {
       "rootCost": 1,
       "steps": 5
     },
+    "gameSpeed": {
+      "base": [2, 4],
+      "tiers": [
+        { "mult": 6, "cost": 1 },
+        { "mult": 8, "cost": 1 },
+        { "mult": 10, "cost": 1 },
+        { "mult": 12, "cost": 2 },
+        { "mult": 16, "cost": 2 }
+      ]
+    },
     "tiers": {
       "costs": [
         1,

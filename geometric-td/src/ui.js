@@ -892,7 +892,7 @@ el.worldNext.addEventListener("click", () => navigateWorld(1));
 // tapping pause again resumes. onChange(factor, paused) fires on every
 // state change so main.js can scale (or freeze) the game clock.
 
-export function initSpeedControls(onChange) {
+export function initSpeedControls(onChange, getFastSpeeds) {
   const slow = document.getElementById("speed-slow");
   const pause = document.getElementById("speed-pause");
   const fast = document.getElementById("speed-fast");
@@ -905,8 +905,7 @@ export function initSpeedControls(onChange) {
     // Active buttons show the current multiplier instead of the arrow.
     slow.innerHTML =
       factor === 0.5 ? "&#189;&#215;" : factor === 0.25 ? "&#188;&#215;" : "&#9664;";
-    fast.innerHTML =
-      factor === 2 ? "2&#215;" : factor === 4 ? "4&#215;" : "&#9654;";
+    fast.innerHTML = factor > 1 ? `${factor}&#215;` : "&#9654;";
     pause.classList.toggle("active", paused);
     pause.innerHTML = paused ? "&#9654;" : "&#10074;&#10074;"; // play / pause glyph
     onChange(factor, paused);
@@ -919,7 +918,11 @@ export function initSpeedControls(onChange) {
     apply();
   });
   fast.addEventListener("click", () => {
-    factor = factor === 2 ? 4 : factor === 4 ? 1 : 2;
+    const all = (getFastSpeeds && getFastSpeeds()) || [2, 4];
+    const list = all.filter((s) => s > 1).sort((a, b) => a - b);
+    const idx = list.indexOf(factor);
+    factor = idx === -1 ? (list[0] ?? 2)
+           : (idx + 1 < list.length ? list[idx + 1] : 1);
     paused = false;
     apply();
   });
@@ -2174,6 +2177,7 @@ function skillEffectText(id, tier) {
   const node = SKILLS[id];
   if (node.kind === "unlock") return `Unlocks ${node.name.replace(/ Core$/, "")} upgrades`;
   if (node.kind === "level") return `Level cap &rarr; ${node.lvl}`;
+  if (node.kind === "speed") return `Unlocks ${node.speedMult}&times; game speed`;
   const step = SKILL_VALUES[id] ?? node.step ?? 0;
   const kind = node.kind || (step < 1 ? "pct" : "flat");
   switch (kind) {
@@ -2256,6 +2260,8 @@ function skillIconBody(icon, color) {
       return `<circle cx="50" cy="50" r="16" ${s}/>` +
         `<circle cx="50" cy="50" r="34" fill="none" stroke="${color}" stroke-width="5" stroke-dasharray="8 6"/>` +
         dot(50, 50, 6);
+    case "fast": // fast-forward: two right-pointing triangles
+      return `<polygon points="18,26 50,50 18,74" ${s}/><polygon points="50,26 82,50 50,74" ${s}/>`;
     default:
       return dot(50, 50, 10);
   }

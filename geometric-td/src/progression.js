@@ -11,6 +11,7 @@
 import {
   endlessTrackFor, LOOT, SKILLS, SKILL_VALUES, SKILL_TIERS, TOWER_UPGRADES, TOWERS,
   TOWER_SKILL_SPEC, TOWER_SKILL_LAYOUT, ECONOMY_SKILL_SPEC, ECONOMY_LAYOUT, ECONOMY,
+  GAME_SPEED_SKILL,
 } from "./config.js";
 import { levelMilestonesFor, updateMilestoneResults } from "./milestones.js";
 import { loadSave, writeSave, clearSave } from "./save.js";
@@ -296,6 +297,17 @@ export function getXpMult() {
 
 export function getCoreBonus() {
   return SKILL_VALUES.coreHealth * getSkillTier("coreHealth");
+}
+
+// Unlocked game-speed multipliers for the fast-forward control: the always-free
+// base speeds plus each owned Game Acceleration tier (ids gameSpeed6..gameSpeed16).
+// Read live so a freshly-bought tier applies on the next battle without a reload.
+export function getUnlockedSpeeds() {
+  const base = (GAME_SPEED_SKILL?.base ?? [2, 4]).slice();
+  const owned = (GAME_SPEED_SKILL?.tiers ?? [])
+    .filter((t) => (state.skills[`gameSpeed${t.mult}`] | 0) >= 1)
+    .map((t) => t.mult);
+  return base.concat(owned).sort((a, b) => a - b);
 }
 
 // Per-tower damage multiplier = 1 + step x owned damage boxes for that tower.

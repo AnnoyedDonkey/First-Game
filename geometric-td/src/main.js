@@ -12,6 +12,7 @@ import {
 import {
   getProgress, getSkillPoints, shouldShowTowerGuide, markTowerGuideSeen,
   forfeitBattle, equipItem, unequipItem, debugGrantGear, getSkillsSnapshot,
+  getUnlockedSpeeds,
 } from "./progression.js";
 import { render } from "./renderer.js";
 import { bindCanvasInput } from "./input.js";
@@ -174,7 +175,7 @@ let gamePaused = false;
 initSpeedControls((factor, paused) => {
   speedFactor = factor;
   gamePaused = paused;
-});
+}, getUnlockedSpeeds);
 
 bindCanvasInput(canvas, {
   onTap(p) {

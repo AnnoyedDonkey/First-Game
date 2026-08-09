@@ -418,6 +418,23 @@ export function validate(data) {
       if (!isNonNegNum(s.values.pulseBlast)) err(`skills.values.pulseBlast: must be a number >= 0 (got ${s.values.pulseBlast})`);
       if (!isNonNegNum(s.values.rocketBlast)) err(`skills.values.rocketBlast: must be a number >= 0 (got ${s.values.rocketBlast})`);
     }
+    if (s.gameSpeed !== undefined) {
+      const gs = s.gameSpeed;
+      if (!gs || typeof gs !== "object") {
+        err("skills.gameSpeed: must be an object");
+      } else {
+        if (!Array.isArray(gs.base) || !gs.base.every(isPosNum))
+          err("skills.gameSpeed.base: must be an array of numbers > 0");
+        if (!Array.isArray(gs.tiers)) {
+          err("skills.gameSpeed.tiers: must be an array");
+        } else {
+          gs.tiers.forEach((t, i) => {
+            if (!t || !isPosNum(t.mult)) err(`skills.gameSpeed.tiers[${i}].mult: must be a number > 0`);
+            if (!isPosInt(t.cost)) err(`skills.gameSpeed.tiers[${i}].cost: must be an int > 0`);
+          });
+        }
+      }
+    }
   }
 
   // ---------------- levels (L2) ----------------
