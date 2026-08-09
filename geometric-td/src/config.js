@@ -534,13 +534,15 @@ export const LOOT = {
   },
 
   // autoJunk: a second Shard sink, sold as sequential per-rarity tiers
-  // (progression.js autoJunkMaxRarity/buyAutoJunkTier — must be bought in
-  // order, index = state.autoJunkTier, -1 = none owned). Once a tier is
-  // owned, loot EARNED in play (kill drops, the guaranteed end-drop,
-  // Endless milestone loot — NOT store purchases) at or below that rarity
-  // is auto-sold for Shards instead of taking a stash/triage slot, if it
-  // didn't already auto-equip. Singularity can never be junked (no tier
-  // for it).
+  // (progression.js buyAutoJunkTier — must be BOUGHT in order, index =
+  // state.autoJunkTier, -1 = none owned). Each owned rarity can be paused
+  // independently at runtime (state.autoJunkPaused, progression.js
+  // isAutoJunkRarityEnabled/setAutoJunkRarityEnabled) without losing the
+  // purchase. For a rarity that's owned AND not paused, loot EARNED in
+  // play (kill drops, the guaranteed end-drop, Endless milestone loot —
+  // NOT store purchases) at that rarity is auto-sold for Shards instead of
+  // taking a stash/triage slot, if it didn't already auto-equip.
+  // Singularity can never be junked (no tier for it).
   autoJunk: {
     tiers: [
       { rarity: "common", cost: 500 },

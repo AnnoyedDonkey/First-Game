@@ -256,14 +256,16 @@ Knobs live in `config.js LOOT.drops`.
   longer a flat number. Base **100** slots + up to 10 purchasable expansions
   (+20 each, 50→4000 Shards, escalating) cap out at **300**
   (`config.js LOOT.stash`, `progression.js getStashCap/buyStashUpgrade`).
-  A second Shard sink, **auto-junk**, sells earned loot at/below a
-  purchased rarity tier (Common/Enhanced/Rare/Prismatic, 500/750/1000/1500
-  Shards, sequential) on pickup instead of it ever taking a slot
-  (`config.js LOOT.autoJunk`, `progression.js autoJunkMaxRarity/
-  buyAutoJunkTier`). Both are bought from a STASH SETTINGS sheet, reached
-  by tapping the `STASH n/cap` text in the gear header (not a separate
-  icon — a first pass used one and it read as invisible against the neon
-  UI; see `HANDOFF.md` `2026.08.09-2`).
+  A second Shard sink, **auto-junk**, sells earned loot at an owned rarity
+  tier (Common/Enhanced/Rare/Prismatic, bought sequentially, 500/750/1000/
+  1500 Shards) on pickup instead of it ever taking a slot — each owned
+  rarity has its own independent PAUSE/RESUME toggle, not one global
+  switch (`config.js LOOT.autoJunk`, `progression.js buyAutoJunkTier` +
+  `ownedAutoJunkRarities`/`isAutoJunkRarityEnabled`/
+  `setAutoJunkRarityEnabled`). Both sinks are bought from a STASH SETTINGS
+  sheet opened via a CONFIG button next to FILTER/SELL on the STASH tab
+  (see `HANDOFF.md` `2026.08.09-2`..`-5` for the UI's iteration history —
+  an icon, then a header text link, were both tried and replaced first).
 - **One-click "sell all [rarity]"** (bulk-sell Commons etc.) — now an
   always-visible row of per-rarity pills (no filter tap needed to find it),
   present in **both** the STASH grid and the triage strip

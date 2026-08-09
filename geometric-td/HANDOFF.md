@@ -6,31 +6,37 @@ handoff is preserved in Git at commit `2650204`.
 
 ## Current state — 2026-08-09
 
-The current deployed build is `2026.08.09-4`. Stash management got two new
+The current deployed build is `2026.08.09-5`. Stash management got two new
 Shard sinks: **stash expansion** (base 100 slots, 10 escalating purchases
 of +20 slots each, 50→4000 Shards, caps at 300 — `config.js LOOT.stash`,
 `progression.js getStashCap/buyStashUpgrade`) and **auto-junk** (4
 sequential per-rarity tiers — Common 500 / Enhanced 750 / Rare 1000 /
 Prismatic 1500 Shards; Singularity is never junkable — `config.js
-LOOT.autoJunk`, `progression.js autoJunkMaxRarity/buyAutoJunkTier`).
-Ownership and activation are separate (`-4`, player-requested): a
-purchased tier is permanent, but a `PAUSE`/`RESUME` toggle in the STASH
-SETTINGS sheet (`progression.js isAutoJunkEnabled/setAutoJunkEnabled`, new
-save field `autoJunkEnabled`) can switch it off without losing the
-purchase — e.g. to hoard Commons for a build without re-buying the tier
-later. `autoJunkMaxRarity()` (what `bankEarnedItem` actually checks)
-returns `null` while paused; `ownedAutoJunkRarity()` is the separate
-always-true getter the settings sheet displays so "paused" doesn't read
-as "never bought". Once a tier is owned AND active, loot EARNED in play
-(kill drops, the guaranteed end-drop, Endless milestones — not store
-buys) at or below that rarity auto-sells
-for Shards instead of taking a stash/triage slot, checked in
-`bankEarnedItem` *after* the existing auto-equip attempt fails (so a
-still-useful Common can equip before the junk check ever sees it). New
-placement dest `"junked"` flows through the drop-reveal card ("→
+LOOT.autoJunk`, `progression.js buyAutoJunkTier`).
+
+Ownership and activation are separate, and — after two rounds of feedback
+— activation is **per rarity**, not a single global switch. Buying tiers
+is still sequential (owning Enhanced implies owning Common), but each
+owned rarity gets its own row and its own PAUSE/RESUME button in the
+STASH SETTINGS sheet: a player can pause Enhanced auto-sell while Common
+keeps auto-selling, without losing either purchase.
+`progression.js ownedAutoJunkRarities()` lists what's owned (permanent,
+driven by `autoJunkTier`); `isAutoJunkRarityEnabled(rarity)`/
+`setAutoJunkRarityEnabled(rarity, bool)` read/write the new save field
+`autoJunkPaused` (array of currently-paused owned rarities). The internal
+`shouldAutoJunk(rarity)` — owned AND not paused — is what `bankEarnedItem`
+actually checks. (`-4`'s first pass shipped one global `autoJunkEnabled`
+toggle that paused everything at once; progression.js backfill migrates
+any save that hit that window into the new per-rarity field, then drops
+the old one.) Once a rarity is owned AND active, loot EARNED in play (kill
+drops, the guaranteed end-drop, Endless milestones — not store buys) at
+that rarity auto-sells for Shards instead of taking a stash/triage slot,
+checked in `bankEarnedItem` *after* the existing auto-equip attempt fails
+(so a still-useful Common can equip before the junk check ever sees it).
+Placement dest `"junked"` flows through the drop-reveal card ("→
 AUTO-SOLD ◆n") and the results-screen loot tile (a dimmed `.junked-tile`
 with the sold value as its corner tag, reusing the Store's price-tag
-styling). New save fields `stashUpgrades`/`autoJunkTier`/`autoJunkEnabled`
+styling). New save fields `stashUpgrades`/`autoJunkTier`/`autoJunkPaused`
 (save.js default + progression.js backfill, standard pattern).
 
 The STASH tab's controls went through two rounds of phone feedback before

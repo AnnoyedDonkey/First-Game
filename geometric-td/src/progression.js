@@ -39,7 +39,19 @@ state.seenLoot ||= [];
 state.storeUnlocks ||= [];
 state.stashUpgrades ??= 0;
 state.autoJunkTier ??= -1;
-state.autoJunkEnabled ??= true;
+state.autoJunkPaused ||= [];
+// Migrate the short-lived single global pause toggle (2026.08.09-4) to the
+// per-rarity model (2026.08.09-5): it paused everything owned, so pause
+// every owned rarity individually under the new field, then drop the old
+// one. Real saves are unlikely to have hit this window, but cheap either way.
+if (state.autoJunkEnabled === false) {
+  const idx = state.autoJunkTier ?? -1;
+  if (idx >= 0) {
+    const owned = LOOT.autoJunk.tiers.slice(0, idx + 1).map((t) => t.rarity);
+    state.autoJunkPaused = Array.from(new Set([...state.autoJunkPaused, ...owned]));
+  }
+}
+delete state.autoJunkEnabled;
 state.levelMilestones ||= {};
 state.tutorialDone ??= false;
 // Any save that already has real progress (a level cleared or an
@@ -700,32 +712,34 @@ function autoEquipTarget(item) {
 }
 
 // ---------- Auto-junk (Shard sink, purchasable per-rarity thresholds) ----------
-// Sequential tiers (must be bought in order — see config.js LOOT.autoJunk).
-// Ownership (autoJunkTier) and whether it's currently active (autoJunkEnabled)
-// are separate: a purchased tier is permanent, but the player can pause it
-// without losing the purchase (e.g. hoarding Commons for a build).
-// autoJunkMaxRarity() is what bankEarnedItem actually checks — the highest
-// rarity to auto-sell right now, or null if nothing's owned OR it's paused.
-export function autoJunkMaxRarity() {
-  if (!isAutoJunkEnabled()) return null;
-  return ownedAutoJunkRarity();
-}
-
-// The highest rarity tier owned, regardless of the enabled/paused toggle —
-// for settings-sheet display, so "paused" doesn't read as "never bought".
-export function ownedAutoJunkRarity() {
+// Tiers must be BOUGHT in order (see config.js LOOT.autoJunk) — owning
+// Enhanced implies owning Common too. But each owned rarity can be paused
+// independently: a player can keep Common auto-selling while pausing
+// Enhanced, without losing either purchase. `autoJunkPaused` is the set of
+// owned rarities currently switched off.
+export function ownedAutoJunkRarities() {
   const idx = state.autoJunkTier ?? -1;
-  return idx >= 0 ? LOOT.autoJunk.tiers[idx].rarity : null;
+  return idx >= 0 ? LOOT.autoJunk.tiers.slice(0, idx + 1).map((t) => t.rarity) : [];
 }
 
-export function isAutoJunkEnabled() {
-  return state.autoJunkEnabled !== false;
+export function isAutoJunkRarityEnabled(rarity) {
+  state.autoJunkPaused ||= [];
+  return !state.autoJunkPaused.includes(rarity);
 }
 
-export function setAutoJunkEnabled(enabled) {
-  state.autoJunkEnabled = !!enabled;
+export function setAutoJunkRarityEnabled(rarity, enabled) {
+  state.autoJunkPaused ||= [];
+  const has = state.autoJunkPaused.includes(rarity);
+  if (enabled && has) state.autoJunkPaused = state.autoJunkPaused.filter((r) => r !== rarity);
+  else if (!enabled && !has) state.autoJunkPaused.push(rarity);
   writeSave(state);
-  return { ok: true, enabled: state.autoJunkEnabled };
+  return { ok: true, rarity, enabled };
+}
+
+// What bankEarnedItem actually checks: is this specific rarity owned AND
+// not paused right now?
+function shouldAutoJunk(rarity) {
+  return ownedAutoJunkRarities().includes(rarity) && isAutoJunkRarityEnabled(rarity);
 }
 
 export function nextAutoJunkTier() {
@@ -761,8 +775,7 @@ function bankEarnedItem(item) {
     if (previous) placement.displaced = addToStashOrPending(previous);
     return placement;
   }
-  const junkRarity = autoJunkMaxRarity();
-  if (junkRarity && RARITIES.indexOf(item.rarity) <= RARITIES.indexOf(junkRarity)) {
+  if (shouldAutoJunk(item.rarity)) {
     const value = itemSellValue(item);
     state.shards += value;
     return { item, dest: "junked", value };

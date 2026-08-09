@@ -1281,6 +1281,9 @@ button.hud-item {
   flex-shrink: 0;
 }
 .bulk-sell-btn.confirming { border-color: var(--neon-red); color: var(--neon-red); background: rgba(255, 74, 94, 0.08); }
+/* Per-rarity auto-junk PAUSE button (stash-settings sheet) — reuses the
+   bulk-sell-btn shape but red, since it stops something rather than sells. */
+.bulk-sell-btn.pause-btn { border-color: var(--neon-red); color: var(--neon-red); background: rgba(255, 74, 94, 0.08); }
 
 .gear-stash-header {
   display: flex;

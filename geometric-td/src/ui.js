@@ -23,7 +23,7 @@ import {
   discardPendingLoot, sellStashItem, sellPendingItem, sellAllStashRarity,
   sellAllPendingRarity, equipStashItem, unequipToStash,
   getStashCap, nextStashUpgradeCost, buyStashUpgrade,
-  ownedAutoJunkRarity, isAutoJunkEnabled, setAutoJunkEnabled,
+  ownedAutoJunkRarities, isAutoJunkRarityEnabled, setAutoJunkRarityEnabled,
   nextAutoJunkTier, buyAutoJunkTier,
   getStoreStock, storeRerollCost, rerollStore, buyStoreItem,
   storeSkillPointCost, buyStoreSkillPoint,
@@ -1602,17 +1602,17 @@ function stashSettingsHtml() {
     ? `<div class="gear-sheet-actions"><button class="gear-sheet-btn" id="stash-expand"${getShards() < nextCost ? " disabled" : ""}>+${LOOT.stash.upgradeSize} SLOTS &#9670;${nextCost}</button></div>`
     : `<div class="gear-sheet-sub">MAX CAPACITY REACHED</div>`;
 
-  const ownedJunk = ownedAutoJunkRarity();
-  const junkEnabled = isAutoJunkEnabled();
+  const ownedRarities = ownedAutoJunkRarities();
   const nextTier = nextAutoJunkTier();
-  const junkStatus = ownedJunk
-    ? junkEnabled
-      ? `AUTO-SELLS ${ownedJunk.toUpperCase()} AND BELOW ON PICKUP`
-      : `PAUSED (unlocked up to ${ownedJunk.toUpperCase()})`
-    : "OFF &mdash; nothing auto-sells";
-  const junkToggle = ownedJunk
-    ? `<div class="gear-sheet-actions"><button class="gear-sheet-btn${junkEnabled ? " danger" : ""}" id="junk-toggle">${junkEnabled ? "PAUSE" : "RESUME"}</button></div>`
-    : "";
+  const junkRows = ownedRarities.length
+    ? `<div class="bulk-sell-list">${ownedRarities.map((r) => {
+        const enabled = isAutoJunkRarityEnabled(r);
+        return `<div class="bulk-sell-row">` +
+          `<span class="bulk-sell-label" style="color:${enabled ? RARITY_COLOR[r] : "var(--text-dim)"}">${r.toUpperCase()}${enabled ? "" : " &mdash; PAUSED"}</span>` +
+          `<button class="bulk-sell-btn${enabled ? " pause-btn" : ""}" data-junk-rarity="${r}">${enabled ? "PAUSE" : "RESUME"}</button>` +
+          `</div>`;
+      }).join("")}</div>`
+    : `<div class="gear-empty-note">Nothing purchased yet.</div>`;
   const junkBtn = nextTier
     ? `<div class="gear-sheet-actions"><button class="gear-sheet-btn" id="junk-upgrade"${getShards() < nextTier.cost ? " disabled" : ""}>UNLOCK ${nextTier.rarity.toUpperCase()} &#9670;${nextTier.cost}</button></div>`
     : `<div class="gear-sheet-sub">ALL TIERS OWNED</div>`;
@@ -1622,8 +1622,7 @@ function stashSettingsHtml() {
     `<div class="gear-sheet-sub">${cap} / ${maxCap} SLOTS</div>` +
     expandBtn +
     `<div class="gear-picker-label" style="margin-top:14px">AUTO-JUNK</div>` +
-    `<div class="gear-sheet-sub">${junkStatus}</div>` +
-    junkToggle +
+    junkRows +
     junkBtn
   );
 }
@@ -1641,10 +1640,12 @@ export function openStashSettingsSheet() {
     openStashSettingsSheet();
     renderGearPanel();
   });
-  const toggleBtn = document.getElementById("junk-toggle");
-  if (toggleBtn) toggleBtn.addEventListener("click", () => {
-    setAutoJunkEnabled(!isAutoJunkEnabled());
-    openStashSettingsSheet();
+  el.gearSheet.querySelectorAll("[data-junk-rarity]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const r = btn.dataset.junkRarity;
+      setAutoJunkRarityEnabled(r, !isAutoJunkRarityEnabled(r));
+      openStashSettingsSheet();
+    });
   });
   const junkBtn = document.getElementById("junk-upgrade");
   if (junkBtn) junkBtn.addEventListener("click", () => {
