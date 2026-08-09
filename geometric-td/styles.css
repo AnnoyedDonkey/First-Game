@@ -9,7 +9,11 @@
   --panel: #0b0e1e;
   --panel-border: #1c2340;
   --text: #cdd6ff;
-  --text-dim: #5a668f;
+  /* Secondary/label text. Was #5a668f (~3.4:1 contrast on --panel — the
+     game-wide "hard to read" complaint, 2026-08-09); this reads clearly
+     against --bg/--panel while staying one step dimmer than --text so the
+     primary/secondary hierarchy doesn't flatten out. */
+  --text-dim: #b9c2e8;
   --neon-cyan: #35e0ff;
   --neon-magenta: #ff3fd4;
   --neon-yellow: #ffe24a;

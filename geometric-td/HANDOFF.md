@@ -6,9 +6,22 @@ handoff is preserved in Git at commit `2650204`.
 
 ## Current state — 2026-08-09
 
-The current deployed build is `2026.08.09-6` (`-6` just adds a one-line
-explainer under the AUTO-JUNK heading in the STASH SETTINGS sheet —
-`ui.js stashSettingsHtml`, no logic change). Stash management got two new
+The current deployed build is `2026.08.09-7`. `-6` added a one-line
+explainer under the AUTO-JUNK heading in the STASH SETTINGS sheet
+(`ui.js stashSettingsHtml`, no logic change). `-7` is a **game-wide
+contrast fix**: `styles.css` `--text-dim` (the secondary/label color, 69
+uses across the stylesheet — every dim label/sub-note in the entire UI)
+was `#5a668f`, ~3.4:1 contrast against `--panel`/`--bg` — under WCAG AA's
+4.5:1 floor, and the whole UI runs 9-11px text, so this was a real
+"hard to read" complaint (2026-08-09), not just the stash screen where it
+was first noticed. Brightened to `#b9c2e8` (~10.9-11.5:1 contrast)
+without going all the way to pure white — `--text` (primary) is itself a
+near-white `#cdd6ff` at ~13.4:1, so an identical-brightness dim color
+would have flattened the primary/secondary hierarchy the whole UI relies
+on to show what's important at a glance. One variable, applies
+everywhere — no other changes needed.
+
+Stash management got two new
 Shard sinks: **stash expansion** (base 100 slots, 10 escalating purchases
 of +20 slots each, 50→4000 Shards, caps at 300 — `config.js LOOT.stash`,
 `progression.js getStashCap/buyStashUpgrade`) and **auto-junk** (4

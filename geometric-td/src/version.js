@@ -12,4 +12,4 @@
 // same-day counter keeps it readable.
 // ============================================================
 
-export const APP_VERSION = "2026.08.09-6";
+export const APP_VERSION = "2026.08.09-7";
