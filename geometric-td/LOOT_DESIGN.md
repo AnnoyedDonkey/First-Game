@@ -252,8 +252,19 @@ Knobs live in `config.js LOOT.drops`.
 
 ## 9. Stash & triage
 
-- Stash cap **50** items (`stashSize`).
-- **One-click "sell all [rarity]"** (bulk-sell Commons etc.).
+- **UPDATED 2026-08-09** (see `HANDOFF.md` Current state): stash cap is no
+  longer a flat number. Base **100** slots + up to 10 purchasable expansions
+  (+20 each, 50→4000 Shards, escalating) cap out at **300**
+  (`config.js LOOT.stash`, `progression.js getStashCap/buyStashUpgrade`).
+  A second Shard sink, **auto-junk**, sells earned loot at/below a
+  purchased rarity tier (Common/Enhanced/Rare/Prismatic, 500/750/1000/1500
+  Shards, sequential) on pickup instead of it ever taking a slot
+  (`config.js LOOT.autoJunk`, `progression.js autoJunkMaxRarity/
+  buyAutoJunkTier`). Both are bought from a `⚙ STASH SETTINGS` sheet.
+- **One-click "sell all [rarity]"** (bulk-sell Commons etc.) — now an
+  always-visible row of per-rarity pills (no filter tap needed to find it),
+  present in **both** the STASH grid and the triage strip
+  (`sellAllStashRarity` / `sellAllPendingRarity`).
 - **End-of-game triage:** if the stash is full when a game ends with new loot,
   show a **triage strip beside the stash**. Player frees space (sell/equip) to
   move items in. Items left in the strip are **lost on leaving** — soft loss,
@@ -286,7 +297,7 @@ New save fields (backfill **right after `loadSave()` in progression.js**, not
 only in `save.js DEFAULT_SAVE` — see HANDOFF's deploy-propagation gotcha):
 ```js
 state.shards ??= 0;
-state.stash ??= [];                 // array of item objects, cap 50
+state.stash ??= [];                 // array of item objects, cap 100-300 (see §9)
 state.store ??= { stock: [], rerolls: 0 };
 state.endlessRewards ??= {};        // { levelId: [claimedMilestoneId, ...] }
 // per roster record:
@@ -327,8 +338,9 @@ Never wipe/downgrade existing saves; all new fields default safely.
 `gen` (pUniversal, restrictedRollBonus, affix roll-range tables, rarity affix
 counts) · `drops` (dropChanceBase, dropChanceTierMult, rarityWeights,
 bossRarityBias, endDropFloor) · `store` (stockSize, rerollCost, storeIlvl) ·
-`stash` (stashSize) · `mastery` (baseXpPerRank, xpRankIncrement, damagePerRank,
-maxRanks). Keep every number here — never hardcode in logic.
+`stash` (baseStashSize, upgradeSize, upgradeCosts) · `autoJunk` (tiers) ·
+`mastery` (baseXpPerRank, xpRankIncrement, damagePerRank, maxRanks). Keep
+every number here — never hardcode in logic.
 
 ---
 
@@ -462,5 +474,7 @@ starts flailing rather than defaulting everything High.)
 
 ## 16. Deferred (post-v1)
 - **Set bonuses** (equip N of a set for a combo effect).
-- Stash-size upgrades as a Shard sink.
 - More Singularity uniques; per-slot cosmetic glow tiers.
+
+Done from this list: stash-size upgrades as a Shard sink, shipped
+2026-08-09 alongside a second sink (auto-junk) — see §9 and `HANDOFF.md`.

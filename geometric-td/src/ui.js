@@ -21,7 +21,9 @@ import {
   getLevelMilestones,
   getStash, getPendingLoot, stashSlotsFree, claimPendingLoot,
   discardPendingLoot, sellStashItem, sellPendingItem, sellAllStashRarity,
-  equipStashItem, unequipToStash,
+  sellAllPendingRarity, equipStashItem, unequipToStash,
+  getStashCap, nextStashUpgradeCost, buyStashUpgrade,
+  autoJunkMaxRarity, nextAutoJunkTier, buyAutoJunkTier,
   getStoreStock, storeRerollCost, rerollStore, buyStoreItem,
   storeSkillPointCost, buyStoreSkillPoint,
   getStoreUnlocks, buyStoreUnlock,
@@ -71,6 +73,7 @@ const el = {
   gearOverlay: document.getElementById("gear-overlay"),
   gearWallet: document.getElementById("gear-wallet"),
   gearHelp: document.getElementById("gear-help"),
+  gearStashSettings: document.getElementById("gear-stash-settings"),
   gearTabTowers: document.getElementById("gear-tab-towers"),
   gearTabStash: document.getElementById("gear-tab-stash"),
   gearStashBadge: document.getElementById("gear-stash-badge"),
@@ -807,7 +810,7 @@ function appendGlobalMenuButtons() {
   towersBtn.innerHTML =
     `<span>TOWERS</span>` +
     `<span class="${newCount ? "level-points" : "level-done"}">` +
-    (newCount ? `${newCount} NEW` : `${stash}/${LOOT.stash.stashSize}`) +
+    (newCount ? `${newCount} NEW` : `${stash}/${getStashCap()}`) +
     `</span>`;
   towersBtn.addEventListener("click", () => openGearPanel());
   topRow.appendChild(towersBtn);
@@ -1207,6 +1210,7 @@ function tileHtml(item, opts = {}) {
 function revealDestHtml(p) {
   if (p.dest === "equipped") return `AUTO-EQUIPPED &rarr; <b>${escapeHtml(p.towerName)}</b>`;
   if (p.dest === "stash") return "&rarr; STASH";
+  if (p.dest === "junked") return `&rarr; AUTO-SOLD &#9670;${p.value}`;
   return "&rarr; UNCLAIMED (stash was full)";
 }
 
@@ -1587,6 +1591,54 @@ export function openGearHelpSheet() {
 }
 el.gearHelp.addEventListener("click", openGearHelpSheet);
 
+// ---- Stash settings sheet: capacity + auto-junk (both Shard sinks) ----
+
+function stashSettingsHtml() {
+  const cap = getStashCap();
+  const maxCap = LOOT.stash.baseStashSize + LOOT.stash.upgradeSize * LOOT.stash.upgradeCosts.length;
+  const nextCost = nextStashUpgradeCost();
+  const expandBtn = nextCost != null
+    ? `<div class="gear-sheet-actions"><button class="gear-sheet-btn" id="stash-expand"${getShards() < nextCost ? " disabled" : ""}>+${LOOT.stash.upgradeSize} SLOTS &#9670;${nextCost}</button></div>`
+    : `<div class="gear-sheet-sub">MAX CAPACITY REACHED</div>`;
+
+  const curJunk = autoJunkMaxRarity();
+  const nextTier = nextAutoJunkTier();
+  const junkBtn = nextTier
+    ? `<div class="gear-sheet-actions"><button class="gear-sheet-btn" id="junk-upgrade"${getShards() < nextTier.cost ? " disabled" : ""}>UNLOCK ${nextTier.rarity.toUpperCase()} &#9670;${nextTier.cost}</button></div>`
+    : `<div class="gear-sheet-sub">ALL TIERS OWNED</div>`;
+
+  return (
+    `<div class="gear-picker-label">STASH CAPACITY</div>` +
+    `<div class="gear-sheet-sub">${cap} / ${maxCap} SLOTS</div>` +
+    expandBtn +
+    `<div class="gear-picker-label" style="margin-top:14px">AUTO-JUNK</div>` +
+    `<div class="gear-sheet-sub">${curJunk ? `AUTO-SELLS ${curJunk.toUpperCase()} AND BELOW ON PICKUP` : "OFF &mdash; nothing auto-sells"}</div>` +
+    junkBtn
+  );
+}
+
+export function openStashSettingsSheet() {
+  el.gearSheet.innerHTML =
+    `<div class="gear-sheet-title" style="color:var(--neon-yellow)">STASH SETTINGS</div>` +
+    stashSettingsHtml() +
+    `<div class="gear-sheet-actions" style="margin-top:12px"><button class="gear-sheet-btn" id="sheet-close">CLOSE</button></div>`;
+  openSheet();
+  document.getElementById("sheet-close").addEventListener("click", closeSheet);
+  const expandBtn = document.getElementById("stash-expand");
+  if (expandBtn) expandBtn.addEventListener("click", () => {
+    buyStashUpgrade();
+    openStashSettingsSheet();
+    renderGearPanel();
+  });
+  const junkBtn = document.getElementById("junk-upgrade");
+  if (junkBtn) junkBtn.addEventListener("click", () => {
+    buyAutoJunkTier();
+    openStashSettingsSheet();
+    renderGearPanel();
+  });
+}
+el.gearStashSettings.addEventListener("click", openStashSettingsSheet);
+
 // ---- TOWERS tab ----
 
 function eligibleGearTowers() {
@@ -1697,6 +1749,39 @@ function buildGearFilters() {
   });
 }
 
+// Always-visible per-rarity bulk-sell pills, one per rarity actually present
+// in `items` — no filter tap required to find them (the old flow hid this
+// row behind a rarity filter chip, which players couldn't find). Shared by
+// the STASH grid and the triage strip; `kind` picks which sell function a
+// click resolves to.
+function bulkSellRowHtml(items, kind) {
+  const counts = {};
+  for (const it of items) counts[it.rarity] = (counts[it.rarity] || 0) + 1;
+  const present = RARITY_ORDER.filter((r) => counts[r]);
+  if (!present.length) return "";
+  return `<div class="gear-bulk-row">` +
+    present.map((r) =>
+      `<button class="gear-chip bulk-sell" style="color:${RARITY_COLOR[r]};border-color:${RARITY_COLOR[r]}" data-bulk-kind="${kind}" data-bulk-rarity="${r}">SELL ${r.toUpperCase()} (${counts[r]})</button>`
+    ).join("") +
+    `</div>`;
+}
+
+function bindBulkSellRow(container) {
+  container.querySelectorAll("[data-bulk-rarity]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (btn.classList.contains("confirming")) {
+        const rarity = btn.dataset.bulkRarity;
+        if (btn.dataset.bulkKind === "pending") sellAllPendingRarity(rarity);
+        else sellAllStashRarity(rarity);
+        renderGearPanel();
+      } else {
+        btn.classList.add("confirming");
+        btn.textContent = "TAP AGAIN";
+      }
+    });
+  });
+}
+
 function renderStashTab() {
   const stash = getStash();
   const pending = getPendingLoot();
@@ -1706,6 +1791,7 @@ function renderStashTab() {
     html += `<div id="gear-triage">` +
       `<div class="gear-triage-title">${pending.length} DROP${pending.length === 1 ? "" : "S"} UNCLAIMED &mdash; STASH IS FULL</div>` +
       `<div class="gear-triage-grid">${pending.map((item) => tileHtml(item, { pendingId: item.id })).join("")}</div>` +
+      bulkSellRowHtml(pending, "pending") +
       `<div class="gear-actions-row">` +
       `<button class="gear-action" id="triage-claim"${stashSlotsFree() <= 0 ? " disabled" : ""}>CLAIM (${stashSlotsFree()} FREE)</button>` +
       `<button class="gear-action danger" id="triage-leave">LEAVE DROPS</button>` +
@@ -1720,10 +1806,8 @@ function renderStashTab() {
   html +=
     `<div class="gear-stash-header"><span class="gear-stash-count">${shown.length} ITEM${shown.length === 1 ? "" : "S"}</span>` +
     `<span class="gear-sort-note">SORTED: RARITY &#9662;</span></div>` +
+    bulkSellRowHtml(stash, "stash") +
     `<div id="gear-filters"></div>` +
-    (gearFilterRarity && shown.length
-      ? `<div class="gear-sellall-row"><button class="gear-action" id="gear-sellall">SELL ALL ${gearFilterRarity.toUpperCase()} (${shown.length})</button></div>`
-      : "") +
     `<div id="gear-stash-grid">${shown.length
       ? shown.map((item) => tileHtml(item, { stashId: item.id })).join("")
       : `<div class="gear-grid-empty">${stash.length ? "NO MATCHING GEAR" : "No stored gear yet. Every battle now grants at least one drop."}</div>`
@@ -1745,19 +1829,7 @@ function renderStashTab() {
       }
     });
   }
-  const sellAllBtn = document.getElementById("gear-sellall");
-  if (sellAllBtn) {
-    sellAllBtn.addEventListener("click", () => {
-      if (sellAllBtn.classList.contains("confirming")) {
-        sellAllStashRarity(gearFilterRarity);
-        gearFilterRarity = null;
-        renderGearPanel();
-      } else {
-        sellAllBtn.classList.add("confirming");
-        sellAllBtn.textContent = "SELL ALL? TAP AGAIN";
-      }
-    });
-  }
+  bindBulkSellRow(el.gearViewStash);
   el.gearViewStash.querySelectorAll("[data-stash-item]").forEach((tile) => {
     tile.addEventListener("click", () => openItemSheet({ stashId: tile.dataset.stashItem }));
   });
@@ -1771,7 +1843,7 @@ function renderStashTab() {
 function renderGearHeader() {
   const pending = getPendingLoot().length;
   el.gearWallet.innerHTML =
-    `<b>&#9670; ${getShards()}</b> &nbsp;&middot;&nbsp; STASH ${getStash().length}/${LOOT.stash.stashSize}` +
+    `<b>&#9670; ${getShards()}</b> &nbsp;&middot;&nbsp; STASH ${getStash().length}/${getStashCap()}` +
     (pending ? ` &nbsp;&middot;&nbsp; ${pending} UNCLAIMED` : "");
   const unseen = countUnseenStash();
   el.gearStashBadge.classList.toggle("hidden", unseen === 0);
@@ -1934,7 +2006,7 @@ function renderStorePanel() {
   const unlocks = getStoreUnlocks();
   el.storeWallet.innerHTML = `<b>&#9670; ${shards}</b> &nbsp;&middot;&nbsp; ` +
     `<span class="store-skill-balance">&#9733; ${getSkillPoints()} SKILL PT</span> &nbsp;&middot;&nbsp; ` +
-    `STASH ${getStash().length}/${LOOT.stash.stashSize}`;
+    `STASH ${getStash().length}/${getStashCap()}`;
 
   el.storeActions.innerHTML = "";
 
@@ -2630,7 +2702,8 @@ export function showOverlay({ title, subtitle, type, buttons, items, note, miles
     el.overlayItems.innerHTML = loot.map((p, i) =>
       tileHtml(p.item, {
         resultIndex: i,
-        tileClass: p.dest === "equipped" ? "equipped-tile" : "stashed-tile",
+        tileClass: p.dest === "equipped" ? "equipped-tile" : p.dest === "junked" ? "junked-tile" : "stashed-tile",
+        priceTag: p.dest === "junked" ? p.value : undefined,
       })
     ).join("");
     el.overlayItems.classList.remove("hidden");

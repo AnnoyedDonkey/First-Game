@@ -37,6 +37,8 @@ state.store.skillPointPurchases ??= 0;
 state.endlessRewards ||= {};
 state.seenLoot ||= [];
 state.storeUnlocks ||= [];
+state.stashUpgrades ??= 0;
+state.autoJunkTier ??= -1;
 state.levelMilestones ||= {};
 state.tutorialDone ??= false;
 // Any save that already has real progress (a level cleared or an
@@ -466,7 +468,7 @@ export function buyStoreItem(itemId) {
   normalizeStore();
   const item = state.store.stock.find((candidate) => candidate.id === itemId);
   if (!item) return { ok: false, reason: "missing" };
-  if (getStash().length >= LOOT.stash.stashSize) return { ok: false, reason: "stash" };
+  if (getStash().length >= getStashCap()) return { ok: false, reason: "stash" };
   const cost = LOOT.store.prices[item.rarity] || 0;
   if (state.shards < cost) return { ok: false, reason: "shards", cost };
   state.shards -= cost;
@@ -541,8 +543,30 @@ export function getPendingLoot() {
   return state.pendingLoot;
 }
 
+// ---------- Stash capacity (Shard sink, purchasable expansions) ----------
+export function getStashCap() {
+  const owned = Math.min(state.stashUpgrades || 0, LOOT.stash.upgradeCosts.length);
+  return LOOT.stash.baseStashSize + owned * LOOT.stash.upgradeSize;
+}
+
+export function nextStashUpgradeCost() {
+  const next = state.stashUpgrades || 0;
+  return next < LOOT.stash.upgradeCosts.length ? LOOT.stash.upgradeCosts[next] : null;
+}
+
+export function buyStashUpgrade() {
+  const next = state.stashUpgrades || 0;
+  const cost = LOOT.stash.upgradeCosts[next];
+  if (cost === undefined) return { ok: false, reason: "max" };
+  if (state.shards < cost) return { ok: false, reason: "shards", cost };
+  state.shards -= cost;
+  state.stashUpgrades = next + 1;
+  writeSave(state);
+  return { ok: true, cost, cap: getStashCap() };
+}
+
 export function stashSlotsFree() {
-  return Math.max(0, LOOT.stash.stashSize - getStash().length);
+  return Math.max(0, getStashCap() - getStash().length);
 }
 
 function itemSellValue(item) {
@@ -557,7 +581,7 @@ function removeItemById(list, itemId) {
 
 function addToStashOrPending(item) {
   if (!item) return "none";
-  if (getStash().length < LOOT.stash.stashSize) {
+  if (getStash().length < getStashCap()) {
     state.stash.push(structuredClone(item));
     return "stash";
   }
@@ -567,7 +591,7 @@ function addToStashOrPending(item) {
 
 export function claimPendingLoot() {
   const moved = [];
-  while (state.pendingLoot.length && state.stash.length < LOOT.stash.stashSize) {
+  while (state.pendingLoot.length && state.stash.length < getStashCap()) {
     moved.push(state.pendingLoot.shift());
     state.stash.push(moved[moved.length - 1]);
   }
@@ -604,6 +628,20 @@ export function sellAllStashRarity(rarity) {
   let sold = 0;
   let value = 0;
   state.stash = getStash().filter((item) => {
+    if (item.rarity !== rarity) return true;
+    sold += 1;
+    value += itemSellValue(item);
+    return false;
+  });
+  state.shards += value;
+  writeSave(state);
+  return { sold, value };
+}
+
+export function sellAllPendingRarity(rarity) {
+  let sold = 0;
+  let value = 0;
+  state.pendingLoot = getPendingLoot().filter((item) => {
     if (item.rarity !== rarity) return true;
     sold += 1;
     value += itemSellValue(item);
@@ -660,9 +698,34 @@ function autoEquipTarget(item) {
   return candidates[0] || null;
 }
 
-// Bank one earned item: auto-equip, else stash, else pendingLoot triage.
-// Returns a placement { item, dest: "equipped"|"stash"|"pending",
-// towerName?, displaced? } for the end-of-battle summary. Callers writeSave.
+// ---------- Auto-junk (Shard sink, purchasable per-rarity thresholds) ----------
+// Sequential tiers (must be bought in order — see config.js LOOT.autoJunk).
+// autoJunkMaxRarity() is the highest rarity currently set to auto-sell, or
+// null if the player owns no tier yet (default off).
+export function autoJunkMaxRarity() {
+  const idx = state.autoJunkTier ?? -1;
+  return idx >= 0 ? LOOT.autoJunk.tiers[idx].rarity : null;
+}
+
+export function nextAutoJunkTier() {
+  return LOOT.autoJunk.tiers[(state.autoJunkTier ?? -1) + 1] || null;
+}
+
+export function buyAutoJunkTier() {
+  const next = (state.autoJunkTier ?? -1) + 1;
+  const tier = LOOT.autoJunk.tiers[next];
+  if (!tier) return { ok: false, reason: "max" };
+  if (state.shards < tier.cost) return { ok: false, reason: "shards", cost: tier.cost };
+  state.shards -= tier.cost;
+  state.autoJunkTier = next;
+  writeSave(state);
+  return { ok: true, cost: tier.cost, rarity: tier.rarity };
+}
+
+// Bank one earned item: auto-equip, else auto-junk (if a purchased rarity
+// tier covers it), else stash, else pendingLoot triage. Returns a placement
+// { item, dest: "equipped"|"junked"|"stash"|"pending", towerName?, value?,
+// displaced? } for the end-of-battle summary. Callers writeSave.
 function bankEarnedItem(item) {
   if (!(LOOT.autoEquip?.enabled ?? false)) {
     state.pendingLoot.push(structuredClone(item));
@@ -676,6 +739,12 @@ function bankEarnedItem(item) {
     const placement = { item, dest: "equipped", towerName: rec.name };
     if (previous) placement.displaced = addToStashOrPending(previous);
     return placement;
+  }
+  const junkRarity = autoJunkMaxRarity();
+  if (junkRarity && RARITIES.indexOf(item.rarity) <= RARITIES.indexOf(junkRarity)) {
+    const value = itemSellValue(item);
+    state.shards += value;
+    return { item, dest: "junked", value };
   }
   return { item, dest: addToStashOrPending(item) };
 }

@@ -523,8 +523,31 @@ export const LOOT = {
     ],
   },
 
+  // Stash capacity: a free base plus purchasable expansions (a Shard sink —
+  // progression.js getStashCap/buyStashUpgrade). Total = baseStashSize +
+  // (owned upgrades, capped at upgradeCosts.length) * upgradeSize.
+  // 100 + 10*20 = 300 max.
   stash: {
-    stashSize: 50,
+    baseStashSize: 100,
+    upgradeSize: 20,
+    upgradeCosts: [50, 80, 130, 210, 350, 570, 925, 1500, 2450, 4000],
+  },
+
+  // autoJunk: a second Shard sink, sold as sequential per-rarity tiers
+  // (progression.js autoJunkMaxRarity/buyAutoJunkTier — must be bought in
+  // order, index = state.autoJunkTier, -1 = none owned). Once a tier is
+  // owned, loot EARNED in play (kill drops, the guaranteed end-drop,
+  // Endless milestone loot — NOT store purchases) at or below that rarity
+  // is auto-sold for Shards instead of taking a stash/triage slot, if it
+  // didn't already auto-equip. Singularity can never be junked (no tier
+  // for it).
+  autoJunk: {
+    tiers: [
+      { rarity: "common", cost: 500 },
+      { rarity: "enhanced", cost: 750 },
+      { rarity: "rare", cost: 1000 },
+      { rarity: "prismatic", cost: 1500 },
+    ],
   },
 
   // ---- Gear rules (U0, see GEAR_UI_DESIGN.md §1) ----

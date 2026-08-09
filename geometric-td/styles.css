@@ -1020,9 +1020,14 @@ button.hud-item {
   text-shadow: 0 0 16px rgba(255, 226, 74, 0.6);
 }
 
-#gear-help {
+#gear-header-icons {
   position: absolute;
   right: 0;
+  display: flex;
+  gap: 6px;
+}
+
+#gear-help, #gear-stash-settings {
   width: 26px;
   height: 26px;
   border-radius: 50%;
@@ -1228,6 +1233,11 @@ button.hud-item {
   cursor: pointer;
 }
 .gear-chip.on { color: var(--neon-cyan); border-color: var(--neon-cyan); box-shadow: 0 0 8px rgba(53, 224, 255, 0.25); }
+.gear-chip.confirming { color: var(--neon-red) !important; border-color: var(--neon-red) !important; }
+
+/* Always-visible per-rarity bulk-sell pills (STASH grid + triage strip) —
+   no filter tap required to reach them. */
+.gear-bulk-row { display: flex; gap: 6px; padding-bottom: 10px; flex-wrap: wrap; }
 
 .gear-stash-header {
   display: flex;
@@ -1284,8 +1294,6 @@ button.hud-item {
   letter-spacing: 1px;
   padding: 30px 0;
 }
-
-.gear-sellall-row { display: flex; gap: 8px; padding-bottom: 10px; flex-wrap: wrap; }
 
 /* ---- Triage strip (unclaimed drops when the stash was full) ---- */
 #gear-triage {
@@ -2177,6 +2185,7 @@ button.hud-item {
 
 #overlay-items .item-tile.equipped-tile { opacity: 1; }
 #overlay-items .item-tile.stashed-tile { opacity: 0.82; }
+#overlay-items .item-tile.junked-tile { opacity: 0.6; }
 
 #overlay.win h1  { color: var(--neon-green); text-shadow: 0 0 16px rgba(74, 255, 161, 0.7); }
 #overlay.loss h1 { color: var(--neon-red);   text-shadow: 0 0 16px rgba(255, 74, 94, 0.7); }

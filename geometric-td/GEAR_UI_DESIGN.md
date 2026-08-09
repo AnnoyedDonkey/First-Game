@@ -100,7 +100,8 @@ labels can stay short if space demands (renderer decision, check on phone).
 ## 2. Screen spec (matches the mockup — open it, this is just the contract)
 
 One overlay replacing `#gear-overlay` and the Tower Guide. Header: `GEAR`…
-actually title it **TOWERS**; wallet line `◆ N · STASH n/50`; `?` guide
+actually title it **TOWERS**; wallet line `◆ N · STASH n/cap` (cap is now
+purchasable, see `LOOT_DESIGN.md` §9); `?` guide
 button. Two tab buttons: TOWERS / STASH, magenta `N NEW` badge on STASH.
 
 ### 2a. TOWERS tab
