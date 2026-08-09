@@ -1569,11 +1569,11 @@ button.hud-item {
   text-align: left;
 }
 .gear-picker-row .glyph { width: 28px; height: 28px; flex-shrink: 0; }
-.gear-picker-row .pr-main { flex: 1; min-width: 0; }
+.gear-picker-row .pr-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .gear-picker-row .pr-name { font-size: 12px; font-weight: 600; letter-spacing: 1px; }
 .gear-picker-row .pr-sub {
   font-size: 10px; color: var(--text-dim); letter-spacing: 0.5px; margin-top: 2px;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  overflow-wrap: break-word;
 }
 .gear-picker-row .pr-tag { font-size: 9px; letter-spacing: 1px; color: var(--text-dim); flex-shrink: 0; }
 .gear-picker-row.current { border-color: var(--text-dim); background: rgba(255, 255, 255, 0.05); }
