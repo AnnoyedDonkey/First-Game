@@ -1622,6 +1622,9 @@ function stashSettingsHtml() {
     `<div class="gear-sheet-sub">${cap} / ${maxCap} SLOTS</div>` +
     expandBtn +
     `<div class="gear-picker-label" style="margin-top:14px">AUTO-JUNK</div>` +
+    `<div class="gear-empty-note" style="padding:0 0 10px">Auto-sells matching drops the instant you earn them ` +
+    `(kills, end-of-run, Endless milestones) instead of filling a stash or triage slot. Buy a rarity once to ` +
+    `unlock it for good; pause/resume anytime per rarity.</div>` +
     junkRows +
     junkBtn
   );

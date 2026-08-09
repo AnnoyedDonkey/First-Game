@@ -6,7 +6,9 @@ handoff is preserved in Git at commit `2650204`.
 
 ## Current state — 2026-08-09
 
-The current deployed build is `2026.08.09-5`. Stash management got two new
+The current deployed build is `2026.08.09-6` (`-6` just adds a one-line
+explainer under the AUTO-JUNK heading in the STASH SETTINGS sheet —
+`ui.js stashSettingsHtml`, no logic change). Stash management got two new
 Shard sinks: **stash expansion** (base 100 slots, 10 escalating purchases
 of +20 slots each, 50→4000 Shards, caps at 300 — `config.js LOOT.stash`,
 `progression.js getStashCap/buyStashUpgrade`) and **auto-junk** (4
