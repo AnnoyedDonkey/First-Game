@@ -6,8 +6,15 @@ handoff is preserved in Git at commit `2650204`.
 
 ## Current state — 2026-08-09
 
-The current deployed build is `2026.08.09-7`. `-6` added a one-line
-explainer under the AUTO-JUNK heading in the STASH SETTINGS sheet
+The current deployed build is `2026.08.09-8` (`-8`: `.gear-actions-row`
+— the shared class behind every button row in the gear/store overlays,
+including STASH's FILTER/SELL/CONFIG row — was missing bottom margin, so
+buttons sat flush against whatever came next (the STASH grid, most
+visibly). Added `margin-bottom: 12px`; fixes it in the STASH tab, the
+triage strip, and the STORE screen's action row at once, same
+one-class-fixes-everywhere pattern as the `-7` contrast fix).
+`-6` added a one-line explainer under the AUTO-JUNK heading in the STASH
+SETTINGS sheet
 (`ui.js stashSettingsHtml`, no logic change). `-7` is a **game-wide
 contrast fix**: `styles.css` `--text-dim` (the secondary/label color, 69
 uses across the stylesheet — every dim label/sub-note in the entire UI)

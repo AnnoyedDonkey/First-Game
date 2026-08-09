@@ -1367,7 +1367,7 @@ button.hud-item {
   line-height: 1.45;
 }
 
-.gear-actions-row { display: flex; gap: 8px; flex-shrink: 0; }
+.gear-actions-row { display: flex; gap: 8px; flex-shrink: 0; margin-bottom: 12px; }
 
 .gear-action {
   font-family: inherit;
