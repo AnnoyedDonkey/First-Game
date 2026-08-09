@@ -260,7 +260,10 @@ Knobs live in `config.js LOOT.drops`.
   purchased rarity tier (Common/Enhanced/Rare/Prismatic, 500/750/1000/1500
   Shards, sequential) on pickup instead of it ever taking a slot
   (`config.js LOOT.autoJunk`, `progression.js autoJunkMaxRarity/
-  buyAutoJunkTier`). Both are bought from a `⚙ STASH SETTINGS` sheet.
+  buyAutoJunkTier`). Both are bought from a STASH SETTINGS sheet, reached
+  by tapping the `STASH n/cap` text in the gear header (not a separate
+  icon — a first pass used one and it read as invisible against the neon
+  UI; see `HANDOFF.md` `2026.08.09-2`).
 - **One-click "sell all [rarity]"** (bulk-sell Commons etc.) — now an
   always-visible row of per-rarity pills (no filter tap needed to find it),
   present in **both** the STASH grid and the triage strip

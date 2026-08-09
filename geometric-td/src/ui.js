@@ -73,7 +73,6 @@ const el = {
   gearOverlay: document.getElementById("gear-overlay"),
   gearWallet: document.getElementById("gear-wallet"),
   gearHelp: document.getElementById("gear-help"),
-  gearStashSettings: document.getElementById("gear-stash-settings"),
   gearTabTowers: document.getElementById("gear-tab-towers"),
   gearTabStash: document.getElementById("gear-tab-stash"),
   gearStashBadge: document.getElementById("gear-stash-badge"),
@@ -1637,7 +1636,6 @@ export function openStashSettingsSheet() {
     renderGearPanel();
   });
 }
-el.gearStashSettings.addEventListener("click", openStashSettingsSheet);
 
 // ---- TOWERS tab ----
 
@@ -1749,31 +1747,42 @@ function buildGearFilters() {
   });
 }
 
-// Always-visible per-rarity bulk-sell pills, one per rarity actually present
-// in `items` — no filter tap required to find them (the old flow hid this
-// row behind a rarity filter chip, which players couldn't find). Shared by
-// the STASH grid and the triage strip; `kind` picks which sell function a
-// click resolves to.
-function bulkSellRowHtml(items, kind) {
+// Bulk-sell sheet: one row per rarity actually present in `items` (STASH or
+// pendingLoot), each with a tap-again-confirm SELL ALL. Opened from a small
+// always-visible `.gear-mini-action` trigger next to the item count (STASH)
+// or in the triage actions row — replaces an earlier always-visible pill
+// row that ate 1-2 full screen rows on its own (2026-08-09).
+function bulkSellSheetRowsHtml(items, kind) {
   const counts = {};
   for (const it of items) counts[it.rarity] = (counts[it.rarity] || 0) + 1;
   const present = RARITY_ORDER.filter((r) => counts[r]);
-  if (!present.length) return "";
-  return `<div class="gear-bulk-row">` +
+  if (!present.length) return `<div class="gear-empty-note">Nothing to sell.</div>`;
+  return `<div class="bulk-sell-list">` +
     present.map((r) =>
-      `<button class="gear-chip bulk-sell" style="color:${RARITY_COLOR[r]};border-color:${RARITY_COLOR[r]}" data-bulk-kind="${kind}" data-bulk-rarity="${r}">SELL ${r.toUpperCase()} (${counts[r]})</button>`
+      `<div class="bulk-sell-row">` +
+      `<span class="bulk-sell-label" style="color:${RARITY_COLOR[r]}">${r.toUpperCase()} (${counts[r]})</span>` +
+      `<button class="bulk-sell-btn" data-bulk-kind="${kind}" data-bulk-rarity="${r}">SELL ALL</button>` +
+      `</div>`
     ).join("") +
     `</div>`;
 }
 
-function bindBulkSellRow(container) {
-  container.querySelectorAll("[data-bulk-rarity]").forEach((btn) => {
+function openBulkSellSheet(kind) {
+  const items = kind === "pending" ? getPendingLoot() : getStash();
+  el.gearSheet.innerHTML =
+    `<div class="gear-sheet-title" style="color:var(--neon-yellow)">${kind === "pending" ? "SELL UNCLAIMED DROPS" : "BULK SELL"}</div>` +
+    bulkSellSheetRowsHtml(items, kind) +
+    `<div class="gear-sheet-actions" style="margin-top:12px"><button class="gear-sheet-btn" id="sheet-close">CLOSE</button></div>`;
+  openSheet();
+  document.getElementById("sheet-close").addEventListener("click", closeSheet);
+  el.gearSheet.querySelectorAll("[data-bulk-rarity]").forEach((btn) => {
     btn.addEventListener("click", () => {
       if (btn.classList.contains("confirming")) {
         const rarity = btn.dataset.bulkRarity;
         if (btn.dataset.bulkKind === "pending") sellAllPendingRarity(rarity);
         else sellAllStashRarity(rarity);
         renderGearPanel();
+        openBulkSellSheet(kind);
       } else {
         btn.classList.add("confirming");
         btn.textContent = "TAP AGAIN";
@@ -1791,9 +1800,9 @@ function renderStashTab() {
     html += `<div id="gear-triage">` +
       `<div class="gear-triage-title">${pending.length} DROP${pending.length === 1 ? "" : "S"} UNCLAIMED &mdash; STASH IS FULL</div>` +
       `<div class="gear-triage-grid">${pending.map((item) => tileHtml(item, { pendingId: item.id })).join("")}</div>` +
-      bulkSellRowHtml(pending, "pending") +
       `<div class="gear-actions-row">` +
       `<button class="gear-action" id="triage-claim"${stashSlotsFree() <= 0 ? " disabled" : ""}>CLAIM (${stashSlotsFree()} FREE)</button>` +
+      `<button class="gear-action" id="triage-sell">SELL</button>` +
       `<button class="gear-action danger" id="triage-leave">LEAVE DROPS</button>` +
       `</div></div>`;
   }
@@ -1805,8 +1814,7 @@ function renderStashTab() {
 
   html +=
     `<div class="gear-stash-header"><span class="gear-stash-count">${shown.length} ITEM${shown.length === 1 ? "" : "S"}</span>` +
-    `<span class="gear-sort-note">SORTED: RARITY &#9662;</span></div>` +
-    bulkSellRowHtml(stash, "stash") +
+    `<button class="gear-mini-action" id="stash-sell">SELL &#9662;</button></div>` +
     `<div id="gear-filters"></div>` +
     `<div id="gear-stash-grid">${shown.length
       ? shown.map((item) => tileHtml(item, { stashId: item.id })).join("")
@@ -1815,9 +1823,11 @@ function renderStashTab() {
 
   el.gearViewStash.innerHTML = html;
   buildGearFilters();
+  document.getElementById("stash-sell").addEventListener("click", () => openBulkSellSheet("stash"));
 
   if (pending.length) {
     document.getElementById("triage-claim").addEventListener("click", () => { claimPendingLoot(); renderGearPanel(); });
+    document.getElementById("triage-sell").addEventListener("click", () => openBulkSellSheet("pending"));
     const leaveBtn = document.getElementById("triage-leave");
     leaveBtn.addEventListener("click", () => {
       if (leaveBtn.classList.contains("confirming")) {
@@ -1829,7 +1839,6 @@ function renderStashTab() {
       }
     });
   }
-  bindBulkSellRow(el.gearViewStash);
   el.gearViewStash.querySelectorAll("[data-stash-item]").forEach((tile) => {
     tile.addEventListener("click", () => openItemSheet({ stashId: tile.dataset.stashItem }));
   });
@@ -1843,8 +1852,10 @@ function renderStashTab() {
 function renderGearHeader() {
   const pending = getPendingLoot().length;
   el.gearWallet.innerHTML =
-    `<b>&#9670; ${getShards()}</b> &nbsp;&middot;&nbsp; STASH ${getStash().length}/${getStashCap()}` +
+    `<b>&#9670; ${getShards()}</b> &nbsp;&middot;&nbsp; ` +
+    `<button id="stash-cap-btn" class="wallet-link">STASH ${getStash().length}/${getStashCap()}<span class="chev">&rsaquo;</span></button>` +
     (pending ? ` &nbsp;&middot;&nbsp; ${pending} UNCLAIMED` : "");
+  document.getElementById("stash-cap-btn").addEventListener("click", openStashSettingsSheet);
   const unseen = countUnseenStash();
   el.gearStashBadge.classList.toggle("hidden", unseen === 0);
   el.gearStashBadge.textContent = `${unseen} NEW`;

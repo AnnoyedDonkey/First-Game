@@ -1020,14 +1020,9 @@ button.hud-item {
   text-shadow: 0 0 16px rgba(255, 226, 74, 0.6);
 }
 
-#gear-header-icons {
+#gear-help {
   position: absolute;
   right: 0;
-  display: flex;
-  gap: 6px;
-}
-
-#gear-help, #gear-stash-settings {
   width: 26px;
   height: 26px;
   border-radius: 50%;
@@ -1046,6 +1041,23 @@ button.hud-item {
   flex-shrink: 0;
 }
 #gear-wallet b { color: var(--neon-yellow); font-weight: 600; }
+
+/* The STASH n/cap segment doubles as the entry point to the stash-settings
+   sheet (capacity + auto-junk purchases) — a plain-text tap target inside
+   text the player already reads, instead of a separate small icon (which
+   read as invisible against the neon UI — GH issue 2026-08-09). */
+.wallet-link {
+  font: inherit;
+  letter-spacing: inherit;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--neon-cyan);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.wallet-link .chev { margin-left: 1px; }
 
 #gear-tabs {
   display: flex;
@@ -1215,12 +1227,18 @@ button.hud-item {
 }
 
 /* ---- Filter chips + stash grid (STASH tab) ---- */
+/* Single horizontally-scrolling row instead of wrapping to 2 rows — same
+   9 chips (4 slots + 5 rarities), roughly half the vertical footprint. */
 #gear-filters {
   display: flex;
   gap: 6px;
   padding-bottom: 10px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }
+#gear-filters::-webkit-scrollbar { display: none; }
 .gear-chip {
   font-family: inherit;
   font-size: 10px;
@@ -1231,13 +1249,52 @@ button.hud-item {
   border-radius: 20px;
   padding: 6px 11px;
   cursor: pointer;
+  flex-shrink: 0;
 }
 .gear-chip.on { color: var(--neon-cyan); border-color: var(--neon-cyan); box-shadow: 0 0 8px rgba(53, 224, 255, 0.25); }
-.gear-chip.confirming { color: var(--neon-red) !important; border-color: var(--neon-red) !important; }
 
-/* Always-visible per-rarity bulk-sell pills (STASH grid + triage strip) —
-   no filter tap required to reach them. */
-.gear-bulk-row { display: flex; gap: 6px; padding-bottom: 10px; flex-wrap: wrap; }
+/* Small always-visible trigger next to the STASH item count — opens the
+   bulk-sell sheet. Shard-yellow so it visually reads as "convert to
+   currency", and so it doesn't disappear the way a plain outline icon did. */
+.gear-mini-action {
+  font-family: inherit;
+  font-size: 10px;
+  letter-spacing: 1px;
+  padding: 5px 10px;
+  border-radius: 14px;
+  background: rgba(255, 226, 74, 0.08);
+  border: 1px solid var(--neon-yellow);
+  color: var(--neon-yellow);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* ---- Bulk-sell sheet (rarity rows opened from .gear-mini-action) ---- */
+.bulk-sell-list { display: flex; flex-direction: column; gap: 8px; }
+.bulk-sell-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--panel-border);
+  border-radius: 9px;
+}
+.bulk-sell-label { font-size: 12px; font-weight: 600; letter-spacing: 1px; }
+.bulk-sell-btn {
+  font-family: inherit;
+  font-size: 10px;
+  letter-spacing: 1px;
+  padding: 8px 14px;
+  border-radius: 7px;
+  border: 1px solid var(--neon-yellow);
+  background: rgba(255, 226, 74, 0.08);
+  color: var(--neon-yellow);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.bulk-sell-btn.confirming { border-color: var(--neon-red); color: var(--neon-red); background: rgba(255, 74, 94, 0.08); }
 
 .gear-stash-header {
   display: flex;
@@ -1246,7 +1303,6 @@ button.hud-item {
   padding-bottom: 8px;
 }
 .gear-stash-count { font-size: 11px; color: var(--text-dim); letter-spacing: 2px; }
-.gear-sort-note { font-size: 9px; color: var(--text-dim); letter-spacing: 1px; }
 
 #gear-stash-grid {
   display: grid;
