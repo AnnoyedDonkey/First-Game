@@ -6,23 +6,32 @@ handoff is preserved in Git at commit `2650204`.
 
 ## Current state — 2026-08-09
 
-The current deployed build is `2026.08.09-3`. Stash management got two new
+The current deployed build is `2026.08.09-4`. Stash management got two new
 Shard sinks: **stash expansion** (base 100 slots, 10 escalating purchases
 of +20 slots each, 50→4000 Shards, caps at 300 — `config.js LOOT.stash`,
 `progression.js getStashCap/buyStashUpgrade`) and **auto-junk** (4
 sequential per-rarity tiers — Common 500 / Enhanced 750 / Rare 1000 /
 Prismatic 1500 Shards; Singularity is never junkable — `config.js
-LOOT.autoJunk`, `progression.js autoJunkMaxRarity/buyAutoJunkTier`). Once a
-tier is owned, loot EARNED in play (kill drops, the guaranteed end-drop,
-Endless milestones — not store buys) at or below that rarity auto-sells
+LOOT.autoJunk`, `progression.js autoJunkMaxRarity/buyAutoJunkTier`).
+Ownership and activation are separate (`-4`, player-requested): a
+purchased tier is permanent, but a `PAUSE`/`RESUME` toggle in the STASH
+SETTINGS sheet (`progression.js isAutoJunkEnabled/setAutoJunkEnabled`, new
+save field `autoJunkEnabled`) can switch it off without losing the
+purchase — e.g. to hoard Commons for a build without re-buying the tier
+later. `autoJunkMaxRarity()` (what `bankEarnedItem` actually checks)
+returns `null` while paused; `ownedAutoJunkRarity()` is the separate
+always-true getter the settings sheet displays so "paused" doesn't read
+as "never bought". Once a tier is owned AND active, loot EARNED in play
+(kill drops, the guaranteed end-drop, Endless milestones — not store
+buys) at or below that rarity auto-sells
 for Shards instead of taking a stash/triage slot, checked in
 `bankEarnedItem` *after* the existing auto-equip attempt fails (so a
 still-useful Common can equip before the junk check ever sees it). New
 placement dest `"junked"` flows through the drop-reveal card ("→
 AUTO-SOLD ◆n") and the results-screen loot tile (a dimmed `.junked-tile`
 with the sold value as its corner tag, reusing the Store's price-tag
-styling). New save fields `stashUpgrades`/`autoJunkTier` (save.js default
-+ progression.js backfill, standard pattern).
+styling). New save fields `stashUpgrades`/`autoJunkTier`/`autoJunkEnabled`
+(save.js default + progression.js backfill, standard pattern).
 
 The STASH tab's controls went through two rounds of phone feedback before
 landing on the current design (`ui.js renderStashTab`, `.gear-mini-action`

@@ -22,6 +22,7 @@ const DEFAULT_SAVE = {
   storeUnlocks: [],   // rarities unlocked for store rolls: ["enhanced", "rare", ...]
   stashUpgrades: 0,   // purchased stash-expansion tiers (LOOT.stash.upgradeCosts)
   autoJunkTier: -1,   // highest purchased auto-junk tier index (LOOT.autoJunk.tiers), -1 = none
+  autoJunkEnabled: true, // player can pause a purchased tier without losing it
   endlessRewards: {},
   levelMilestones: {}, // { levelId: [claimedMilestoneId, ...] } — per-level challenges (B5)
   tutorialDone: false, // first-play walkthrough (T4) shown once on level_001's first campaign start

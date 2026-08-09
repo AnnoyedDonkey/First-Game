@@ -23,7 +23,8 @@ import {
   discardPendingLoot, sellStashItem, sellPendingItem, sellAllStashRarity,
   sellAllPendingRarity, equipStashItem, unequipToStash,
   getStashCap, nextStashUpgradeCost, buyStashUpgrade,
-  autoJunkMaxRarity, nextAutoJunkTier, buyAutoJunkTier,
+  ownedAutoJunkRarity, isAutoJunkEnabled, setAutoJunkEnabled,
+  nextAutoJunkTier, buyAutoJunkTier,
   getStoreStock, storeRerollCost, rerollStore, buyStoreItem,
   storeSkillPointCost, buyStoreSkillPoint,
   getStoreUnlocks, buyStoreUnlock,
@@ -1601,8 +1602,17 @@ function stashSettingsHtml() {
     ? `<div class="gear-sheet-actions"><button class="gear-sheet-btn" id="stash-expand"${getShards() < nextCost ? " disabled" : ""}>+${LOOT.stash.upgradeSize} SLOTS &#9670;${nextCost}</button></div>`
     : `<div class="gear-sheet-sub">MAX CAPACITY REACHED</div>`;
 
-  const curJunk = autoJunkMaxRarity();
+  const ownedJunk = ownedAutoJunkRarity();
+  const junkEnabled = isAutoJunkEnabled();
   const nextTier = nextAutoJunkTier();
+  const junkStatus = ownedJunk
+    ? junkEnabled
+      ? `AUTO-SELLS ${ownedJunk.toUpperCase()} AND BELOW ON PICKUP`
+      : `PAUSED (unlocked up to ${ownedJunk.toUpperCase()})`
+    : "OFF &mdash; nothing auto-sells";
+  const junkToggle = ownedJunk
+    ? `<div class="gear-sheet-actions"><button class="gear-sheet-btn${junkEnabled ? " danger" : ""}" id="junk-toggle">${junkEnabled ? "PAUSE" : "RESUME"}</button></div>`
+    : "";
   const junkBtn = nextTier
     ? `<div class="gear-sheet-actions"><button class="gear-sheet-btn" id="junk-upgrade"${getShards() < nextTier.cost ? " disabled" : ""}>UNLOCK ${nextTier.rarity.toUpperCase()} &#9670;${nextTier.cost}</button></div>`
     : `<div class="gear-sheet-sub">ALL TIERS OWNED</div>`;
@@ -1612,7 +1622,8 @@ function stashSettingsHtml() {
     `<div class="gear-sheet-sub">${cap} / ${maxCap} SLOTS</div>` +
     expandBtn +
     `<div class="gear-picker-label" style="margin-top:14px">AUTO-JUNK</div>` +
-    `<div class="gear-sheet-sub">${curJunk ? `AUTO-SELLS ${curJunk.toUpperCase()} AND BELOW ON PICKUP` : "OFF &mdash; nothing auto-sells"}</div>` +
+    `<div class="gear-sheet-sub">${junkStatus}</div>` +
+    junkToggle +
     junkBtn
   );
 }
@@ -1629,6 +1640,11 @@ export function openStashSettingsSheet() {
     buyStashUpgrade();
     openStashSettingsSheet();
     renderGearPanel();
+  });
+  const toggleBtn = document.getElementById("junk-toggle");
+  if (toggleBtn) toggleBtn.addEventListener("click", () => {
+    setAutoJunkEnabled(!isAutoJunkEnabled());
+    openStashSettingsSheet();
   });
   const junkBtn = document.getElementById("junk-upgrade");
   if (junkBtn) junkBtn.addEventListener("click", () => {

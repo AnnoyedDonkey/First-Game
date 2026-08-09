@@ -39,6 +39,7 @@ state.seenLoot ||= [];
 state.storeUnlocks ||= [];
 state.stashUpgrades ??= 0;
 state.autoJunkTier ??= -1;
+state.autoJunkEnabled ??= true;
 state.levelMilestones ||= {};
 state.tutorialDone ??= false;
 // Any save that already has real progress (a level cleared or an
@@ -700,11 +701,31 @@ function autoEquipTarget(item) {
 
 // ---------- Auto-junk (Shard sink, purchasable per-rarity thresholds) ----------
 // Sequential tiers (must be bought in order — see config.js LOOT.autoJunk).
-// autoJunkMaxRarity() is the highest rarity currently set to auto-sell, or
-// null if the player owns no tier yet (default off).
+// Ownership (autoJunkTier) and whether it's currently active (autoJunkEnabled)
+// are separate: a purchased tier is permanent, but the player can pause it
+// without losing the purchase (e.g. hoarding Commons for a build).
+// autoJunkMaxRarity() is what bankEarnedItem actually checks — the highest
+// rarity to auto-sell right now, or null if nothing's owned OR it's paused.
 export function autoJunkMaxRarity() {
+  if (!isAutoJunkEnabled()) return null;
+  return ownedAutoJunkRarity();
+}
+
+// The highest rarity tier owned, regardless of the enabled/paused toggle —
+// for settings-sheet display, so "paused" doesn't read as "never bought".
+export function ownedAutoJunkRarity() {
   const idx = state.autoJunkTier ?? -1;
   return idx >= 0 ? LOOT.autoJunk.tiers[idx].rarity : null;
+}
+
+export function isAutoJunkEnabled() {
+  return state.autoJunkEnabled !== false;
+}
+
+export function setAutoJunkEnabled(enabled) {
+  state.autoJunkEnabled = !!enabled;
+  writeSave(state);
+  return { ok: true, enabled: state.autoJunkEnabled };
 }
 
 export function nextAutoJunkTier() {
