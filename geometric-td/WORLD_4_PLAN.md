@@ -1,8 +1,12 @@
 # World 4 — SINGULARITY (levels 16–20) — Build Plan
 
-**Status:** approved for execution. Author of specs: orchestrator (Opus).
-Executors: sequential cheap Sonnet agents (one phase each). Orchestrator does
-the final `version.js` bump + commit + push (Phase 8).
+**Status:** IMPLEMENTED and shipped (`2026.08.08-1`..`-18`). This doc is the
+original plan; several levels have since diverged through balance passes and
+the three special-tile mechanics (wormholes/fields/conduits) were added on top.
+Notably **L19 was fully redesigned** from the "Rail Yard" comb into "The Coil"
+(a bullseye spiral with a central Rail Amplifier + onslaught waves + 3 colored
+wormholes). Treat the code in `balance-data.json` as the source of truth; use
+this doc for original intent. See `HANDOFF.md` "Current state — 2026-08-09".
 
 ## Goal
 

@@ -4,14 +4,101 @@ Read this first when working on the project. Historical release detail lives
 in `docs/archive/HANDOFF_HISTORY_2026-07.md`; the original pre-cleanup
 handoff is preserved in Git at commit `2650204`.
 
-## Current state — 2026-07-21
+## Current state — 2026-08-09
 
-Geometric TD is a portrait, mobile-browser tower defense with a 15-level,
+The current deployed build is `2026.08.08-18`. The campaign is now **four
+worlds / 20 levels** — World 4 (SINGULARITY, `level_016`–`level_020`) shipped
+across builds `2026.08.08-1`..`-18`. World 4's identity is **one spotlight
+tower per level** (L16 Laser, L17 Slow, L18 Pulse, L19 Railgun, L20 Rocket),
+achieved through map geometry + a resist-matched enemy roster (see
+`WORLD_4_PLAN.md` for the original design; several levels have since diverged).
+Adding a world needs no code: `WORLDS` unlock automatically when the previous
+world's levels are all completed; `balance-schema.js KNOWN_LEVEL_IDS` was
+extended to 20; Endless uses `defaultTrack`.
+
+### New data-driven special-tile mechanics (World 4)
+Three optional per-level features, all validated in `balance-schema.js`,
+carried through `levels.js buildLevel`, resolved in `grid.js`, rendered in
+`renderer.js`, tunable in `config.js VFX.*`, and explained by tapping the tile
+(`ui.js maybeShowTileInfo`, reuses the milestone-toast). Data shapes:
+
+- **Wormholes** — `wormholes: [{enter:{x,y}, exit:{x,y}, types?:[enemyId]}]`.
+  Teleport an enemy from `enter` to `exit` along the path (both tiles on the
+  path; forward only, exit path-distance > enter). Optional `types` filter =
+  only those enemy types warp (others walk through, which is what makes the
+  track between the portals meaningful); the portal is tinted to the filtered
+  enemy's color. Code: `grid.wormholes`, `enemies.js updateEnemies` (teleport +
+  once-per-enemy guard), `renderer.js drawWormholes`, `config VFX.wormhole`.
+- **Fields** — `fields: [{tiles:[{x,y}...], speedMult?, damageMult?}]` (tiles on
+  path). `speedMult` scales movement (>1 speed pad, <1 tar); `damageMult`
+  scales damage taken (>1 weak zone, <1 shield). Code: `grid.fieldAt/fieldTiles`,
+  `enemies.js` (movement + `damageEnemy`), `renderer.js drawFields`,
+  `config VFX.field`.
+- **Conduits** — `conduits: [{tiles:[{x,y}...], damageMult?, rangeMult?,
+  fireRateMult?, pierceBonus?}]` on BUILDABLE tiles. A tower placed there gains
+  the multipliers; applied at the END of `towers.js recomputeStats`
+  (idempotent). `pierceBonus` (+N pierce) benefits line-piercers (Railgun/Laser)
+  — a huge force-multiplier on funnel geometry. Code: `grid.conduitAt/
+  conduitTiles`, `renderer.js drawConduits`, `config VFX.conduit`.
+
+### L19 "The Coil" (formerly "Rail Yard")
+Rebuilt as a **bullseye spiral**: a truncated space-filling inward spiral
+leaves only a central 7-tile turret platform by the core (no blocked tiles
+needed — the spiral fills everything else). A Railgun on the central **Rail
+Amplifier** conduit fires outward and pierces across multiple spiral arms —
+the railgun's line-pierce as the whole level's identity. Enemies are a rail-
+weak **onslaught** (per-wave counts 60–370; peak ~370 concurrent, chosen off a
+perf sweep — see below); three color-filtered wormholes (armored/regen/fast)
+scatter the tidy files so pierce can't stack. Heavily balance-iterated
+(HP up to ~23M) and still tuning.
+
+### Tower power scaling — IMPORTANT (2026-08-08 investigation)
+The in-battle tower **level caps at 10** (base 5, extendable to 10); it resets
+to 1 each battle and you PAY to upgrade. In `towers.js recomputeStats` the MAIN
+damage/fireRate growth uses the **in-battle level** (so `damageGrowth 0.35` is
+raised to ^≤9, never ^49); the SPECIALTY growth uses career `maxUnlockedLevel`;
+mastery (★) is a banked-XP rank. A fully-maxed tower is **~2,300 (un-geared) to
+~7,000 (geared) DPS** — NOT the "billions" an earlier miscalc suggested. So the
+progression curve is fine; "World 4 is too easy for a maxed roster" is ordinary
+over-tuning + geometry (pierce on a funnel). **Perf ceiling:** ~300–400
+concurrent enemies is the playable mobile target (desktop handles ~800 at
+~13ms; iPhone is ~5× slower). Raising HP via `healthMult` costs nothing
+(same counts); raising enemy *count* is the perf lever.
+
+### Ops: leaderboard + telemetry
+Both hit ONE Supabase project (`config.js` LEADERBOARD/FEEDBACK). It's free-
+tier and **auto-pauses after ~7 idle days**, which surfaces in-game as
+"Couldn't reach the leaderboard" and silently kills telemetry. Fix = restore
+the project (Supabase dashboard, or MCP `restore_project`); ~5 min, no code
+change. Data survives the pause. First hit + restored 2026-08-08.
+
+## Prior state — 2026-07-23
+
+Geometric TD is a portrait, mobile-browser tower defense with a (then) 15-level,
 three-world campaign; five tower classes; seven enemy types; RPG roster and
 mastery progression; skills; loot/equipment; campaign challenges; Endless;
 telemetry; and a GitHub Pages deployment.
 
-The current deployed build is `2026.07.21-10`. Builds `2026.07.21-8` through `-10`
+The current deployed build is `2026.07.23-5`. Builds `2026.07.23-1` through
+`-5` gave every tower a third skill-tree branch and reworked the tree's box
+art. `TOWER_THIRD_BRANCH` (`config.js`) is now a small data table covering
+all five towers instead of one-off Railgun-only code: Over-Penetration
+(Railgun, pre-existing), Slow Potency (+% slow amount, `slow_dmg` chain
+above it still separately covers +% slow *duration*), Rapid Fire (Laser,
++% fire rate), Blast Radius (Pulse) and Payload Yield (Rocket) — the latter
+two both raise splash radius but through independent multipliers gated by
+`tower.type`, so investing in one never affects the other even though both
+towers share the `def.splashRadius` code path in `towers.js`. Each perk is a
+one-line `getXMult()` in `progression.js`. Separately, every box in the tree
+now renders a themed icon (`skillIconBody` in `ui.js`) instead of falling
+back to plain percentage/level text for chain boxes: all non-Slow damage
+chains share one 8-ray burst icon (`damage`), Slow's duration chain and the
+four non-Pulse third-branch perks (Rapid Fire/Slow Potency/Over-Penetration/
+Payload Yield) each got a bespoke icon (`haste`/`potency`/`overpen`/`yield`/
+`duration`); the value text moved to a small tag inside the box's bottom
+edge instead of replacing the icon outright.
+
+Builds `2026.07.21-8` through `-10`
 added player-facing gear/skill quality-of-life: equipped gear can now be
 replaced through the existing compatible-picker + COMPARE flow; gear traits
 have tappable descriptions; the Store sells permanent Skill Points on a
@@ -123,11 +210,12 @@ styles.css          player UI styles
 balance-lab.html/.css local Balance Lab page and responsive styles
 src/balance-lab.js  Balance Lab editor, validation UX, history, and workflow help
 src/config.js       gameplay tuning re-exports (merges balance-data + presentation), skills, loot, VFX, telemetry config
-src/balance-data.json Balance Lab: canonical editable gameplay data (schema v1)
+src/balance-data.json Balance Lab: canonical editable gameplay data (schema v1); per-level wormholes/fields/conduits live here
 src/balance-data.js Balance Lab: generated synchronous re-export of canonical JSON
 src/balance-schema.js Balance Lab: data validation, versioning, migrate/deepClone
 src/levels.js       LEVELS/WORLDS re-exports (merges balance-data + presentation: names, palettes, nodePos)
 balance-history/    Balance Lab: immutable revision snapshots + manifest.json (git-tracked, append-only)
+src/grid.js         tile math, path expansion, placement; wormhole/field/conduit lookups
 src/game.js         battle state, waves, money, core, win/loss
 src/towers.js       placement, targeting, firing, upgrades, roster use
 src/enemies.js      movement, damage/death, bounty, XP, shards, status effects
@@ -225,15 +313,29 @@ for historical detail and its "L4 next" wording is superseded by this status.
   `app_version`. Open questions the `-6` sample raised but this pass did not
   address — World 2 front (L6/L7 read `too_easy`) and L4 (1W/4L, rated
   `too_hard`); revisit once `-7` W3 data lands.
+- **DONE — World 4 (SINGULARITY, L16-20):** shipped `2026.08.08-1`..`-18` with
+  three new special-tile mechanics (wormholes/fields/conduits) and the L19
+  "The Coil" spiral. See Current state above and `WORLD_4_PLAN.md`.
+- **WATCH — World 4 balance is not settled.** A strong/maxed roster still
+  clears heavily-tuned levels (e.g. L19 beaten with 3 towers before the ×8 HP
+  pass). This is a *ceiling* problem, not a broken curve (see "Tower power
+  scaling" above): roster power ranges ~10× from a modest to a fully-maxed
+  7-tower platform, so a level can't challenge the max without walling
+  everyone else. Iterate via phone feedback; HP is a free lever (perf-wise),
+  enemy count is not. No telemetry yet for W4 — watch the first rounds.
 - **DEFERRED — Endless:** retune its ramp after campaign balance stabilizes.
 - **DEFERRED:** save export/import for iOS localStorage eviction; sound;
-  additional tower classes (Tesla was the runner-up); pre-battle loadouts.
+  additional tower classes (Tesla was the runner-up); pre-battle loadouts;
+  a durable cache-buster (`?v=APP_VERSION` on module imports) to end the
+  stale-module-after-deploy confusion on iOS.
 
 ## Related documents
 
 - `BALANCE_LAB_USAGE.md` — local editing, testing, restore, and manual Git
   workflow.
 
+- `WORLD_4_PLAN.md` — World 4 (SINGULARITY) design + original maps/waves
+  (several levels have since diverged in balance passes; L19 fully redesigned).
 - `GAME_BRIEF.md` — original feature specification.
 - `LOOT_DESIGN.md` / `GEAR_UI_DESIGN.md` — loot and equipment design/history.
 - `CIRCUIT_MENU_DESIGN.md` — menu-board design/history.
