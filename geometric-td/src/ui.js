@@ -1044,6 +1044,7 @@ const RARITY_ORDER = ["singularity", "prismatic", "rare", "enhanced", "common"];
 let gearTab = "towers";
 let gearFilterSlot = null;
 let gearFilterRarity = null;
+let gearFiltersOpen = false;
 // One-shot flash target for the "brief flash on the slot tile" pizzazz
 // (U4 §4): set right before a re-render, consumed (and cleared) by the
 // next renderTowersTab() call so it only flashes once.
@@ -1812,10 +1813,17 @@ function renderStashTab() {
   const shown = sorted.filter((it) =>
     (!gearFilterSlot || it.slot === gearFilterSlot) && (!gearFilterRarity || it.rarity === gearFilterRarity));
 
+  const activeFilters = (gearFilterSlot ? 1 : 0) + (gearFilterRarity ? 1 : 0);
+  const filterLabel = `FILTER${activeFilters ? ` (${activeFilters})` : ""} ${gearFiltersOpen ? "&#9652;" : "&#9662;"}`;
+
   html +=
-    `<div class="gear-stash-header"><span class="gear-stash-count">${shown.length} ITEM${shown.length === 1 ? "" : "S"}</span>` +
-    `<button class="gear-mini-action" id="stash-sell">SELL &#9662;</button></div>` +
-    `<div id="gear-filters"></div>` +
+    `<div class="gear-stash-header"><span class="gear-stash-count">${shown.length} ITEM${shown.length === 1 ? "" : "S"}</span></div>` +
+    `<div class="gear-actions-row">` +
+    `<button class="gear-mini-action filter-accent${gearFiltersOpen ? " on" : ""}" id="stash-filter">${filterLabel}</button>` +
+    `<button class="gear-mini-action" id="stash-sell">SELL &#9662;</button>` +
+    `<button class="gear-mini-action config-accent" id="stash-config">CONFIG</button>` +
+    `</div>` +
+    `<div id="gear-filters" class="${gearFiltersOpen ? "" : "hidden"}"></div>` +
     `<div id="gear-stash-grid">${shown.length
       ? shown.map((item) => tileHtml(item, { stashId: item.id })).join("")
       : `<div class="gear-grid-empty">${stash.length ? "NO MATCHING GEAR" : "No stored gear yet. Every battle now grants at least one drop."}</div>`
@@ -1823,7 +1831,12 @@ function renderStashTab() {
 
   el.gearViewStash.innerHTML = html;
   buildGearFilters();
+  document.getElementById("stash-filter").addEventListener("click", () => {
+    gearFiltersOpen = !gearFiltersOpen;
+    renderGearPanel();
+  });
   document.getElementById("stash-sell").addEventListener("click", () => openBulkSellSheet("stash"));
+  document.getElementById("stash-config").addEventListener("click", openStashSettingsSheet);
 
   if (pending.length) {
     document.getElementById("triage-claim").addEventListener("click", () => { claimPendingLoot(); renderGearPanel(); });
@@ -1852,10 +1865,8 @@ function renderStashTab() {
 function renderGearHeader() {
   const pending = getPendingLoot().length;
   el.gearWallet.innerHTML =
-    `<b>&#9670; ${getShards()}</b> &nbsp;&middot;&nbsp; ` +
-    `<button id="stash-cap-btn" class="wallet-link">STASH ${getStash().length}/${getStashCap()}<span class="chev">&rsaquo;</span></button>` +
+    `<b>&#9670; ${getShards()}</b> &nbsp;&middot;&nbsp; STASH ${getStash().length}/${getStashCap()}` +
     (pending ? ` &nbsp;&middot;&nbsp; ${pending} UNCLAIMED` : "");
-  document.getElementById("stash-cap-btn").addEventListener("click", openStashSettingsSheet);
   const unseen = countUnseenStash();
   el.gearStashBadge.classList.toggle("hidden", unseen === 0);
   el.gearStashBadge.textContent = `${unseen} NEW`;
@@ -1893,6 +1904,7 @@ export function openGearPanel({ closeMode = "normal" } = {}) {
   gearCloseTriage = closeMode;
   gearFilterSlot = null;
   gearFilterRarity = null;
+  gearFiltersOpen = false;
   lockedListOpen = false;
   if (getPendingLoot().length) gearTab = "stash"; // surface triage immediately
   renderGearPanel();

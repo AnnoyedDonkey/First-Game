@@ -6,7 +6,7 @@ handoff is preserved in Git at commit `2650204`.
 
 ## Current state — 2026-08-09
 
-The current deployed build is `2026.08.09-2`. Stash management got two new
+The current deployed build is `2026.08.09-3`. Stash management got two new
 Shard sinks: **stash expansion** (base 100 slots, 10 escalating purchases
 of +20 slots each, 50→4000 Shards, caps at 300 — `config.js LOOT.stash`,
 `progression.js getStashCap/buyStashUpgrade`) and **auto-junk** (4
@@ -24,30 +24,58 @@ with the sold value as its corner tag, reusing the Store's price-tag
 styling). New save fields `stashUpgrades`/`autoJunkTier` (save.js default
 + progression.js backfill, standard pattern).
 
-Both sinks are bought from a **STASH SETTINGS** sheet
-(`ui.js openStashSettingsSheet`) — reached by tapping the `STASH n/cap`
-text in the gear header itself (`.wallet-link`), not a separate icon.
-`-1`'s first pass used a bare 26px outline `⚙` icon next to the `?` guide,
-which read as invisible against the neon UI on an actual phone (player
-feedback, 2026-08-09) — lesson: an icon-only affordance needs real
-contrast in this theme, or better, hang the action off text the player
-already reads. `-2` also reworked the bulk-sell flow: the first pass's
-always-visible row of per-rarity "SELL X (n)" pills was *itself* the
-space complaint (1-2 full rows above the STASH grid, another one in
-triage) — replaced with a single `.gear-mini-action` "SELL ▾" trigger
-(next to the item count, and a third button in the triage actions row)
-that opens a compact bulk-sell sheet (`openBulkSellSheet`, reuses the
-existing bottom-sheet pattern; `sellAllStashRarity`/`sellAllPendingRarity`
-unchanged underneath). The pre-existing OPTIC/EMITTER/.../SINGULARITY
-filter-chip row also collapsed from 2 wrapped rows to 1 horizontally-
-scrolling row (`#gear-filters` — `flex-wrap: nowrap; overflow-x: auto`).
+The STASH tab's controls went through two rounds of phone feedback before
+landing on the current design (`ui.js renderStashTab`, `.gear-mini-action`
+in `styles.css`): a row of three equal, distinctly-colored pill buttons —
+**FILTER** (cyan), **SELL** (yellow), **CONFIG** (magenta) — sits right
+below the item count.
+- `-1`'s first pass put the settings entry point behind a bare 26px
+  outline `⚙` icon next to the `?` guide; it read as invisible against the
+  neon UI on an actual phone. `-2` moved it to a tappable `STASH n/cap`
+  text link in the header. `-3` replaced both with the explicit **CONFIG**
+  button (`openStashSettingsSheet`) — the header text is plain again.
+- `-1` also shipped bulk-sell as an always-visible row of per-rarity
+  "SELL X (n)" pills, which was itself the space complaint (1-2 full rows
+  above the grid, another in triage). `-2` collapsed it into one
+  `.gear-mini-action` "SELL ▾" trigger opening a compact sheet
+  (`openBulkSellSheet` — reuses the bottom-sheet pattern;
+  `sellAllStashRarity`/`sellAllPendingRarity` unchanged underneath); `-3`
+  kept this as-is, just restyled to match FILTER/CONFIG.
+- The pre-existing OPTIC/EMITTER/.../SINGULARITY filter chips (9 total)
+  are now **hidden by default** behind the **FILTER** button
+  (`gearFiltersOpen` module state, reset on panel open) instead of always
+  showing. `-2` had tried a horizontally-scrolling single row to save
+  space, but a scroll-to-reveal row silently hides chips off-screen with
+  no signal more exist — most players won't discover it. `-3` shows ALL
+  chips, wrapped across as many rows as needed, only once FILTER is
+  tapped; the button's label shows an active-filter count
+  (`FILTER (1) ▾`/`▴`) so it stays legible even while collapsed.
+
+Both Shard sinks — **stash expansion** (base 100 slots, 10 escalating
+purchases of +20 slots each, 50→4000 Shards, caps at 300 —
+`config.js LOOT.stash`, `progression.js getStashCap/buyStashUpgrade`) and
+**auto-junk** (4 sequential per-rarity tiers — Common 500 / Enhanced 750 /
+Rare 1000 / Prismatic 1500 Shards; Singularity is never junkable —
+`config.js LOOT.autoJunk`, `progression.js autoJunkMaxRarity/
+buyAutoJunkTier`) — are unchanged since `-1`. Once a tier is owned, loot
+EARNED in play (kill drops, the guaranteed end-drop, Endless milestones —
+not store buys) at or below that rarity auto-sells for Shards instead of
+taking a stash/triage slot, checked in `bankEarnedItem` *after* the
+existing auto-equip attempt fails (so a still-useful Common can equip
+before the junk check ever sees it). New placement dest `"junked"` flows
+through the drop-reveal card ("→ AUTO-SOLD ◆n") and the results-screen
+loot tile (a dimmed `.junked-tile` with the sold value as its corner tag,
+reusing the Store's price-tag styling). New save fields
+`stashUpgrades`/`autoJunkTier` (save.js default + progression.js
+backfill, standard pattern).
+
 Verified via seeded-save console testing (dynamic `import()` of
 `progression.js`/`ui.js`) covering both purchase ladders, the
 junk-vs-stash fallback with an empty roster, and live DOM clicks/computed-
-style checks at a 375px mobile viewport confirming the settings entry
-point renders in neon-cyan (not the old invisible grey) and the filter
-row is genuinely single-line (`scrollWidth > clientWidth`) — no console
-errors.
+style checks at a 375px mobile viewport: FILTER/SELL/CONFIG render in
+three distinct high-contrast colors, the filter row is genuinely hidden
+until toggled and shows every chip wrapped (not scrolled) once open, and
+the active-filter count survives collapsing the row — no console errors.
 
 The campaign is now **four worlds / 20 levels** — World 4 (SINGULARITY,
 `level_016`–`level_020`) shipped
