@@ -3261,6 +3261,8 @@ function tutorialTargetBox(game, target) {
   if (target === "tile") return tutorialTileBox(game, TUTORIAL.placementTile);
   if (target === "blockedTile") return tutorialTileBox(game, TUTORIAL.blockedTileCallout);
   if (target === "core") return tutorialCoreBox(game);
+  if (target === "creditsHud") return tutorialElementBox(document.getElementById("hud-money"));
+  if (target === "coreHud") return tutorialElementBox(document.getElementById("hud-core"));
   return null;
 }
 

@@ -55,7 +55,7 @@ export function totalSteps() {
 // are non-blocking spotlights over the REAL tray chip / canvas tile /
 // wave button, so gameplay input passes straight through and the real
 // action itself is what advances the step.
-const FREEZE_STEP_IDS = new Set(["welcome", "blockedTile"]);
+const FREEZE_STEP_IDS = new Set(["welcome", "credits", "blockedTile", "coreHealth"]);
 
 export function isFreezeStep(step) {
   return !!step && FREEZE_STEP_IDS.has(step.id);

@@ -1016,6 +1016,13 @@ export const TUTORIAL = {
       text: "See that green hexagon at the end of the track, {name}? That's me. Your job: build towers so the shapes never reach it. Let me show you the ropes.",
     },
     {
+      id: "credits",
+      cta: "TAP TO CONTINUE",
+      mood: "happy",
+      target: "creditsHud",
+      text: "First, your budget — CREDITS, up top. You start with 100, and every enemy you destroy pays out more. That's what you spend building towers.",
+    },
+    {
       id: "selectLaser",
       target: "trayLaser",
       text: "Start with a Laser — tap it in the tray below.",
@@ -1030,6 +1037,13 @@ export const TUTORIAL = {
       target: "blockedTile",
       cta: "TAP TO CONTINUE",
       text: "Those ✕ chips are soldered to my circuit board — no building on those. Anywhere else, go wild.",
+    },
+    {
+      id: "coreHealth",
+      cta: "TAP TO CONTINUE",
+      mood: "worried",
+      target: "coreHud",
+      text: "That CORE number up top is my health. Every shape that slips past your towers and reaches me knocks it down — and if it hits zero, I'm deleted. Game over. So... don't let that happen.",
     },
     {
       id: "startWave",
