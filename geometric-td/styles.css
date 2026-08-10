@@ -267,6 +267,21 @@ button.hud-item {
   transform: translate(-50%, 0);
 }
 
+/* P3 in-battle barks: speaker-tinted toast (extra specificity needed to
+   beat the plain #milestone-toast color rule above). */
+#milestone-toast.toast-indy {
+  color: var(--neon-cyan);
+  border-color: var(--neon-cyan);
+  text-shadow: 0 0 10px rgba(53, 224, 255, 0.7);
+  box-shadow: 0 0 22px rgba(53, 224, 255, 0.45);
+}
+#milestone-toast.toast-bratwurst {
+  color: var(--neon-red);
+  border-color: var(--neon-red);
+  text-shadow: 0 0 10px rgba(255, 74, 94, 0.7);
+  box-shadow: 0 0 22px rgba(255, 74, 94, 0.45);
+}
+
 @media (prefers-reduced-motion: reduce) {
   #milestone-toast { transition: opacity 0.28s ease; transform: translate(-50%, 0); }
 }

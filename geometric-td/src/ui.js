@@ -2924,9 +2924,13 @@ function renderFeedbackStrip(feedback) {
 const toastQueue = [];
 let toastActive = false;
 
-export function showMilestoneToast(text) {
+// `kind` is an optional speaker: "indy" | "bratwurst" (P3 in-battle barks),
+// tints the toast to match the story palette. Omitted (undefined) keeps the
+// original plain rendering — existing wormhole/field/conduit tooltip callers
+// below pass no kind and are unaffected.
+export function showMilestoneToast(text, kind) {
   if (!el.milestoneToast) return;
-  toastQueue.push(text);
+  toastQueue.push({ text, kind });
   if (!toastActive) runNextToast();
 }
 
@@ -2982,8 +2986,11 @@ function runNextToast() {
   const t = el.milestoneToast;
   if (!t || toastQueue.length === 0) { toastActive = false; return; }
   toastActive = true;
-  t.textContent = toastQueue.shift();
-  t.classList.remove("hidden", "show");
+  const { text, kind } = toastQueue.shift();
+  t.textContent = text;
+  t.classList.remove("hidden", "show", "toast-indy", "toast-bratwurst");
+  if (kind === "indy") t.classList.add("toast-indy");
+  else if (kind === "bratwurst") t.classList.add("toast-bratwurst");
   void t.offsetWidth; // restart the CSS entry animation
   t.classList.add("show");
   setTimeout(() => {
