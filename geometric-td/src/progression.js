@@ -72,6 +72,8 @@ state.narrativeSeen ||= {};
 backfillNarrativeSeen(); // P2: spare existing players a retroactive story dump
 state.seenEnemyIntros ||= [];
 backfillEnemyIntros(); // P3: spare existing players retroactive enemy tutorials
+state.seenTowerBarks ||= [];
+if (state.barksEnabled === undefined) state.barksEnabled = true;
 
 function backfillGear() {
   state.roster ||= [];
@@ -199,7 +201,7 @@ function backfillNarrativeSeen() {
   state.narrativeSeen ||= {};
   let changed = false;
   for (const levelId of state.completedLevels || []) {
-    for (const suffix of ["start", "win"]) {
+    for (const suffix of ["start", "win", "boss"]) {
       const id = `${levelId}.${suffix}`;
       if (!state.narrativeSeen[id]) {
         state.narrativeSeen[id] = true;
@@ -433,6 +435,28 @@ export function shouldShowEnemyIntro(type) {
 export function markEnemyIntroSeen(type) {
   if (state.seenEnemyIntros.includes(type)) return;
   state.seenEnemyIntros.push(type);
+  writeSave(state);
+}
+
+// Tower placement one-liners (P4, re-gated): shown ONCE EVER per tower type
+// (first placement in any campaign battle), not per level/battle. No veteran
+// backfill — everyone hears each tower's line once.
+export function shouldShowTowerBark(type) {
+  return !state.seenTowerBarks.includes(type);
+}
+export function markTowerBarkSeen(type) {
+  if (state.seenTowerBarks.includes(type)) return;
+  state.seenTowerBarks.push(type);
+  writeSave(state);
+}
+
+// Master toggle for all in-battle banter (enemy intros, boss taunts/roasts,
+// tower one-liners). Persisted; flipped from the menu. Defaults ON.
+export function getBarksEnabled() {
+  return state.barksEnabled !== false;
+}
+export function setBarksEnabled(on) {
+  state.barksEnabled = !!on;
   writeSave(state);
 }
 

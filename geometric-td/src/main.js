@@ -14,6 +14,7 @@ import {
   forfeitBattle, equipItem, unequipItem, debugGrantGear, getSkillsSnapshot,
   getUnlockedSpeeds, shouldShowOnboarding, shouldShowTutorial,
   shouldShowBeat, markBeatSeen, shouldShowEnemyIntro, markEnemyIntroSeen,
+  shouldShowTowerBark, markTowerBarkSeen, getBarksEnabled,
 } from "./progression.js";
 import { render } from "./renderer.js";
 import { bindCanvasInput } from "./input.js";
@@ -85,7 +86,7 @@ window.gear = {
 function startLevel(level, endless = false) {
   game = createGame(level, TILE_SIZE, endless);
   overlayShown = false;
-  barkState = { bossBarked: false, placedTypes: new Set() };
+  barkState = { bossBarked: false }; // per-battle boss-banter guard (tower barks are now save-backed once-ever)
   hideOverlay();
   // Clear any leftover selection from the previous battle.
   uiState.selectedType = null;
@@ -225,10 +226,10 @@ bindCanvasInput(canvas, {
       // the ticker, its roster-name prefix tinted the tower's own color
       // (P4). Campaign only; once per type per battle (barkState.placedTypes
       // is reset each startLevel).
-      if (result.ok && !game.endless && barkState && result.tower &&
-          !barkState.placedTypes.has(result.tower.type) &&
+      if (result.ok && !game.endless && getBarksEnabled() && result.tower &&
+          shouldShowTowerBark(result.tower.type) &&
           NARRATIVE.towerBarks?.[result.tower.type]) {
-        barkState.placedTypes.add(result.tower.type);
+        markTowerBarkSeen(result.tower.type);
         showBark({ name: result.tower.name, color: result.tower.def.color },
                  NARRATIVE.towerBarks[result.tower.type]);
       }
@@ -538,14 +539,19 @@ window.updateBarks = () => updateBarks(game);
 // reverted for). Skipped in Endless (no NARRATIVE pacing there) and while
 // the win/loss overlay is up.
 function updateBarks(game) {
-  if (!game || game.endless || !NARRATIVE.enabled || !barkState) return;
+  if (!game || game.endless || !NARRATIVE.enabled || !barkState || !getBarksEnabled()) return;
+  const bossBeatId = `${game.level.id}.boss`;
   for (const e of game.enemies) {
     if (shouldShowEnemyIntro(e.type) && NARRATIVE.enemyIntros[e.type]) {
       markEnemyIntroSeen(e.type);
       showBark("indy", NARRATIVE.enemyIntros[e.type]);
     }
-    if (e.type === "boss" && !barkState.bossBarked) {
+    // Boss banter: only the FIRST time this level is played (not every
+    // battle) — save-backed per level; already-cleared levels are pre-marked
+    // via backfillNarrativeSeen so veterans never re-trigger it.
+    if (e.type === "boss" && !barkState.bossBarked && shouldShowBeat(bossBeatId)) {
       barkState.bossBarked = true;
+      markBeatSeen(bossBeatId);
       showBark("bratwurst", pickOne(NARRATIVE.bratwurstBarks));
       showBark("indy", pickOne(NARRATIVE.indyRoasts));
     }

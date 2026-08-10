@@ -34,6 +34,7 @@ import {
   getStoreUnlocks, buyStoreUnlock,
   countUnseenStash, isItemSeen, markItemSeen,
   getPlayerName, hasPlayerName,
+  getBarksEnabled, setBarksEnabled,
 } from "./progression.js";
 import {
   canEquipItem, GEAR_SLOTS, normalizeGear, masteryRankFor as gearMasteryRankFor,
@@ -890,6 +891,20 @@ function appendGlobalMenuButtons() {
   introBtn.innerHTML = `<span>REPLAY INTRO</span>`;
   introBtn.addEventListener("click", () => startOnboarding());
   introRow.appendChild(introBtn);
+
+  // STORY BANTER toggle: silences all in-battle barks (enemy intros, boss
+  // taunts/roasts, tower one-liners) when OFF. Persisted via setBarksEnabled.
+  const banterBtn = document.createElement("button");
+  banterBtn.className = "level-button skill-entry";
+  const renderBanter = () => {
+    const on = getBarksEnabled();
+    banterBtn.innerHTML =
+      `<span>BANTER</span><span class="${on ? "level-done" : "level-points"}">${on ? "ON" : "OFF"}</span>`;
+  };
+  renderBanter();
+  banterBtn.addEventListener("click", () => { setBarksEnabled(!getBarksEnabled()); renderBanter(); });
+  introRow.appendChild(banterBtn);
+
   el.menuActions.appendChild(introRow);
 
   // Reset all progress — two-tap confirm, then reload clean.
