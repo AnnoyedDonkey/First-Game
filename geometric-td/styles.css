@@ -484,6 +484,29 @@ button.hud-item {
   padding: 24px;
 }
 #story-overlay.hidden { display: none; }
+/* Enemy-intro cards cut a window in the veil (#story-spotlight below), which
+   supplies its own dimming — the overlay's own wash has to step aside or the
+   window would be dimmed too. The card then sits on the far side of the
+   enemies instead of centring on top of the hole it just opened. */
+#story-overlay.spotlighting { background: transparent; }
+#story-overlay.spotlighting.card-below { align-items: flex-end; }
+#story-overlay.spotlighting.card-above { align-items: flex-start; }
+/* ui.js caps the card to the free gap beside the cutout; if copy ever
+   outgrows that, it scrolls rather than creeping back over the enemies. */
+#story-overlay.spotlighting #story-card { overflow-y: auto; }
+
+/* The cutout itself: a transparent box whose enormous ring-shaped shadow IS
+   the veil (same trick as #tutorial-spotlight). Positioned per-frame by
+   ui.js updateStoryOverlay from the live enemies' bounding box. */
+#story-spotlight {
+  position: fixed;
+  z-index: -1; /* behind #story-card, still above the page */
+  border: 1px solid var(--neon-cyan);
+  border-radius: 10px;
+  box-shadow: 0 0 0 9999px rgba(5, 6, 15, 0.88), 0 0 18px rgba(53, 224, 255, 0.45);
+  pointer-events: none;
+}
+#story-spotlight.hidden { display: none; }
 
 #story-card {
   width: 100%;
@@ -514,11 +537,53 @@ button.hud-item {
 #story-avatar { flex: none; width: 38px; height: 38px; }
 #story-avatar:empty { display: none; }
 #story-avatar svg { width: 38px; height: 38px; display: block; }
-/* Enemy-intro cards only: the described enemy's shape, parked at the far end
-   of the speaker row. Empty (and gone) on every other story card. */
-#story-enemy { flex: none; width: 34px; height: 34px; margin-left: auto; }
-#story-enemy:empty { display: none; }
-#story-enemy svg { width: 34px; height: 34px; display: block; }
+/* Enemy-intro cards only: the described enemy marching across a dashed track,
+   featured above the copy. Hidden entirely on every other story card. The
+   marchers are phase-offset copies of ONE animation — each is a full-width
+   rail, so translateX percentages are of the band, not the glyph. */
+#story-enemy-parade {
+  position: relative;
+  height: 52px;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid var(--panel-border);
+  background: rgba(5, 6, 15, 0.6);
+}
+#story-enemy-parade.hidden { display: none; }
+/* The track they march along — echoes the level path, tinted to the enemy's
+   own color (--parade-color, set inline by ui.js renderEnemyParade). */
+#story-enemy-parade::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; top: 50%;
+  border-top: 1px dashed var(--parade-color, var(--neon-cyan));
+  opacity: 0.35;
+}
+.enemy-marcher {
+  position: absolute;
+  top: 0; bottom: 0; left: 0;
+  width: 100%;
+  animation-name: enemyMarch;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+.enemy-marcher svg {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 34px;
+  height: 34px;
+  margin-top: -17px;
+}
+@keyframes enemyMarch {
+  from { transform: translateX(-14%); }
+  to   { transform: translateX(114%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* ui.js parks them at fixed offsets instead; kill the animation outright
+     so the inline transform isn't fighting a running keyframe. */
+  .enemy-marcher { animation: none; }
+}
 #story-speaker {
   font-size: 11px;
   font-weight: 700;

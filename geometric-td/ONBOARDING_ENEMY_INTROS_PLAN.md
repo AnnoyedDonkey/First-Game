@@ -1,10 +1,11 @@
-# Enemy intros — pause-and-tap rebuild (BUILT, `2026.08.10-8`)
+# Enemy intros — pause-and-tap rebuild (BUILT, `2026.08.10-8`/`-9`)
 
 Status: **shipped.** Copy approved 2026-08-10, delivery mechanism decided,
 built the same day in `2026.08.10-8` — the traceability table in §2 was
 re-verified against `balance-data.json` at build time and matched exactly.
-Kept as the record of the decision and the copy source; §4's checklist was
-run and passed (see "As built" below).
+`-9` reworked the card itself off first-play feedback (spotlight, delay,
+parade — see "Second pass" below). Kept as the record of the decision and
+the copy source; §4's checklist was run and passed.
 
 ## As built
 
@@ -21,12 +22,37 @@ run and passed (see "As built" below).
   `gamePaused || exitConfirming || tutorial.isTutorialFreezing()` dt-zeroing
   freeze — same clamp-then-zero shape, so resume can't hand `updateGame` a
   catch-up dt.
-- §3.4's optional enemy glyph WAS built (`ui.js enemyGlyphSvg`,
-  `#story-enemy`): the card's dim veil hides the real enemy, so the card
-  carries its shape/color from `ENEMIES[type]`. Empty (and `:empty`-hidden)
-  on every other story card.
+- §3.4's optional enemy glyph WAS built (`ui.js enemyGlyphSvg`), shapes and
+  colors read from `ENEMIES[type]` so they can't drift from the renderer.
 - Bonus: the tag line is colored (`hl-weak` green / `hl-resist` red in
   `ui.js storyCardHtml`) so the actionable half reads at a glance.
+
+### Second pass (`2026.08.10-9`) — the pause worked, the card didn't
+
+Player feedback after playing `-8`: the pause itself felt good, but the card
+had three problems. All three fixed; every knob lives in `config.js
+NARRATIVE.enemyIntro`:
+
+1. **It covered up the thing it was describing.** The veil now has a window
+   cut in it over the live enemies (`#story-spotlight`, the same
+   `box-shadow: 0 0 0 9999px` cutout `#tutorial-spotlight` uses; box from
+   `ui.js enemySpotlightBox` over every live enemy of that type, padded by
+   `spotlightPadTiles`, floored at `spotlightMinTiles`). Recomputed per frame
+   from `main.js frame()` via `updateStoryOverlay(game)` — the sim is frozen
+   but the viewport isn't, so a rotate would otherwise strand a one-shot box.
+   The card takes the roomier side of the cutout and is capped to that gap
+   (scrolling if it must). Picking the side the enemies *aren't* on isn't
+   enough on its own: enemies near mid-screen leave two gaps that are both
+   too short, and a card that won't shrink creeps back over the window —
+   that regression was caught in verification, hence `SPOTLIGHT_CARD_MIN`.
+2. **It fired before the player saw anything.** `enemyIntro.delay` (1.8s)
+   is a grace period from the type's first appearance, tracked per battle in
+   `barkState.introSpottedAt`. Measured: first spawn t=0.017, card t=1.833.
+3. **"Which enemy?" wasn't obvious** from a small corner glyph. Replaced by
+   `#story-enemy-parade` — a band above the copy where `paradeCount` copies
+   march along a dashed track tinted to the enemy's own color (phase-offset
+   copies of ONE CSS animation; parked at fixed offsets under reduced
+   motion). The corner glyph is gone.
 
 ## 1. Why this exists
 

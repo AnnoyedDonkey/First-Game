@@ -44,6 +44,7 @@ import {
   fetchAllBoards, publishAllLocalBests,
 } from "./leaderboard.js";
 import { WORLDS } from "./levels.js";
+import { enemyPosition } from "./enemies.js";
 
 const el = {
   towerButtons: document.getElementById("tower-buttons"),
@@ -126,9 +127,11 @@ const el = {
   tutorialSpotlight: document.getElementById("tutorial-spotlight"),
   tutorialSkip: document.getElementById("tutorial-skip"),
   storyOverlay: document.getElementById("story-overlay"),
+  storyCard: document.getElementById("story-card"),
   storyAvatar: document.getElementById("story-avatar"),
   storySpeaker: document.getElementById("story-speaker"),
-  storyEnemy: document.getElementById("story-enemy"),
+  storyEnemyParade: document.getElementById("story-enemy-parade"),
+  storySpotlight: document.getElementById("story-spotlight"),
   storyCardText: document.getElementById("story-card-text"),
   storyNameInput: document.getElementById("story-name-input"),
   storyCardCta: document.getElementById("story-card-cta"),
@@ -3159,9 +3162,8 @@ function speakerAvatarSvg(code, mood) {
 
 // The described enemy's own silhouette for an enemy-intro card, built from
 // its ENEMIES presentation entry (same shape + neon color the renderer draws
-// on the field) so "the little triangles" has something to point at — the
-// card's dim veil covers the real one. Regular N-gons, point-up except the
-// square (flat) and octagon (stop-sign); returns "" for anything unknown.
+// on the field). Regular N-gons, point-up except the square (flat) and
+// octagon (stop-sign); returns "" for anything unknown.
 const ENEMY_GLYPH_SIDES = {
   triangle: [3, -90], diamond: [4, -90], square: [4, -45],
   pentagon: [5, -90], hexagon: [6, -90], octagon: [8, -22.5],
@@ -3180,6 +3182,119 @@ function enemyGlyphSvg(type) {
     + `<polygon points="${pts}" fill="${def.color}22" stroke="${def.color}"`
     + ` stroke-width="5" stroke-linejoin="round"/></g></svg>`;
 }
+
+// The enemy-intro card's headline act: a band of the described enemy marching
+// across a dashed track, so "the little triangles" is shown, not just named.
+// The real ones are frozen on the field behind the card, so this is where the
+// motion has to live. Marchers are evenly phase-offset copies of one CSS
+// animation (negative animation-delay), and hold still spread across the band
+// under reduced motion. Count/speed are NARRATIVE.enemyIntro knobs.
+function renderEnemyParade(type) {
+  const band = el.storyEnemyParade;
+  if (!band) return;
+  const glyph = type ? enemyGlyphSvg(type) : "";
+  if (!glyph) {
+    band.innerHTML = "";
+    band.classList.add("hidden");
+    band.style.removeProperty("--parade-color");
+    return;
+  }
+  const { paradeCount, marchSeconds } = NARRATIVE.enemyIntro;
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let html = "";
+  for (let i = 0; i < paradeCount; i++) {
+    const style = reduce
+      // Static: park them evenly along the band instead of animating.
+      ? `transform: translateX(${(10 + (72 * i) / Math.max(1, paradeCount - 1)).toFixed(1)}%)`
+      : `animation-duration:${marchSeconds}s; animation-delay:${(-marchSeconds * i / paradeCount).toFixed(2)}s`;
+    html += `<span class="enemy-marcher" style="${style}">${glyph}</span>`;
+  }
+  band.style.setProperty("--parade-color", ENEMIES[type].color);
+  band.innerHTML = html;
+  band.classList.remove("hidden");
+}
+
+// Screen-space box around every live enemy of `type`, used to cut a window in
+// the intro card's veil so the player can see the real thing being described
+// (feedback: the card explained enemies it was covering up). Padded and
+// floored to a minimum so a single enemy doesn't get a keyhole, and clamped
+// to the canvas so the cutout never floats off the board.
+function enemySpotlightBox(game, type) {
+  const canvasEl = document.getElementById("game-canvas");
+  if (!canvasEl || !game || !game.grid) return null;
+  const rect = canvasEl.getBoundingClientRect();
+  if (!rect.width || !canvasEl.width) return null;
+  const scale = rect.width / canvasEl.width; // CSS px per internal render px
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const e of game.enemies) {
+    if (e.type !== type) continue;
+    const p = enemyPosition(e, game.grid);
+    if (!p) continue;
+    minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+    minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
+  }
+  if (!Number.isFinite(minX)) return null;
+  const { spotlightPadTiles, spotlightMinTiles } = NARRATIVE.enemyIntro;
+  const ts = game.grid.tileSize;
+  const pad = ts * spotlightPadTiles;
+  const min = ts * spotlightMinTiles;
+  // Grow the box out from its own centre until it clears the minimum.
+  const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+  const halfW = Math.max((maxX - minX) / 2 + pad, min / 2);
+  const halfH = Math.max((maxY - minY) / 2 + pad, min / 2);
+  const l = Math.max(0, cx - halfW), t = Math.max(0, cy - halfH);
+  const r = Math.min(canvasEl.width, cx + halfW), b = Math.min(canvasEl.height, cy + halfH);
+  return {
+    left: rect.left + l * scale, top: rect.top + t * scale,
+    width: (r - l) * scale, height: (b - t) * scale,
+  };
+}
+
+// Per-frame from main.js's loop (the sim is frozen under the card, but the
+// viewport isn't — a rotate/resize would strand a one-shot box). Only
+// enemy-intro cards spotlight; every other story card keeps the plain veil.
+export function updateStoryOverlay(game) {
+  const spot = el.storySpotlight;
+  if (!spot) return;
+  const card = isOnboardingActive() ? currentOnboardingCard() : null;
+  const box = card?.enemyType ? enemySpotlightBox(game, card.enemyType) : null;
+  spot.classList.toggle("hidden", !box);
+  // With a cutout the veil comes from the spotlight's own ring-shaped shadow,
+  // so the overlay itself must go clear or it would dim the window too.
+  el.storyOverlay?.classList.toggle("spotlighting", !!box);
+  if (!box) {
+    el.storyOverlay?.classList.remove("card-below", "card-above");
+    if (el.storyCard) el.storyCard.style.maxHeight = "";
+    return;
+  }
+  spot.style.left = `${box.left}px`;
+  spot.style.top = `${box.top}px`;
+  spot.style.width = `${box.width}px`;
+  spot.style.height = `${box.height}px`;
+  // Keep the card OFF the window it just opened. Picking the side the
+  // enemies aren't on isn't enough — enemies near the middle leave a gap
+  // too short for the card, and it creeps back over the cutout. So: take
+  // the roomier side AND cap the card to that gap (it scrolls if the copy
+  // ever outgrows it). SPOTLIGHT_GUTTER covers the overlay's own padding
+  // plus breathing room, so the card lands clear of the ring.
+  const gapAbove = box.top;
+  const gapBelow = innerHeight - (box.top + box.height);
+  const below = gapBelow >= gapAbove;
+  el.storyOverlay?.classList.toggle("card-below", below);
+  el.storyOverlay?.classList.toggle("card-above", !below);
+  if (el.storyCard) {
+    // Floor: an enemy swarm spanning the screen can leave no real gap at
+    // all. A cramped-but-readable card that clips the cutout beats a card
+    // squeezed to nothing — but keep the floor low, or a mid-screen
+    // spotlight (roomy on both sides, roomy enough on neither) gets covered
+    // by a card that refused to shrink.
+    const room = (below ? gapBelow : gapAbove) - SPOTLIGHT_GUTTER;
+    const floor = Math.min(SPOTLIGHT_CARD_MIN, innerHeight * 0.5);
+    el.storyCard.style.maxHeight = `${Math.max(floor, room)}px`;
+  }
+}
+const SPOTLIGHT_GUTTER = 40;   // #story-overlay's 24px padding + 16px clearance
+const SPOTLIGHT_CARD_MIN = 240; // nameplate + parade + a few lines + the CTA
 
 // Builds the colored dialogue HTML for a story card so it reads as speech,
 // not a wall of prose. Copy is authored (trusted); only the player name is
@@ -3217,6 +3332,10 @@ function renderOnboardingCard() {
   if (!el.storyOverlay) return;
   if (!isOnboardingActive() || !card) {
     el.storyOverlay.classList.add("hidden");
+    el.storyOverlay.classList.remove("spotlighting", "card-above", "card-below");
+    el.storySpotlight?.classList.add("hidden");
+    if (el.storyCard) el.storyCard.style.maxHeight = "";
+    renderEnemyParade(null);
     updateWelcomeBack(); // reflect a name set/changed during this run
     return;
   }
@@ -3231,11 +3350,9 @@ function renderOnboardingCard() {
   if (el.storyAvatar) {
     el.storyAvatar.innerHTML = speakerAvatarSvg(card.speaker || "indy", card.mood);
   }
-  // Only enemy-intro cards carry `enemyType`; every other card leaves this
-  // empty (and :empty hides the slot), so the row is unchanged for them.
-  if (el.storyEnemy) {
-    el.storyEnemy.innerHTML = card.enemyType ? enemyGlyphSvg(card.enemyType) : "";
-  }
+  // Only enemy-intro cards carry `enemyType`; every other card gets an empty
+  // (hidden) parade band and no spotlight, so they look exactly as before.
+  renderEnemyParade(card.enemyType || null);
   el.storyCardText.innerHTML = storyCardHtml(card.text);
   el.storyCardCta.textContent = card.cta || "TAP TO CONTINUE";
 

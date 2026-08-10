@@ -25,7 +25,7 @@ import {
   initSkillTree, showLevelSelect, openSkillTree, hideOverlay,
   initSpeedControls, onExitButtonTap, openLeaderboard,
   openGearPanel, showMilestoneToast, updateTutorialOverlay, maybeShowTileInfo,
-  showBark,
+  showBark, updateStoryOverlay,
 } from "./ui.js";
 import { submitScore, isEnabled as lbEnabled } from "./leaderboard.js";
 import {
@@ -86,7 +86,10 @@ window.gear = {
 function startLevel(level, endless = false) {
   game = createGame(level, TILE_SIZE, endless);
   overlayShown = false;
-  barkState = { bossBarked: false }; // per-battle boss-banter guard (tower barks are now save-backed once-ever)
+  // Per-battle bark driver state: the boss-banter guard, plus when each
+  // enemy type was first spotted this battle (NARRATIVE.enemyIntro.delay
+  // grace before its card interrupts). Tower barks are save-backed once-ever.
+  barkState = { bossBarked: false, introSpottedAt: {} };
   hideOverlay();
   // Clear any leftover selection from the previous battle.
   uiState.selectedType = null;
@@ -554,17 +557,21 @@ function updateBarks(game) {
   let bossOnField = false;
   for (const e of game.enemies) {
     if (e.type === "boss") bossOnField = true;
-    // First-ever sighting of an enemy type: queue a pause-and-tap card.
+    // First-ever sighting of an enemy type: queue a pause-and-tap card, but
+    // only after it's been on screen for enemyIntro.delay — interrupting on
+    // the spawn frame means describing something the player hasn't seen yet.
     // Several new types can share one frame on a busy wave, so they're
     // collected and played as ONE sequence (playCards plays a list in order).
     if (!introTypes.has(e.type) && shouldShowEnemyIntro(e.type) && NARRATIVE.enemyIntros[e.type]) {
+      const spotted = (barkState.introSpottedAt[e.type] ??= game.time);
+      if (game.time - spotted < NARRATIVE.enemyIntro.delay) continue;
       introTypes.add(e.type);
       markEnemyIntroSeen(e.type);
       introCards.push({
         text: NARRATIVE.enemyIntros[e.type],
         speaker: "indy",
         cta: "TAP TO CONTINUE",
-        enemyType: e.type, // draws the enemy's own shape on the card
+        enemyType: e.type, // parades the enemy's own shape on the card
       });
     }
   }
@@ -625,6 +632,7 @@ function frame(now) {
     updateTowerButtons(game, uiState.selectedType);
     updateUpgradePanel(game, uiState.selectedTower);
     updateTutorialOverlay(game); // T4: reposition the spotlight ring, if active
+    updateStoryOverlay(game);    // enemy-intro card: track its cutout over the live enemies
     checkEndState();
   }
 

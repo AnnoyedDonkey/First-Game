@@ -1234,6 +1234,25 @@ export const NARRATIVE = {
   // the weak/resist tag on its own line (#story-card-text is pre-line); the
   // tag values are sourced from ENEMIES[type].damageMult in
   // balance-data.json — re-check them if that data changes.
+  //
+  // Presentation knobs for those cards (all tunable here, nothing hardcoded
+  // in ui.js/main.js):
+  enemyIntro: {
+    // Seconds the type must be ON SCREEN before its card interrupts. Without
+    // this the card fires the frame the first enemy spawns — the player gets
+    // told about something they haven't seen yet. Long enough to notice the
+    // shape moving, short enough that it hasn't reached the towers.
+    delay: 1.8,
+    // Marching copies in the card's parade band (the featured "here is the
+    // thing I'm talking about" strip).
+    paradeCount: 4,
+    marchSeconds: 4.5,   // one crossing of the band, per marcher
+    // Spotlight: the dim veil is cut away over the live enemies so the card
+    // can point at the real ones. Padding is in TILES around their bounding
+    // box; the min keeps a lone enemy from getting a keyhole.
+    spotlightPadTiles: 1.1,
+    spotlightMinTiles: 3.2,
+  },
   enemyIntros: {
     basic: "Basic units — the little triangles. Bratwurst-XL's entry-level interns. Anything you build stops them. Good warm-up.\n\nNo resistances or weaknesses — anything works.",
     fast: "Incoming Fast — twitchy little diamonds. They rush the gaps.\n\nWeak to Laser. Resists Rocket, Pulse.",

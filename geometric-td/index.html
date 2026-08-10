@@ -60,14 +60,19 @@
          #story-name-input instead of plain text; every other card is
          tap-CTA-to-continue. #story-skip finishes the sequence early. -->
     <div id="story-overlay" class="hidden" aria-live="polite">
+      <!-- Enemy-intro cards only: a window cut in the dim veil (box-shadow
+           cutout, same trick as #tutorial-spotlight) over the real enemies
+           being described, so the card can point at something. -->
+      <div id="story-spotlight" class="hidden"></div>
       <div id="story-card">
         <div id="story-speaker-row">
           <span id="story-avatar"></span>
           <div id="story-speaker"></div>
-          <!-- Enemy-intro cards only: the described enemy's own shape/color,
-               since the card's dim veil hides the real one on the field. -->
-          <span id="story-enemy"></span>
         </div>
+        <!-- Enemy-intro cards only: a marching row of the described enemy's
+             own shape/color, featured above the copy. Empty on every other
+             story card. -->
+        <div id="story-enemy-parade"></div>
         <p id="story-card-text"></p>
         <input id="story-name-input" class="hidden" type="text" maxlength="16"
                autocomplete="off" autocapitalize="words" />

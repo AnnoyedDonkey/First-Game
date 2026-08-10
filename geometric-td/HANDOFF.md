@@ -8,7 +8,7 @@ current state, non-obvious mechanics, rules, tuning locations, and the file map.
 
 ## Current state — 2026-08-10
 
-Deployed build: `2026.08.10-8`. Also recently shipped (details in the
+Deployed build: `2026.08.10-9`. Also recently shipped (details in the
 archive): Shard-sink **stash economy** (stash expansion + per-rarity
 auto-junk, `config.js LOOT.stash`/`LOOT.autoJunk`); **STASH tab controls**
 (FILTER/SELL/CONFIG pill row, `ui.js renderStashTab`); **game-wide contrast**
@@ -47,16 +47,27 @@ just the map of what exists in code.
   or a `{name,color}` object (a tower, inline-tinted).
 - **Enemy-type intros** (first-ever appearance of Basic/Fast/Armored/Boss/
   Splitter/Regenerator) are **pause-and-tap story cards**, NOT ticker barks
-  (`2026.08.10-8`, `ONBOARDING_ENEMY_INTROS_PLAN.md`): `main.js updateBarks`
-  queues the frame's new types as one `onboarding.playCards` sequence, and
-  `frame()` zeroes dt while `isOnboardingActive()` — the same freeze the
-  tutorial's freeze steps use, so mid-battle pause/resume can't jump. The
-  copy carries an explicit "Weak to X. Resists Y." tag (sourced from
-  `ENEMIES[type].damageMult` — re-derive it if that balance data changes),
-  colored via `hl-weak`/`hl-resist`, plus the enemy's own shape on the card
-  (`ui.js enemyGlyphSvg` → `#story-enemy`). Cards win the frame over ticker
-  barks: a boss's banter defers until its intro card is dismissed. Still
-  gated by the one STORY BANTER toggle.
+  (`2026.08.10-8`/`-9`, `ONBOARDING_ENEMY_INTROS_PLAN.md`): `main.js
+  updateBarks` queues the frame's new types as one `onboarding.playCards`
+  sequence, and `frame()` zeroes dt while `isOnboardingActive()` — the same
+  freeze the tutorial's freeze steps use, so mid-battle pause/resume can't
+  jump. The copy carries an explicit "Weak to X. Resists Y." tag (sourced
+  from `ENEMIES[type].damageMult` — re-derive it if that balance data
+  changes), colored via `hl-weak`/`hl-resist`. Cards win the frame over
+  ticker barks: a boss's banter defers until its intro card is dismissed.
+  Still gated by the one STORY BANTER toggle. Card anatomy, all tunable in
+  `config.js NARRATIVE.enemyIntro`, nothing hardcoded in ui/main:
+  - `delay` — grace period after the type first appears before the card
+    interrupts (per battle in `barkState.introSpottedAt`), so the player
+    sees the enemy before being told about it.
+  - `#story-spotlight` — a cutout in the veil over the live enemies
+    (`ui.js enemySpotlightBox`, `spotlightPadTiles`/`spotlightMinTiles`),
+    repositioned every frame by `updateStoryOverlay(game)` from `frame()`.
+    The card takes the roomier side and is height-capped to that gap; do
+    NOT simplify that to "put the card on the other side", which breaks for
+    enemies near mid-screen (see the plan file).
+  - `#story-enemy-parade` — `paradeCount` copies of the enemy marching
+    across a dashed track (`marchSeconds`), tinted to its own color.
 - **Character avatars** — Indy-7 (spinning green hexagon, the Core's own
   shape) and Bratwurst-XL (counter-rotating yellow squares, the spawn
   portal's shape) as inline SVG, line-stroke eyes that change by mood
@@ -290,12 +301,13 @@ BALANCE_LAB_PLAN.md  approved Balance Lab L0-L7 plan
 
 ## Active and deferred work
 
-- **DONE — Enemy-intro rebuild** (`2026.08.10-8`,
+- **DONE — Enemy-intro rebuild** (`2026.08.10-8`, card reworked in `-9`,
   `ONBOARDING_ENEMY_INTROS_PLAN.md`): intros moved off the bark ticker onto
-  pause-and-tap cards with weak/resist tags and the enemy's shape. Boss and
-  tower barks stayed on the ticker as intended. **Wants phone eyes** — the
-  first card only shows up on a brand-new save's L1, so verify on the iPhone
-  that the pause reads as deliberate and not as a stutter.
+  pause-and-tap cards with weak/resist tags, a spotlight cutout over the real
+  enemies, a pre-card grace delay, and a marching enemy parade. Boss and
+  tower barks stayed on the ticker as intended. **Wants phone eyes** — these
+  cards only appear on a brand-new save, so they're easy to leave unverified;
+  check the spotlight framing and the parade on a real iPhone.
 - **NEXT — narrative/onboarding follow-ups** (design + copy already approved,
   none of this is built yet — read the referenced plan file first, each is
   self-contained):
