@@ -397,6 +397,25 @@ button.hud-item {
 }
 #tutorial-card-cta:empty { display: none; }
 
+/* Indy-7 speaker row on the tutorial card (P5): his avatar + nameplate so the
+   walkthrough reads as HIM talking. Shown on the roomy modal steps
+   (welcome / blocked-tile); hidden on the compact spotlight banners. */
+#tutorial-speaker-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 9px;
+}
+#tutorial-avatar { flex: none; width: 34px; height: 34px; }
+#tutorial-avatar svg { width: 34px; height: 34px; display: block; }
+#tutorial-speaker {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12px; letter-spacing: 2px; font-weight: 800;
+  color: var(--indy-color); text-shadow: 0 0 8px rgba(74, 255, 161, 0.5);
+}
+#tutorial-card.banner #tutorial-speaker-row { display: none; }
+
 /* Ring over the REAL target element, repositioned every frame (ui.js
    updateTutorialOverlay). The oversized box-shadow spread is the
    spotlight/cutout trick: it dims the whole screen while leaving the

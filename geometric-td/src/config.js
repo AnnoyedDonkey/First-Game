@@ -1003,32 +1003,37 @@ export const TUTORIAL = {
   // placementTile so the callout tile is right where the player just
   // looked — the step-4 "you can't build here" explainer.
   blockedTileCallout: { x: 4, y: 2 },
+  // Reworded in Indy-7's voice (the player has already met him + named
+  // themselves in the intro). `mood` drives his avatar on the modal steps
+  // (welcome/blockedTile); the three spotlight steps are compact banners with
+  // no avatar. `{name}` is substituted at render time.
   steps: [
     {
       id: "welcome",
       cta: "TAP TO START",
-      text: "Defend the AI Core — build towers to stop the wave.",
+      mood: "happy",
+      text: "See that green hexagon at the end of the track, {name}? That's me. Your job: build towers so the shapes never reach it. Let me show you the ropes.",
     },
     {
       id: "selectLaser",
       target: "trayLaser",
-      text: "Tap the LASER tower.",
+      text: "Start with a Laser — tap it in the tray below.",
     },
     {
       id: "placeTile",
       target: "tile",
-      text: "Now tap an open tile to build.",
+      text: "Now drop it on an open tile near the path.",
     },
     {
       id: "blockedTile",
       target: "blockedTile",
       cta: "TAP TO CONTINUE",
-      text: "✕ chips are part of the circuit board — no building there.",
+      text: "Those ✕ chips are soldered to my circuit board — no building on those. Anywhere else, go wild.",
     },
     {
       id: "startWave",
       target: "waveButton",
-      text: "Tap START WAVE to send in the wave!",
+      text: "Good. Now hit START WAVE and let's see what Bratwurst-XL sends. Try not to let them reach me.",
     },
   ],
 };

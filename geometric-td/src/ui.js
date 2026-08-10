@@ -122,6 +122,7 @@ const el = {
   tutorialCard: document.getElementById("tutorial-card"),
   tutorialCardText: document.getElementById("tutorial-card-text"),
   tutorialCardCta: document.getElementById("tutorial-card-cta"),
+  tutorialAvatar: document.getElementById("tutorial-avatar"),
   tutorialSpotlight: document.getElementById("tutorial-spotlight"),
   tutorialSkip: document.getElementById("tutorial-skip"),
   storyOverlay: document.getElementById("story-overlay"),
@@ -3081,7 +3082,10 @@ function renderTutorialStep() {
 
   el.tutorialCard.classList.toggle("modal", freezing);
   el.tutorialCard.classList.toggle("banner", !freezing);
-  el.tutorialCardText.textContent = step.text;
+  // Indy-7 narrates the walkthrough: his avatar on the modal steps (the row is
+  // hidden on banners via CSS), and {name}/character coloring in the text.
+  if (el.tutorialAvatar) el.tutorialAvatar.innerHTML = speakerAvatarSvg("indy", step.mood);
+  el.tutorialCardText.innerHTML = storyCardHtml(step.text);
   el.tutorialCardCta.textContent = freezing ? (step.cta || "TAP TO CONTINUE") : "";
 
   el.tutorialSpotlight.classList.toggle("hidden", !step.target);
