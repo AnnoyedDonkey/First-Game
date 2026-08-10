@@ -1,11 +1,12 @@
-# Enemy intros — pause-and-tap rebuild (BUILT, `2026.08.10-8`/`-9`)
+# Enemy intros — pause-and-tap rebuild (BUILT, `2026.08.10-8`/`-9`/`-10`)
 
 Status: **shipped.** Copy approved 2026-08-10, delivery mechanism decided,
 built the same day in `2026.08.10-8` — the traceability table in §2 was
 re-verified against `balance-data.json` at build time and matched exactly.
 `-9` reworked the card itself off first-play feedback (spotlight, delay,
-parade — see "Second pass" below). Kept as the record of the decision and
-the copy source; §4's checklist was run and passed.
+parade) and `-10` made the parade enemies render exactly like the real ones
+— see "Second pass"/"Third pass" below. Kept as the record of the decision
+and the copy source; §4's checklist was run and passed.
 
 ## As built
 
@@ -53,6 +54,34 @@ NARRATIVE.enemyIntro`:
    march along a dashed track tinted to the enemy's own color (phase-offset
    copies of ONE CSS animation; parked at fixed offsets under reduced
    motion). The corner glyph is gone.
+
+### Third pass (`2026.08.10-10`) — the parade enemies weren't the real ones
+
+Feedback: the marching shapes read as *like* the enemies rather than *as*
+them — thicker stroke, all one size, and not spinning. They were an
+eyeballed SVG; now they're derived from the renderer's own numbers.
+
+`renderer.js` exports **`ENEMY_LOOK`** (`lineWidth`, `glowBlur`,
+`spinPerPx`) and `drawEnemies` uses it, so the field and the card read one
+source. `ui.js enemyGlyphSvg` draws in a **viewBox of one tile**
+(`GLYPH_TILE = 64`), which makes every tile-relative proportion carry over
+for free:
+
+- radius `GLYPH_TILE * def.size` — real size differences are preserved
+  (Fast 22.9px vs Boss 43.7px on-screen at the default `glyphTilePx: 52`),
+  instead of every type being drawn at one size;
+- `SHAPE_SIDES[def.shape]` at `drawPolygon`'s uniform `-π/2` offset. NOTE
+  `diamond` and `square` are both 4 sides at the same offset in-game — the
+  old glyph map wrongly gave `square` a 45° twist and `octagon` 22.5°;
+- `stroke-width: ENEMY_LOOK.lineWidth` (1.5) and `fill: none` — the
+  renderer strokes and never fills; the old glyph was 5-wide with a tint;
+- a SMIL `animateTransform` spin whose duration is the type's REAL rate,
+  `2π / (speed * tileSize * spinPerPx)` — so a Fast whirls (3.8s/turn) and
+  a Boss trudges (17.9s/turn). Held still under reduced motion.
+
+Verified per type against the renderer's own polygon math: vertices match
+to <0.01, and sampling the SMIL clock at quarters of the duration gives
+exactly 0/90/180/270°.
 
 ## 1. Why this exists
 

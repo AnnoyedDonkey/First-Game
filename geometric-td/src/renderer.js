@@ -628,6 +628,18 @@ function drawCore(ctx, game, time) {
   ctx.restore();
 }
 
+// The handful of numbers that define how an enemy LOOKS, exported so the
+// enemy-intro card's parade (ui.js enemyGlyphSvg) can draw from the same
+// values instead of eyeballing them — a mismatch here is exactly what made
+// the card's enemies read as "not the ones in the game".
+export const ENEMY_LOOK = {
+  lineWidth: LOOK.lineWidth, // stroke width, in internal render px
+  glowBlur: 8,               // ctx.shadowBlur in the enemy's own color
+  // Radians of spin per px travelled — enemies rotate as they move so they
+  // feel alive. The card converts this to a duration via the type's speed.
+  spinPerPx: 0.01,
+};
+
 function drawEnemies(ctx, game) {
   const grid = game.grid;
   const ts = grid.tileSize;
@@ -641,12 +653,12 @@ function drawEnemies(ctx, game) {
     ctx.save();
     ctx.strokeStyle = flashing ? "#ffffff" : e.def.color;
     ctx.shadowColor = e.def.color;
-    ctx.shadowBlur = 8;
-    ctx.lineWidth = LOOK.lineWidth;
+    ctx.shadowBlur = ENEMY_LOOK.glowBlur;
+    ctx.lineWidth = ENEMY_LOOK.lineWidth;
 
     const sides = SHAPE_SIDES[e.def.shape] ?? 3;
     // Rotate slowly as they move so they feel alive.
-    const angle = e.distance * 0.01;
+    const angle = e.distance * ENEMY_LOOK.spinPerPx;
     drawPolygon(ctx, pos.x, pos.y, r, sides, angle);
     ctx.stroke();
 

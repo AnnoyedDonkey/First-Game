@@ -543,7 +543,10 @@ button.hud-item {
    rail, so translateX percentages are of the band, not the glyph. */
 #story-enemy-parade {
   position: relative;
-  height: 52px;
+  /* Tall enough for the biggest enemy drawn at --glyph-tile (boss = 0.42 of
+     a tile, so 0.84 of it) plus its glow. Set by ui.js renderEnemyParade
+     from NARRATIVE.enemyIntro.glyphTilePx. */
+  height: calc(var(--glyph-tile, 52px) + 12px);
   overflow: hidden;
   border-radius: 8px;
   border: 1px solid var(--panel-border);
@@ -567,13 +570,15 @@ button.hud-item {
   animation-timing-function: linear;
   animation-iteration-count: infinite;
 }
+/* The glyph's viewBox is one tile, so sizing the box to --glyph-tile makes
+   every enemy come out at its true tile-relative size. */
 .enemy-marcher svg {
   position: absolute;
   top: 50%;
   left: 0;
-  width: 34px;
-  height: 34px;
-  margin-top: -17px;
+  width: var(--glyph-tile, 52px);
+  height: var(--glyph-tile, 52px);
+  margin-top: calc(var(--glyph-tile, 52px) / -2);
 }
 @keyframes enemyMarch {
   from { transform: translateX(-14%); }

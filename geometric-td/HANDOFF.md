@@ -8,7 +8,7 @@ current state, non-obvious mechanics, rules, tuning locations, and the file map.
 
 ## Current state — 2026-08-10
 
-Deployed build: `2026.08.10-9`. Also recently shipped (details in the
+Deployed build: `2026.08.10-10`. Also recently shipped (details in the
 archive): Shard-sink **stash economy** (stash expansion + per-rarity
 auto-junk, `config.js LOOT.stash`/`LOOT.autoJunk`); **STASH tab controls**
 (FILTER/SELL/CONFIG pill row, `ui.js renderStashTab`); **game-wide contrast**
@@ -67,7 +67,12 @@ just the map of what exists in code.
     NOT simplify that to "put the card on the other side", which breaks for
     enemies near mid-screen (see the plan file).
   - `#story-enemy-parade` — `paradeCount` copies of the enemy marching
-    across a dashed track (`marchSeconds`), tinted to its own color.
+    across a dashed track (`marchSeconds`), tinted to its own color, sized
+    by `glyphTilePx`. The glyphs are NOT decorative lookalikes: `ui.js
+    enemyGlyphSvg` draws in a one-tile viewBox using `SHAPE_SIDES` and
+    `renderer.js`'s exported `ENEMY_LOOK` (lineWidth/glowBlur/spinPerPx),
+    so stroke, tile-relative size, and spin rate are the renderer's own.
+    Change enemy look in `ENEMY_LOOK` and both follow; don't re-hardcode.
 - **Character avatars** — Indy-7 (spinning green hexagon, the Core's own
   shape) and Bratwurst-XL (counter-rotating yellow squares, the spawn
   portal's shape) as inline SVG, line-stroke eyes that change by mood

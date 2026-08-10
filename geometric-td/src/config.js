@@ -1247,6 +1247,12 @@ export const NARRATIVE = {
     // thing I'm talking about" strip).
     paradeCount: 4,
     marchSeconds: 4.5,   // one crossing of the band, per marcher
+    // On-screen size of ONE TILE in the parade, in CSS px. The glyphs are
+    // drawn tile-relative exactly like the renderer does it, so this scales
+    // every type together and preserves their real size differences (a Fast
+    // stays smaller than a Boss). The band must stay taller than the biggest
+    // enemy: 2 * glyphTilePx * max(ENEMIES[*].size) — boss 0.42 -> 44px.
+    glyphTilePx: 52,
     // Spotlight: the dim veil is cut away over the live enemies so the card
     // can point at the real ones. Padding is in TILES around their bounding
     // box; the min keeps a lone enemy from getting a keyhole.

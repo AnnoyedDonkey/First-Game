@@ -5,6 +5,7 @@
 import {
   TOWERS, ENEMIES, SKILLS, SKILL_VALUES, TOWER_UPGRADES, LOOT,
   SKILL_BRANCH_COLORS, SKILL_TREE_VIEWBOX, FEEDBACK, TUTORIAL, NARRATIVE,
+  SHAPE_SIDES,
 } from "./config.js";
 import {
   onTutorialChange, isTutorialActive, currentStep as currentTutorialStep,
@@ -45,6 +46,7 @@ import {
 } from "./leaderboard.js";
 import { WORLDS } from "./levels.js";
 import { enemyPosition } from "./enemies.js";
+import { ENEMY_LOOK } from "./renderer.js";
 
 const el = {
   towerButtons: document.getElementById("tower-buttons"),
@@ -3160,27 +3162,40 @@ function speakerAvatarSvg(code, mood) {
     + `<g filter="drop-shadow(0 0 3px ${color})">${shape}${eyes}</g></svg>`;
 }
 
-// The described enemy's own silhouette for an enemy-intro card, built from
-// its ENEMIES presentation entry (same shape + neon color the renderer draws
-// on the field). Regular N-gons, point-up except the square (flat) and
-// octagon (stop-sign); returns "" for anything unknown.
-const ENEMY_GLYPH_SIDES = {
-  triangle: [3, -90], diamond: [4, -90], square: [4, -45],
-  pentagon: [5, -90], hexagon: [6, -90], octagon: [8, -22.5],
-};
+// The described enemy, drawn the way renderer.js drawEnemies draws the real
+// one — not an approximation of it. The viewBox IS one tile (GLYPH_TILE
+// units), so every proportion the renderer derives from tileSize carries
+// over unchanged: radius `tileSize * def.size` (a Fast really is smaller
+// than a Boss), stroke ENEMY_LOOK.lineWidth, the same SHAPE_SIDES polygon at
+// the same point-up offset, stroke-only (the renderer never fills), and the
+// same colored glow. Returns "" for anything unknown.
+//
+// They spin, too: the renderer turns them `spinPerPx` radians per px
+// travelled, so a type's spin rate on the card is its real one at its own
+// speed — a Fast whirls, an Armored trudges. Held still under reduced motion.
+const GLYPH_TILE = 64; // viewBox units per tile; matches main.js TILE_SIZE
 function enemyGlyphSvg(type) {
   const def = ENEMIES[type];
-  const spec = def && ENEMY_GLYPH_SIDES[def.shape];
-  if (!spec) return "";
-  const [sides, offset] = spec;
+  const sides = def && SHAPE_SIDES[def.shape];
+  if (!sides) return "";
+  const c = GLYPH_TILE / 2;
+  const r = GLYPH_TILE * def.size;
   const pts = Array.from({ length: sides }, (_, i) => {
-    const a = (Math.PI / 180) * ((360 / sides) * i + offset);
-    return `${(50 + 34 * Math.cos(a)).toFixed(1)},${(50 + 34 * Math.sin(a)).toFixed(1)}`;
+    const a = (i / sides) * Math.PI * 2 - Math.PI / 2; // drawPolygon's offset
+    return `${(c + Math.cos(a) * r).toFixed(2)},${(c + Math.sin(a) * r).toFixed(2)}`;
   }).join(" ");
-  return `<svg viewBox="0 0 100 100" aria-hidden="true">`
-    + `<g filter="drop-shadow(0 0 4px ${def.color})">`
-    + `<polygon points="${pts}" fill="${def.color}22" stroke="${def.color}"`
-    + ` stroke-width="5" stroke-linejoin="round"/></g></svg>`;
+  const poly = `<polygon points="${pts}" fill="none" stroke="${def.color}"`
+    + ` stroke-width="${ENEMY_LOOK.lineWidth}" stroke-linejoin="round"/>`;
+  // px/sec -> full turns/sec: distance advances by speed * tileSize per second.
+  const radPerSec = def.speed * GLYPH_TILE * ENEMY_LOOK.spinPerPx;
+  const spin = matchMedia("(prefers-reduced-motion: reduce)").matches || !radPerSec
+    ? poly
+    : `<g>${poly}<animateTransform attributeName="transform" attributeType="XML"`
+      + ` type="rotate" from="0 ${c} ${c}" to="360 ${c} ${c}"`
+      + ` dur="${(2 * Math.PI / radPerSec).toFixed(2)}s" repeatCount="indefinite"/></g>`;
+  // canvas shadowBlur is roughly 2x an SVG blur's stdDeviation.
+  return `<svg viewBox="0 0 ${GLYPH_TILE} ${GLYPH_TILE}" aria-hidden="true">`
+    + `<g filter="drop-shadow(0 0 ${ENEMY_LOOK.glowBlur / 2} ${def.color})">${spin}</g></svg>`;
 }
 
 // The enemy-intro card's headline act: a band of the described enemy marching
@@ -3197,9 +3212,10 @@ function renderEnemyParade(type) {
     band.innerHTML = "";
     band.classList.add("hidden");
     band.style.removeProperty("--parade-color");
+    band.style.removeProperty("--glyph-tile");
     return;
   }
-  const { paradeCount, marchSeconds } = NARRATIVE.enemyIntro;
+  const { paradeCount, marchSeconds, glyphTilePx } = NARRATIVE.enemyIntro;
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   let html = "";
   for (let i = 0; i < paradeCount; i++) {
@@ -3210,6 +3226,7 @@ function renderEnemyParade(type) {
     html += `<span class="enemy-marcher" style="${style}">${glyph}</span>`;
   }
   band.style.setProperty("--parade-color", ENEMIES[type].color);
+  band.style.setProperty("--glyph-tile", `${glyphTilePx}px`);
   band.innerHTML = html;
   band.classList.remove("hidden");
 }
