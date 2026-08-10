@@ -1,128 +1,29 @@
 # Geometric TD — Developer Handoff
 
-Read this first when working on the project. Historical release detail lives
-in `docs/archive/HANDOFF_HISTORY_2026-07.md`; the original pre-cleanup
-handoff is preserved in Git at commit `2650204`.
+Read this first when working on the project. Completed-work and build-by-build
+changelog detail lives in `docs/archive/HANDOFF_HISTORY_2026-07.md` (now covers
+July **and** August 2026); the original pre-cleanup handoff is preserved in Git
+at commit `2650204`. This file keeps only what you need to start work:
+current state, non-obvious mechanics, rules, tuning locations, and the file map.
 
 ## Current state — 2026-08-09
 
-The current deployed build is `2026.08.09-8` (`-8`: `.gear-actions-row`
-— the shared class behind every button row in the gear/store overlays,
-including STASH's FILTER/SELL/CONFIG row — was missing bottom margin, so
-buttons sat flush against whatever came next (the STASH grid, most
-visibly). Added `margin-bottom: 12px`; fixes it in the STASH tab, the
-triage strip, and the STORE screen's action row at once, same
-one-class-fixes-everywhere pattern as the `-7` contrast fix).
-`-6` added a one-line explainer under the AUTO-JUNK heading in the STASH
-SETTINGS sheet
-(`ui.js stashSettingsHtml`, no logic change). `-7` is a **game-wide
-contrast fix**: `styles.css` `--text-dim` (the secondary/label color, 69
-uses across the stylesheet — every dim label/sub-note in the entire UI)
-was `#5a668f`, ~3.4:1 contrast against `--panel`/`--bg` — under WCAG AA's
-4.5:1 floor, and the whole UI runs 9-11px text, so this was a real
-"hard to read" complaint (2026-08-09), not just the stash screen where it
-was first noticed. Brightened to `#b9c2e8` (~10.9-11.5:1 contrast)
-without going all the way to pure white — `--text` (primary) is itself a
-near-white `#cdd6ff` at ~13.4:1, so an identical-brightness dim color
-would have flattened the primary/secondary hierarchy the whole UI relies
-on to show what's important at a glance. One variable, applies
-everywhere — no other changes needed.
+Deployed build: `2026.08.09-8`. Recently shipped (details in the archive):
+- **Stash economy sinks** — Shard-sink stash expansion + per-rarity auto-junk
+  (`config.js LOOT.stash`/`LOOT.autoJunk`, `progression.js`). Save fields
+  `stashUpgrades`/`autoJunkTier`/`autoJunkPaused` (save.js default + backfill).
+- **STASH tab controls** — a FILTER / SELL / CONFIG pill row
+  (`ui.js renderStashTab`, `.gear-mini-action`).
+- **Game-wide contrast** — `styles.css --text-dim` brightened to ~11:1.
 
-Stash management got two new
-Shard sinks: **stash expansion** (base 100 slots, 10 escalating purchases
-of +20 slots each, 50→4000 Shards, caps at 300 — `config.js LOOT.stash`,
-`progression.js getStashCap/buyStashUpgrade`) and **auto-junk** (4
-sequential per-rarity tiers — Common 500 / Enhanced 750 / Rare 1000 /
-Prismatic 1500 Shards; Singularity is never junkable — `config.js
-LOOT.autoJunk`, `progression.js buyAutoJunkTier`).
-
-Ownership and activation are separate, and — after two rounds of feedback
-— activation is **per rarity**, not a single global switch. Buying tiers
-is still sequential (owning Enhanced implies owning Common), but each
-owned rarity gets its own row and its own PAUSE/RESUME button in the
-STASH SETTINGS sheet: a player can pause Enhanced auto-sell while Common
-keeps auto-selling, without losing either purchase.
-`progression.js ownedAutoJunkRarities()` lists what's owned (permanent,
-driven by `autoJunkTier`); `isAutoJunkRarityEnabled(rarity)`/
-`setAutoJunkRarityEnabled(rarity, bool)` read/write the new save field
-`autoJunkPaused` (array of currently-paused owned rarities). The internal
-`shouldAutoJunk(rarity)` — owned AND not paused — is what `bankEarnedItem`
-actually checks. (`-4`'s first pass shipped one global `autoJunkEnabled`
-toggle that paused everything at once; progression.js backfill migrates
-any save that hit that window into the new per-rarity field, then drops
-the old one.) Once a rarity is owned AND active, loot EARNED in play (kill
-drops, the guaranteed end-drop, Endless milestones — not store buys) at
-that rarity auto-sells for Shards instead of taking a stash/triage slot,
-checked in `bankEarnedItem` *after* the existing auto-equip attempt fails
-(so a still-useful Common can equip before the junk check ever sees it).
-Placement dest `"junked"` flows through the drop-reveal card ("→
-AUTO-SOLD ◆n") and the results-screen loot tile (a dimmed `.junked-tile`
-with the sold value as its corner tag, reusing the Store's price-tag
-styling). New save fields `stashUpgrades`/`autoJunkTier`/`autoJunkPaused`
-(save.js default + progression.js backfill, standard pattern).
-
-The STASH tab's controls went through two rounds of phone feedback before
-landing on the current design (`ui.js renderStashTab`, `.gear-mini-action`
-in `styles.css`): a row of three equal, distinctly-colored pill buttons —
-**FILTER** (cyan), **SELL** (yellow), **CONFIG** (magenta) — sits right
-below the item count.
-- `-1`'s first pass put the settings entry point behind a bare 26px
-  outline `⚙` icon next to the `?` guide; it read as invisible against the
-  neon UI on an actual phone. `-2` moved it to a tappable `STASH n/cap`
-  text link in the header. `-3` replaced both with the explicit **CONFIG**
-  button (`openStashSettingsSheet`) — the header text is plain again.
-- `-1` also shipped bulk-sell as an always-visible row of per-rarity
-  "SELL X (n)" pills, which was itself the space complaint (1-2 full rows
-  above the grid, another in triage). `-2` collapsed it into one
-  `.gear-mini-action` "SELL ▾" trigger opening a compact sheet
-  (`openBulkSellSheet` — reuses the bottom-sheet pattern;
-  `sellAllStashRarity`/`sellAllPendingRarity` unchanged underneath); `-3`
-  kept this as-is, just restyled to match FILTER/CONFIG.
-- The pre-existing OPTIC/EMITTER/.../SINGULARITY filter chips (9 total)
-  are now **hidden by default** behind the **FILTER** button
-  (`gearFiltersOpen` module state, reset on panel open) instead of always
-  showing. `-2` had tried a horizontally-scrolling single row to save
-  space, but a scroll-to-reveal row silently hides chips off-screen with
-  no signal more exist — most players won't discover it. `-3` shows ALL
-  chips, wrapped across as many rows as needed, only once FILTER is
-  tapped; the button's label shows an active-filter count
-  (`FILTER (1) ▾`/`▴`) so it stays legible even while collapsed.
-
-Both Shard sinks — **stash expansion** (base 100 slots, 10 escalating
-purchases of +20 slots each, 50→4000 Shards, caps at 300 —
-`config.js LOOT.stash`, `progression.js getStashCap/buyStashUpgrade`) and
-**auto-junk** (4 sequential per-rarity tiers — Common 500 / Enhanced 750 /
-Rare 1000 / Prismatic 1500 Shards; Singularity is never junkable —
-`config.js LOOT.autoJunk`, `progression.js autoJunkMaxRarity/
-buyAutoJunkTier`) — are unchanged since `-1`. Once a tier is owned, loot
-EARNED in play (kill drops, the guaranteed end-drop, Endless milestones —
-not store buys) at or below that rarity auto-sells for Shards instead of
-taking a stash/triage slot, checked in `bankEarnedItem` *after* the
-existing auto-equip attempt fails (so a still-useful Common can equip
-before the junk check ever sees it). New placement dest `"junked"` flows
-through the drop-reveal card ("→ AUTO-SOLD ◆n") and the results-screen
-loot tile (a dimmed `.junked-tile` with the sold value as its corner tag,
-reusing the Store's price-tag styling). New save fields
-`stashUpgrades`/`autoJunkTier` (save.js default + progression.js
-backfill, standard pattern).
-
-Verified via seeded-save console testing (dynamic `import()` of
-`progression.js`/`ui.js`) covering both purchase ladders, the
-junk-vs-stash fallback with an empty roster, and live DOM clicks/computed-
-style checks at a 375px mobile viewport: FILTER/SELL/CONFIG render in
-three distinct high-contrast colors, the filter row is genuinely hidden
-until toggled and shows every chip wrapped (not scrolled) once open, and
-the active-filter count survives collapsing the row — no console errors.
-
-The campaign is now **four worlds / 20 levels** — World 4 (SINGULARITY,
-`level_016`–`level_020`) shipped
-across builds `2026.08.08-1`..`-18`. World 4's identity is **one spotlight
+The campaign is **four worlds / 20 levels**. World 4 (SINGULARITY,
+`level_016`–`level_020`, builds `2026.08.08-1`..`-18`) has **one spotlight
 tower per level** (L16 Laser, L17 Slow, L18 Pulse, L19 Railgun, L20 Rocket),
 achieved through map geometry + a resist-matched enemy roster (see
-`WORLD_4_PLAN.md` for the original design; several levels have since diverged).
-Adding a world needs no code: `WORLDS` unlock automatically when the previous
-world's levels are all completed; `balance-schema.js KNOWN_LEVEL_IDS` was
-extended to 20; Endless uses `defaultTrack`.
+`WORLD_4_PLAN.md`; several levels have since diverged in balance). Adding a
+world needs no code: `WORLDS` unlock automatically when the previous world's
+levels are all completed; `balance-schema.js KNOWN_LEVEL_IDS` was extended to
+20; Endless uses `defaultTrack`.
 
 ### New data-driven special-tile mechanics (World 4)
 Three optional per-level features, all validated in `balance-schema.js`,
@@ -180,106 +81,17 @@ tier and **auto-pauses after ~7 idle days**, which surfaces in-game as
 the project (Supabase dashboard, or MCP `restore_project`); ~5 min, no code
 change. Data survives the pause. First hit + restored 2026-08-08.
 
-## Prior state — 2026-07-23
-
-Geometric TD is a portrait, mobile-browser tower defense with a (then) 15-level,
-three-world campaign; five tower classes; seven enemy types; RPG roster and
-mastery progression; skills; loot/equipment; campaign challenges; Endless;
-telemetry; and a GitHub Pages deployment.
-
-The current deployed build is `2026.07.23-5`. Builds `2026.07.23-1` through
-`-5` gave every tower a third skill-tree branch and reworked the tree's box
-art. `TOWER_THIRD_BRANCH` (`config.js`) is now a small data table covering
-all five towers instead of one-off Railgun-only code: Over-Penetration
-(Railgun, pre-existing), Slow Potency (+% slow amount, `slow_dmg` chain
-above it still separately covers +% slow *duration*), Rapid Fire (Laser,
-+% fire rate), Blast Radius (Pulse) and Payload Yield (Rocket) — the latter
-two both raise splash radius but through independent multipliers gated by
-`tower.type`, so investing in one never affects the other even though both
-towers share the `def.splashRadius` code path in `towers.js`. Each perk is a
-one-line `getXMult()` in `progression.js`. Separately, every box in the tree
-now renders a themed icon (`skillIconBody` in `ui.js`) instead of falling
-back to plain percentage/level text for chain boxes: all non-Slow damage
-chains share one 8-ray burst icon (`damage`), Slow's duration chain and the
-four non-Pulse third-branch perks (Rapid Fire/Slow Potency/Over-Penetration/
-Payload Yield) each got a bespoke icon (`haste`/`potency`/`overpen`/`yield`/
-`duration`); the value text moved to a small tag inside the box's bottom
-edge instead of replacing the icon outright.
-
-Builds `2026.07.21-8` through `-10`
-added player-facing gear/skill quality-of-life: equipped gear can now be
-replaced through the existing compatible-picker + COMPARE flow; gear traits
-have tappable descriptions; the Store sells permanent Skill Points on a
-50/100/+100-to-1000 Shard curve; skill-tree branch heads are free (previously
-purchased heads are refunded once); five-box branch costs are now 1/1/1/2/2;
-and Railgun Over-Penetration is a five-box third branch under its head. Slow
-tower career sheets now also show computed Slow Amount and Slow Duration. The
-Skill Point purchase count is save-backed at `store.skillPointPurchases` with
-both a `save.js` default and `progression.js` backfill.
-
-Baseline was the deliberately
-aggressive H1-H4 hard-mode pass (`2650204`, `2026.07.17-1`): a Pulse nerf plus
-World 1-3 wave and economy hardening. Player feedback then reported the campaign
-was too hard, so difficulty was walked back world by world:
-- **World 1** softened in two steps — `2026.07.18-1` (Level 2 via the Balance
-  Lab) and `2026.07.19-1` (Levels 3-5, `healthMult` only). L3 fixed a severe
-  overshoot (total wave HP 274k→38k) and L4/L5 were pulled down so World 1 now
-  ramps smoothly (~20k/34k/38k/54k/83k across L1-L5).
-- **World 2** rescaled next (`2026.07.19-3` through `-9`, commits for L6-L10):
-  full wave-curve rebalances plus economy and regenerator-intro fixes. Latest
-  telemetry confirms this landed — L9/L10 now rate `just_right`.
-
-World 3 has now had two balance passes. The first (`2026.07.21-1`, moderate
-economy + pacing) landed **L13 at `just_right`** (confirmed in the `-6`
-telemetry round). The second pass shipped in **`2026.07.21-7`** targeting what
-`-6` telemetry still showed: L11 and L15 rated `too_easy` (L15 a flawless
-0-leak clear banking 740), while L12 and L14 walled players on **waves 1-2 only**
-(losses died wc0/wc1 in <100s, then the same player cleared all 10 waves).
-The `-7` pass, done via `balance-data.json`:
-- **L11** — back half (waves 6-10) HP raised ~+10% weighted; openers untouched.
-- **L12 / L14** — waves 1-2 softened ~33% (opener survivability); waves 3-10
-  left exactly as-is.
-- **L13** — deliberately untouched (it's the success of the first pass).
-- **L15** — hardened ~+21% weighted with more bodies from wave 5 on, and the
-  12-wave finale turned into a real gauntlet (6 bosses + heavier
-  armored/regen/fast). `bountyMult` unchanged (0.52).
-Confirm the effect by comparing `-7` telemetry by `app_version`; watch that the
-L12/L14 openers are no longer brick walls and that L15 now costs core.
-
-Builds `2026.07.21-2` through `-5` were player-facing UI/UX fixes, no balance
-change: first-play tutorial polish (banner no longer overlaps SKIP TUTORIAL;
-placement no longer flashes past the blocked-tile step; instructions + skip
-now render above the spotlight's dimming veil instead of behind it), the
-TOWERS & GEAR GUIDE reworded from a wall of text into short lines and made
-mouse-wheel scrollable, and the skill tree now opens scrolled to the leftmost
-(Laser) branch instead of the middle. Tutorial state machine lives in
-`src/tutorial.js`; its copy + enable switch in `config.js` `TUTORIAL`;
-overlay layering in `styles.css` (`#tutorial-*`) and `src/ui.js`.
-
-The in-progress next build is the local-first Balance Lab. Read
-`BALANCE_LAB_PLAN.md`; phases L0-L7 define the data migration, local save API,
-editing UI, revision history, and QA. **L0 (schema contract), L1 (config-side
-data migration), L2 (campaign/levels/waves/worlds migration), L3 (local
-persistence API), L4 (read-only Lab shell), L5 (editable controls &
-validation UX), L6 (revision history & Git-friendly workflow), and L7 (QA, handoff, and phone readiness) are complete
-and verified** — see `BALANCE_LAB_L0.md` and the L1–L6 plan files. All editable gameplay data now lives canonically in
-`src/balance-data.json`; `src/balance-data.js` is its generated synchronous game
-import, and `src/balance-schema.js` remains the authoritative semantic
-validator. The localhost-only API in `serve.ps1` reads, structurally validates,
-atomically saves, and append-only restores named revisions in
-`balance-history/`. All Balance Lab work remains local-only tooling: no
-player-facing change, no `version.js` bump, nothing committed or pushed. The
-Lab lives at `balance-lab.html` (open via `http://localhost:PORT/
-balance-lab.html`; not linked from the player menu) and is now a working editor:
-typed inputs → validated draft → `POST /api/balance/save`. The Balance Lab (L0-L7) is **complete and verified**; the only remaining step is a deliberate manual commit. Deferred follow-ups live in `BALANCE_LAB_PLAN.md`.
-
 ## Non-negotiable constraints
 
-**Balance Lab status:** complete through L7. The local Lab is ready for the
-non-developer edit → save-with-note → local test → Restore → manual Git review
-workflow. `BALANCE_LAB_USAGE.md` is the task guide; its history starts from the
-single clean L2 baseline. The deferred `serve.ps1 -LabLan` path is documented
-only, not implemented.
+**Balance Lab status:** complete through L7 (local-only tooling; no
+player-facing change, nothing auto-committed or auto-pushed). All editable
+gameplay data lives canonically in `src/balance-data.json`; `src/balance-data.js`
+is its generated synchronous game import; `src/balance-schema.js` is the
+authoritative semantic validator. The localhost-only API in `serve.ps1` reads,
+validates, atomically saves, and append-only restores named revisions in
+`balance-history/`. The Lab lives at `balance-lab.html` (not linked from the
+player menu). `BALANCE_LAB_USAGE.md` is the task guide; `BALANCE_LAB_PLAN.md`
+has the architecture and deferred follow-ups.
 
 - Plain HTML5, Canvas 2D, vanilla JS ES modules; no framework, build system,
   TypeScript, or dependencies.
@@ -411,26 +223,22 @@ BALANCE_LAB_PLAN.md  approved Balance Lab L0-L7 plan
 
 ## Active and deferred work
 
-Balance Lab L0-L7 is complete; the legacy phase-by-phase entry below is retained
-for historical detail and its "L4 next" wording is superseded by this status.
-
-- **DONE - Balance Lab (L0-L7):** `BALANCE_LAB_PLAN.md`. All phases complete and verified: data/schema migration, the localhost-only save/restore API in `serve.ps1`, the editable `balance-lab.html` with revision history, and L7 QA/docs. Per-phase execution plans (L1-L7) and the L0-L2 migration probes/baselines are archived in `docs/archive/balance-lab/`. History is a single clean baseline; no player-facing change and nothing committed. Remaining step: a deliberate manual commit (workflow in `BALANCE_LAB_USAGE.md`).
+- **DONE — Balance Lab (L0-L7):** `BALANCE_LAB_PLAN.md`. Data/schema migration,
+  the localhost-only save/restore API in `serve.ps1`, the editable
+  `balance-lab.html` with revision history, and L7 QA/docs — all complete and
+  verified. Per-phase plans and L0-L2 probes archived in
+  `docs/archive/balance-lab/`. Remaining step: a deliberate manual commit.
 - **WATCH — World 3 (second pass shipped `2026.07.21-7`):** L11/L15 hardened,
-  L12/L14 openers softened, L13 untouched (see Current state). Confirm with `-7`
-  telemetry: compare ratings, core/leaks, remaining money, and composition by
-  `app_version`. Open questions the `-6` sample raised but this pass did not
-  address — World 2 front (L6/L7 read `too_easy`) and L4 (1W/4L, rated
-  `too_hard`); revisit once `-7` W3 data lands.
-- **DONE — World 4 (SINGULARITY, L16-20):** shipped `2026.08.08-1`..`-18` with
-  three new special-tile mechanics (wormholes/fields/conduits) and the L19
-  "The Coil" spiral. See Current state above and `WORLD_4_PLAN.md`.
+  L12/L14 openers softened, L13 untouched. Confirm with `-7` telemetry: compare
+  ratings, core/leaks, remaining money, and composition by `app_version`. Open
+  questions the `-6` sample raised but this pass did not address — World 2 front
+  (L6/L7 read `too_easy`) and L4 (rated `too_hard`); revisit once `-7` data lands.
 - **WATCH — World 4 balance is not settled.** A strong/maxed roster still
-  clears heavily-tuned levels (e.g. L19 beaten with 3 towers before the ×8 HP
-  pass). This is a *ceiling* problem, not a broken curve (see "Tower power
-  scaling" above): roster power ranges ~10× from a modest to a fully-maxed
-  7-tower platform, so a level can't challenge the max without walling
-  everyone else. Iterate via phone feedback; HP is a free lever (perf-wise),
-  enemy count is not. No telemetry yet for W4 — watch the first rounds.
+  clears heavily-tuned levels. This is a *ceiling* problem, not a broken curve
+  (see "Tower power scaling"): roster power ranges ~10× from a modest to a
+  fully-maxed 7-tower platform, so a level can't challenge the max without
+  walling everyone else. Iterate via phone feedback; HP is a free lever
+  (perf-wise), enemy count is not. No telemetry yet for W4 — watch first rounds.
 - **DEFERRED — Endless:** retune its ramp after campaign balance stabilizes.
 - **DEFERRED:** save export/import for iOS localStorage eviction; sound;
   additional tower classes (Tesla was the runner-up); pre-battle loadouts;
@@ -441,16 +249,22 @@ for historical detail and its "L4 next" wording is superseded by this status.
 
 - `BALANCE_LAB_USAGE.md` — local editing, testing, restore, and manual Git
   workflow.
-
 - `WORLD_4_PLAN.md` — World 4 (SINGULARITY) design + original maps/waves
   (several levels have since diverged in balance passes; L19 fully redesigned).
 - `GAME_BRIEF.md` — original feature specification.
+- `NARRATIVE_DESIGN.md` — story bible (design locked, not yet built): Indy-7 /
+  Bratwurst-XL / tower personas, the campaign arc + full per-level script, the
+  L1→L2 tower-intro overhaul, and the delivery/save model. New-player
+  onboarding + campaign narrative initiative.
 - `LOOT_DESIGN.md` / `GEAR_UI_DESIGN.md` — loot and equipment design/history.
 - `CIRCUIT_MENU_DESIGN.md` — menu-board design/history.
 - `SUPABASE_SETUP.md` — telemetry and leaderboard database setup.
 - `BALANCE_LAB_PLAN.md` — approved Balance Lab architecture and phases.
 - `BALANCE_LAB_L0.md` — L0 schema contract: value inventory, data-home paths,
   validation rules (verified data shape: 15 levels / 159 waves / 313 groups).
-- `docs/archive/balance-lab/`: per-phase execution plans (L1-L7) plus the L0-L2 migration probes and baselines (Balance Lab build history).
-- `docs/archive/HANDOFF_HISTORY_2026-07.md` — condensed completed-work and
-  balance history; Git commit `2650204` retains the full former handoff.
+- `docs/archive/balance-lab/` — per-phase execution plans (L1-L7) plus the
+  L0-L2 migration probes and baselines.
+- `docs/archive/HANDOFF_HISTORY_2026-07.md` — completed-work and build-by-build
+  changelog history (July + August 2026); Git commit `2650204` retains the full
+  former handoff.
+```

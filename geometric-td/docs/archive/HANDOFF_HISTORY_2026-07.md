@@ -69,3 +69,97 @@ almost-overdone hard pass.
 - Do not verify visual changes with canvas image export; use state/DOM checks
   and the user's iPhone review.
 - iCloud can create conflicting files with a ` 2` suffix; sweep before commit.
+
+# August 2026 build history
+
+Relocated from `HANDOFF.md` on 2026-08-09 to keep the working handoff lean.
+These are completed, shipped changes; the current HANDOFF keeps only the
+still-relevant mechanics, rules, and file map.
+
+## Stash economy sinks & STASH tab controls (builds `2026.08.09-1`..`-8`)
+
+Two Shard sinks were added to `config.js LOOT` + `progression.js`:
+- **Stash expansion** — base 100 slots, 10 escalating +20-slot purchases
+  (50→4000 Shards), caps at 300. `LOOT.stash`, `getStashCap`/`buyStashUpgrade`.
+- **Auto-junk** — 4 sequential per-rarity tiers (Common 500 / Enhanced 750 /
+  Rare 1000 / Prismatic 1500 Shards; Singularity is never junkable).
+  `LOOT.autoJunk`, `autoJunkMaxRarity`/`buyAutoJunkTier`. Ownership and
+  activation are separate, and — after two feedback rounds — activation is
+  **per rarity**: `ownedAutoJunkRarities()`, `isAutoJunkRarityEnabled`/
+  `setAutoJunkRarityEnabled`, save field `autoJunkPaused`. The internal
+  `shouldAutoJunk(rarity)` (owned AND not paused) is what `bankEarnedItem`
+  checks, AFTER the auto-equip attempt fails (so a still-useful Common can
+  equip first). Placement dest `"junked"` flows through the drop-reveal card
+  ("→ AUTO-SOLD ◆n") and a dimmed `.junked-tile` on the results screen. New
+  save fields `stashUpgrades`/`autoJunkTier`/`autoJunkPaused` (save.js default
+  + progression.js backfill). A one-build global `autoJunkEnabled` toggle was
+  migrated into the per-rarity field, then dropped.
+
+STASH tab controls (`ui.js renderStashTab`, `.gear-mini-action`): a row of
+three distinctly-colored pills — **FILTER** (cyan) / **SELL** (yellow) /
+**CONFIG** (magenta) — below the item count. FILTER hides the nine
+OPTIC/EMITTER/…/SINGULARITY filter chips behind a toggle that shows an
+active-filter count (`FILTER (1) ▾`); SELL opens a compact bulk-sell sheet
+(`openBulkSellSheet`); CONFIG opens the STASH SETTINGS sheet
+(`openStashSettingsSheet`). Landed after two rounds of phone feedback —
+earlier passes tried a bare 26px `⚙` icon, a `STASH n/cap` header text link,
+always-visible per-rarity sell pills, and a horizontally-scrolling chip row,
+all since replaced.
+
+## Game-wide contrast fix (`2026.08.09-7`)
+
+`styles.css --text-dim` (the secondary/label color, 69 uses across the
+stylesheet) was `#5a668f` (~3.4:1 against `--panel`/`--bg`, under WCAG AA) at
+9–11px text. Brightened to `#b9c2e8` (~11:1) while staying below the near-white
+primary `--text` (`#cdd6ff`, ~13.4:1) so the primary/secondary hierarchy
+survives. One variable, whole UI.
+
+## Prior state — 2026-07-23 (skill trees, gear QoL, difficulty walk-back)
+
+Geometric TD was then a portrait, mobile-browser tower defense with a 15-level,
+three-world campaign; five tower classes; seven enemy types; RPG roster and
+mastery progression; skills; loot/equipment; campaign challenges; Endless;
+telemetry; and a GitHub Pages deployment. Deployed build `2026.07.23-5`.
+
+- Builds `2026.07.23-1`..`-5` gave every tower a third skill-tree branch and
+  reworked the tree's box art. `TOWER_THIRD_BRANCH` (`config.js`) is a data
+  table for all five towers: Over-Penetration (Railgun), Slow Potency (+% slow
+  amount; the `slow_dmg` chain separately covers +% slow *duration*), Rapid
+  Fire (Laser, +% fire rate), Blast Radius (Pulse) and Payload Yield (Rocket) —
+  the latter two both raise splash radius via independent `tower.type`-gated
+  multipliers over the shared `def.splashRadius` path in `towers.js`. Each perk
+  is a one-line `getXMult()` in `progression.js`. Every chain box now renders a
+  themed icon (`skillIconBody` in `ui.js`).
+- Builds `2026.07.21-8`..`-10` added gear/skill QoL: equipped gear replaceable
+  through the compatible-picker + COMPARE flow; tappable gear-trait
+  descriptions; the Store sells permanent Skill Points (50/100/+100-to-1000
+  Shard curve, save-backed at `store.skillPointPurchases`); free skill-tree
+  branch heads (prior purchases refunded); five-box branch costs 1/1/1/2/2;
+  Railgun Over-Penetration a five-box third branch. Slow career sheets show
+  computed Slow Amount and Slow Duration.
+- Baseline was the aggressive H1-H4 hard-mode pass (`2650204`,
+  `2026.07.17-1`): a Pulse nerf plus World 1-3 wave/economy hardening. Player
+  feedback then reported the campaign was too hard, walked back world by world:
+  - **World 1** softened in two steps — `2026.07.18-1` (L2) and `2026.07.19-1`
+    (L3-L5, `healthMult` only). L3 fixed a severe overshoot (total wave HP
+    274k→38k); World 1 now ramps ~20k/34k/38k/54k/83k across L1-L5.
+  - **World 2** rescaled `2026.07.19-3`..`-9` (L6-L10): full wave-curve
+    rebalances plus economy and regenerator-intro fixes. Telemetry confirmed
+    L9/L10 now rate `just_right`.
+- **World 3** had two balance passes. The first (`2026.07.21-1`) landed L13 at
+  `just_right`. The second (`2026.07.21-7`, via `balance-data.json`) targeted
+  `-6` telemetry: L11 back half (waves 6-10) HP +~10% weighted, openers
+  untouched; L12/L14 waves 1-2 softened ~33% (openers only, waves 3-10 as-is);
+  L13 untouched; L15 hardened ~+21% weighted with more bodies from wave 5 and a
+  12-wave finale gauntlet (6 bosses + heavier armored/regen/fast). `bountyMult`
+  unchanged. Open questions the `-6` sample raised: World 2 front (L6/L7
+  `too_easy`) and L4 (rated `too_hard`).
+- Builds `2026.07.21-2`..`-5` were UI/UX fixes (no balance change): first-play
+  tutorial polish (banner/SKIP overlap, placement flashing past the
+  blocked-tile step, instructions above the dimming veil), the TOWERS & GEAR
+  GUIDE reworded + mouse-wheel scrollable, and the skill tree opening scrolled
+  to the leftmost (Laser) branch. Tutorial state machine is `src/tutorial.js`;
+  copy + enable switch in `config.js TUTORIAL`.
+- The Balance Lab (L0-L7) was completed as local-only tooling in this window;
+  its current status lives in the working HANDOFF's constraints and
+  `BALANCE_LAB_PLAN.md`/`BALANCE_LAB_USAGE.md`.
