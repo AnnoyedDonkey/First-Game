@@ -1223,17 +1223,24 @@ export const NARRATIVE = {
     },
   },
   // ---------- In-battle barks (P3) ----------
-  // Non-blocking HUD ticker copy (see ONBOARDING_P3B_PLAN.md). enemyIntros
-  // fire once per enemy type (gated by progression.js shouldShowEnemyIntro);
+  // Non-blocking HUD ticker copy (see ONBOARDING_P3B_PLAN.md):
   // bratwurstBarks/indyRoasts fire as a pair the first time a boss appears
   // in a level. Copy is authored VERBATIM — do not edit casually.
+  //
+  // enemyIntros are NOT ticker copy any more — as of the enemy-intro rebuild
+  // (ONBOARDING_ENEMY_INTROS_PLAN.md) they play as a pause-and-tap story
+  // card the first time each type is ever seen (main.js updateBarks ->
+  // onboarding.playCards, sim frozen while the card is up). The `\n\n` puts
+  // the weak/resist tag on its own line (#story-card-text is pre-line); the
+  // tag values are sourced from ENEMIES[type].damageMult in
+  // balance-data.json — re-check them if that data changes.
   enemyIntros: {
-    basic: "Basic units — the little triangles. Bratwurst-XL's entry-level interns. Anything you build stops them. Good warm-up.",
-    fast: "Incoming Fast — twitchy little diamonds. They rush the gaps. Your Laser eats them alive; a Slow field pins them if they get slippery.",
-    armored: "Armored hexes — plated and smug. Lasers just clang off. Rattle them with Pulse splash, and once you've got a Railgun, punch straight through. Not Laser.",
-    boss: "That octagon's a Boss — a big lonely slab of HP. Slows barely tickle it and splash is wasted on one body. Focus it down: Railgun, Rocket, or massed Laser. Not Pulse, not Slow.",
-    splitter: "Orange squares are Splitters — pop one and it becomes two. A single-line Railgun wastes itself on the parent; Pulse and Rocket splash catch the whole family at once.",
-    regenerator: "Regenerators — the green pentagons. They heal faster than steady chip damage can hurt them. Only a Railgun's burst outruns the regen. Lasers need not apply.",
+    basic: "Basic units — the little triangles. Bratwurst-XL's entry-level interns. Anything you build stops them. Good warm-up.\n\nNo resistances or weaknesses — anything works.",
+    fast: "Incoming Fast — twitchy little diamonds. They rush the gaps.\n\nWeak to Laser. Resists Rocket, Pulse.",
+    armored: "Armored hexes — plated and smug.\n\nWeak to Pulse, Railgun. Resists Laser, Slow.",
+    boss: "That octagon's a Boss — a big lonely slab of HP.\n\nWeak to Rocket, Railgun. Resists Slow, Pulse.",
+    splitter: "Orange squares are Splitters — pop one and it becomes two.\n\nWeak to Pulse, Rocket. Resists Railgun.",
+    regenerator: "Regenerators — the green pentagons. They heal faster than steady chip damage can hurt them.\n\nWeak to Railgun. Resists Laser.",
   },
   bratwurstBarks: [
     "Operator. Your defensive expenditure has exceeded projected value. I recommend surrender as a cost-saving measure.",

@@ -1,10 +1,32 @@
-# Enemy intros — pause-and-tap rebuild (build spec, NOT YET BUILT)
+# Enemy intros — pause-and-tap rebuild (BUILT, `2026.08.10-8`)
 
-Status: **copy approved by the user (2026-08-10); delivery mechanism decided;
-implementation deferred to a future session.** Do not build from this file
-without re-confirming the copy is still current (check for any balance
-changes to `ENEMIES[type].damageMult` in `balance-data.json` since this was
-written — see §2's traceability table).
+Status: **shipped.** Copy approved 2026-08-10, delivery mechanism decided,
+built the same day in `2026.08.10-8` — the traceability table in §2 was
+re-verified against `balance-data.json` at build time and matched exactly.
+Kept as the record of the decision and the copy source; §4's checklist was
+run and passed (see "As built" below).
+
+## As built
+
+- Copy moved into `config.js NARRATIVE.enemyIntros` verbatim (§2), with the
+  comment there rewritten so nobody mistakes it for ticker copy again.
+- `main.js updateBarks` collects the frame's brand-new types (deduped),
+  marks them seen, and plays them as ONE `playCards` sequence with
+  `{speaker:"indy", cta:"TAP TO CONTINUE", enemyType}`. It returns early
+  when `isOnboardingActive()`, so a second frame can't stomp a live card.
+- Boss arrival fires BOTH the boss intro card and the boss ticker banter, so
+  cards now win the frame: the banter is left unmarked and fires a frame
+  after the card is dismissed, instead of scrolling past unread behind it.
+- `main.js frame()` adds `isOnboardingActive()` to the existing
+  `gamePaused || exitConfirming || tutorial.isTutorialFreezing()` dt-zeroing
+  freeze — same clamp-then-zero shape, so resume can't hand `updateGame` a
+  catch-up dt.
+- §3.4's optional enemy glyph WAS built (`ui.js enemyGlyphSvg`,
+  `#story-enemy`): the card's dim veil hides the real enemy, so the card
+  carries its shape/color from `ENEMIES[type]`. Empty (and `:empty`-hidden)
+  on every other story card.
+- Bonus: the tag line is colored (`hl-weak` green / `hl-resist` red in
+  `ui.js storyCardHtml`) so the actionable half reads at a glance.
 
 ## 1. Why this exists
 

@@ -514,6 +514,11 @@ button.hud-item {
 #story-avatar { flex: none; width: 38px; height: 38px; }
 #story-avatar:empty { display: none; }
 #story-avatar svg { width: 38px; height: 38px; display: block; }
+/* Enemy-intro cards only: the described enemy's shape, parked at the far end
+   of the speaker row. Empty (and gone) on every other story card. */
+#story-enemy { flex: none; width: 34px; height: 34px; margin-left: auto; }
+#story-enemy:empty { display: none; }
+#story-enemy svg { width: 34px; height: 34px; display: block; }
 #story-speaker {
   font-size: 11px;
   font-weight: 700;
@@ -531,6 +536,9 @@ button.hud-item {
 #story-card-text .hl-indy { color: var(--indy-color); text-shadow: 0 0 8px rgba(74,255,161,.5); }
 #story-card-text .hl-villain { color: var(--brat-color); text-shadow: 0 0 6px rgba(255,226,74,.4); }
 #story-card-text .hl-name { color: var(--neon-yellow); font-weight: 700; text-shadow: 0 0 6px rgba(255, 226, 74, 0.4); }
+/* Enemy-intro weak/resist tag line — the actionable half of the card. */
+#story-card-text .hl-weak { color: var(--neon-green); font-weight: 700; text-shadow: 0 0 6px rgba(74, 255, 161, 0.4); }
+#story-card-text .hl-resist { color: var(--neon-red); font-weight: 700; text-shadow: 0 0 6px rgba(255, 74, 94, 0.4); }
 #story-card-text .hl-term {
   color: var(--neon-green);
   font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;

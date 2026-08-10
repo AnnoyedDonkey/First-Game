@@ -8,7 +8,7 @@ current state, non-obvious mechanics, rules, tuning locations, and the file map.
 
 ## Current state — 2026-08-10
 
-Deployed build: `2026.08.10-7`. Also recently shipped (details in the
+Deployed build: `2026.08.10-8`. Also recently shipped (details in the
 archive): Shard-sink **stash economy** (stash expansion + per-rarity
 auto-junk, `config.js LOOT.stash`/`LOOT.autoJunk`); **STASH tab controls**
 (FILTER/SELL/CONFIG pill row, `ui.js renderStashTab`); **game-wide contrast**
@@ -44,11 +44,19 @@ just the map of what exists in code.
   type, `seenTowerBarks`). A **STORY BANTER ON/OFF** menu toggle
   (`barksEnabled` save field) silences all of it. `ui.js showBark(speaker,
   text)` — `speaker` is a string code (`"indy"`/`"bratwurst"`, class-colored)
-  or a `{name,color}` object (a tower, inline-tinted). **Enemy-type intros
-  (first-ever appearance of Basic/Fast/Armored/Boss/Splitter/Regenerator)
-  currently ALSO use this ticker but are being rebuilt as a pause-and-tap
-  card instead — see Active/deferred work below; don't extend the ticker
-  path for enemy intros.**
+  or a `{name,color}` object (a tower, inline-tinted).
+- **Enemy-type intros** (first-ever appearance of Basic/Fast/Armored/Boss/
+  Splitter/Regenerator) are **pause-and-tap story cards**, NOT ticker barks
+  (`2026.08.10-8`, `ONBOARDING_ENEMY_INTROS_PLAN.md`): `main.js updateBarks`
+  queues the frame's new types as one `onboarding.playCards` sequence, and
+  `frame()` zeroes dt while `isOnboardingActive()` — the same freeze the
+  tutorial's freeze steps use, so mid-battle pause/resume can't jump. The
+  copy carries an explicit "Weak to X. Resists Y." tag (sourced from
+  `ENEMIES[type].damageMult` — re-derive it if that balance data changes),
+  colored via `hl-weak`/`hl-resist`, plus the enemy's own shape on the card
+  (`ui.js enemyGlyphSvg` → `#story-enemy`). Cards win the frame over ticker
+  barks: a boss's banter defers until its intro card is dismissed. Still
+  gated by the one STORY BANTER toggle.
 - **Character avatars** — Indy-7 (spinning green hexagon, the Core's own
   shape) and Bratwurst-XL (counter-rotating yellow squares, the spawn
   portal's shape) as inline SVG, line-stroke eyes that change by mood
@@ -72,8 +80,8 @@ just the map of what exists in code.
   the menu label to Indy's in-fiction joke at the L20 start card).
 
 **Not yet built** (see Active/deferred work + the dedicated plan files):
-enemy-intro pause-and-tap rebuild, the P5 gear-rules card at the L2→L3 seam,
-an end-of-L1 skill-point walkthrough.
+the P5 gear-rules card at the L2→L3 seam, an end-of-L1 skill-point
+walkthrough.
 
 The campaign is **four worlds / 20 levels**. World 4 (SINGULARITY,
 `level_016`–`level_020`, builds `2026.08.08-1`..`-18`) has **one spotlight
@@ -282,16 +290,15 @@ BALANCE_LAB_PLAN.md  approved Balance Lab L0-L7 plan
 
 ## Active and deferred work
 
+- **DONE — Enemy-intro rebuild** (`2026.08.10-8`,
+  `ONBOARDING_ENEMY_INTROS_PLAN.md`): intros moved off the bark ticker onto
+  pause-and-tap cards with weak/resist tags and the enemy's shape. Boss and
+  tower barks stayed on the ticker as intended. **Wants phone eyes** — the
+  first card only shows up on a brand-new save's L1, so verify on the iPhone
+  that the pause reads as deliberate and not as a stutter.
 - **NEXT — narrative/onboarding follow-ups** (design + copy already approved,
   none of this is built yet — read the referenced plan file first, each is
   self-contained):
-  - **Enemy-intro rebuild** — `ONBOARDING_ENEMY_INTROS_PLAN.md`. Move
-    enemy-type first-appearance intros off the non-blocking bark ticker onto
-    a pause-and-tap card (reusing the tutorial's freeze-step pattern) —
-    player feedback: the ticker is unreadable mid-fight and the copy needs an
-    explicit weak-to/resists tag. Copy is written and sourced against
-    `balance-data.json` in that file; only the pause/resume mechanism needs
-    building. Boss barks and tower barks stay on the ticker unchanged.
   - **P5 gear-rules card** — `NARRATIVE_DESIGN.md` §8. An Indy-7-voiced
     gear/mastery explainer card at the L2→L3 seam (the useful half of the
     old auto-guide that "Meet the Squad" didn't carry over).
@@ -337,9 +344,9 @@ BALANCE_LAB_PLAN.md  approved Balance Lab L0-L7 plan
 - `ONBOARDING_P1_PLAN.md` .. `ONBOARDING_AV_PLAN.md` — build specs for each
   shipped narrative phase (onboarding intro, per-level beats, the bark
   ticker, Meet the Squad, character avatars); kept for reference/pattern.
-- `ONBOARDING_ENEMY_INTROS_PLAN.md` — approved copy + delivery decision for
-  the NOT-YET-BUILT enemy-intro pause-and-tap rebuild (see Active/deferred
-  work above).
+- `ONBOARDING_ENEMY_INTROS_PLAN.md` — enemy-intro pause-and-tap rebuild:
+  the approved copy (with its `damageMult` traceability table), the delivery
+  decision, and an "As built" record. SHIPPED in `2026.08.10-8`.
 - `LOOT_DESIGN.md` / `GEAR_UI_DESIGN.md` — loot and equipment design/history.
 - `CIRCUIT_MENU_DESIGN.md` — menu-board design/history.
 - `SUPABASE_SETUP.md` — telemetry and leaderboard database setup.

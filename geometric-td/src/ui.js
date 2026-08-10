@@ -128,6 +128,7 @@ const el = {
   storyOverlay: document.getElementById("story-overlay"),
   storyAvatar: document.getElementById("story-avatar"),
   storySpeaker: document.getElementById("story-speaker"),
+  storyEnemy: document.getElementById("story-enemy"),
   storyCardText: document.getElementById("story-card-text"),
   storyNameInput: document.getElementById("story-name-input"),
   storyCardCta: document.getElementById("story-card-cta"),
@@ -3156,6 +3157,30 @@ function speakerAvatarSvg(code, mood) {
     + `<g filter="drop-shadow(0 0 3px ${color})">${shape}${eyes}</g></svg>`;
 }
 
+// The described enemy's own silhouette for an enemy-intro card, built from
+// its ENEMIES presentation entry (same shape + neon color the renderer draws
+// on the field) so "the little triangles" has something to point at — the
+// card's dim veil covers the real one. Regular N-gons, point-up except the
+// square (flat) and octagon (stop-sign); returns "" for anything unknown.
+const ENEMY_GLYPH_SIDES = {
+  triangle: [3, -90], diamond: [4, -90], square: [4, -45],
+  pentagon: [5, -90], hexagon: [6, -90], octagon: [8, -22.5],
+};
+function enemyGlyphSvg(type) {
+  const def = ENEMIES[type];
+  const spec = def && ENEMY_GLYPH_SIDES[def.shape];
+  if (!spec) return "";
+  const [sides, offset] = spec;
+  const pts = Array.from({ length: sides }, (_, i) => {
+    const a = (Math.PI / 180) * ((360 / sides) * i + offset);
+    return `${(50 + 34 * Math.cos(a)).toFixed(1)},${(50 + 34 * Math.sin(a)).toFixed(1)}`;
+  }).join(" ");
+  return `<svg viewBox="0 0 100 100" aria-hidden="true">`
+    + `<g filter="drop-shadow(0 0 4px ${def.color})">`
+    + `<polygon points="${pts}" fill="${def.color}22" stroke="${def.color}"`
+    + ` stroke-width="5" stroke-linejoin="round"/></g></svg>`;
+}
+
 // Builds the colored dialogue HTML for a story card so it reads as speech,
 // not a wall of prose. Copy is authored (trusted); only the player name is
 // untrusted, so we escape EVERYTHING first, then re-style a few known tokens
@@ -3168,6 +3193,16 @@ function storyCardHtml(text) {
   html = html.replaceAll("human_handler_004", `<span class="hl-code">human_handler_004</span>`);
   // A leading "> ..." line (escaped to "&gt; ...") is a system/terminal readout.
   html = html.replace(/^&gt;\s*(.+)$/m, (m, rest) => `<span class="hl-term">&gt; ${rest}</span>`);
+  // Enemy-intro tag line ("Weak to X. Resists Y, Z." / the neutral variant),
+  // kept on its own line by the copy's \n\n — colored so the actionable half
+  // of the card reads at a glance instead of as more prose.
+  html = html.replace(
+    /^(Weak to [^.]*\.)(\s*)(Resists [^.]*\.)?$/m,
+    (m, weak, gap, resists) =>
+      `<span class="hl-weak">${weak}</span>${gap || ""}` +
+      (resists ? `<span class="hl-resist">${resists}</span>` : "")
+  );
+  html = html.replace(/^(No resistances or weaknesses[^\n]*)$/m, `<span class="hl-weak">$1</span>`);
   html = html.replaceAll("{name}", `<span class="hl-name">${escapeHtml(getPlayerName())}</span>`);
   return html;
 }
@@ -3195,6 +3230,11 @@ function renderOnboardingCard() {
   }
   if (el.storyAvatar) {
     el.storyAvatar.innerHTML = speakerAvatarSvg(card.speaker || "indy", card.mood);
+  }
+  // Only enemy-intro cards carry `enemyType`; every other card leaves this
+  // empty (and :empty hides the slot), so the row is unchanged for them.
+  if (el.storyEnemy) {
+    el.storyEnemy.innerHTML = card.enemyType ? enemyGlyphSvg(card.enemyType) : "";
   }
   el.storyCardText.innerHTML = storyCardHtml(card.text);
   el.storyCardCta.textContent = card.cta || "TAP TO CONTINUE";

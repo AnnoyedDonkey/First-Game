@@ -35,7 +35,7 @@ import { GEAR_SLOTS } from "./equipment.js";
 import { initUpdateCheck } from "./update.js";
 import * as loot from "./loot.js";
 import * as tutorial from "./tutorial.js";
-import { startOnboarding, playCards } from "./onboarding.js";
+import { startOnboarding, playCards, isOnboardingActive } from "./onboarding.js";
 
 const TILE_SIZE = 64; // internal render resolution per tile
 
@@ -533,29 +533,58 @@ window.checkEndState = () => checkEndState();
 // which needs live rAF ticks a headless pane/bot sim can't produce.
 window.updateBarks = () => updateBarks(game);
 
-// In-battle barks (P3-revival): once-per-type Indy-7 enemy intros, plus a
-// one-time Indy-7/Bratwurst-XL banter pair the first time a boss appears in
-// a level. Delivered via ui.js showBark on the non-blocking #bark-ticker —
-// NOT the mid-screen milestone toast (that's the defect the old P3 got
-// reverted for). Skipped in Endless (no NARRATIVE pacing there) and while
-// the win/loss overlay is up.
+// In-battle barks (P3-revival): a one-time Indy-7/Bratwurst-XL banter pair
+// the first time a boss appears in a level, delivered via ui.js showBark on
+// the non-blocking #bark-ticker — NOT the mid-screen milestone toast (that's
+// the defect the old P3 got reverted for). Skipped in Endless (no NARRATIVE
+// pacing there) and while the win/loss overlay is up.
+//
+// Enemy-type intros used to ride the same ticker, but it turned out to be
+// unreadable mid-fight (see ONBOARDING_ENEMY_INTROS_PLAN.md), so they now
+// pause the battle and play as a story card instead. Both paths stay gated
+// by the one STORY BANTER toggle (getBarksEnabled).
 function updateBarks(game) {
   if (!game || game.endless || !NARRATIVE.enabled || !barkState || !getBarksEnabled()) return;
-  const bossBeatId = `${game.level.id}.boss`;
+  // A card is already up (and the sim is frozen behind it) — do nothing this
+  // frame rather than stomping it or firing ticker barks nobody can see.
+  // Nothing is lost: the same enemies are still on the field next frame.
+  if (isOnboardingActive()) return;
+  const introCards = [];
+  const introTypes = new Set();
+  let bossOnField = false;
   for (const e of game.enemies) {
-    if (shouldShowEnemyIntro(e.type) && NARRATIVE.enemyIntros[e.type]) {
+    if (e.type === "boss") bossOnField = true;
+    // First-ever sighting of an enemy type: queue a pause-and-tap card.
+    // Several new types can share one frame on a busy wave, so they're
+    // collected and played as ONE sequence (playCards plays a list in order).
+    if (!introTypes.has(e.type) && shouldShowEnemyIntro(e.type) && NARRATIVE.enemyIntros[e.type]) {
+      introTypes.add(e.type);
       markEnemyIntroSeen(e.type);
-      showBark("indy", NARRATIVE.enemyIntros[e.type]);
+      introCards.push({
+        text: NARRATIVE.enemyIntros[e.type],
+        speaker: "indy",
+        cta: "TAP TO CONTINUE",
+        enemyType: e.type, // draws the enemy's own shape on the card
+      });
     }
-    // Boss banter: only the FIRST time this level is played (not every
-    // battle) — save-backed per level; already-cleared levels are pre-marked
-    // via backfillNarrativeSeen so veterans never re-trigger it.
-    if (e.type === "boss" && !barkState.bossBarked && shouldShowBeat(bossBeatId)) {
-      barkState.bossBarked = true;
-      markBeatSeen(bossBeatId);
-      showBark("bratwurst", pickOne(NARRATIVE.bratwurstBarks));
-      showBark("indy", pickOne(NARRATIVE.indyRoasts));
-    }
+  }
+  // Cards win the frame: a boss's arrival fires BOTH its intro card and the
+  // boss banter, and ticker barks behind a full-screen card would go unread.
+  // Nothing is marked yet, so the banter simply fires once the card is
+  // dismissed and the boss is still on the field.
+  if (introCards.length) {
+    playCards(introCards);
+    return;
+  }
+  // Boss banter: only the FIRST time this level is played (not every
+  // battle) — save-backed per level; already-cleared levels are pre-marked
+  // via backfillNarrativeSeen so veterans never re-trigger it.
+  const bossBeatId = `${game.level.id}.boss`;
+  if (bossOnField && !barkState.bossBarked && shouldShowBeat(bossBeatId)) {
+    barkState.bossBarked = true;
+    markBeatSeen(bossBeatId);
+    showBark("bratwurst", pickOne(NARRATIVE.bratwurstBarks));
+    showBark("indy", pickOne(NARRATIVE.indyRoasts));
   }
 }
 const pickOne = (arr) => arr[Math.floor(Math.random() * arr.length)];
@@ -566,11 +595,17 @@ let lastTime = performance.now();
 function frame(now) {
   // Clamp dt so a backgrounded tab doesn't cause a huge jump.
   // Paused = zero-length ticks: the world freezes but still renders.
-  // Also freezes while the forfeit-confirm prompt is up.
+  // Also freezes while the forfeit-confirm prompt is up, and while a story
+  // card is on screen — the enemy-intro rebuild plays cards mid-battle, and
+  // the same clamp-then-zero shape the tutorial's freeze steps use means
+  // resuming can't hand updateGame a large catch-up dt (lastTime advances
+  // every frame regardless).
   const dt =
     Math.min((now - lastTime) / 1000, 0.05) *
     DEBUG.gameSpeed *
-    (gamePaused || exitConfirming || tutorial.isTutorialFreezing() ? 0 : speedFactor);
+    (gamePaused || exitConfirming || tutorial.isTutorialFreezing() || isOnboardingActive()
+      ? 0
+      : speedFactor);
   lastTime = now;
 
   if (game) {
