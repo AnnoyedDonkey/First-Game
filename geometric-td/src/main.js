@@ -2,7 +2,7 @@
 // MAIN — entry point: canvas setup, game loop, wiring.
 // ============================================================
 
-import { DEBUG, TOWERS, RESULT_ROASTS } from "./config.js";
+import { DEBUG, TOWERS, RESULT_ROASTS, NARRATIVE } from "./config.js";
 import { LEVELS } from "./levels.js";
 import { createGame, updateGame, startNextWave } from "./game.js";
 import {
@@ -12,7 +12,8 @@ import {
 import {
   getProgress, getSkillPoints, shouldShowTowerGuide, markTowerGuideSeen,
   forfeitBattle, equipItem, unequipItem, debugGrantGear, getSkillsSnapshot,
-  getUnlockedSpeeds, shouldShowOnboarding,
+  getUnlockedSpeeds, shouldShowOnboarding, shouldShowTutorial,
+  shouldShowBeat, markBeatSeen,
 } from "./progression.js";
 import { render } from "./renderer.js";
 import { bindCanvasInput } from "./input.js";
@@ -32,7 +33,7 @@ import { GEAR_SLOTS } from "./equipment.js";
 import { initUpdateCheck } from "./update.js";
 import * as loot from "./loot.js";
 import * as tutorial from "./tutorial.js";
-import { startOnboarding } from "./onboarding.js";
+import { startOnboarding, playCards } from "./onboarding.js";
 
 const TILE_SIZE = 64; // internal render resolution per tile
 
@@ -100,8 +101,15 @@ function startLevel(level, endless = false) {
   canvas.height = level.gridHeight * TILE_SIZE;
   fitCanvas();
 
+  // Captured BEFORE the tower-guide/tutorial hooks below run and mark
+  // themselves seen — used further down to suppress the START story beat
+  // on their first-visit levels without the guide/tutorial's own
+  // shouldShow* calls (already consumed by then) reading as "seen".
+  const willShowTowerGuide = level.id === "level_002" && shouldShowTowerGuide();
+  const willShowTutorial = level.id === "level_001" && shouldShowTutorial();
+
   // First visit to level 2: explain tower classes and specialties.
-  if (level.id === "level_002" && shouldShowTowerGuide()) {
+  if (willShowTowerGuide) {
     markTowerGuideSeen();
     openTowerGuide();
   }
@@ -111,6 +119,22 @@ function startLevel(level, endless = false) {
   // Must run after the canvas is sized so the spotlight ring can measure
   // the real tray/tile/wave-button positions immediately.
   tutorial.maybeStartTutorial(level, endless);
+
+  // Per-level START story beat (P2): the first time a campaign level is
+  // played, a pre-battle Indy-7 card. Suppressed on level_001/level_002
+  // when the tutorial or legacy tower guide is about to run instead (both
+  // remain reachable via ▶ STORY) so we never stack two first-visit
+  // overlays. Doesn't collide with the overlays above: neither actually
+  // shows until the player interacts, and #story-overlay simply blocks
+  // input over the pre-wave build phase until BEGIN is tapped.
+  if (!endless) {
+    const beat = NARRATIVE.beats?.[level.id];
+    const beatId = `${level.id}.start`;
+    if (beat?.start && shouldShowBeat(beatId) && !willShowTowerGuide && !willShowTutorial) {
+      markBeatSeen(beatId);
+      playCards([{ text: beat.start, speaker: "indy", cta: "BEGIN" }]);
+    }
+  }
 }
 
 // Size the canvas element to the largest rectangle that fits the
@@ -419,6 +443,18 @@ function checkEndState() {
     }
     buttons.push({ text: "RETRY LEVEL", onTap: () => startLevel(level), secondary: !!next });
     buttons.push(...lootTailButtons(items, stashFull));
+    // Per-level WIN story beat (P2): campaign only (not endless), first
+    // clear only. World-end levels' win array interleaves the Indy-7 <->
+    // Bratwurst-XL exchange in speaking order (config.js NARRATIVE.beats).
+    let narrative;
+    if (!game.endless) {
+      const beat = NARRATIVE.beats?.[level.id];
+      const beatId = `${level.id}.win`;
+      if (beat?.win && shouldShowBeat(beatId)) {
+        narrative = beat.win;
+        markBeatSeen(beatId);
+      }
+    }
     showOverlay({
       title: pickRoast("victory"),
       subtitle: `All ${game.totalWaves} waves repelled. +1 skill point earned.`,
@@ -426,6 +462,7 @@ function checkEndState() {
       buttons,
       items,
       note,
+      narrative,
       milestones: campaignRecapEntries(),
       feedback: feedbackStrip(game),
     });

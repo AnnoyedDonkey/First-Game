@@ -12,7 +12,7 @@ import {
 } from "./tutorial.js";
 import {
   onOnboardingChange, isOnboardingActive, currentCard as currentOnboardingCard,
-  advance as advanceOnboarding, skip as skipOnboarding, startOnboarding,
+  advance as advanceOnboarding, skip as skipOnboarding, startOnboarding, playCards,
 } from "./onboarding.js";
 import {
   xpThresholdFor, upgradeCostFor, isUpgradeEligible, sellValueOf,
@@ -108,6 +108,7 @@ const el = {
   overlaySubtitle: document.getElementById("overlay-subtitle"),
   overlayButtons: document.getElementById("overlay-buttons"),
   overlayNote: document.getElementById("overlay-note"),
+  overlayNarrative: document.getElementById("overlay-narrative"),
   overlayMilestones: document.getElementById("overlay-milestones"),
   overlayFeedback: document.getElementById("overlay-feedback"),
   overlayLootHead: document.getElementById("overlay-loot-head"),
@@ -765,6 +766,12 @@ function openLevelSheet(nd, world, pick) {
     }</p>`;
   }
 
+  // ▶ STORY (P2): replays this level's beat (start card, then each win
+  // line as its own card) regardless of seen-state — reachable any time the
+  // level isn't locked and has any beat authored. Doesn't touch seen flags.
+  const beat = NARRATIVE.beats?.[level.id];
+  const hasStory = !locked && !!beat;
+
   el.levelSheet.innerHTML =
     `<h2 style="color:${world.accent}">${escapeHtml(level.name.toUpperCase())}</h2>` +
     `<div class="level-sheet-tag">LEVEL ${nd.n} &mdash; ${escapeHtml(world.name)}</div>` +
@@ -775,6 +782,7 @@ function openLevelSheet(nd, world, pick) {
     `<div class="level-sheet-actions">` +
     `<button class="level-sheet-btn play" id="level-sheet-play"${locked ? " disabled" : ""}>&#9654; PLAY</button>` +
     `<button class="level-sheet-btn endless" id="level-sheet-endless"${cleared ? "" : " disabled"}>&#8734; ENDLESS</button>` +
+    (hasStory ? `<button class="level-sheet-btn story" id="level-sheet-story">&#9654; STORY</button>` : "") +
     `</div>`;
 
   el.levelSheetOverlay.classList.remove("hidden");
@@ -799,6 +807,19 @@ function openLevelSheet(nd, world, pick) {
     document.getElementById("level-sheet-endless").addEventListener("click", () => {
       closeLevelSheet();
       pick(level, true);
+    });
+  }
+  if (hasStory) {
+    document.getElementById("level-sheet-story").addEventListener("click", () => {
+      const replayCards = [];
+      if (beat.start) replayCards.push({ text: beat.start, speaker: "indy", cta: "TAP TO CONTINUE" });
+      for (const line of beat.win || []) {
+        replayCards.push({ text: line.t, speaker: line.s, cta: "TAP TO CONTINUE" });
+      }
+      if (!replayCards.length) return;
+      replayCards[replayCards.length - 1].cta = "DONE";
+      closeLevelSheet();
+      playCards(replayCards);
     });
   }
 }
@@ -2727,7 +2748,7 @@ export function onExitButtonTap(handler) {
 // ({ item, dest, towerName? } from bankEarnedItem) — rendered as a tappable
 // grid under the buttons, each tile opening its detail card. `note`
 // (optional) is a short red warning line (used when loot couldn't fit).
-export function showOverlay({ title, subtitle, type, buttons, items, note, milestones, feedback }) {
+export function showOverlay({ title, subtitle, type, buttons, items, note, narrative, milestones, feedback }) {
   el.overlayTitle.textContent = title;
   el.overlaySubtitle.textContent = subtitle || "";
   el.overlay.className = type; // "win" or "loss"
@@ -2737,6 +2758,29 @@ export function showOverlay({ title, subtitle, type, buttons, items, note, miles
     el.overlayNote.classList.remove("hidden");
   } else {
     el.overlayNote.classList.add("hidden");
+  }
+
+  // Per-level WIN story beat (P2): an array of { s, t } lines — speaker code
+  // + dialogue text, in speaking order (world-end levels interleave
+  // "indy"/"bratwurst"). Rendered as speaker-nameplate + storyCardHtml'd
+  // line, same coloring rules as the pre-battle #story-overlay card.
+  if (el.overlayNarrative) {
+    const lines = (narrative || []).filter(Boolean);
+    if (lines.length) {
+      el.overlayNarrative.innerHTML = lines.map((line) => {
+        const spk = NARRATIVE.speakers?.[line.s];
+        const cls = spk?.cls || "hl-indy";
+        const label = spk?.label || "INDY-7";
+        return `<div class="overlay-narrative-line">` +
+          `<div class="overlay-narrative-speaker ${cls}">${escapeHtml(label)}</div>` +
+          `<p class="overlay-narrative-text">${storyCardHtml(line.t)}</p>` +
+          `</div>`;
+      }).join("");
+      el.overlayNarrative.classList.remove("hidden");
+    } else {
+      el.overlayNarrative.innerHTML = "";
+      el.overlayNarrative.classList.add("hidden");
+    }
   }
 
   // Milestone recap — a compact gold list above the loot grid (B5). Each
@@ -3035,7 +3079,12 @@ function renderOnboardingCard() {
   }
   el.storyOverlay.classList.remove("hidden");
 
-  if (el.storySpeaker) el.storySpeaker.textContent = card.speaker || "INDY-7";
+  if (el.storySpeaker) {
+    const spk = NARRATIVE.speakers?.[card.speaker];
+    el.storySpeaker.textContent = spk?.label || "INDY-7";
+    el.storySpeaker.classList.remove("hl-indy", "hl-villain");
+    el.storySpeaker.classList.add(spk?.cls || "hl-indy");
+  }
   el.storyCardText.innerHTML = storyCardHtml(card.text);
   el.storyCardCta.textContent = card.cta || "TAP TO CONTINUE";
 

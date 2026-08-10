@@ -28,6 +28,7 @@ const DEFAULT_SAVE = {
   tutorialDone: false, // first-play walkthrough (T4) shown once on level_001's first campaign start
   playerName: null,      // set during onboarding; null = not yet named (fallback "Operator")
   onboardingDone: false, // first-load story intro (P1) shown once
+  narrativeSeen: {},     // { beatId: true } — per-level START/WIN story beats (P2), beatId = `${levelId}.start`|`${levelId}.win`
 };
 
 export function loadSave() {

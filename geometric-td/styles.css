@@ -461,6 +461,12 @@ button.hud-item {
   color: var(--neon-cyan);
   text-shadow: 0 0 8px rgba(53, 224, 255, 0.5);
 }
+/* Speaker-code coloring (P2): #story-speaker gets hl-indy/hl-villain added/
+   removed as the active card's speaker changes (world-end Bratwurst-XL
+   lines). hl-indy matches the element's own default cyan; kept explicit so
+   add/remove is symmetrical. */
+#story-speaker.hl-indy { color: var(--neon-cyan); text-shadow: 0 0 8px rgba(53, 224, 255, 0.5); }
+#story-speaker.hl-villain { color: var(--neon-red); text-shadow: 0 0 8px rgba(255, 74, 94, 0.5); }
 #story-card-text .hl-indy { color: var(--neon-cyan); }
 #story-card-text .hl-villain { color: var(--neon-red); text-shadow: 0 0 6px rgba(255, 74, 94, 0.4); }
 #story-card-text .hl-name { color: var(--neon-yellow); font-weight: 700; text-shadow: 0 0 6px rgba(255, 226, 74, 0.4); }
@@ -994,6 +1000,17 @@ button.hud-item {
 }
 .level-sheet-btn.play { background: rgba(53, 224, 255, 0.08); border-color: var(--neon-cyan); color: var(--neon-cyan); text-shadow: 0 0 8px rgba(53, 224, 255, 0.5); }
 .level-sheet-btn.endless { background: rgba(255, 63, 212, 0.08); border-color: var(--neon-magenta); color: var(--neon-magenta); }
+/* ▶ STORY (P2): tertiary replay control, sized to its content so PLAY/
+   ENDLESS keep splitting the row evenly on a 375px sheet. */
+.level-sheet-btn.story {
+  flex: 0 0 auto;
+  padding: 12px 14px;
+  font-size: 11px;
+  letter-spacing: 1px;
+  background: rgba(255, 226, 74, 0.06);
+  border-color: var(--text-dim);
+  color: var(--text-dim);
+}
 .level-sheet-btn:disabled { opacity: 0.3; cursor: default; }
 
 /* Thin visible scrollbar so desktop users can see the list scrolls */
@@ -2353,6 +2370,54 @@ button.hud-item {
 }
 
 #overlay-note.hidden { display: none; }
+
+/* ---------- Per-level WIN story beat (P2) ---------- */
+/* A short dialogue block on the results overlay — same speaker-nameplate +
+   colored-keyword look as #story-card-text, laid out as a stack of lines
+   (world-end levels interleave INDY-7/BRATWURST-XL). Mobile-first, fits a
+   375px overlay. */
+#overlay-narrative {
+  width: 100%;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 4px 0 14px;
+  padding: 14px 16px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  text-align: left;
+}
+#overlay-narrative.hidden { display: none; }
+
+.overlay-narrative-line + .overlay-narrative-line {
+  padding-top: 10px;
+  border-top: 1px solid var(--panel-border);
+}
+.overlay-narrative-speaker {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.overlay-narrative-speaker.hl-indy { color: var(--neon-cyan); text-shadow: 0 0 8px rgba(53, 224, 255, 0.5); }
+.overlay-narrative-speaker.hl-villain { color: var(--neon-red); text-shadow: 0 0 8px rgba(255, 74, 94, 0.5); }
+.overlay-narrative-text {
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+  letter-spacing: 0.2px;
+}
+.overlay-narrative-text .hl-indy { color: var(--neon-cyan); }
+.overlay-narrative-text .hl-villain { color: var(--neon-red); text-shadow: 0 0 6px rgba(255, 74, 94, 0.4); }
+.overlay-narrative-text .hl-name { color: var(--neon-yellow); font-weight: 700; text-shadow: 0 0 6px rgba(255, 226, 74, 0.4); }
+.overlay-narrative-text .hl-code {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color: var(--text-dim);
+  font-size: 12px;
+}
 
 /* Loot won this run — a tappable grid under the buttons. */
 #overlay-items {

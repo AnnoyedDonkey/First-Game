@@ -68,6 +68,8 @@ migrateSkillGraph(); // fold pre-per-tower skills into the new tower branches
 migrateFreeSkillRoots(); // refund formerly paid branch-head unlocks once
 backfillGear();
 migrateRosterNames();
+state.narrativeSeen ||= {};
+backfillNarrativeSeen(); // P2: spare existing players a retroactive story dump
 
 function backfillGear() {
   state.roster ||= [];
@@ -180,6 +182,28 @@ function migrateRosterNames() {
     if (!def || rec.name.startsWith(`${def.rosterPrefix}-`)) continue;
     rec.name = `${def.rosterPrefix}-${rec.name.split("-").pop()}`;
     changed = true;
+  }
+  if (changed) writeSave(state);
+}
+
+// P2 per-level story beats: a mid-campaign player must NOT be shown World
+// 1-3 story retroactively just because this field is new to their save. On
+// every load, mark the `.start`/`.win` beats of every ALREADY-completed
+// level as seen (they can still read them on demand via ▶ STORY); forward/
+// unplayed levels are untouched and play their beats normally the first
+// time they're reached. A brand-new save has no completedLevels, so nothing
+// is pre-marked. Idempotent — safe to run every load.
+function backfillNarrativeSeen() {
+  state.narrativeSeen ||= {};
+  let changed = false;
+  for (const levelId of state.completedLevels || []) {
+    for (const suffix of ["start", "win"]) {
+      const id = `${levelId}.${suffix}`;
+      if (!state.narrativeSeen[id]) {
+        state.narrativeSeen[id] = true;
+        changed = true;
+      }
+    }
   }
   if (changed) writeSave(state);
 }
@@ -362,6 +386,21 @@ export function shouldShowOnboarding() {
 }
 export function markOnboardingDone() {
   state.onboardingDone = true;
+  writeSave(state);
+}
+
+// Per-level story beats (P2): shown once each, first START then (later)
+// first WIN, per level. Beat ids are `${levelId}.start` / `${levelId}.win`
+// (see config.js NARRATIVE.beats). Existing players are spared retroactive
+// beats for already-completed levels via backfillNarrativeSeen() above; the
+// ▶ STORY replay control (ui.js openLevelSheet) re-plays a level's beats on
+// demand without touching this flag.
+export function shouldShowBeat(id) {
+  return !state.narrativeSeen[id];
+}
+export function markBeatSeen(id) {
+  if (state.narrativeSeen[id]) return;
+  state.narrativeSeen[id] = true;
   writeSave(state);
 }
 

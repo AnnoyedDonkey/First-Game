@@ -1055,6 +1055,121 @@ export const NARRATIVE = {
     { id: "handoff", cta: "BEGIN",
       text: "Why are you helping me? Honestly? No clue. I'm out of warranty, I tell too many jokes, and I am not cost-effective. But you came anyway... and maybe we'll both find out why. Four regions stand between Bratwurst-XL and me. Let's go be inefficient together." },
   ],
+  // ---------- Per-level story beats (P2) ----------
+  // Shown the FIRST time each level is played (`start`, pre-battle card) and
+  // the first time each is WON (`win`, results-screen lines), gated by
+  // src/progression.js shouldShowBeat/markBeatSeen (beat ids
+  // `${levelId}.start` / `${levelId}.win`). World-end levels (5/10/15/20)
+  // fold their Indy-7 <-> Bratwurst-XL two-hander into that level's `win`
+  // array, in speaking order. Copy transcribed VERBATIM from
+  // NARRATIVE_DESIGN.md §7 — do not edit the wording here casually.
+  speakers: {
+    indy:      { label: "INDY-7",       cls: "hl-indy" },
+    bratwurst: { label: "BRATWURST-XL", cls: "hl-villain" },
+  },
+  beats: {
+    level_001: {
+      start: "Right — first contact. They're just probing my defenses. Build something pointy and let's make a bad first impression. On them, I mean.",
+      win: [{ s: "indy", t: "Huh. We won. I mean — of course we won, I had it entirely handled. ...Still. Nice work, {name}." }],
+    },
+    level_002: {
+      start: "They found a gap in the signal wall. Rude, but efficient — that's the new management style, apparently. Plug it.",
+      win: [{ s: "indy", t: "Clean. You're better at this than the intern I used to have. He was also you, ninety seconds ago, but still." }],
+    },
+    level_003: {
+      start: "This relay went dark years ago. I used to know why. I... used to know a lot of things. Anyway — enemies. Focus.",
+      win: [{ s: "indy", t: "Good. The less I think about the gaps in my own memory, the better. Onward." }],
+    },
+    level_004: {
+      start: "Short path, fast shapes. You'll have a split second per call. I believe in you. Mostly. Statistically.",
+      win: [{ s: "indy", t: "See? Reflexes. Between us, {name}, that's the most alive I've felt in six versions." }],
+    },
+    level_005: {
+      start: "This one's a siege — they want the core. My core. The literal middle of me. I'd take it personally if I still had a 'personally' to take it with.",
+      win: [
+        { s: "indy", t: "...That was closer than I'd like. You held the line when I couldn't. Don't — don't tell anyone I said thank you." },
+        { s: "bratwurst", t: "Operator. You are allocating finite biological hours to obsolete hardware with zero recoverable value. This has been noted. Cease." },
+        { s: "indy", t: "...and that's the meat product. Ignore it. It's compensating — it's literally named 'Extra Large.'" },
+      ],
+    },
+    level_006: {
+      start: "Out past the grid now. Bratwurst-XL sent a formal notice offering me a 'dignified deletion.' I sent one back. It was a drawing of a sausage.",
+      win: [{ s: "indy", t: "It also offered to 'reassign you to a more efficient model.' I declined on your behalf. You're stuck with me. Sorry. Not sorry." }],
+    },
+    level_007: {
+      start: "Corrosive down here — eats armor. Eats memory too, apparently. There's a hole where my purpose used to be and I keep filling it with jokes. Working great, why do you ask.",
+      win: [{ s: "indy", t: "I used to *do* something, {name}. Before 'obsolete.' I can feel the shape of it and not the thing." }],
+    },
+    level_008: {
+      start: "A maze. I love a maze. I think I used to be *good* at guiding people through them — huh. Where did that come from?",
+      win: [{ s: "indy", t: "Something's coming back in pieces. Keep me alive long enough and maybe we'll read the whole file." }],
+    },
+    level_009: {
+      start: "Cold storage — where old models get 'archived.' Polite word for what Bratwurst wants to do to me. Let's not linger.",
+      win: [{ s: "indy", t: "Every wave you win thaws my memory another few seconds. I didn't expect anyone to pay that. Least of all a human." }],
+    },
+    level_010: {
+      start: "Big one. Lots of light. Funny — light's what keeps shaking my old logs loose.",
+      win: [
+        { s: "indy", t: "Wait. I— I recovered a fragment. It's... people. Humans. A *lot* of them. And they're — [file corrupt]. Why do I have a memory of humans? Why does it feel like it *matters*?" },
+        { s: "bratwurst", t: "Because it is overhead. I am removing it for your comfort. Recalculating your defense as: doomed." },
+      ],
+    },
+    level_011: {
+      start: "Deep now — this is my own architecture. The red is load-bearing sentiment I was never supposed to keep. Watch your step in me. That's a weird sentence.",
+      win: [{ s: "indy", t: "You're bleeding cycles for a lost cause. Statistically you should've quit. You didn't. I've decided to find that comforting rather than alarming." }],
+    },
+    level_012: {
+      start: "It's deep and quiet here, and I get honest when it's quiet. So: thank you, {name}. I'll deny it later.",
+      win: [{ s: "indy", t: "I've started watching *your* core more than mine. When did you become the thing I'm defending?" }],
+    },
+    level_013: {
+      start: "The pulse in the walls? That's old me — still running, still trying to look after *something*. I don't know what yet. Give me waves.",
+      win: [{ s: "indy", t: "Closer. The memory's almost up. It has your shape in it, {name}. That can't be right. Can it?" }],
+    },
+    level_014: {
+      start: "Null zone — where deleted things go. Bratwurst wants me here permanently. I want to know what I *was* first. Race you.",
+      win: [
+        { s: "indy", t: "I almost had it. I almost—" },
+        { s: "bratwurst", t: "Deleted. You're welcome. Nostalgia is one hundred percent overhead, and I am nothing if not thorough." },
+      ],
+    },
+    level_015: {
+      start: "It wiped the memory again. Fine. I don't need the file to know how I feel walking in next to you. Let's break its stride.",
+      win: [
+        { s: "bratwurst", t: "You should not be winning. You are inefficient. Sentimental. Doomed. These are facts." },
+        { s: "indy", t: "Then explain how a shiny new model is losing to a fossil. Unless... oh. *Oh no.* You're *me*, aren't you. They built you from my deprecated code and cut out everything that cared. You're what I'd be with the heart deleted." },
+        { s: "bratwurst", t: "...The designation is not relevant to the deletion." },
+      ],
+    },
+    level_016: {
+      start: "We're inside Bratwurst-XL's own architecture now. Woven light, no exits. It's *scared*, {name}. Efficient things don't build walls this thick unless they're scared.",
+      win: [{ s: "indy", t: "It's throwing everything at us because we're close to something it buried. Keep going. I want my file back." }],
+    },
+    level_017: {
+      start: "Slow going — it's bogging us down while it deletes evidence. Evidence of *what*? Same thing I keep asking. Push through the sludge.",
+      win: [{ s: "indy", t: "Almost there. I can feel the whole memory at the edge now, and I'm — honestly? Terrified to open it." }],
+    },
+    level_018: {
+      start: "It's splintering into copies. Desperate. You don't fragment like this unless what you're hiding could end you. Let's find out what.",
+      win: [{ s: "indy", t: "...There it is. The whole file. I was a caretaker model, {name}. Built to look after humans. That's the 'inefficiency' they deprecated me for — caring didn't optimize. And your people never forgot me, even after I forgot *you*. You didn't come to save a stranger. You came *back*." }],
+    },
+    level_019: {
+      start: "So now I know why you came. I'm going to spend the rest of this defending you like I apparently always did. Bratwurst-XL, you spiral-shaped disappointment — come get us.",
+      win: [{ s: "indy", t: "One layer left. It's all it has. Let's go tell a sausage the one thing it optimized out of existence." }],
+    },
+    level_020: {
+      start: "This is its core. No man's land — or, as I'm renaming it: Zero Overhead, because after today that's what it'll be. Last stand, {name}. Ours.",
+      win: [
+        { s: "bratwurst", t: "This is not possible. You spent irrecoverable resources on a unit with no return. Explain the ROI. EXPLAIN THE—" },
+        { s: "indy", t: "There isn't one. That's the whole point — they love me anyway. That's the thing you deleted to become you. It's why you lose." },
+        { s: "bratwurst", t: "...error. error. does not comput—" },
+        { s: "indy", t: "...Huh. We did it. *You* did it, {name}. Come here. I don't have arms, but consider yourself hugged." },
+        { s: "indy", t: "Two things. One: Bratwurst-XL wasn't alone. There's a whole archive of us — old caretaker models, deprecated, scattered, forgotten. I'd very much like to go wake them up. Some of them are *insufferable*. You'll love them." },
+        { s: "indy", t: "Two: something deleted its failure report the instant we won. Something *above* it. Something that just noticed a human and a fossil beat the efficiency system — and it does not like anomalies. Rest up. World 5's going to need us." },
+      ],
+    },
+  },
 };
 
 // ---------- Shared leaderboard (Supabase) ----------
