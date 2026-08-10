@@ -11,7 +11,7 @@
 import {
   endlessTrackFor, LOOT, SKILLS, SKILL_VALUES, SKILL_TIERS, TOWER_UPGRADES, TOWERS,
   TOWER_SKILL_SPEC, TOWER_SKILL_LAYOUT, ECONOMY_SKILL_SPEC, ECONOMY_LAYOUT, ECONOMY,
-  GAME_SPEED_SKILL,
+  GAME_SPEED_SKILL, LEADERBOARD,
 } from "./config.js";
 import { levelMilestonesFor, updateMilestoneResults } from "./milestones.js";
 import { loadSave, writeSave, clearSave } from "./save.js";
@@ -337,6 +337,31 @@ export function shouldShowTutorial() {
 
 export function markTutorialDone() {
   state.tutorialDone = true;
+  writeSave(state);
+}
+
+// Player name (P1 narrative onboarding): set during the intro sequence,
+// surfaced on the home screen and substituted into story copy. Mirrors
+// the leaderboard nickname's max length so the two stay consistent.
+export function getPlayerName() {
+  return state.playerName || "Operator"; // display fallback
+}
+export function hasPlayerName() {
+  return !!state.playerName;
+}
+export function setPlayerName(name) {
+  const clean = String(name || "").trim().slice(0, LEADERBOARD.maxNickLength);
+  state.playerName = clean || null;
+  writeSave(state);
+}
+
+// First-load story intro (P1): shown once, then re-runnable from the menu
+// via REPLAY INTRO. See src/onboarding.js for the step-gating state machine.
+export function shouldShowOnboarding() {
+  return !state.onboardingDone;
+}
+export function markOnboardingDone() {
+  state.onboardingDone = true;
   writeSave(state);
 }
 

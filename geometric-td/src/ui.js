@@ -4,12 +4,16 @@
 
 import {
   TOWERS, ENEMIES, SKILLS, SKILL_VALUES, TOWER_UPGRADES, LOOT,
-  SKILL_BRANCH_COLORS, SKILL_TREE_VIEWBOX, FEEDBACK, TUTORIAL,
+  SKILL_BRANCH_COLORS, SKILL_TREE_VIEWBOX, FEEDBACK, TUTORIAL, NARRATIVE,
 } from "./config.js";
 import {
   onTutorialChange, isTutorialActive, currentStep as currentTutorialStep,
   isFreezeStep, advance as advanceTutorial, skipTutorial,
 } from "./tutorial.js";
+import {
+  onOnboardingChange, isOnboardingActive, currentCard as currentOnboardingCard,
+  advance as advanceOnboarding, skip as skipOnboarding, startOnboarding,
+} from "./onboarding.js";
 import {
   xpThresholdFor, upgradeCostFor, isUpgradeEligible, sellValueOf,
   masteryRankFor, xpToNextMastery, careerStatsFor,
@@ -29,6 +33,7 @@ import {
   storeSkillPointCost, buyStoreSkillPoint,
   getStoreUnlocks, buyStoreUnlock,
   countUnseenStash, isItemSeen, markItemSeen,
+  getPlayerName, hasPlayerName,
 } from "./progression.js";
 import {
   canEquipItem, GEAR_SLOTS, normalizeGear, masteryRankFor as gearMasteryRankFor,
@@ -116,6 +121,12 @@ const el = {
   tutorialCardCta: document.getElementById("tutorial-card-cta"),
   tutorialSpotlight: document.getElementById("tutorial-spotlight"),
   tutorialSkip: document.getElementById("tutorial-skip"),
+  storyOverlay: document.getElementById("story-overlay"),
+  storyCardText: document.getElementById("story-card-text"),
+  storyNameInput: document.getElementById("story-name-input"),
+  storyCardCta: document.getElementById("story-card-cta"),
+  storySkip: document.getElementById("story-skip"),
+  welcomeBack: document.getElementById("welcome-back"),
   leaderboardOverlay: document.getElementById("leaderboard-overlay"),
   leaderboardList: document.getElementById("leaderboard-list"),
   leaderboardMsg: document.getElementById("leaderboard-msg"),
@@ -346,12 +357,24 @@ export function onSellButtonTap(handler) {
 let menuCtx = null; // { levelById, completedIds, pick }
 let currentWorld = 0;
 
+// "WELCOME BACK, {NAME}" home-screen line (P1) — only shown once a name
+// is set. Re-run on every showLevelSelect AND whenever onboarding finishes
+// (see renderOnboardingCard below), since finishing doesn't itself re-open
+// the menu — it's already open underneath the story overlay.
+function updateWelcomeBack() {
+  if (!el.welcomeBack) return;
+  const named = hasPlayerName();
+  el.welcomeBack.classList.toggle("hidden", !named);
+  el.welcomeBack.textContent = named ? `WELCOME BACK, ${getPlayerName().toUpperCase()}` : "";
+}
+
 // Shows the mission list. onPick(level, endless) fires when a playable
 // level (or its Endless mode) is chosen.
 export function showLevelSelect(levels, completedIds, onPick) {
   el.actionBar.classList.add("hidden"); // no tower tray on the menu
   el.hud.classList.add("hidden");       // top HUD is in-battle only
   closeLevelSheet();
+  updateWelcomeBack();
   menuCtx = {
     levelById: new Map(levels.map((l) => [l.id, l])),
     levels,
@@ -831,6 +854,20 @@ function appendGlobalMenuButtons() {
     topRow.appendChild(lbBtn);
   }
   el.menuActions.appendChild(topRow);
+
+  // REPLAY INTRO (P1): re-runs the narrative onboarding sequence on demand.
+  // The name step prefills with the current name — leaving it unchanged
+  // keeps it, changing it updates the save; startOnboarding()/
+  // markOnboardingDone() are idempotent so this never disturbs the
+  // once-per-player first-load flag.
+  const introRow = document.createElement("div");
+  introRow.className = "menu-actions-row";
+  const introBtn = document.createElement("button");
+  introBtn.className = "level-button skill-entry";
+  introBtn.innerHTML = `<span>REPLAY INTRO</span>`;
+  introBtn.addEventListener("click", () => startOnboarding());
+  introRow.appendChild(introBtn);
+  el.menuActions.appendChild(introRow);
 
   // Reset all progress — two-tap confirm, then reload clean.
   const resetBtn = document.createElement("button");
@@ -2585,7 +2622,10 @@ let lbLevels = []; // levels list, for id -> display-name lookup
 
 export function openLeaderboard(levels) {
   lbLevels = levels;
-  el.nicknameInput.value = getNickname();
+  // Prefill from the story-onboarding name if no leaderboard nickname is
+  // set yet, so the player isn't asked to name themselves twice. Never
+  // overwrites an existing nickname.
+  el.nicknameInput.value = getNickname() || (hasPlayerName() ? getPlayerName() : "");
   el.leaderboardMsg.textContent = "";
   renderLeaderboard();
   el.leaderboardOverlay.classList.remove("hidden");
@@ -2954,6 +2994,52 @@ if (el.tutorialFreezeCatcher) {
 }
 if (el.tutorialSkip) {
   el.tutorialSkip.addEventListener("click", () => skipTutorial());
+}
+
+// ---- Narrative onboarding overlay (P1) ----
+// Substitutes {name} in story copy with the player's chosen name (or the
+// "Operator" fallback). Exported for reuse by later phases (P2 barks etc).
+export function substituteName(text) {
+  return String(text || "").replaceAll("{name}", getPlayerName());
+}
+
+// Renders whatever src/onboarding.js's state machine says is current — same
+// push-state/react-UI split as the tutorial overlay above. Linear tap-through:
+// every card shows text + a CTA button; the name card additionally shows the
+// text input, prefilled with the current name (so REPLAY INTRO reads as
+// "change name" while leaving it untouched keeps it as-is).
+function renderOnboardingCard() {
+  const card = currentOnboardingCard();
+  if (!el.storyOverlay) return;
+  if (!isOnboardingActive() || !card) {
+    el.storyOverlay.classList.add("hidden");
+    updateWelcomeBack(); // reflect a name set/changed during this run
+    return;
+  }
+  el.storyOverlay.classList.remove("hidden");
+
+  el.storyCardText.textContent = substituteName(card.text);
+  el.storyCardCta.textContent = card.cta || "TAP TO CONTINUE";
+
+  el.storyNameInput.classList.toggle("hidden", !card.isNameStep);
+  if (card.isNameStep) {
+    el.storyNameInput.value = hasPlayerName() ? getPlayerName() : "";
+    el.storyNameInput.placeholder = NARRATIVE.namePlaceholder;
+    el.storyNameInput.focus();
+  }
+}
+
+onOnboardingChange(renderOnboardingCard);
+
+if (el.storyCardCta) {
+  el.storyCardCta.addEventListener("click", () => {
+    const card = currentOnboardingCard();
+    if (card?.isNameStep) advanceOnboarding(el.storyNameInput.value);
+    else advanceOnboarding();
+  });
+}
+if (el.storySkip) {
+  el.storySkip.addEventListener("click", () => skipOnboarding());
 }
 
 // Screen-space box for one of the tutorial's real targets. `game` supplies

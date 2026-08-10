@@ -410,6 +410,106 @@ button.hud-item {
 }
 #tutorial-skip:active { background: var(--panel-border); }
 
+/* ---------- Narrative onboarding (P1) ---------- */
+/* First-load story intro: a full-screen modal card shown over the menu
+   (never mid-battle), so it sits above the level-select overlay (30) and
+   the management screens (40) but below the update nudge (100). Modeled
+   on #tutorial-card's modal look. */
+
+#story-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 6, 15, 0.88);
+  padding: 24px;
+}
+#story-overlay.hidden { display: none; }
+
+#story-card {
+  width: 100%;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
+  padding: 22px 20px;
+  background: var(--panel);
+  border: 1px solid var(--neon-cyan);
+  border-radius: 12px;
+  box-shadow: 0 0 24px rgba(53, 224, 255, 0.35);
+}
+
+#story-card-text {
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.6;
+  letter-spacing: 0.3px;
+  text-align: left;
+  white-space: pre-line; /* renders the copy's \n\n paragraph breaks */
+}
+
+#story-name-input {
+  font-family: inherit;
+  font-size: 16px; /* >=16px stops iOS Safari from zooming on focus */
+  letter-spacing: 1px;
+  padding: 0 12px;
+  min-height: 44px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--neon-yellow);
+  border-radius: 6px;
+}
+#story-name-input.hidden { display: none; }
+#story-name-input::placeholder { color: var(--text-dim); }
+
+#story-card-cta {
+  font-family: inherit;
+  font-size: 13px;
+  letter-spacing: 1.5px;
+  min-height: 48px;
+  padding: 6px 10px;
+  background: var(--bg);
+  color: var(--neon-cyan);
+  border: 1px solid var(--neon-cyan);
+  border-radius: 6px;
+  cursor: pointer;
+  text-shadow: 0 0 6px rgba(53, 224, 255, 0.5);
+}
+#story-card-cta:active { background: var(--panel-border); }
+
+#story-skip {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 8px);
+  right: 12px;
+  pointer-events: auto;
+  background: rgba(11, 14, 30, 0.95);
+  color: var(--text);
+  border: 1px solid var(--text-dim);
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 10px;
+  letter-spacing: 1px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+#story-skip:active { background: var(--panel-border); }
+
+@media (prefers-reduced-motion: reduce) {
+  #story-overlay, #story-card { transition: none; }
+}
+
+/* Home-screen "WELCOME BACK, {NAME}" line — only shown once a name is set. */
+#welcome-back {
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+#welcome-back.hidden { display: none; }
+
 /* ---------- End-screen milestone recap (B5) ---------- */
 
 #overlay-milestones {

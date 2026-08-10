@@ -26,6 +26,8 @@ const DEFAULT_SAVE = {
   endlessRewards: {},
   levelMilestones: {}, // { levelId: [claimedMilestoneId, ...] } — per-level challenges (B5)
   tutorialDone: false, // first-play walkthrough (T4) shown once on level_001's first campaign start
+  playerName: null,      // set during onboarding; null = not yet named (fallback "Operator")
+  onboardingDone: false, // first-load story intro (P1) shown once
 };
 
 export function loadSave() {

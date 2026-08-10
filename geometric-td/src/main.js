@@ -12,7 +12,7 @@ import {
 import {
   getProgress, getSkillPoints, shouldShowTowerGuide, markTowerGuideSeen,
   forfeitBattle, equipItem, unequipItem, debugGrantGear, getSkillsSnapshot,
-  getUnlockedSpeeds,
+  getUnlockedSpeeds, shouldShowOnboarding,
 } from "./progression.js";
 import { render } from "./renderer.js";
 import { bindCanvasInput } from "./input.js";
@@ -32,6 +32,7 @@ import { GEAR_SLOTS } from "./equipment.js";
 import { initUpdateCheck } from "./update.js";
 import * as loot from "./loot.js";
 import * as tutorial from "./tutorial.js";
+import { startOnboarding } from "./onboarding.js";
 
 const TILE_SIZE = 64; // internal render resolution per tile
 
@@ -507,6 +508,12 @@ function frame(now) {
 // Boot into the mission list; the loop starts once a level is picked.
 showLevelSelect(LEVELS, getProgress().completedLevels, startLevel);
 requestAnimationFrame(frame);
+
+// P1 narrative onboarding: first-load story intro shown once over the
+// freshly-rendered menu. Existing players (onboardingDone false via the
+// save-default backfill) get it once on their next launch, then land on
+// the menu at their current progress same as always.
+if (shouldShowOnboarding()) startOnboarding();
 
 // Watch for newer deploys (matters most for iPhone home-screen installs).
 initUpdateCheck();

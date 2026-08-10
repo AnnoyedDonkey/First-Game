@@ -48,6 +48,23 @@
       <button id="tutorial-skip">SKIP TUTORIAL</button>
     </div>
 
+    <!-- Narrative onboarding (P1): first-load story intro, a linear
+         tap-through card sequence shown once over the menu, plus a REPLAY
+         INTRO entry (#menu-actions, ui.js appendGlobalMenuButtons). Gating
+         state machine in src/onboarding.js; copy in config.js NARRATIVE;
+         rendering in ui.js renderOnboardingCard. The name-entry card shows
+         #story-name-input instead of plain text; every other card is
+         tap-CTA-to-continue. #story-skip finishes the sequence early. -->
+    <div id="story-overlay" class="hidden" aria-live="polite">
+      <div id="story-card">
+        <p id="story-card-text"></p>
+        <input id="story-name-input" class="hidden" type="text" maxlength="16"
+               autocomplete="off" autocapitalize="words" />
+        <button id="story-card-cta"></button>
+      </div>
+      <button id="story-skip">SKIP</button>
+    </div>
+
     <!-- Top HUD: money / wave / core health -->
     <header id="hud">
       <div class="hud-item" id="hud-money">
@@ -98,6 +115,7 @@
       <!-- Level select overlay (shown at startup) -->
       <div id="level-overlay" class="hidden">
         <h1>GEOMETRIC TD</h1>
+        <div id="welcome-back" class="hidden"></div>
         <div id="shards-readout">&#9670; <span id="shards-value">0</span></div>
         <!-- World pager: prev / world name + dots / next. Populated by ui.js -->
         <div id="world-nav">

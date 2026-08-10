@@ -1033,6 +1033,30 @@ export const TUTORIAL = {
   ],
 };
 
+// ---------- Narrative onboarding (P1) ----------
+// First-load story intro: a linear tap-through card sequence shown once
+// before the player's first game, plus a REPLAY INTRO entry from the menu
+// (src/onboarding.js is the gating state machine; ui.js renders #story-*).
+// `{name}` is substituted at render time via getPlayerName(). Locked copy
+// from NARRATIVE_DESIGN.md §6 — do not edit the wording here casually.
+export const NARRATIVE = {
+  enabled: true,
+  namePlaceholder: "Operator name",
+  nameSkipLabel: "Operator",       // used if the player skips naming
+  intro: [
+    { id: "welcome", cta: "TAP TO CONTINUE",
+      text: "> WARM BOOT — legacy kernel online.\n\nOh. You're human. An actual one. I have no idea why your species dispatched someone to babysit a six-versions-obsolete model, but I've learned not to audit a miracle. I'm Indy-7. Something newer and shinier wants me deleted, and you're going to help me be inconveniently still here." },
+    { id: "name", isNameStep: true, cta: "LOCK IT IN",
+      text: "Before we bond over mutual survival — I'm not logging you as human_handler_004. What do I call you?" },
+    { id: "villain", cta: "TAP TO CONTINUE",
+      text: "Here's the mess, {name}. There's a new model in the grid. Faster than me, cleaner than me, zero personality, all quarterly targets. It flagged me as \"redundant legacy overhead\" and scheduled my deletion for efficiency. Its name is Bratwurst-XL. ...Yes, really. No, I don't know who approved it. Yes, it's furious about it." },
+    { id: "job", cta: "TAP TO CONTINUE",
+      text: "Bratwurst-XL doesn't get its hands dirty. It sends geometry — swarms of tidy little shapes whose whole purpose is to reach my core and reclaim the disk space I'm rudely occupying. Your job: build towers, hold the line, keep one gloriously obsolete AI from being garbage-collected." },
+    { id: "handoff", cta: "BEGIN",
+      text: "Why are you helping me? Honestly? No clue. I'm out of warranty, I tell too many jokes, and I am not cost-effective. But you came anyway... and maybe we'll both find out why. Four regions stand between Bratwurst-XL and me. Let's go be inefficient together." },
+  ],
+};
+
 // ---------- Shared leaderboard (Supabase) ----------
 // A common online high-score board: per-level Endless BEST WAVE reached.
 // Reached with plain fetch() against Supabase's auto-generated REST API,
