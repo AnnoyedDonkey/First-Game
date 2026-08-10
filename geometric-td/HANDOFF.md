@@ -307,12 +307,21 @@ BALANCE_LAB_PLAN.md  approved Balance Lab L0-L7 plan
 ## Active and deferred work
 
 - **DONE — Enemy-intro rebuild** (`2026.08.10-8`, card reworked in `-9`,
-  `ONBOARDING_ENEMY_INTROS_PLAN.md`): intros moved off the bark ticker onto
-  pause-and-tap cards with weak/resist tags, a spotlight cutout over the real
-  enemies, a pre-card grace delay, and a marching enemy parade. Boss and
-  tower barks stayed on the ticker as intended. **Wants phone eyes** — these
-  cards only appear on a brand-new save, so they're easy to leave unverified;
-  check the spotlight framing and the parade on a real iPhone.
+  glyphs made renderer-faithful in `-10`, `ONBOARDING_ENEMY_INTROS_PLAN.md`):
+  intros moved off the bark ticker onto pause-and-tap cards with weak/resist
+  tags, a spotlight cutout over the real enemies, a pre-card grace delay, and
+  a marching enemy parade. Boss and tower barks stayed on the ticker as
+  intended. **Wants phone eyes** — these cards only appear on a brand-new
+  save, so they're easy to leave unverified; check the spotlight framing and
+  the parade on a real iPhone.
+
+  **Enemy debut schedule** (surveyed 2026-08-10 from `balance-data.json`, so
+  nobody re-derives it): Basic L1w1, Fast L1w3, Armored L1w6, Boss L1w10,
+  Splitter L6w2, Regenerator L7w2; Splitling spawns from Splitter deaths
+  (L6+) and is only an authored group at L18w2 — no intro, by design. **No
+  new enemy types exist after L7.** The cards trigger on first-ever sighting
+  rather than a level list, so every debut is already covered and no
+  per-level work is outstanding.
 - **NEXT — narrative/onboarding follow-ups** (design + copy already approved,
   none of this is built yet — read the referenced plan file first, each is
   self-contained):
@@ -325,6 +334,23 @@ BALANCE_LAB_PLAN.md  approved Balance Lab L0-L7 plan
   - **Minor:** story copy occasionally uses `*emphasis*` markdown but
     `ui.js storyCardHtml` doesn't parse it (asterisks render literally
     in-game). Not reported by the player yet; cheap cleanup whenever.
+- **IDENTIFIED, not spec'd — the debuts that still arrive unannounced.** Came
+  out of the enemy-debut survey above (2026-08-10); the user has seen this
+  list and deliberately deferred all three. The enemy-intro card machinery
+  (freeze + spotlight + parade, `ui.js updateStoryOverlay`) is reusable for
+  the first two.
+  - **World 4 tile mechanics** — wormholes + conduits first appear at L16,
+    fields at L17, all three from L18 on. Brand-new mechanics that change how
+    a level plays, currently explained ONLY if the player thinks to tap the
+    tile (`ui.js maybeShowTileInfo`) — pure discoverability, easy to miss
+    entirely. Biggest of the three gaps.
+  - **Railgun / Rocket unlocks** — awarded for clearing L5 and L10
+    (`progression.js isTowerUnlocked`), with no introduction; "Meet the
+    Squad" only covers Laser/Pulse/Slow. Better on the menu or the next
+    level's start card than mid-battle.
+  - **L1 is card-heavy** — four of the six enemy cards fire in level 1 alone
+    (Basic/Fast/Armored/Boss), on top of the tutorial steps and the L1 story
+    beat. Consider spacing them out or folding some together.
 - **DONE — Balance Lab (L0-L7):** `BALANCE_LAB_PLAN.md`. Data/schema migration,
   the localhost-only save/restore API in `serve.ps1`, the editable
   `balance-lab.html` with revision history, and L7 QA/docs — all complete and
