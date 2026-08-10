@@ -273,6 +273,60 @@ Net new-player flow: **L1** learn to place/fire (existing spotlight tutorial,
 reworded in Indy-7's voice) → **L1 win → L2** "Meet the Squad" → **L2 win → L3**
 gear/mastery rules → story beats continue per §7.
 
+### "Meet the Squad" — full copy (first start of L2)
+
+Only the three starters are unlocked this early; Railgun/Rocket get their own
+one-card "new recruit" beat when they unlock (after L5 / L10). Each card is
+Indy-7's intro (persona + plain-language role) plus the tower's debut bark.
+
+- **A — open:** "Right, {name} — you survived first contact, and you did it
+  leaning on my towers. Problem is, I never actually *introduced* you. Rude of
+  me. Let's fix that — meet the squad, properly this time." *(NOTE: not "solo" —
+  the player already used the towers in L1.)*
+- **B — Laser (L-xx, twitchy overachiever):** Indy-7: "First up, the **Laser**.
+  Fast, precise, locks onto one target and never lets go. Your reliable
+  bread-and-butter — build these early and often." L-01: "Hi hi hi! L-01
+  reporting! Did you *see* me last fight? I can do it again! Just point me at
+  something!" Indy-7: "...He's eager. We're working on it."
+- **C — Pulse (P-xx, loud crowd-pleaser):** Indy-7: "Next, the **Pulse**.
+  Slower, but it lobs a blast that hits *everything* in a little zone at once.
+  When they come in crowds — and they will — this is your answer." P-02: "PULSE
+  in the house! Everybody in the blast radius, say hi!" Indy-7: "Subtle, it is
+  not."
+- **D — Slow (S-xx, smug tactician):** Indy-7: "And the **Slow**. Barely dents
+  them — not its job. It drags them to a *crawl* and makes them take extra
+  damage, so everyone else does the dinging. Force multiplier. Deeply
+  underrated." S-01: "S-01. I won't rush this introduction. Neither, shortly,
+  will they." Indy-7: "See, *that* one gets it."
+- **E — hand-off + weakness concept (leads into enemy intros):** "That's your
+  starting three, {name}: Laser to poke, Pulse for crowds, Slow to set the
+  table. Oh — and the shapes you're shooting aren't all the same. Some shrug off
+  certain weapons; some *melt* to them. Match your tower to your target and
+  you'll do triple the work for the same shard. Now — level two. Let's give the
+  squad something to shoot."
+
+**Later recruits (one card each, on unlock):**
+- **Railgun — after L5 (R-xx, dramatic sniper):** Indy-7 introduces lane-pierce
+  ("fires down an entire lane and punches straight through everything in
+  it — placement is everything"). R-01: "R-01. One line. Everything on it.
+  ...Too dramatic? No. Exactly dramatic enough." Indy-7: "He rehearses those. In
+  a mirror. We don't *have* mirrors."
+- **Rocket — after L10 (RK-xx, expensive diva):** Indy-7 introduces global range
+  + splash ("reaches anywhere on the board, hits hard, expensive and
+  high-maintenance — treat it like the diva it is"). RK-01: "You *rang*? This
+  had better be worth the fuel budget. I do NOT deploy for skirmishes, darling."
+  Indy-7: "Worth every shard. Don't tell it I said that."
+
+### Enemy intros — contextual (P2/P3), not a wall
+
+The old level-2 guide also dumped every enemy's weakness at once. Replace that
+with **first-appearance barks**: the *concept* of weakness/resistance is
+introduced once in card E above; then **each enemy type gets a one-line Indy-7
+bark the first time it appears** in the campaign (milestone-toast), with its
+counter — e.g. "Incoming Fast — twitchy little diamonds. Your Laser eats them
+alive." Right enemy, right moment, no wall. Debut levels + exact counters come
+from `ENEMIES[type].damageMult`; wire these in P3 alongside the bark system.
+
 ---
 
 ## 9. Delivery & implementation model (for the future build plan)
@@ -332,3 +386,22 @@ Nothing below is built yet; this records the intended shape.
 
 Each phase is small, runnable, and verified before the next. Version bump +
 push happens once per shipped phase (or batch), per HANDOFF.
+
+## 12. Presentation / visual direction
+
+Cards should read as **dialogue, not prose** — that's what stops the text from
+feeling like a wall (early P1 feedback: "it's a lot of text").
+
+- **Shipped (P1 color pass, `2026.08.09-13`):** a speaker **nameplate** above
+  each card ("INDY-7" in neon cyan) and inline **color coding** (`ui.js`
+  storyCardHtml): Indy-7 = cyan, Bratwurst-XL = red, `{name}` = gold, and a
+  leading "> ..." system line rendered as green terminal text. The player name
+  is HTML-escaped before insertion (only untrusted token in the copy).
+- **Next visual step (user-requested):** a **drawing of Indy-7** beside its
+  dialogue — a small character portrait, ideally a few expressions (deadpan,
+  alarmed, smug) swapped per beat. Bratwurst-XL gets its own portrait for
+  taunts. Biggest "spice" upgrade after color. Keep art self-contained (inline
+  SVG or a small sprite) — no external deps, mobile-Safari friendly.
+- **Later:** per-speaker card theming (nameplate/border switches to the villain
+  palette when Bratwurst-XL speaks); optional typewriter reveal (respect
+  `prefers-reduced-motion`).
