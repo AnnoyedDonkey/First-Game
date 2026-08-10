@@ -1055,6 +1055,23 @@ export const NARRATIVE = {
     { id: "handoff", cta: "BEGIN",
       text: "Why are you helping me? Honestly? No clue. I'm out of warranty, I tell too many jokes, and I am not cost-effective. But you came anyway... and maybe we'll both find out why. Four regions stand between Bratwurst-XL and me. Let's go be inefficient together." },
   ],
+  // ---------- "Meet the Squad" (P4) ----------
+  // Replaces the legacy level-2 auto tower-guide. Played via playCards on
+  // first visit to level_002, gated by the existing seenTowerGuide flag
+  // (shouldShowTowerGuide/markTowerGuideSeen). Copy authored VERBATIM from
+  // ONBOARDING_P4_PLAN.md §1 — do not edit the wording here casually.
+  squad: [
+    { speaker: "indy", cta: "TAP TO CONTINUE",
+      text: "Right, {name} — you survived first contact, and you did it leaning on my towers. Problem is, I never actually introduced you. Rude of me. Let's fix that — meet the squad, properly this time." },
+    { speaker: "indy", cta: "TAP TO CONTINUE",
+      text: "First up, the Laser. Fast, precise, locks onto one target and never lets go. Your reliable bread-and-butter — build these early and often.\n\nL-01: \"Hi hi hi! Did you SEE me last fight? I can do it again!\"\n\n...He's eager. We're working on it." },
+    { speaker: "indy", cta: "TAP TO CONTINUE",
+      text: "Next, the Pulse. Slower, but it lobs a blast that hits everything in a little zone at once. When they come in crowds — and they will — this is your answer.\n\nP-02: \"PULSE in the house! Everybody in the blast radius, say hi!\"\n\nSubtle, it is not." },
+    { speaker: "indy", cta: "TAP TO CONTINUE",
+      text: "And the Slow. Barely dents them — not its job. It drags them to a crawl and makes them take extra damage, so everyone else does the dinging. Force multiplier. Deeply underrated.\n\nS-01: \"I won't rush this introduction. Neither, shortly, will they.\"\n\nSee — that one gets it." },
+    { speaker: "indy", cta: "LET'S GO",
+      text: "That's your starting three, {name}: Laser to poke, Pulse for crowds, Slow to set the table. Oh — and the shapes you're shooting aren't all the same. Some shrug off certain weapons; some melt to them. Match your tower to your target and you'll do triple the work for the same shard. Now — level two. Let's give the squad something to shoot." },
+  ],
   // ---------- Per-level story beats (P2) ----------
   // Shown the FIRST time each level is played (`start`, pre-battle card) and
   // the first time each is WON (`win`, results-screen lines), gated by
@@ -1066,6 +1083,17 @@ export const NARRATIVE = {
   speakers: {
     indy:      { label: "INDY-7",       name: "Indy-7",       cls: "hl-indy" },
     bratwurst: { label: "BRATWURST-XL", name: "Bratwurst-XL", cls: "hl-villain" },
+  },
+  // ---------- Tower placement barks (P4) ----------
+  // First time each tower TYPE is placed in a campaign battle, it quips on
+  // the bark ticker; the roster name prefix (e.g. "L-01:") is supplied at
+  // render time and tinted the tower's own color — NOT repeated in the line.
+  towerBarks: {
+    laser:   "Online! Did you SEE me last fight? I can do it again! Just point me at something!",
+    pulse:   "In the house! Everybody in the blast radius, say hi. ...That's the last thing most of 'em say.",
+    slow:    "I won't rush this. Neither, shortly, will they.",
+    railgun: "One line. Everything on it. ...Too dramatic? No. Exactly dramatic enough.",
+    rocket:  "You rang? This had better be worth the fuel budget. I do NOT deploy for skirmishes, darling.",
   },
   beats: {
     level_001: {

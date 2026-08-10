@@ -22,7 +22,7 @@ import {
   initTowerButtons, updateTowerButtons,
   updateUpgradePanel, onUpgradeButtonTap, onSellButtonTap,
   initSkillTree, showLevelSelect, openSkillTree, hideOverlay,
-  initSpeedControls, openTowerGuide, onExitButtonTap, openLeaderboard,
+  initSpeedControls, onExitButtonTap, openLeaderboard,
   openGearPanel, showMilestoneToast, updateTutorialOverlay, maybeShowTileInfo,
   showBark,
 } from "./ui.js";
@@ -85,7 +85,7 @@ window.gear = {
 function startLevel(level, endless = false) {
   game = createGame(level, TILE_SIZE, endless);
   overlayShown = false;
-  barkState = { bossBarked: false };
+  barkState = { bossBarked: false, placedTypes: new Set() };
   hideOverlay();
   // Clear any leftover selection from the previous battle.
   uiState.selectedType = null;
@@ -111,10 +111,13 @@ function startLevel(level, endless = false) {
   const willShowTowerGuide = level.id === "level_002" && shouldShowTowerGuide();
   const willShowTutorial = level.id === "level_001" && shouldShowTutorial();
 
-  // First visit to level 2: explain tower classes and specialties.
+  // First visit to level 2: introduce the squad as characters (P4; replaces
+  // the legacy auto-opening tower-guide panel). Gated on the same
+  // seenTowerGuide flag, so existing players who already saw the old guide
+  // do not get Meet the Squad, and new players see it exactly once.
   if (willShowTowerGuide) {
     markTowerGuideSeen();
-    openTowerGuide();
+    playCards(NARRATIVE.squad);
   }
 
   // First-play walkthrough (T4): only actually starts for level_001's
@@ -218,6 +221,17 @@ bindCanvasInput(canvas, {
       // tile to build" step — any valid tile counts, not just the
       // illustrative one the spotlight ring points at.
       tutorial.notifyPlacement(result.ok);
+      // First placement of each tower TYPE in a campaign battle: a bark on
+      // the ticker, its roster-name prefix tinted the tower's own color
+      // (P4). Campaign only; once per type per battle (barkState.placedTypes
+      // is reset each startLevel).
+      if (result.ok && !game.endless && barkState && result.tower &&
+          !barkState.placedTypes.has(result.tower.type) &&
+          NARRATIVE.towerBarks?.[result.tower.type]) {
+        barkState.placedTypes.add(result.tower.type);
+        showBark({ name: result.tower.name, color: result.tower.def.color },
+                 NARRATIVE.towerBarks[result.tower.type]);
+      }
       if (!result.ok) {
         // Red flash on the rejected tile, then cancel placement mode —
         // tapping anywhere invalid is the "never mind" gesture.

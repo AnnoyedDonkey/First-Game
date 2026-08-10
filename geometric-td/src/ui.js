@@ -2938,21 +2938,32 @@ export function showMilestoneToast(text) {
 // prefix is colored.
 const barkQueue = [];
 let barkActive = false;
-export function showBark(speakerCode, text) {
+// `speaker` is either a string code (looked up in NARRATIVE.speakers, colored
+// via its `hl-*` class — Indy-7/Bratwurst-XL) or a tower object
+// `{ name, color }` (P4 placement barks: mixed-case roster name + an inline
+// hex color, tinted at render time instead of via a class).
+export function showBark(speaker, text) {
   if (!el.barkTicker) return;
-  barkQueue.push({ speakerCode, text });
+  barkQueue.push({ speaker, text });
   if (!barkActive) runNextBark();
 }
 function runNextBark() {
   const t = el.barkTicker;
   if (!t || barkQueue.length === 0) { barkActive = false; return; }
   barkActive = true;
-  const { speakerCode, text } = barkQueue.shift();
-  const spk = NARRATIVE.speakers?.[speakerCode] || { name: "Indy-7", cls: "hl-indy" };
+  const { speaker, text } = barkQueue.shift();
   // Body is WHITE (escaped + {name}-substituted, no keyword coloring — "mostly
   // white text" per the mockup); only the speaker prefix is colored.
-  t.innerHTML = `<span class="bark-name ${spk.cls}">${escapeHtml(spk.name)}:</span> ` +
-                escapeHtml(substituteName(text));
+  let nameHtml;
+  if (typeof speaker === "string") {
+    const spk = NARRATIVE.speakers?.[speaker] || { name: "Indy-7", cls: "hl-indy" };
+    nameHtml = `<span class="bark-name ${spk.cls}">${escapeHtml(spk.name)}:</span>`;
+  } else {
+    // Tower speaker: inline tint from the tower's def color (trusted hex
+    // from config, not user input).
+    nameHtml = `<span class="bark-name" style="color:${speaker.color}">${escapeHtml(speaker.name)}:</span>`;
+  }
+  t.innerHTML = nameHtml + " " + escapeHtml(substituteName(text));
   t.classList.remove("hidden");
   void t.offsetWidth;      // restart the fade
   t.classList.add("show");
