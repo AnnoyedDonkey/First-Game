@@ -29,7 +29,6 @@ const DEFAULT_SAVE = {
   playerName: null,      // set during onboarding; null = not yet named (fallback "Operator")
   onboardingDone: false, // first-load story intro (P1) shown once
   narrativeSeen: {},     // { beatId: true } — per-level START/WIN story beats (P2), beatId = `${levelId}.start`|`${levelId}.win`
-  seenEnemyIntros: [],   // enemy type ids whose first-appearance Indy-7 toast (P3) has fired
 };
 
 export function loadSave() {

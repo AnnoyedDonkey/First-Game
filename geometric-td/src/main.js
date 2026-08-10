@@ -13,7 +13,7 @@ import {
   getProgress, getSkillPoints, shouldShowTowerGuide, markTowerGuideSeen,
   forfeitBattle, equipItem, unequipItem, debugGrantGear, getSkillsSnapshot,
   getUnlockedSpeeds, shouldShowOnboarding, shouldShowTutorial,
-  shouldShowBeat, markBeatSeen, shouldShowEnemyIntro, markEnemyIntroSeen,
+  shouldShowBeat, markBeatSeen,
 } from "./progression.js";
 import { render } from "./renderer.js";
 import { bindCanvasInput } from "./input.js";
@@ -47,7 +47,6 @@ const ctx = canvas.getContext("2d");
 
 let game = null;
 let overlayShown = false;
-let barkState = null; // P3 in-battle barks: { bossBarked } — fresh per battle, set in startLevel
 
 function refreshDeployedGear(towerName) {
   if (!game) return;
@@ -84,7 +83,6 @@ window.gear = {
 function startLevel(level, endless = false) {
   game = createGame(level, TILE_SIZE, endless);
   overlayShown = false;
-  barkState = { bossBarked: false }; // P3: reset the once-per-battle boss-bark gate
   hideOverlay();
   // Clear any leftover selection from the previous battle.
   uiState.selectedType = null;
@@ -511,29 +509,6 @@ function checkEndState() {
 // and rAF is paused while the tab is hidden.
 window.checkEndState = () => checkEndState();
 
-// ---------- In-battle barks (P3) ----------
-// Contextual Indy-7 enemy intros (once ever, save-backed) and a Bratwurst-XL
-// taunt + Indy-7 roast reply on the first Boss of a battle (once per
-// battle, via barkState). Campaign only — endless runs stay quiet.
-const pickOne = (arr) => arr[Math.floor(Math.random() * arr.length)];
-
-function updateBarks(game) {
-  if (!game || game.endless || !NARRATIVE.enabled || !barkState) return;
-  for (const e of game.enemies) {
-    // First-ever appearance of a type → Indy-7 intro (once ever, save-backed).
-    if (shouldShowEnemyIntro(e.type) && NARRATIVE.enemyIntros[e.type]) {
-      markEnemyIntroSeen(e.type);
-      showMilestoneToast(NARRATIVE.enemyIntros[e.type], "indy");
-    }
-    // First Boss of THIS battle → Bratwurst taunt, then an Indy roast reply.
-    if (e.type === "boss" && !barkState.bossBarked) {
-      barkState.bossBarked = true;
-      showMilestoneToast(pickOne(NARRATIVE.bratwurstBarks), "bratwurst");
-      showMilestoneToast(pickOne(NARRATIVE.indyRoasts), "indy");
-    }
-  }
-}
-
 // ---------- Game loop ----------
 let lastTime = performance.now();
 
@@ -561,9 +536,6 @@ function frame(now) {
     updateTowerButtons(game, uiState.selectedType);
     updateUpgradePanel(game, uiState.selectedTower);
     updateTutorialOverlay(game); // T4: reposition the spotlight ring, if active
-    if (!overlayShown && (game.phase === "wave" || game.phase === "countdown" || game.phase === "ready")) {
-      updateBarks(game); // P3: enemy intros + boss barks, campaign battles only
-    }
     checkEndState();
   }
 
