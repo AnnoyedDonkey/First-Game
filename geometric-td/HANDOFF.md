@@ -6,15 +6,74 @@ July **and** August 2026); the original pre-cleanup handoff is preserved in Git
 at commit `2650204`. This file keeps only what you need to start work:
 current state, non-obvious mechanics, rules, tuning locations, and the file map.
 
-## Current state — 2026-08-09
+## Current state — 2026-08-10
 
-Deployed build: `2026.08.09-8`. Recently shipped (details in the archive):
-- **Stash economy sinks** — Shard-sink stash expansion + per-rarity auto-junk
-  (`config.js LOOT.stash`/`LOOT.autoJunk`, `progression.js`). Save fields
-  `stashUpgrades`/`autoJunkTier`/`autoJunkPaused` (save.js default + backfill).
-- **STASH tab controls** — a FILTER / SELL / CONFIG pill row
-  (`ui.js renderStashTab`, `.gear-mini-action`).
-- **Game-wide contrast** — `styles.css --text-dim` brightened to ~11:1.
+Deployed build: `2026.08.10-7`. Also recently shipped (details in the
+archive): Shard-sink **stash economy** (stash expansion + per-rarity
+auto-junk, `config.js LOOT.stash`/`LOOT.autoJunk`); **STASH tab controls**
+(FILTER/SELL/CONFIG pill row, `ui.js renderStashTab`); **game-wide contrast**
+(`styles.css --text-dim` brightened to ~11:1).
+
+### Narrative & onboarding system (new, 2026.08.09-1 .. 2026.08.10-7)
+A full story layer was designed and built this pass: **Indy-7** (the snarky
+obsolete AI Core you defend) vs **Bratwurst-XL** (the efficiency-obsessed AI
+that wants it deleted). Full premise, arc, and per-level script live in
+**`NARRATIVE_DESIGN.md`** — read that first for any narrative work; this is
+just the map of what exists in code.
+
+- **First-load onboarding** — welcome/name-entry/3 story cards
+  (`src/onboarding.js` `playCards` state machine, `#story-overlay` in
+  `index.html`, rendered by `ui.js renderOnboardingCard`). Player name
+  (`playerName` save field) substitutes into copy everywhere via
+  `ui.js substituteName`/`storyCardHtml`, surfaces as a home-screen greeting,
+  and prefills the leaderboard nickname. Replayable via a REPLAY INTRO menu
+  button.
+- **Per-level story beats** — a pre-battle START card and a post-win overlay
+  narrative, first-play-only, data in `config.js NARRATIVE.beats` (keyed
+  `level_NNN: {start, win}`). World-end levels (5/10/15/20) interleave an
+  Indy-7 ↔ Bratwurst-XL exchange. Gating: `narrativeSeen` save field +
+  `progression.js shouldShowBeat`/`markBeatSeen`; existing players are spared
+  retroactive story via `backfillNarrativeSeen` (marks already-completed
+  levels seen). A ▶ STORY button on the level-detail sheet replays any
+  level's beats on demand without touching seen-state.
+- **In-battle barks** — a non-blocking ticker (`#bark-ticker`, always
+  `pointer-events:none`, pinned under the top HUD — NOT the old mid-screen
+  `#milestone-toast`, which got reverted for blocking tower placement) shows
+  boss-arrival Bratwurst-XL/Indy-7 banter (once per level's first play,
+  `${levelId}.boss` beat) and tower placement one-liners (once ever per tower
+  type, `seenTowerBarks`). A **STORY BANTER ON/OFF** menu toggle
+  (`barksEnabled` save field) silences all of it. `ui.js showBark(speaker,
+  text)` — `speaker` is a string code (`"indy"`/`"bratwurst"`, class-colored)
+  or a `{name,color}` object (a tower, inline-tinted). **Enemy-type intros
+  (first-ever appearance of Basic/Fast/Armored/Boss/Splitter/Regenerator)
+  currently ALSO use this ticker but are being rebuilt as a pause-and-tap
+  card instead — see Active/deferred work below; don't extend the ticker
+  path for enemy intros.**
+- **Character avatars** — Indy-7 (spinning green hexagon, the Core's own
+  shape) and Bratwurst-XL (counter-rotating yellow squares, the spawn
+  portal's shape) as inline SVG, line-stroke eyes that change by mood
+  (`ui.js speakerAvatarSvg`/`avatarEye`), shown beside the speaker name on
+  story cards, the tutorial card, and world-end overlay beats. Speaker names
+  are unified green (Indy)/yellow (Bratwurst) via `--indy-color`/
+  `--brat-color` tokens on 5 specific `hl-indy`/`hl-villain` rule-pairs — all
+  other `--neon-cyan`/`--neon-red` UI is untouched.
+- **"Meet the Squad"** replaced the old level-2 auto-opened gear-panel/rules
+  wall (`main.js startLevel`, `NARRATIVE.squad` cards) — new players get an
+  Indy-7-narrated intro to Laser/Pulse/Slow; existing players (already
+  `seenTowerGuide`) skip it. The gear panel no longer auto-opens at L2.
+- **L1 tutorial reworked** in Indy-7's voice (`config.js TUTORIAL`, still
+  driven by `src/tutorial.js`), plus two new explainer steps (CREDITS,
+  CORE/lose-condition) and phone-feedback polish: the welcome step spotlights
+  the Core itself (`target:"core"`, was hidden under the dim veil); the
+  compact spotlight-pointer banners now match the card's cyan styling, show
+  Indy's nameplate, and float near the actual target instead of a fixed
+  corner (`ui.js positionTutorialCard`).
+- **L20 renamed** "No Man's Land" → **"Zero Overhead"** (`src/levels.js`, ties
+  the menu label to Indy's in-fiction joke at the L20 start card).
+
+**Not yet built** (see Active/deferred work + the dedicated plan files):
+enemy-intro pause-and-tap rebuild, the P5 gear-rules card at the L2→L3 seam,
+an end-of-L1 skill-point walkthrough.
 
 The campaign is **four worlds / 20 levels**. World 4 (SINGULARITY,
 `level_016`–`level_020`, builds `2026.08.08-1`..`-18`) has **one spotlight
@@ -223,6 +282,25 @@ BALANCE_LAB_PLAN.md  approved Balance Lab L0-L7 plan
 
 ## Active and deferred work
 
+- **NEXT — narrative/onboarding follow-ups** (design + copy already approved,
+  none of this is built yet — read the referenced plan file first, each is
+  self-contained):
+  - **Enemy-intro rebuild** — `ONBOARDING_ENEMY_INTROS_PLAN.md`. Move
+    enemy-type first-appearance intros off the non-blocking bark ticker onto
+    a pause-and-tap card (reusing the tutorial's freeze-step pattern) —
+    player feedback: the ticker is unreadable mid-fight and the copy needs an
+    explicit weak-to/resists tag. Copy is written and sourced against
+    `balance-data.json` in that file; only the pause/resume mechanism needs
+    building. Boss barks and tower barks stay on the ticker unchanged.
+  - **P5 gear-rules card** — `NARRATIVE_DESIGN.md` §8. An Indy-7-voiced
+    gear/mastery explainer card at the L2→L3 seam (the useful half of the
+    old auto-guide that "Meet the Squad" didn't carry over).
+  - **End-of-L1 skill-point walkthrough** — not yet spec'd. Player earns +1
+    skill point per level won; new players should be walked through spending
+    their first one at the end of L1.
+  - **Minor:** story copy occasionally uses `*emphasis*` markdown but
+    `ui.js storyCardHtml` doesn't parse it (asterisks render literally
+    in-game). Not reported by the player yet; cheap cleanup whenever.
 - **DONE — Balance Lab (L0-L7):** `BALANCE_LAB_PLAN.md`. Data/schema migration,
   the localhost-only save/restore API in `serve.ps1`, the editable
   `balance-lab.html` with revision history, and L7 QA/docs — all complete and
@@ -252,10 +330,16 @@ BALANCE_LAB_PLAN.md  approved Balance Lab L0-L7 plan
 - `WORLD_4_PLAN.md` — World 4 (SINGULARITY) design + original maps/waves
   (several levels have since diverged in balance passes; L19 fully redesigned).
 - `GAME_BRIEF.md` — original feature specification.
-- `NARRATIVE_DESIGN.md` — story bible (design locked, not yet built): Indy-7 /
-  Bratwurst-XL / tower personas, the campaign arc + full per-level script, the
-  L1→L2 tower-intro overhaul, and the delivery/save model. New-player
-  onboarding + campaign narrative initiative.
+- `NARRATIVE_DESIGN.md` — story bible: Indy-7 / Bratwurst-XL / tower personas,
+  the campaign arc + full per-level script, the delivery/save model. Most of
+  it is now BUILT (see "Current state" above) — read it for the story itself
+  and for what's still pending.
+- `ONBOARDING_P1_PLAN.md` .. `ONBOARDING_AV_PLAN.md` — build specs for each
+  shipped narrative phase (onboarding intro, per-level beats, the bark
+  ticker, Meet the Squad, character avatars); kept for reference/pattern.
+- `ONBOARDING_ENEMY_INTROS_PLAN.md` — approved copy + delivery decision for
+  the NOT-YET-BUILT enemy-intro pause-and-tap rebuild (see Active/deferred
+  work above).
 - `LOOT_DESIGN.md` / `GEAR_UI_DESIGN.md` — loot and equipment design/history.
 - `CIRCUIT_MENU_DESIGN.md` — menu-board design/history.
 - `SUPABASE_SETUP.md` — telemetry and leaderboard database setup.
