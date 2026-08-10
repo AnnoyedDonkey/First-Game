@@ -13,7 +13,7 @@ import {
   getProgress, getSkillPoints, shouldShowTowerGuide, markTowerGuideSeen,
   forfeitBattle, equipItem, unequipItem, debugGrantGear, getSkillsSnapshot,
   getUnlockedSpeeds, shouldShowOnboarding, shouldShowTutorial,
-  shouldShowBeat, markBeatSeen,
+  shouldShowBeat, markBeatSeen, shouldShowEnemyIntro, markEnemyIntroSeen,
 } from "./progression.js";
 import { render } from "./renderer.js";
 import { bindCanvasInput } from "./input.js";
@@ -24,6 +24,7 @@ import {
   initSkillTree, showLevelSelect, openSkillTree, hideOverlay,
   initSpeedControls, openTowerGuide, onExitButtonTap, openLeaderboard,
   openGearPanel, showMilestoneToast, updateTutorialOverlay, maybeShowTileInfo,
+  showBark,
 } from "./ui.js";
 import { submitScore, isEnabled as lbEnabled } from "./leaderboard.js";
 import {
@@ -47,6 +48,7 @@ const ctx = canvas.getContext("2d");
 
 let game = null;
 let overlayShown = false;
+let barkState = null; // in-battle bark driver state (P3-revival), reset per startLevel
 
 function refreshDeployedGear(towerName) {
   if (!game) return;
@@ -83,6 +85,7 @@ window.gear = {
 function startLevel(level, endless = false) {
   game = createGame(level, TILE_SIZE, endless);
   overlayShown = false;
+  barkState = { bossBarked: false };
   hideOverlay();
   // Clear any leftover selection from the previous battle.
   uiState.selectedType = null;
@@ -509,6 +512,33 @@ function checkEndState() {
 // and rAF is paused while the tab is hidden.
 window.checkEndState = () => checkEndState();
 
+// Debug handle: fire the bark driver from the console. Same rationale as
+// checkEndState above — updateBarks normally only runs inside frame(),
+// which needs live rAF ticks a headless pane/bot sim can't produce.
+window.updateBarks = () => updateBarks(game);
+
+// In-battle barks (P3-revival): once-per-type Indy-7 enemy intros, plus a
+// one-time Indy-7/Bratwurst-XL banter pair the first time a boss appears in
+// a level. Delivered via ui.js showBark on the non-blocking #bark-ticker —
+// NOT the mid-screen milestone toast (that's the defect the old P3 got
+// reverted for). Skipped in Endless (no NARRATIVE pacing there) and while
+// the win/loss overlay is up.
+function updateBarks(game) {
+  if (!game || game.endless || !NARRATIVE.enabled || !barkState) return;
+  for (const e of game.enemies) {
+    if (shouldShowEnemyIntro(e.type) && NARRATIVE.enemyIntros[e.type]) {
+      markEnemyIntroSeen(e.type);
+      showBark("indy", NARRATIVE.enemyIntros[e.type]);
+    }
+    if (e.type === "boss" && !barkState.bossBarked) {
+      barkState.bossBarked = true;
+      showBark("bratwurst", pickOne(NARRATIVE.bratwurstBarks));
+      showBark("indy", pickOne(NARRATIVE.indyRoasts));
+    }
+  }
+}
+const pickOne = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
 // ---------- Game loop ----------
 let lastTime = performance.now();
 
@@ -530,6 +560,9 @@ function frame(now) {
     // Drain any milestone toasts queued by this tick's wave-clear (B5).
     if (game.newMilestoneToasts && game.newMilestoneToasts.length) {
       while (game.newMilestoneToasts.length) showMilestoneToast(game.newMilestoneToasts.shift());
+    }
+    if (!overlayShown && (game.phase === "wave" || game.phase === "countdown" || game.phase === "ready")) {
+      updateBarks(game);
     }
     render(ctx, game, game.time, uiState);
     updateHUD(game);

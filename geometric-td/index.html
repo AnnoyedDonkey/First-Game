@@ -97,6 +97,14 @@
     <main id="game-area">
       <canvas id="game-canvas"></canvas>
 
+      <!-- In-battle barks (P3-revival): non-blocking ticker pinned under the
+           top HUD — Indy-7 enemy-type intros + Indy-7/Bratwurst-XL boss
+           banter. pointer-events:none always; never covers the build area
+           or eats a tower-placement tap (that's why the old mid-screen
+           #milestone-toast version was reverted). Driven by ui.js showBark,
+           fired from main.js updateBarks(); copy in config.js NARRATIVE. -->
+      <div id="bark-ticker" class="hidden" aria-live="polite"></div>
+
       <!-- Win / loss overlay -->
       <div id="overlay" class="hidden">
         <h1 id="overlay-title"></h1>

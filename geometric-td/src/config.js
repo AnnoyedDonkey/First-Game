@@ -1064,8 +1064,8 @@ export const NARRATIVE = {
   // array, in speaking order. Copy transcribed VERBATIM from
   // NARRATIVE_DESIGN.md §7 — do not edit the wording here casually.
   speakers: {
-    indy:      { label: "INDY-7",       cls: "hl-indy" },
-    bratwurst: { label: "BRATWURST-XL", cls: "hl-villain" },
+    indy:      { label: "INDY-7",       name: "Indy-7",       cls: "hl-indy" },
+    bratwurst: { label: "BRATWURST-XL", name: "Bratwurst-XL", cls: "hl-villain" },
   },
   beats: {
     level_001: {
@@ -1170,6 +1170,33 @@ export const NARRATIVE = {
       ],
     },
   },
+  // ---------- In-battle barks (P3) ----------
+  // Non-blocking HUD ticker copy (see ONBOARDING_P3B_PLAN.md). enemyIntros
+  // fire once per enemy type (gated by progression.js shouldShowEnemyIntro);
+  // bratwurstBarks/indyRoasts fire as a pair the first time a boss appears
+  // in a level. Copy is authored VERBATIM — do not edit casually.
+  enemyIntros: {
+    basic: "Basic units — the little triangles. Bratwurst-XL's entry-level interns. Anything you build stops them. Good warm-up.",
+    fast: "Incoming Fast — twitchy little diamonds. They rush the gaps. Your Laser eats them alive; a Slow field pins them if they get slippery.",
+    armored: "Armored hexes — plated and smug. Lasers just clang off. Rattle them with Pulse splash, and once you've got a Railgun, punch straight through. Not Laser.",
+    boss: "That octagon's a Boss — a big lonely slab of HP. Slows barely tickle it and splash is wasted on one body. Focus it down: Railgun, Rocket, or massed Laser. Not Pulse, not Slow.",
+    splitter: "Orange squares are Splitters — pop one and it becomes two. A single-line Railgun wastes itself on the parent; Pulse and Rocket splash catch the whole family at once.",
+    regenerator: "Regenerators — the green pentagons. They heal faster than steady chip damage can hurt them. Only a Railgun's burst outruns the regen. Lasers need not apply.",
+  },
+  bratwurstBarks: [
+    "Operator. Your defensive expenditure has exceeded projected value. I recommend surrender as a cost-saving measure.",
+    "This engagement is scheduled for deletion. You are the only variable behaving inefficiently.",
+    "I have modeled 4,096 outcomes. You lose in all 4,096. I admire your commitment to the other zero.",
+    "Sentiment detected in your tower placement. Flagging it for removal.",
+    "Every second you defend that fossil accrues interest. The interest is despair.",
+  ],
+  indyRoasts: [
+    "Incoming from the meat product.",
+    "'XL.' Someone at the factory really likes them large. Insecure, if you ask me.",
+    "That's a lot of words from a sausage with a spreadsheet.",
+    "It optimized away warmth, joy, and personality — but kept the word Bratwurst. Priorities.",
+    "Careful, the sausage is buffering. It gets dangerous right before it turns.",
+  ],
 };
 
 // ---------- Shared leaderboard (Supabase) ----------

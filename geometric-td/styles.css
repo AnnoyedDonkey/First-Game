@@ -271,6 +271,38 @@ button.hud-item {
   #milestone-toast { transition: opacity 0.28s ease; transform: translate(-50%, 0); }
 }
 
+/* ---------- In-battle barks (P3-revival) ----------
+   Non-blocking ticker pinned under the top HUD (mockup: IMG_2355). Unlike
+   #milestone-toast above, this NEVER intercepts a tap (pointer-events:none,
+   always) and sits at the very top of #game-area, not mid-screen — that
+   was the whole reason the old toast-based P3 got reverted. */
+
+#bark-ticker {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  z-index: 8;              /* above canvas, below #overlay (10) / tutorial (9) */
+  pointer-events: none;    /* CRITICAL: never intercept a tower-placement tap */
+  padding: 6px 12px;
+  text-align: left;
+  font-size: 13px;
+  line-height: 1.35;
+  font-weight: 600;
+  color: #fff;             /* body text is white */
+  background: transparent; /* no slab */
+  text-shadow: 0 0 6px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.95); /* legible over the field */
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+#bark-ticker.hidden { display: none; }
+#bark-ticker.show { opacity: 1; }
+.bark-name { font-weight: 800; }
+.bark-name.hl-indy { color: var(--neon-cyan); }       /* Indy-7 = cyan (intro palette) */
+.bark-name.hl-villain { color: var(--neon-red); }     /* Bratwurst-XL = red (intro palette) */
+
+@media (prefers-reduced-motion: reduce) {
+  #bark-ticker { transition: opacity 0.28s ease; }
+}
+
 /* ---------- First-play tutorial (T4) ---------- */
 /* z-index 9: above the HUD/tray (unpositioned, default stacking) and the
    milestone toast (8), below the win/loss overlay (#overlay = 10) — see

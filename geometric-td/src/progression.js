@@ -11,7 +11,7 @@
 import {
   endlessTrackFor, LOOT, SKILLS, SKILL_VALUES, SKILL_TIERS, TOWER_UPGRADES, TOWERS,
   TOWER_SKILL_SPEC, TOWER_SKILL_LAYOUT, ECONOMY_SKILL_SPEC, ECONOMY_LAYOUT, ECONOMY,
-  GAME_SPEED_SKILL, LEADERBOARD,
+  GAME_SPEED_SKILL, LEADERBOARD, NARRATIVE,
 } from "./config.js";
 import { levelMilestonesFor, updateMilestoneResults } from "./milestones.js";
 import { loadSave, writeSave, clearSave } from "./save.js";
@@ -70,6 +70,8 @@ backfillGear();
 migrateRosterNames();
 state.narrativeSeen ||= {};
 backfillNarrativeSeen(); // P2: spare existing players a retroactive story dump
+state.seenEnemyIntros ||= [];
+backfillEnemyIntros(); // P3: spare existing players retroactive enemy tutorials
 
 function backfillGear() {
   state.roster ||= [];
@@ -203,6 +205,24 @@ function backfillNarrativeSeen() {
         state.narrativeSeen[id] = true;
         changed = true;
       }
+    }
+  }
+  if (changed) writeSave(state);
+}
+
+// Spare veterans (anyone with at least one completed level) a retroactive
+// dump of enemy-tutorial barks for a roster they already know by heart —
+// mark every NARRATIVE.enemyIntros key seen. Brand-new saves (no
+// completions) are untouched and see each intro the first time that type
+// actually spawns. Idempotent — safe to run every load.
+function backfillEnemyIntros() {
+  state.seenEnemyIntros ||= [];
+  if ((state.completedLevels || []).length === 0) return;
+  let changed = false;
+  for (const type of Object.keys(NARRATIVE.enemyIntros || {})) {
+    if (!state.seenEnemyIntros.includes(type)) {
+      state.seenEnemyIntros.push(type);
+      changed = true;
     }
   }
   if (changed) writeSave(state);
@@ -401,6 +421,18 @@ export function shouldShowBeat(id) {
 export function markBeatSeen(id) {
   if (state.narrativeSeen[id]) return;
   state.narrativeSeen[id] = true;
+  writeSave(state);
+}
+
+// In-battle enemy intros (P3): once-ever per type, first campaign
+// appearance, gated the same way as story beats above. Veterans are spared
+// via backfillEnemyIntros() at load.
+export function shouldShowEnemyIntro(type) {
+  return !state.seenEnemyIntros.includes(type);
+}
+export function markEnemyIntroSeen(type) {
+  if (state.seenEnemyIntros.includes(type)) return;
+  state.seenEnemyIntros.push(type);
   writeSave(state);
 }
 

@@ -115,6 +115,7 @@ const el = {
   overlayItems: document.getElementById("overlay-items"),
   dropReveal: document.getElementById("drop-reveal"),
   milestoneToast: document.getElementById("milestone-toast"),
+  barkTicker: document.getElementById("bark-ticker"),
   tutorialOverlay: document.getElementById("tutorial-overlay"),
   tutorialFreezeCatcher: document.getElementById("tutorial-freeze-catcher"),
   tutorialCard: document.getElementById("tutorial-card"),
@@ -2928,6 +2929,37 @@ export function showMilestoneToast(text) {
   if (!el.milestoneToast) return;
   toastQueue.push(text);
   if (!toastActive) runNextToast();
+}
+
+// In-battle barks (P3-revival): non-blocking ticker pinned under the top
+// HUD (#bark-ticker, pointer-events:none — see styles.css). Mirrors the
+// milestone-toast queue pattern above but never intercepts a tap and never
+// covers the build area. Body text stays plain white; only the speaker
+// prefix is colored.
+const barkQueue = [];
+let barkActive = false;
+export function showBark(speakerCode, text) {
+  if (!el.barkTicker) return;
+  barkQueue.push({ speakerCode, text });
+  if (!barkActive) runNextBark();
+}
+function runNextBark() {
+  const t = el.barkTicker;
+  if (!t || barkQueue.length === 0) { barkActive = false; return; }
+  barkActive = true;
+  const { speakerCode, text } = barkQueue.shift();
+  const spk = NARRATIVE.speakers?.[speakerCode] || { name: "Indy-7", cls: "hl-indy" };
+  // Body is WHITE (escaped + {name}-substituted, no keyword coloring — "mostly
+  // white text" per the mockup); only the speaker prefix is colored.
+  t.innerHTML = `<span class="bark-name ${spk.cls}">${escapeHtml(spk.name)}:</span> ` +
+                escapeHtml(substituteName(text));
+  t.classList.remove("hidden");
+  void t.offsetWidth;      // restart the fade
+  t.classList.add("show");
+  setTimeout(() => {
+    t.classList.remove("show");
+    setTimeout(() => { t.classList.add("hidden"); runNextBark(); }, 320); // after fade-out
+  }, 4500);                // on-screen dwell per bark
 }
 
 // ---- Special-tile tooltip ----
