@@ -3240,12 +3240,50 @@ function tutorialElementBox(elm, pad = 4) {
   return { left: r.left - pad, top: r.top - pad, width: r.width + pad * 2, height: r.height + pad * 2 };
 }
 
+// A box around the AI Core (the last path point) so the welcome step can
+// spotlight "that green hexagon" instead of leaving it under the dim veil.
+function tutorialCoreBox(game) {
+  const canvasEl = document.getElementById("game-canvas");
+  if (!canvasEl || !game || !game.grid) return null;
+  const rect = canvasEl.getBoundingClientRect();
+  if (!rect.width || !canvasEl.width) return null;
+  const scale = rect.width / canvasEl.width;
+  const pts = game.grid.pathPoints;
+  const p = pts && pts[pts.length - 1];
+  if (!p) return null;
+  const r = game.grid.tileSize * scale * 0.75;
+  return { left: rect.left + p.x * scale - r, top: rect.top + p.y * scale - r, width: r * 2, height: r * 2 };
+}
+
 function tutorialTargetBox(game, target) {
   if (target === "trayLaser") return tutorialElementBox(towerButtonRefs.laser);
   if (target === "waveButton") return tutorialElementBox(el.waveButton);
   if (target === "tile") return tutorialTileBox(game, TUTORIAL.placementTile);
   if (target === "blockedTile") return tutorialTileBox(game, TUTORIAL.blockedTileCallout);
+  if (target === "core") return tutorialCoreBox(game);
   return null;
+}
+
+// Banner steps (non-freeze spotlight steps) float their card just above the
+// highlighted target so the guidance sits right where the player must tap.
+// Modal/freeze steps clear the inline placement so the CSS centering wins.
+function positionTutorialCard(step, box) {
+  const card = el.tutorialCard;
+  if (!card) return;
+  if (isFreezeStep(step) || !box) {
+    card.style.left = card.style.top = card.style.right = card.style.transform = card.style.margin = "";
+    return;
+  }
+  const cw = card.offsetWidth, ch = card.offsetHeight, pad = 12;
+  let left = box.left + box.width / 2 - cw / 2;
+  left = Math.max(pad, Math.min(left, window.innerWidth - cw - pad));
+  let top = box.top - ch - 14;                       // above the target...
+  if (top < 60) top = box.top + box.height + 14;     // ...or below it if no room up top
+  card.style.left = `${left}px`;
+  card.style.top = `${top}px`;
+  card.style.right = "auto";
+  card.style.transform = "none";
+  card.style.margin = "0";
 }
 
 // Called every frame from main.js while a battle is running (cheap no-op
@@ -3255,11 +3293,13 @@ function tutorialTargetBox(game, target) {
 export function updateTutorialOverlay(game) {
   if (!el.tutorialSpotlight || !isTutorialActive()) return;
   const step = currentTutorialStep();
-  if (!step || !step.target) return;
-  const box = tutorialTargetBox(game, step.target);
-  if (!box) return;
-  el.tutorialSpotlight.style.left = `${box.left}px`;
-  el.tutorialSpotlight.style.top = `${box.top}px`;
-  el.tutorialSpotlight.style.width = `${box.width}px`;
-  el.tutorialSpotlight.style.height = `${box.height}px`;
+  if (!step) return;
+  const box = step.target ? tutorialTargetBox(game, step.target) : null;
+  if (box) {
+    el.tutorialSpotlight.style.left = `${box.left}px`;
+    el.tutorialSpotlight.style.top = `${box.top}px`;
+    el.tutorialSpotlight.style.width = `${box.width}px`;
+    el.tutorialSpotlight.style.height = `${box.height}px`;
+  }
+  positionTutorialCard(step, box);
 }

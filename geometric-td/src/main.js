@@ -227,6 +227,7 @@ bindCanvasInput(canvas, {
       // (P4). Campaign only; once per type per battle (barkState.placedTypes
       // is reset each startLevel).
       if (result.ok && !game.endless && getBarksEnabled() && result.tower &&
+          !tutorial.isTutorialActive() && // stays quiet under the tutorial dim; speaks on the next placement
           shouldShowTowerBark(result.tower.type) &&
           NARRATIVE.towerBarks?.[result.tower.type]) {
         markTowerBarkSeen(result.tower.type);

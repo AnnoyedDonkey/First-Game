@@ -1012,6 +1012,7 @@ export const TUTORIAL = {
       id: "welcome",
       cta: "TAP TO START",
       mood: "happy",
+      target: "core", // spotlight the AI Core (Indy) so "that green hexagon" is visible, not dimmed
       text: "See that green hexagon at the end of the track, {name}? That's me. Your job: build towers so the shapes never reach it. Let me show you the ropes.",
     },
     {

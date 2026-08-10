@@ -361,15 +361,16 @@ button.hud-item {
    (instead of true 50% centering) so it can never grow into the skip
    button regardless of step text length. */
 #tutorial-card.banner {
+  /* Fallback placement; ui.js positionTutorialCard() floats it near the
+     spotlighted target each frame. Inherits the base card's cyan border. */
   top: calc(env(safe-area-inset-top) + 14px);
   left: 12px;
-  right: 140px;
+  right: auto;
   transform: none;
-  width: fit-content;
-  margin: 0 auto;
-  padding: 9px 16px;
-  border-color: var(--neon-yellow);
-  box-shadow: 0 0 18px rgba(255, 226, 74, 0.3);
+  width: 230px;
+  max-width: calc(100% - 24px);
+  margin: 0;
+  padding: 11px 16px;
 }
 
 #tutorial-card-text {
@@ -379,11 +380,9 @@ button.hud-item {
   letter-spacing: 0.3px;
 }
 #tutorial-card.banner #tutorial-card-text {
-  color: var(--neon-yellow);
-  font-size: 12px;
-  letter-spacing: 1px;
-  /* Prefers one line, but the fit-content/right-constrained banner (above)
-     can wrap instead of overflowing into #tutorial-skip on narrow screens. */
+  color: var(--text);
+  font-size: 12.5px;
+  letter-spacing: 0.4px;
   white-space: normal;
 }
 
@@ -414,7 +413,12 @@ button.hud-item {
   font-size: 12px; letter-spacing: 2px; font-weight: 800;
   color: var(--indy-color); text-shadow: 0 0 8px rgba(74, 255, 161, 0.5);
 }
-#tutorial-card.banner #tutorial-speaker-row { display: none; }
+/* Compact nameplate on the banner steps (shown, not hidden — Indy narrates
+   these too). */
+#tutorial-card.banner #tutorial-speaker-row { margin-bottom: 6px; }
+#tutorial-card.banner #tutorial-avatar,
+#tutorial-card.banner #tutorial-avatar svg { width: 24px; height: 24px; }
+#tutorial-card.banner #tutorial-speaker { font-size: 11px; }
 
 /* Ring over the REAL target element, repositioned every frame (ui.js
    updateTutorialOverlay). The oversized box-shadow spread is the
