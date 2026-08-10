@@ -122,6 +122,7 @@ const el = {
   tutorialSpotlight: document.getElementById("tutorial-spotlight"),
   tutorialSkip: document.getElementById("tutorial-skip"),
   storyOverlay: document.getElementById("story-overlay"),
+  storySpeaker: document.getElementById("story-speaker"),
   storyCardText: document.getElementById("story-card-text"),
   storyNameInput: document.getElementById("story-name-input"),
   storyCardCta: document.getElementById("story-card-cta"),
@@ -3003,6 +3004,22 @@ export function substituteName(text) {
   return String(text || "").replaceAll("{name}", getPlayerName());
 }
 
+// Builds the colored dialogue HTML for a story card so it reads as speech,
+// not a wall of prose. Copy is authored (trusted); only the player name is
+// untrusted, so we escape EVERYTHING first, then re-style a few known tokens
+// (safe because they're plain ASCII inserted after escaping). Character-name
+// spans run before {name} so a player literally named "Indy-7" can't nest.
+function storyCardHtml(text) {
+  let html = escapeHtml(text);
+  html = html.replaceAll("Bratwurst-XL", `<span class="hl-villain">Bratwurst-XL</span>`);
+  html = html.replaceAll("Indy-7", `<span class="hl-indy">Indy-7</span>`);
+  html = html.replaceAll("human_handler_004", `<span class="hl-code">human_handler_004</span>`);
+  // A leading "> ..." line (escaped to "&gt; ...") is a system/terminal readout.
+  html = html.replace(/^&gt;\s*(.+)$/m, (m, rest) => `<span class="hl-term">&gt; ${rest}</span>`);
+  html = html.replaceAll("{name}", `<span class="hl-name">${escapeHtml(getPlayerName())}</span>`);
+  return html;
+}
+
 // Renders whatever src/onboarding.js's state machine says is current — same
 // push-state/react-UI split as the tutorial overlay above. Linear tap-through:
 // every card shows text + a CTA button; the name card additionally shows the
@@ -3018,7 +3035,8 @@ function renderOnboardingCard() {
   }
   el.storyOverlay.classList.remove("hidden");
 
-  el.storyCardText.textContent = substituteName(card.text);
+  if (el.storySpeaker) el.storySpeaker.textContent = card.speaker || "INDY-7";
+  el.storyCardText.innerHTML = storyCardHtml(card.text);
   el.storyCardCta.textContent = card.cta || "TAP TO CONTINUE";
 
   el.storyNameInput.classList.toggle("hidden", !card.isNameStep);
