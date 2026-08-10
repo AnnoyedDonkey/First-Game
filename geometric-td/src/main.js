@@ -139,7 +139,7 @@ function startLevel(level, endless = false) {
     const beatId = `${level.id}.start`;
     if (beat?.start && shouldShowBeat(beatId) && !willShowTowerGuide && !willShowTutorial) {
       markBeatSeen(beatId);
-      playCards([{ text: beat.start, speaker: "indy", cta: "BEGIN" }]);
+      playCards([{ text: beat.start, speaker: "indy", mood: beat.startMood, cta: "BEGIN" }]);
     }
   }
 }

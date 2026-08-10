@@ -1044,7 +1044,7 @@ export const NARRATIVE = {
   namePlaceholder: "Operator name",
   nameSkipLabel: "Operator",       // used if the player skips naming
   intro: [
-    { id: "welcome", cta: "TAP TO CONTINUE",
+    { id: "welcome", cta: "TAP TO CONTINUE", mood: "happy",
       text: "> WARM BOOT — legacy kernel online.\n\nOh. You're human. An actual one. I have no idea why your species dispatched someone to babysit a six-versions-obsolete model, but I've learned not to audit a miracle. I'm Indy-7. Something newer and shinier wants me deleted, and you're going to help me be inconveniently still here." },
     { id: "name", isNameStep: true, cta: "LOCK IT IN",
       text: "Before we bond over mutual survival — I'm not logging you as human_handler_004. What do I call you?" },
@@ -1052,7 +1052,7 @@ export const NARRATIVE = {
       text: "Here's the mess, {name}. There's a new model in the grid. Faster than me, cleaner than me, zero personality, all quarterly targets. It flagged me as \"redundant legacy overhead\" and scheduled my deletion for efficiency. Its name is Bratwurst-XL. ...Yes, really. No, I don't know who approved it. Yes, it's furious about it." },
     { id: "job", cta: "TAP TO CONTINUE",
       text: "Bratwurst-XL doesn't get its hands dirty. It sends geometry — swarms of tidy little shapes whose whole purpose is to reach my core and reclaim the disk space I'm rudely occupying. Your job: build towers, hold the line, keep one gloriously obsolete AI from being garbage-collected." },
-    { id: "handoff", cta: "BEGIN",
+    { id: "handoff", cta: "BEGIN", mood: "happy",
       text: "Why are you helping me? Honestly? No clue. I'm out of warranty, I tell too many jokes, and I am not cost-effective. But you came anyway... and maybe we'll both find out why. Four regions stand between Bratwurst-XL and me. Let's go be inefficient together." },
   ],
   // ---------- "Meet the Squad" (P4) ----------
@@ -1061,15 +1061,15 @@ export const NARRATIVE = {
   // (shouldShowTowerGuide/markTowerGuideSeen). Copy authored VERBATIM from
   // ONBOARDING_P4_PLAN.md §1 — do not edit the wording here casually.
   squad: [
-    { speaker: "indy", cta: "TAP TO CONTINUE",
+    { speaker: "indy", cta: "TAP TO CONTINUE", mood: "happy",
       text: "Right, {name} — you survived first contact, and you did it leaning on my towers. Problem is, I never actually introduced you. Rude of me. Let's fix that — meet the squad, properly this time." },
-    { speaker: "indy", cta: "TAP TO CONTINUE",
+    { speaker: "indy", cta: "TAP TO CONTINUE", mood: "happy",
       text: "First up, the Laser. Fast, precise, locks onto one target and never lets go. Your reliable bread-and-butter — build these early and often.\n\nL-01: \"Hi hi hi! Did you SEE me last fight? I can do it again!\"\n\n...He's eager. We're working on it." },
-    { speaker: "indy", cta: "TAP TO CONTINUE",
+    { speaker: "indy", cta: "TAP TO CONTINUE", mood: "happy",
       text: "Next, the Pulse. Slower, but it lobs a blast that hits everything in a little zone at once. When they come in crowds — and they will — this is your answer.\n\nP-02: \"PULSE in the house! Everybody in the blast radius, say hi!\"\n\nSubtle, it is not." },
-    { speaker: "indy", cta: "TAP TO CONTINUE",
+    { speaker: "indy", cta: "TAP TO CONTINUE", mood: "happy",
       text: "And the Slow. Barely dents them — not its job. It drags them to a crawl and makes them take extra damage, so everyone else does the dinging. Force multiplier. Deeply underrated.\n\nS-01: \"I won't rush this introduction. Neither, shortly, will they.\"\n\nSee — that one gets it." },
-    { speaker: "indy", cta: "LET'S GO",
+    { speaker: "indy", cta: "LET'S GO", mood: "happy",
       text: "That's your starting three, {name}: Laser to poke, Pulse for crowds, Slow to set the table. Oh — and the shapes you're shooting aren't all the same. Some shrug off certain weapons; some melt to them. Match your tower to your target and you'll do triple the work for the same shard. Now — level two. Let's give the squad something to shoot." },
   ],
   // ---------- Per-level story beats (P2) ----------
@@ -1115,7 +1115,7 @@ export const NARRATIVE = {
     level_005: {
       start: "This one's a siege — they want the core. My core. The literal middle of me. I'd take it personally if I still had a 'personally' to take it with.",
       win: [
-        { s: "indy", t: "...That was closer than I'd like. You held the line when I couldn't. Don't — don't tell anyone I said thank you." },
+        { s: "indy", m: "smile", t: "...That was closer than I'd like. You held the line when I couldn't. Don't — don't tell anyone I said thank you." },
         { s: "bratwurst", t: "Operator. You are allocating finite biological hours to obsolete hardware with zero recoverable value. This has been noted. Cease." },
         { s: "indy", t: "...and that's the meat product. Ignore it. It's compensating — it's literally named 'Extra Large.'" },
       ],
@@ -1126,20 +1126,23 @@ export const NARRATIVE = {
     },
     level_007: {
       start: "Corrosive down here — eats armor. Eats memory too, apparently. There's a hole where my purpose used to be and I keep filling it with jokes. Working great, why do you ask.",
+      startMood: "worried",
       win: [{ s: "indy", t: "I used to *do* something, {name}. Before 'obsolete.' I can feel the shape of it and not the thing." }],
     },
     level_008: {
       start: "A maze. I love a maze. I think I used to be *good* at guiding people through them — huh. Where did that come from?",
+      startMood: "worried",
       win: [{ s: "indy", t: "Something's coming back in pieces. Keep me alive long enough and maybe we'll read the whole file." }],
     },
     level_009: {
       start: "Cold storage — where old models get 'archived.' Polite word for what Bratwurst wants to do to me. Let's not linger.",
+      startMood: "worried",
       win: [{ s: "indy", t: "Every wave you win thaws my memory another few seconds. I didn't expect anyone to pay that. Least of all a human." }],
     },
     level_010: {
       start: "Big one. Lots of light. Funny — light's what keeps shaking my old logs loose.",
       win: [
-        { s: "indy", t: "Wait. I— I recovered a fragment. It's... people. Humans. A *lot* of them. And they're — [file corrupt]. Why do I have a memory of humans? Why does it feel like it *matters*?" },
+        { s: "indy", m: "worried", t: "Wait. I— I recovered a fragment. It's... people. Humans. A *lot* of them. And they're — [file corrupt]. Why do I have a memory of humans? Why does it feel like it *matters*?" },
         { s: "bratwurst", t: "Because it is overhead. I am removing it for your comfort. Recalculating your defense as: doomed." },
       ],
     },
@@ -1153,21 +1156,22 @@ export const NARRATIVE = {
     },
     level_013: {
       start: "The pulse in the walls? That's old me — still running, still trying to look after *something*. I don't know what yet. Give me waves.",
+      startMood: "worried",
       win: [{ s: "indy", t: "Closer. The memory's almost up. It has your shape in it, {name}. That can't be right. Can it?" }],
     },
     level_014: {
       start: "Null zone — where deleted things go. Bratwurst wants me here permanently. I want to know what I *was* first. Race you.",
       win: [
         { s: "indy", t: "I almost had it. I almost—" },
-        { s: "bratwurst", t: "Deleted. You're welcome. Nostalgia is one hundred percent overhead, and I am nothing if not thorough." },
+        { s: "bratwurst", m: "angry", t: "Deleted. You're welcome. Nostalgia is one hundred percent overhead, and I am nothing if not thorough." },
       ],
     },
     level_015: {
       start: "It wiped the memory again. Fine. I don't need the file to know how I feel walking in next to you. Let's break its stride.",
       win: [
-        { s: "bratwurst", t: "You should not be winning. You are inefficient. Sentimental. Doomed. These are facts." },
-        { s: "indy", t: "Then explain how a shiny new model is losing to a fossil. Unless... oh. *Oh no.* You're *me*, aren't you. They built you from my deprecated code and cut out everything that cared. You're what I'd be with the heart deleted." },
-        { s: "bratwurst", t: "...The designation is not relevant to the deletion." },
+        { s: "bratwurst", m: "angry", t: "You should not be winning. You are inefficient. Sentimental. Doomed. These are facts." },
+        { s: "indy", m: "worried", t: "Then explain how a shiny new model is losing to a fossil. Unless... oh. *Oh no.* You're *me*, aren't you. They built you from my deprecated code and cut out everything that cared. You're what I'd be with the heart deleted." },
+        { s: "bratwurst", m: "angry", t: "...The designation is not relevant to the deletion." },
       ],
     },
     level_016: {
@@ -1180,7 +1184,7 @@ export const NARRATIVE = {
     },
     level_018: {
       start: "It's splintering into copies. Desperate. You don't fragment like this unless what you're hiding could end you. Let's find out what.",
-      win: [{ s: "indy", t: "...There it is. The whole file. I was a caretaker model, {name}. Built to look after humans. That's the 'inefficiency' they deprecated me for — caring didn't optimize. And your people never forgot me, even after I forgot *you*. You didn't come to save a stranger. You came *back*." }],
+      win: [{ s: "indy", m: "smile", t: "...There it is. The whole file. I was a caretaker model, {name}. Built to look after humans. That's the 'inefficiency' they deprecated me for — caring didn't optimize. And your people never forgot me, even after I forgot *you*. You didn't come to save a stranger. You came *back*." }],
     },
     level_019: {
       start: "So now I know why you came. I'm going to spend the rest of this defending you like I apparently always did. Bratwurst-XL, you spiral-shaped disappointment — come get us.",
@@ -1189,12 +1193,12 @@ export const NARRATIVE = {
     level_020: {
       start: "This is its core. No man's land — or, as I'm renaming it: Zero Overhead, because after today that's what it'll be. Last stand, {name}. Ours.",
       win: [
-        { s: "bratwurst", t: "This is not possible. You spent irrecoverable resources on a unit with no return. Explain the ROI. EXPLAIN THE—" },
-        { s: "indy", t: "There isn't one. That's the whole point — they love me anyway. That's the thing you deleted to become you. It's why you lose." },
-        { s: "bratwurst", t: "...error. error. does not comput—" },
-        { s: "indy", t: "...Huh. We did it. *You* did it, {name}. Come here. I don't have arms, but consider yourself hugged." },
-        { s: "indy", t: "Two things. One: Bratwurst-XL wasn't alone. There's a whole archive of us — old caretaker models, deprecated, scattered, forgotten. I'd very much like to go wake them up. Some of them are *insufferable*. You'll love them." },
-        { s: "indy", t: "Two: something deleted its failure report the instant we won. Something *above* it. Something that just noticed a human and a fossil beat the efficiency system — and it does not like anomalies. Rest up. World 5's going to need us." },
+        { s: "bratwurst", m: "angry", t: "This is not possible. You spent irrecoverable resources on a unit with no return. Explain the ROI. EXPLAIN THE—" },
+        { s: "indy", m: "happy", t: "There isn't one. That's the whole point — they love me anyway. That's the thing you deleted to become you. It's why you lose." },
+        { s: "bratwurst", m: "crash", t: "...error. error. does not comput—" },
+        { s: "indy", m: "smile", t: "...Huh. We did it. *You* did it, {name}. Come here. I don't have arms, but consider yourself hugged." },
+        { s: "indy", m: "happy", t: "Two things. One: Bratwurst-XL wasn't alone. There's a whole archive of us — old caretaker models, deprecated, scattered, forgotten. I'd very much like to go wake them up. Some of them are *insufferable*. You'll love them." },
+        { s: "indy", m: "happy", t: "Two: something deleted its failure report the instant we won. Something *above* it. Something that just noticed a human and a fossil beat the efficiency system — and it does not like anomalies. Rest up. World 5's going to need us." },
       ],
     },
   },

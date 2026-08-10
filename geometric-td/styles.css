@@ -19,6 +19,8 @@
   --neon-yellow: #ffe24a;
   --neon-red: #ff4a5e;
   --neon-green: #4affa1;
+  --indy-color: #4affa1;   /* Indy-7 = the core's green */
+  --brat-color: #ffe24a;   /* Bratwurst-XL = the portal's yellow */
 }
 
 * {
@@ -296,8 +298,8 @@ button.hud-item {
 #bark-ticker.hidden { display: none; }
 #bark-ticker.show { opacity: 1; }
 .bark-name { font-weight: 800; }
-.bark-name.hl-indy { color: var(--neon-cyan); }       /* Indy-7 = cyan (intro palette) */
-.bark-name.hl-villain { color: var(--neon-red); }     /* Bratwurst-XL = red (intro palette) */
+.bark-name.hl-indy { color: var(--indy-color); text-shadow: 0 0 8px rgba(74,255,161,.5); }       /* Indy-7 = green (core) */
+.bark-name.hl-villain { color: var(--brat-color); text-shadow: 0 0 8px rgba(255,226,74,.5); }     /* Bratwurst-XL = yellow (portal) */
 
 @media (prefers-reduced-motion: reduce) {
   #bark-ticker { transition: opacity 0.28s ease; }
@@ -485,6 +487,10 @@ button.hud-item {
 
 /* Speaker nameplate + inline dialogue coloring (P1 color pass) — makes the
    story cards read as speech, not a wall of prose. */
+#story-speaker-row { display: flex; align-items: center; gap: 10px; }
+#story-avatar { flex: none; width: 38px; height: 38px; }
+#story-avatar:empty { display: none; }
+#story-avatar svg { width: 38px; height: 38px; display: block; }
 #story-speaker {
   font-size: 11px;
   font-weight: 700;
@@ -497,10 +503,10 @@ button.hud-item {
    removed as the active card's speaker changes (world-end Bratwurst-XL
    lines). hl-indy matches the element's own default cyan; kept explicit so
    add/remove is symmetrical. */
-#story-speaker.hl-indy { color: var(--neon-cyan); text-shadow: 0 0 8px rgba(53, 224, 255, 0.5); }
-#story-speaker.hl-villain { color: var(--neon-red); text-shadow: 0 0 8px rgba(255, 74, 94, 0.5); }
-#story-card-text .hl-indy { color: var(--neon-cyan); }
-#story-card-text .hl-villain { color: var(--neon-red); text-shadow: 0 0 6px rgba(255, 74, 94, 0.4); }
+#story-speaker.hl-indy { color: var(--indy-color); text-shadow: 0 0 8px rgba(74,255,161,.5); }
+#story-speaker.hl-villain { color: var(--brat-color); text-shadow: 0 0 8px rgba(255,226,74,.5); }
+#story-card-text .hl-indy { color: var(--indy-color); text-shadow: 0 0 8px rgba(74,255,161,.5); }
+#story-card-text .hl-villain { color: var(--brat-color); text-shadow: 0 0 6px rgba(255,226,74,.4); }
 #story-card-text .hl-name { color: var(--neon-yellow); font-weight: 700; text-shadow: 0 0 6px rgba(255, 226, 74, 0.4); }
 #story-card-text .hl-term {
   color: var(--neon-green);
@@ -2427,6 +2433,9 @@ button.hud-item {
   padding-top: 10px;
   border-top: 1px solid var(--panel-border);
 }
+.overlay-narrative-head { display: flex; align-items: center; gap: 8px; }
+.ov-avatar { flex: none; width: 30px; height: 30px; }
+.ov-avatar svg { width: 30px; height: 30px; display: block; }
 .overlay-narrative-speaker {
   font-size: 10px;
   font-weight: 700;
@@ -2434,16 +2443,16 @@ button.hud-item {
   text-transform: uppercase;
   margin-bottom: 4px;
 }
-.overlay-narrative-speaker.hl-indy { color: var(--neon-cyan); text-shadow: 0 0 8px rgba(53, 224, 255, 0.5); }
-.overlay-narrative-speaker.hl-villain { color: var(--neon-red); text-shadow: 0 0 8px rgba(255, 74, 94, 0.5); }
+.overlay-narrative-speaker.hl-indy { color: var(--indy-color); text-shadow: 0 0 8px rgba(74,255,161,.5); }
+.overlay-narrative-speaker.hl-villain { color: var(--brat-color); text-shadow: 0 0 8px rgba(255,226,74,.5); }
 .overlay-narrative-text {
   color: var(--text);
   font-size: 13px;
   line-height: 1.5;
   letter-spacing: 0.2px;
 }
-.overlay-narrative-text .hl-indy { color: var(--neon-cyan); }
-.overlay-narrative-text .hl-villain { color: var(--neon-red); text-shadow: 0 0 6px rgba(255, 74, 94, 0.4); }
+.overlay-narrative-text .hl-indy { color: var(--indy-color); text-shadow: 0 0 8px rgba(74,255,161,.5); }
+.overlay-narrative-text .hl-villain { color: var(--brat-color); text-shadow: 0 0 6px rgba(255,226,74,.4); }
 .overlay-narrative-text .hl-name { color: var(--neon-yellow); font-weight: 700; text-shadow: 0 0 6px rgba(255, 226, 74, 0.4); }
 .overlay-narrative-text .hl-code {
   font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;

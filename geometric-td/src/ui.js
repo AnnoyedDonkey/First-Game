@@ -125,6 +125,7 @@ const el = {
   tutorialSpotlight: document.getElementById("tutorial-spotlight"),
   tutorialSkip: document.getElementById("tutorial-skip"),
   storyOverlay: document.getElementById("story-overlay"),
+  storyAvatar: document.getElementById("story-avatar"),
   storySpeaker: document.getElementById("story-speaker"),
   storyCardText: document.getElementById("story-card-text"),
   storyNameInput: document.getElementById("story-name-input"),
@@ -814,9 +815,9 @@ function openLevelSheet(nd, world, pick) {
   if (hasStory) {
     document.getElementById("level-sheet-story").addEventListener("click", () => {
       const replayCards = [];
-      if (beat.start) replayCards.push({ text: beat.start, speaker: "indy", cta: "TAP TO CONTINUE" });
+      if (beat.start) replayCards.push({ text: beat.start, speaker: "indy", cta: "TAP TO CONTINUE", mood: beat.startMood });
       for (const line of beat.win || []) {
-        replayCards.push({ text: line.t, speaker: line.s, cta: "TAP TO CONTINUE" });
+        replayCards.push({ text: line.t, speaker: line.s, cta: "TAP TO CONTINUE", mood: line.m });
       }
       if (!replayCards.length) return;
       replayCards[replayCards.length - 1].cta = "DONE";
@@ -2788,7 +2789,10 @@ export function showOverlay({ title, subtitle, type, buttons, items, note, narra
         const cls = spk?.cls || "hl-indy";
         const label = spk?.label || "INDY-7";
         return `<div class="overlay-narrative-line">` +
-          `<div class="overlay-narrative-speaker ${cls}">${escapeHtml(label)}</div>` +
+          `<div class="overlay-narrative-head">` +
+            `<span class="ov-avatar">${speakerAvatarSvg(line.s, line.m)}</span>` +
+            `<div class="overlay-narrative-speaker ${cls}">${escapeHtml(label)}</div>` +
+          `</div>` +
           `<p class="overlay-narrative-text">${storyCardHtml(line.t)}</p>` +
           `</div>`;
       }).join("");
@@ -3106,6 +3110,48 @@ export function substituteName(text) {
   return String(text || "").replaceAll("{name}", getPlayerName());
 }
 
+// A speaker avatar built from the game's own track shapes: Indy-7 the green
+// hexagon core, Bratwurst-XL the twin yellow spawn squares. Eyes are line
+// strokes that change with `mood`; the shapes slowly spin (held still under
+// reduced-motion) while the eyes stay upright as the face. Returns "" for any
+// non-character speaker.
+function avatarEye(cx, cy, r, mood, side) {
+  switch (mood) {
+    case "happy":   return `<path d="M ${cx-r} ${cy+r*.55} L ${cx} ${cy-r*.7} L ${cx+r} ${cy+r*.55}"/>`;
+    case "smile":   return `<path d="M ${cx-r} ${cy-r*.2} Q ${cx} ${cy+r} ${cx+r} ${cy-r*.2}"/>`;
+    case "worried": return `<path d="M ${cx-r} ${cy+r*.3} Q ${cx} ${cy-r*.7} ${cx+r} ${cy+r*.3}"/>`;
+    case "smug":    return `<line x1="${cx-r}" y1="${cy-r*.1}" x2="${cx+r}" y2="${cy-r*.1}"/>`;
+    case "angry": { const inX = side==="l"?cx+r:cx-r, outX = side==="l"?cx-r:cx+r;
+                    return `<line x1="${outX}" y1="${cy-r*.6}" x2="${inX}" y2="${cy+r*.4}"/>`; }
+    case "crash":   return `<path d="M ${cx-r} ${cy-r} L ${cx+r} ${cy+r} M ${cx+r} ${cy-r} L ${cx-r} ${cy+r}"/>`;
+    default:        return `<line x1="${cx}" y1="${cy-r}" x2="${cx}" y2="${cy+r}"/>`; // neutral
+  }
+}
+function speakerAvatarSvg(code, mood) {
+  if (code !== "indy" && code !== "bratwurst") return "";
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const color = code === "indy" ? "var(--indy-color)" : "var(--brat-color)";
+  const eyeCol = code === "indy" ? "#eafff5" : "#fff7d1";
+  const m = mood || (code === "indy" ? "neutral" : "smug");
+  const spin = (child, dur, dir) => reduce ? child :
+    `<g>${child}<animateTransform attributeName="transform" attributeType="XML" type="rotate" from="0 50 50" to="${360*dir} 50 50" dur="${dur}" repeatCount="indefinite"/></g>`;
+  let shape, ey;
+  if (code === "indy") {
+    const pts = Array.from({length:6}, (_,i) => { const a = Math.PI/180*(60*i-90);
+      return `${(50+30*Math.cos(a)).toFixed(1)},${(50+30*Math.sin(a)).toFixed(1)}`; }).join(" ");
+    shape = spin(`<polygon points="${pts}" fill="none" stroke="${color}" stroke-width="3" stroke-linejoin="round"/>`, "16s", 1);
+    ey = 44;
+  } else {
+    const rect = (rot) => `<rect x="24" y="24" width="52" height="52" rx="2" fill="none" stroke="${color}" stroke-width="2.6" transform="rotate(${rot} 50 50)"/>`;
+    shape = spin(rect(-14), "9s", 1) + spin(rect(14), "9s", -1);
+    ey = 47;
+  }
+  const eyes = `<g fill="none" stroke="${eyeCol}" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">`
+    + avatarEye(41, ey, 6, m, "l") + avatarEye(59, ey, 6, m, "r") + `</g>`;
+  return `<svg viewBox="0 0 100 100" class="spk-avatar" aria-hidden="true">`
+    + `<g filter="drop-shadow(0 0 3px ${color})">${shape}${eyes}</g></svg>`;
+}
+
 // Builds the colored dialogue HTML for a story card so it reads as speech,
 // not a wall of prose. Copy is authored (trusted); only the player name is
 // untrusted, so we escape EVERYTHING first, then re-style a few known tokens
@@ -3142,6 +3188,9 @@ function renderOnboardingCard() {
     el.storySpeaker.textContent = spk?.label || "INDY-7";
     el.storySpeaker.classList.remove("hl-indy", "hl-villain");
     el.storySpeaker.classList.add(spk?.cls || "hl-indy");
+  }
+  if (el.storyAvatar) {
+    el.storyAvatar.innerHTML = speakerAvatarSvg(card.speaker || "indy", card.mood);
   }
   el.storyCardText.innerHTML = storyCardHtml(card.text);
   el.storyCardCta.textContent = card.cta || "TAP TO CONTINUE";
