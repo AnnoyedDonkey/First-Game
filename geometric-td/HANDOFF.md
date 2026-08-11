@@ -91,6 +91,9 @@ just the map of what exists in code.
   `NARRATIVE.towerIntro`. Railgun and Rocket play once after their unlocks
   (normally L6/L11); `seenTowerIntros` plus a veteran backfill prevents
   retroactive cards, and the level START beat defers to the next visit.
+  **Wants phone eyes:** the demo canvas was verified rendering against real
+  Canvas2D, but the squad sequence (L2, fresh save) and the Railgun/Rocket
+  unlock cards (L6/L11) were only ever verified headlessly.
 - **L1 tutorial reworked** in Indy-7's voice (`config.js TUTORIAL`, still
   driven by `src/tutorial.js`), plus two new explainer steps (CREDITS,
   CORE/lose-condition) and phone-feedback polish: the welcome step spotlights
@@ -210,6 +213,59 @@ has the architecture and deferred follow-ups.
   a just-deployed report a real regression.
 - Before a balance deploy, inspect the diff, commit deliberately, and push.
   Balance Lab must never auto-commit or auto-push.
+
+## Delegating work to Codex (local, same machine)
+
+Codex is installed as the desktop app and wired up as an **MCP server**, so a
+Claude session can hand it a scoped task and get the result back. Used for the
+whole `2026.08.10-11` tower-intro build (five phases from
+`TOWER_INTRO_CARDS_PLAN.md`); this is the record of how, and what to watch.
+
+**Setup that already exists** (machine-specific, deliberately NOT committed):
+- `~/.codex/codex-mcp.ps1` — wrapper that resolves the newest `codex.exe` and
+  runs `codex mcp-server`. It exists because the desktop app installs the CLI
+  under a build-hashed folder that changes on every update; a hardcoded path
+  breaks silently. Don't replace it with a literal path.
+- `.mcp.json` in BOTH `C:\Projects\First-Game` and `...\geometric-td`, because
+  Claude gets launched from both and project MCP config only loads from the
+  launch directory. Adding or changing it needs a Claude restart.
+- `geometric-td/AGENTS.md` — what Codex reads instead of `CLAUDE.md`. Keep the
+  two in sync; without it Codex works without the cardinal rules.
+- `geometric-td/.claude/launch.json` — lets the Claude session run `serve.ps1`
+  as a preview server for browser verification.
+
+**Invoking:** `mcp__codex__codex` with `sandbox: workspace-write` and
+`approval-policy: never` (a Claude session can't relay interactive approvals;
+the sandbox is the real boundary). Continue an existing run with
+`mcp__codex__codex-reply` and its `threadId` — it keeps full context across
+phases, which is much cheaper than re-briefing.
+
+**Two hard gotchas, both hit during the tower-intro build:**
+1. **Set `cwd` to the REPO ROOT (`C:\Projects\First-Game`) if Codex needs
+   git.** `.git` lives at the root, so a session scoped to `geometric-td`
+   cannot take `.git/index.lock` — Phase 5's commit failed on exactly this and
+   the Claude session had to finish it.
+2. **Codex cannot reach a browser here.** `serve.ps1` fails to bind
+   `HttpListener` under its sandbox and its browser backend reports none
+   available. Everything it "verifies" is headless against a stubbed canvas
+   context. **Real-browser verification is the Claude session's job** — use
+   `preview_start` with the launch.json above.
+
+**What delegation is good and bad at.** Across five phases Codex never
+breached a stated constraint: it stayed inside each phase's file boundary,
+never bumped the version early, never committed, and respected every landmine
+the plan named. What it misses is *intent*. Real examples worth remembering:
+it sized demo enemy HP off the featured tower, which made the Slow card — the
+one card about NOT killing — the fastest-killing demo of the five; and it
+wrote config declaring enemy groups that the spawner then ignored, so the data
+described behaviour the code didn't have. **Review every phase diff for
+whether it did the right thing, not whether it followed the instruction.**
+
+**Practical rules:** give it an explicit list of paths to stage (never
+`git add -A` — the tree usually holds unrelated in-flight work); tell it
+plainly to say "I could not verify this" rather than implying coverage, which
+it does honestly when asked; and put the phase plan in a file rather than the
+prompt, so each run is a cold read of the same source.
 
 ## File map
 
@@ -347,7 +403,7 @@ BALANCE_LAB_PLAN.md  approved Balance Lab L0-L7 plan
     fields at L17, all three from L18 on. Brand-new mechanics that change how
     a level plays, currently explained ONLY if the player thinks to tap the
     tile (`ui.js maybeShowTileInfo`) — pure discoverability, easy to miss
-    entirely. Biggest of the three gaps.
+    entirely. The biggest remaining gap.
   - **L1 is card-heavy** — four of the six enemy cards fire in level 1 alone
     (Basic/Fast/Armored/Boss), on top of the tutorial steps and the L1 story
     beat. Consider spacing them out or folding some together.
