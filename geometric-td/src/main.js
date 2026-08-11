@@ -527,6 +527,24 @@ function checkEndState() {
   } else {
     const buttons = [{ text: "RETRY LEVEL", onTap: () => startLevel(level) }];
     buttons.push(...lootTailButtons(items, stashFull));
+    // First-ever campaign defeat: a one-time Indy-7 pep talk (config.js
+    // NARRATIVE.firstLoss). The skill-point nudge only appears if the player
+    // has banked-but-unspent points; count/plural filled in here.
+    let narrative;
+    const fl = NARRATIVE.firstLoss;
+    if (fl && shouldShowBeat("firstLoss")) {
+      const pts = getSkillPoints();
+      const parts = [fl.intro];
+      if (pts > 0) {
+        parts.push(fl.skillNote
+          .replace("{n}", pts)
+          .replace("{s}", pts === 1 ? "" : "s")
+          .replace("{it}", pts === 1 ? "it" : "them"));
+      }
+      parts.push(fl.rally);
+      narrative = [{ s: fl.s, m: fl.m, t: parts.join(" ") }];
+      markBeatSeen("firstLoss");
+    }
     showOverlay({
       title: pickRoast("defeat"),
       subtitle: `The core fell on wave ${game.waveIndex + 1}.`,
@@ -534,6 +552,7 @@ function checkEndState() {
       buttons,
       items,
       note,
+      narrative,
       milestones: campaignRecapEntries(),
       feedback: feedbackStrip(game),
     });

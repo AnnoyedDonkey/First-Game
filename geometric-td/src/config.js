@@ -1117,6 +1117,18 @@ export const NARRATIVE = {
     indy:      { label: "INDY-7",       name: "Indy-7",       cls: "hl-indy" },
     bratwurst: { label: "BRATWURST-XL", name: "Bratwurst-XL", cls: "hl-villain" },
   },
+  // ---------- First-loss encouragement ----------
+  // Shown ONCE ever, on the player's first genuine campaign defeat (not
+  // forfeit, not endless), gated via progression.shouldShowBeat("firstLoss").
+  // Assembled in main.js: `intro`, then `skillNote` ONLY when the player has
+  // >=1 unspent skill point ({n} = count, {s} = plural suffix), then `rally`.
+  firstLoss: {
+    s: "indy",
+    m: "smile",
+    intro: "Tough loss, but don't worry, towers become stronger with each game played.",
+    skillNote: "You also have {n} skill point{s}, go assign {it}.",
+    rally: "Keep playing and you'll soon have a strong enough roster to clear this level. I believe in you!",
+  },
   // ---------- Tower placement barks (P4) ----------
   // First time each tower TYPE is placed in a campaign battle, it quips on
   // the bark ticker; the roster name prefix (e.g. "L-01:") is supplied at
