@@ -561,10 +561,23 @@ function strokeEye(ctx, ex, ey, er, mood, side) {
 }
 
 // Deterministic idle blink: eyes shut for `blinkDuration` once per `interval`,
-// `phase` desyncs the two personas. Time-based, so no extra per-frame state.
+// `phase` desyncs the two personas. Some cycles get a quick second blink (a
+// deterministic per-cycle roll). Time-based, so no extra per-frame state.
 function isBlinking(time, interval, phase) {
-  const local = (((time + phase) % interval) + interval) % interval;
-  return local < VFX.face.blinkDuration;
+  const k = VFX.face;
+  const t = time + phase;
+  const cycle = Math.floor(t / interval);
+  const local = t - cycle * interval; // seconds into this blink cycle
+  const d = k.blinkDuration;
+  if (local < d) return true; // first blink
+  // Roll once per cycle whether it's a double-blink; if so, a second blink
+  // follows after a brief eyes-open gap.
+  const roll = Math.abs(Math.sin(cycle * 91.73 + phase) * 4283.11) % 1;
+  if (roll < k.doubleBlinkChance) {
+    const s = d + k.blinkGap;
+    if (local >= s && local < s + d) return true; // second blink
+  }
+  return false;
 }
 
 function drawFace(ctx, cx, cy, radius, mood, color, time, blinkInterval, blinkPhase) {

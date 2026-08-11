@@ -3158,6 +3158,41 @@ function avatarEye(cx, cy, r, mood, side) {
     default:        return `<line x1="${cx}" y1="${cy-r}" x2="${cx}" y2="${cy+r}"/>`; // neutral
   }
 }
+// Shut lid for a blink — a shallow closed curve (matches the in-game face).
+function avatarLid(cx, cy, r) {
+  return `<path d="M ${cx-r} ${cy} Q ${cx} ${cy+r*.4} ${cx+r} ${cy}"/>`;
+}
+// Idle-blink timing for the card avatars. One loop carries a single blink and,
+// later, a double blink, so the face reads as "blinks, sometimes twice." All
+// fractions of the loop period; `blinkAnimateSvg` builds the SMIL keyframes.
+const AVATAR_BLINK = { period: 11, dur: 0.13, gap: 0.1, single: 0.3, double: 0.68 };
+// Discrete opacity keyframes that hide (kind "open") or reveal (kind "closed")
+// a layer during the blink windows. `beginS` phase-shifts a persona so two
+// avatars on one overlay don't blink together.
+function blinkAnimateSvg(kind, beginS) {
+  const b = AVATAR_BLINK;
+  const w = b.dur / b.period, g = b.gap / b.period;
+  const s2 = b.double;
+  const kt = [0, b.single, b.single + w, s2, s2 + w, s2 + w + g, s2 + 2 * w + g, 1]
+    .map((v) => v.toFixed(4)).join(";");
+  // open = visible except during blinks; closed = the inverse.
+  const vals = kind === "open" ? "1;0;1;0;1;0;1;1" : "0;1;0;1;0;1;0;0";
+  return `<animate attributeName="opacity" calcMode="discrete" dur="${b.period}s" ` +
+    `begin="${beginS}s" repeatCount="indefinite" keyTimes="${kt}" values="${vals}"/>`;
+}
+// The eye layer for an avatar: static open eyes, or (when motion is allowed and
+// the face isn't holding X eyes) open eyes that blink shut on a loop.
+function avatarEyesSvg(eyeCol, ey, mood, code, reduce) {
+  const attrs = `fill="none" stroke="${eyeCol}" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"`;
+  const open = avatarEye(41, ey, 6, mood, "l") + avatarEye(59, ey, 6, mood, "r");
+  if (reduce || mood === "crash") return `<g ${attrs}>${open}</g>`;
+  const closed = avatarLid(41, ey, 6) + avatarLid(59, ey, 6);
+  const begin = code === "indy" ? 0 : -4; // desync the two personas
+  return `<g ${attrs}>` +
+    `<g>${open}${blinkAnimateSvg("open", begin)}</g>` +
+    `<g opacity="0">${closed}${blinkAnimateSvg("closed", begin)}</g>` +
+    `</g>`;
+}
 function speakerAvatarSvg(code, mood) {
   if (code !== "indy" && code !== "bratwurst") return "";
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -3177,8 +3212,7 @@ function speakerAvatarSvg(code, mood) {
     shape = spin(rect(-14), "9s", 1) + spin(rect(14), "9s", -1);
     ey = 47;
   }
-  const eyes = `<g fill="none" stroke="${eyeCol}" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">`
-    + avatarEye(41, ey, 6, m, "l") + avatarEye(59, ey, 6, m, "r") + `</g>`;
+  const eyes = avatarEyesSvg(eyeCol, ey, m, code, reduce);
   return `<svg viewBox="0 0 100 100" class="spk-avatar" aria-hidden="true">`
     + `<g filter="drop-shadow(0 0 3px ${color})">${shape}${eyes}</g></svg>`;
 }

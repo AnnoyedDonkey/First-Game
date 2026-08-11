@@ -721,6 +721,8 @@ export const VFX = {
     blinkIntervalIndy: 4.3,   // avg seconds between Indy-7's blinks
     blinkIntervalBrat: 5.7,   // avg seconds between Bratwurst-XL's blinks
     blinkPhaseBrat: 2.1,      // time offset so Bratwurst doesn't blink with Indy
+    doubleBlinkChance: 0.35,  // fraction of blinks that are a quick double-blink
+    blinkGap: 0.1,            // eyes-open pause between the two blinks of a double
   },
 };
 

@@ -114,6 +114,43 @@ stylesheet) was `#5a668f` (~3.4:1 against `--panel`/`--bg`, under WCAG AA) at
 primary `--text` (`#cdd6ff`, ~13.4:1) so the primary/secondary hierarchy
 survives. One variable, whole UI.
 
+## First-loss pep talk, results-screen polish, live intro demo, reactive faces (builds `2026.08.11-1`..`-7`)
+
+A session of onboarding/feel polish (all verified locally, no telemetry needed):
+
+- **First-loss pep talk** (`2026.08.11-1`) — a one-time Indy-7 encouragement on
+  the player's first *genuine* campaign defeat (not forfeit, not endless), gated
+  once-ever via `narrativeSeen.firstLoss` (`main.js` checkEndState defeat branch).
+  Copy is data in `config.js NARRATIVE.firstLoss` (`intro`/`skillNote`/`rally`);
+  the skill sentence is spliced in only when the player has unspent points, with
+  grammatical singular/plural and "assign it"/"assign them". Shown via the
+  existing `showOverlay` `narrative` param.
+- **Attention-color markup** (`2026.08.11-2`) — `[hl-pink]…[/hl]` /
+  `[hl-blue]…[/hl]` inline markup, parsed post-escape in `ui.js storyCardHtml`
+  (so wrapped text stays safe), colors "stronger" (magenta) and the skill-point
+  count (cyan). Classes `.overlay-narrative-text .hl-pink/.hl-blue`.
+- **Results-screen reflow** (`2026.08.11-2`..`-4`) — `#overlay-buttons` became a
+  two-column CSS grid instead of a tall stack. A `fullWidth:true` spec (the win
+  screen's NEXT) spans both columns; a lone trailing button is auto-spanned in
+  `showOverlay` so no row is half-empty. Subtitle (`#overlay p`) capped to the
+  shared 340px column. The ASSIGN button shows the live count in magenta (button
+  specs gained an optional trusted `html` label; `text` stays the aria-label).
+  The LOOT EARNED grid sorts rarest-first (`RARITIES` desc; stable).
+- **Onboarding "job" card demo** (`2026.08.11-5`) — the first-load "Bratwurst-XL
+  doesn't get its hands dirty" card runs a live two-tower micro-battle.
+  `tower-demo.js createTowerDemo` now accepts a *named scenario* whose cast sets
+  `tower` explicitly (so the key needn't be a real tower id); scenario
+  `NARRATIVE.towerIntro.cast.intro` = Laser + Pulse vs a small swarm. Cards gained
+  a `demo` field (routed to `startStoryTowerDemo`, distinct from `towerType` so no
+  "Best against:" stat line leaks in).
+- **Reactive endpoint faces** (`2026.08.11-6`..`-7`) — see the HANDOFF
+  "Reactive endpoint faces" subsection. Eyes-only faces on Indy-7 (core) and
+  Bratwurst-XL (portal); the core's old center dot was removed. Expressions from
+  live state (`renderer.js coreFaceMood/portalFaceMood`), a leak flinch driven by
+  `game.js game.lastLeakTime`, idle blinking with occasional double-blinks, and
+  matching blinks on the story-card SVG avatars (`ui.js speakerAvatarSvg`, SMIL).
+  All tunable in `config.js VFX.face`.
+
 ## Prior state — 2026-07-23 (skill trees, gear QoL, difficulty walk-back)
 
 Geometric TD was then a portrait, mobile-browser tower defense with a 15-level,

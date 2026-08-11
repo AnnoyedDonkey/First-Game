@@ -6,13 +6,42 @@ July **and** August 2026); the original pre-cleanup handoff is preserved in Git
 at commit `2650204`. This file keeps only what you need to start work:
 current state, non-obvious mechanics, rules, tuning locations, and the file map.
 
-## Current state — 2026-08-10
+## Current state — 2026-08-11
 
-Deployed build: `2026.08.10-11`. Also recently shipped (details in the
-archive): Shard-sink **stash economy** (stash expansion + per-rarity
-auto-junk, `config.js LOOT.stash`/`LOOT.autoJunk`); **STASH tab controls**
-(FILTER/SELL/CONFIG pill row, `ui.js renderStashTab`); **game-wide contrast**
-(`styles.css --text-dim` brightened to ~11:1).
+Deployed build: `2026.08.11-7`. Shipped this session (2026.08.11, detail in
+the archive):
+- **First-loss pep talk** — one-time Indy-7 encouragement on the first genuine
+  campaign defeat (`config.js NARRATIVE.firstLoss`, gated `narrativeSeen.firstLoss`),
+  with a conditional unspent-skill-point nudge. Colors "stronger"/count via new
+  `[hl-pink]/[hl-blue]` markup in `ui.js storyCardHtml`.
+- **Results-screen polish** — two-per-row button grid (`fullWidth` NEXT spans;
+  lone trailing button auto-spans), subtitle capped to the 340px column, ASSIGN
+  button shows the count in magenta, LOOT EARNED grid sorted rarest-first.
+- **Onboarding "job" card demo** — the "doesn't get its hands dirty" intro card
+  runs a live two-tower micro-battle (`tower-demo.js` named scenario
+  `NARRATIVE.towerIntro.cast.intro`; card field `demo`).
+- **Reactive endpoint faces** — see the subsection below.
+
+Older recently-shipped (archive): Shard-sink **stash economy** (`config.js
+LOOT.stash`/`LOOT.autoJunk`); **STASH tab controls** (`ui.js renderStashTab`);
+**game-wide contrast** (`styles.css --text-dim` ~11:1).
+
+### Reactive endpoint faces (new, 2026.08.11-6..-7)
+The track's two endpoints wear EYES that react to the battle — **eyes only, no
+nose/mouth** (the core's old center dot was removed for this). `renderer.js
+coreFaceMood`/`portalFaceMood` choose an expression from live game state each
+frame; `drawFace` strokes two eyes (same vocabulary as the story-card avatars,
+`ui.js avatarEye`). **Bratwurst-XL** (spawn portal): smug at rest, mean while a
+wave is spawning, gloats (happy) on player loss, X-eyed (defeated) on player
+win. **Indy-7** (core): calm neutral, an X-eye flinch for `hitFlashSeconds` each
+time an enemy leaks (`game.js` sets `game.lastLeakTime`), worried below
+`lowCoreFrac` core HP, happy on win, X on loss. Both **idle-blink** on their own
+desynced cadence with occasional **double-blinks**, suppressed while X-eyed. The
+**story-card SVG avatars** (`ui.js speakerAvatarSvg`) blink too (SMIL: one single
++ one double blink per loop; skipped under reduced motion and for X-eyed cards).
+The demos (no `phase`) read as attacking-Bratwurst + calm-Indy. Everything is
+tunable in **`config.js VFX.face`** (eye colors/geometry, hit-flash window,
+low-HP threshold, blink timing + double-blink chance).
 
 ### Narrative & onboarding system (new, 2026.08.09-1 .. 2026.08.10-7)
 A full story layer was designed and built this pass: **Indy-7** (the snarky
@@ -292,6 +321,8 @@ src/loot.js         item generation
 src/endless.js      deterministic Endless generation
 src/milestones.js   campaign challenge evaluation
 src/tutorial.js     first-play tutorial state machine
+src/onboarding.js   first-load story-intro state machine (P1)
+src/tower-demo.js   isolated micro-battles for tower-intro / onboarding cards
 src/ui.js           player DOM UI and overlays
 src/feedback.js     Supabase run telemetry and difficulty rating
 src/leaderboard.js  Supabase Endless board
