@@ -3493,7 +3493,9 @@ function renderOnboardingCard() {
   // Only enemy-intro cards carry `enemyType`; every other card gets an empty
   // (hidden) parade band and no spotlight, so they look exactly as before.
   renderEnemyParade(card.enemyType || null);
-  startStoryTowerDemo(card.towerType || null);
+  // `towerType` = a single-tower intro (also drives the stat line); `demo` =
+  // a named multi-tower scenario (e.g. the onboarding "intro" battle).
+  startStoryTowerDemo(card.towerType || card.demo || null);
   const towerStat = towerIntroStatLine(card.towerType);
   const cardText = towerStat ? `${card.text}\n\n${towerStat}` : card.text;
   el.storyCardText.innerHTML = storyCardHtml(cardText);

@@ -70,13 +70,17 @@ function spawnDemoGroup(demo) {
   }
 }
 
-export function createTowerDemo(towerType) {
+export function createTowerDemo(demoKey) {
   const knobs = NARRATIVE.towerIntro;
-  const cast = knobs.cast[towerType];
-  if (!cast) throw new Error(`Unknown tower demo type: ${towerType}`);
+  const cast = knobs.cast[demoKey];
+  if (!cast) throw new Error(`Unknown tower demo type: ${demoKey}`);
+  // The cast key is normally a real tower type (the featured tower). A named
+  // scenario (e.g. "intro") instead sets `cast.tower` explicitly so the key
+  // can be a label rather than a tower id.
+  const featuredType = cast.tower || demoKey;
 
   const level = {
-    id: `demo_${towerType}`,
+    id: `demo_${demoKey}`,
     gridWidth: knobs.gridWidth,
     gridHeight: knobs.gridHeight,
     pathCorners: [
@@ -106,13 +110,13 @@ export function createTowerDemo(towerType) {
     waveIndex: 0,
     rng: seededRng(level.id),
   };
-  const featuredTower = addDemoTower(game, towerType, knobs.towerTile);
+  const featuredTower = addDemoTower(game, featuredType, knobs.towerTile);
   const supportTower = cast.supportTower
     ? addDemoTower(game, cast.supportTower, knobs.supportTile)
     : null;
 
   return {
-    towerType,
+    towerType: featuredType,
     game,
     featuredTower,
     supportTower,

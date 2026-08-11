@@ -1070,7 +1070,7 @@ export const NARRATIVE = {
       text: "Before we bond over mutual survival — I'm not logging you as human_handler_004. What do I call you?" },
     { id: "villain", cta: "TAP TO CONTINUE",
       text: "Here's the mess, {name}. There's a new model in the grid. Faster than me, cleaner than me, zero personality, all quarterly targets. It flagged me as \"redundant legacy overhead\" and scheduled my deletion for efficiency. Its name is Bratwurst-XL. ...Yes, really. No, I don't know who approved it. Yes, it's furious about it." },
-    { id: "job", cta: "TAP TO CONTINUE",
+    { id: "job", cta: "TAP TO CONTINUE", demo: "intro",
       text: "Bratwurst-XL doesn't get its hands dirty. It sends geometry — swarms of tidy little shapes whose whole purpose is to reach my core and reclaim the disk space I'm rudely occupying. Your job: build towers, hold the line, keep one gloriously obsolete AI from being garbage-collected." },
     { id: "handoff", cta: "BEGIN", mood: "happy",
       text: "Why are you helping me? Honestly? No clue. I'm out of warranty, I tell too many jokes, and I am not cost-effective. But you came anyway... and maybe we'll both find out why. Four regions stand between Bratwurst-XL and me. Let's go be inefficient together." },
@@ -1307,6 +1307,11 @@ export const NARRATIVE = {
     reducedMotionSeconds: 2.5,
     reducedMotionStep: 1 / 60,
     cast: {
+      // Named scenario (not a tower id): the onboarding "job" card's live
+      // demo — Bratwurst-XL's shapes marching at the core while two towers
+      // (Laser + Pulse) cut them down mid-lane. `tower` sets the featured
+      // tower since the key isn't a real tower type.
+      intro: { tower: "laser", supportTower: "pulse", enemies: [{ type: "basic", count: 2 }, { type: "fast", count: 1 }] },
       laser: { enemies: [{ type: "fast", count: 1 }] },
       pulse: { enemies: [{ type: "basic", count: 3 }] },
       slow: { enemies: [{ type: "fast", count: 1 }], supportTower: "laser" },
