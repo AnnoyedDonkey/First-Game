@@ -318,8 +318,15 @@ function lootTailButtons(items, stashFull) {
       onTap: () => openGearPanel({ closeMode: "triage" }),
     });
   }
-  if (getSkillPoints() > 0) {
-    tail.push({ text: "ASSIGN SKILL POINTS", onTap: openSkillTree, secondary: true });
+  const pts = getSkillPoints();
+  if (pts > 0) {
+    const noun = pts === 1 ? "SKILL POINT" : "SKILL POINTS";
+    tail.push({
+      text: `ASSIGN ${pts} ${noun}`,                              // plain fallback / aria
+      html: `ASSIGN <span class="btn-count">${pts}</span> ${noun}`, // count tinted magenta
+      onTap: openSkillTree,
+      secondary: true,
+    });
   }
   tail.push({ text: "MAIN MENU", onTap: goToMainMenu, secondary: true });
   return tail;

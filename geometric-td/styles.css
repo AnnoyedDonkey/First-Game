@@ -2595,6 +2595,10 @@ button.hud-item {
   color: var(--text-dim);
   font-size: 14px;
   line-height: 1.5;
+  /* Match the challenges / feedback / buttons column so the subtitle wraps
+     to the same width instead of running edge-to-edge. */
+  max-width: 340px;
+  margin-inline: auto;
 }
 
 #overlay p:empty { display: none; }
@@ -2620,6 +2624,13 @@ button.hud-item {
 }
 
 #overlay-buttons .big-button.full-span { grid-column: 1 / -1; }
+
+/* Skill-point count inside the ASSIGN button — tinted magenta to draw the eye. */
+#overlay-buttons .big-button .btn-count {
+  color: var(--neon-magenta);
+  font-weight: 700;
+  text-shadow: 0 0 6px rgba(255, 63, 212, 0.45);
+}
 
 /* Secondary actions (skill tree, main menu) are visually quieter */
 #overlay-buttons .big-button.secondary {

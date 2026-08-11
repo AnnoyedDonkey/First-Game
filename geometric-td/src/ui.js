@@ -2863,7 +2863,14 @@ export function showOverlay({ title, subtitle, type, buttons, items, note, narra
       (spec.secondary ? " secondary" : "") +
       (spec.danger ? " danger" : "") +
       (spec.fullWidth || i === loneIdx ? " full-span" : "");
-    btn.textContent = spec.text;
+    // `html` (trusted, built from our own data) lets a label carry a tinted
+    // span; `text` stays the accessible label. Plain buttons use text only.
+    if (spec.html) {
+      btn.innerHTML = spec.html;
+      if (spec.text) btn.setAttribute("aria-label", spec.text);
+    } else {
+      btn.textContent = spec.text;
+    }
     btn.addEventListener("click", spec.onTap);
     el.overlayButtons.appendChild(btn);
   });
