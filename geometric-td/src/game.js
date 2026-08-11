@@ -37,6 +37,7 @@ export function createGame(level, tileSize, endless = false) {
     lootDrops: [],                   // unclaimed items found during this battle
     kills: 0,                        // enemies killed this run (milestone tracking, B5)
     leaks: 0,                        // enemies that reached the core this run (B5)
+    lastLeakTime: -Infinity,         // game.time of the last core leak (Indy's X-eye flinch)
     typesUsed: new Set(),            // tower types ever placed this run — survives sells (B5)
     milestoneResults: new Set(),     // latched campaign-milestone ids attained this run (B5)
     newMilestoneToasts: [],          // toast texts main.js drains each frame (B5)
@@ -129,6 +130,7 @@ export function updateGame(game, dt) {
   // Move enemies; handle leaks.
   const leaked = updateEnemies(game, dt);
   game.leaks += leaked.length; // B5: "Flawless" milestone tracking
+  if (leaked.length) game.lastLeakTime = game.time; // Indy's core flinches (X eyes)
   for (const e of leaked) {
     game.coreHealth -= e.coreDamage;
     // The core flinches: shockwave + red flash at the path exit.

@@ -302,7 +302,7 @@ export function render(ctx, game, time, uiState = {}) {
   drawBlockedTiles(ctx, grid);
   drawFields(ctx, grid, time);
   drawConduits(ctx, grid, time);
-  drawPortal(ctx, grid, time);
+  drawPortal(ctx, game, time);
   drawWormholes(ctx, grid, time);
   drawCore(ctx, game, time);
   drawPlacementPreview(ctx, game, uiState);
@@ -515,8 +515,104 @@ function drawBlockedTiles(ctx, grid) {
   }
 }
 
-// Spawn portal at the path entrance: two counter-rotating squares.
-function drawPortal(ctx, grid, time) {
+// ---- Reactive endpoint faces (config VFX.face) ----
+// Indy-7 (core) and Bratwurst-XL (portal) wear eyes that react to the battle.
+// EYES ONLY: no nose or mouth is ever drawn. The eye vocabulary mirrors the
+// story-card avatars (ui.js avatarEye).
+function strokeEye(ctx, ex, ey, er, mood, side) {
+  ctx.beginPath();
+  switch (mood) {
+    case "happy": // ^ chevron — pleased
+      ctx.moveTo(ex - er, ey + er * 0.55);
+      ctx.lineTo(ex, ey - er * 0.7);
+      ctx.lineTo(ex + er, ey + er * 0.55);
+      break;
+    case "worried": // ∩ raised brow — under threat
+      ctx.moveTo(ex - er, ey + er * 0.3);
+      ctx.quadraticCurveTo(ex, ey - er * 0.7, ex + er, ey + er * 0.3);
+      break;
+    case "smug": // flat line — condescending (Bratwurst at rest)
+      ctx.moveTo(ex - er, ey - er * 0.1);
+      ctx.lineTo(ex + er, ey - er * 0.1);
+      break;
+    case "angry": { // \  / slash angled down toward the nose — mean (attacking)
+      const inX = side === "l" ? ex + er : ex - er;
+      const outX = side === "l" ? ex - er : ex + er;
+      ctx.moveTo(outX, ey - er * 0.6);
+      ctx.lineTo(inX, ey + er * 0.4);
+      break;
+    }
+    case "crash": // X — hit / knocked out
+      ctx.moveTo(ex - er, ey - er);
+      ctx.lineTo(ex + er, ey + er);
+      ctx.moveTo(ex + er, ey - er);
+      ctx.lineTo(ex - er, ey + er);
+      break;
+    case "blink": // — shut lid (a shallow closed curve)
+      ctx.moveTo(ex - er, ey);
+      ctx.quadraticCurveTo(ex, ey + er * 0.4, ex + er, ey);
+      break;
+    default: // neutral — a calm vertical bar
+      ctx.moveTo(ex, ey - er);
+      ctx.lineTo(ex, ey + er);
+      break;
+  }
+  ctx.stroke();
+}
+
+// Deterministic idle blink: eyes shut for `blinkDuration` once per `interval`,
+// `phase` desyncs the two personas. Time-based, so no extra per-frame state.
+function isBlinking(time, interval, phase) {
+  const local = (((time + phase) % interval) + interval) % interval;
+  return local < VFX.face.blinkDuration;
+}
+
+function drawFace(ctx, cx, cy, radius, mood, color, time, blinkInterval, blinkPhase) {
+  const k = VFX.face;
+  const dx = radius * k.eyeSpacing;
+  const ey = cy - radius * k.eyeRise;
+  const er = radius * k.eyeRadius;
+  // Blink only over living expressions — an X-eyed (hit/defeated) face holds.
+  const shown = (mood !== "crash" && isBlinking(time, blinkInterval, blinkPhase))
+    ? "blink" : mood;
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = k.glowBlur;
+  ctx.lineWidth = k.lineWidth;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  strokeEye(ctx, cx - dx, ey, er, shown, "l");
+  strokeEye(ctx, cx + dx, ey, er, shown, "r");
+  ctx.restore();
+}
+
+// Bratwurst-XL's expression from live state. No `phase` (the tower-intro/
+// onboarding demos) means "actively sending the swarm" → mean.
+export function portalFaceMood(game) {
+  if (!game || game.phase === undefined) return "angry";
+  if (game.phase === "lost") return "happy"; // player lost → Bratwurst gloats
+  if (game.phase === "won") return "crash";  // player won → Bratwurst defeated
+  if (game.phase === "wave") return "angry"; // enemies coming out → mean
+  return "smug";                             // between waves → condescending
+}
+
+// Indy-7's expression from live state. Priority: end states, a brief X-eye
+// flinch right after a leak, low-HP worry, then calm.
+export function coreFaceMood(game, time) {
+  if (!game || game.phase === undefined) return "neutral";
+  if (game.phase === "won") return "happy";
+  if (game.phase === "lost") return "crash";
+  const k = VFX.face;
+  if (game.lastLeakTime != null && time - game.lastLeakTime < k.hitFlashSeconds) return "crash";
+  if (game.maxCoreHealth && game.coreHealth / game.maxCoreHealth <= k.lowCoreFrac) return "worried";
+  return "neutral";
+}
+
+// Spawn portal at the path entrance: two counter-rotating squares + Bratwurst's
+// reactive eyes (drawn upright, on top of the spinning frames).
+function drawPortal(ctx, game, time) {
+  const grid = game.grid;
   const p = grid.pathPoints[0];
   const r = grid.tileSize * 0.32;
   ctx.save();
@@ -532,6 +628,8 @@ function drawPortal(ctx, grid, time) {
     ctx.restore();
   }
   ctx.restore();
+  drawFace(ctx, p.x, p.y, grid.tileSize * 0.32, portalFaceMood(game),
+    VFX.face.eyeColorBrat, time, VFX.face.blinkIntervalBrat, VFX.face.blinkPhaseBrat);
 }
 
 // Field tiles: a tinted, gently pulsing wash + outline on each special path
@@ -636,12 +734,11 @@ function drawCore(ctx, game, time) {
   ctx.lineWidth = 2;
   drawPolygon(ctx, p.x, p.y, r, 6, time * 0.4);
   ctx.stroke();
-  // Inner heart of the core.
-  ctx.fillStyle = LOOK.coreColor;
-  ctx.beginPath();
-  ctx.arc(p.x, p.y, r * 0.28, 0, Math.PI * 2);
-  ctx.fill();
   ctx.restore();
+  // Indy-7's reactive eyes replace the old center dot (eyes only, no mouth).
+  // Sized off a stable radius so the face doesn't breathe with the core pulse.
+  drawFace(ctx, p.x, p.y, grid.tileSize * 0.34, coreFaceMood(game, time),
+    VFX.face.eyeColorIndy, time, VFX.face.blinkIntervalIndy, 0);
 }
 
 // The handful of numbers that define how an enemy LOOKS, exported so the

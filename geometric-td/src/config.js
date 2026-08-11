@@ -698,6 +698,30 @@ export const VFX = {
     pulseRate: 3.0,
     nodeRadiusTiles: 0.3,
   },
+
+  // Reactive faces on the track endpoints: Indy-7 (the core) and Bratwurst-XL
+  // (the spawn portal). EYES ONLY — no nose/mouth is ever drawn (the core's
+  // old center dot was removed for this). renderer.js coreFaceMood/
+  // portalFaceMood pick an expression from live game state each frame; drawFace
+  // strokes two eyes from the same vocabulary as the story-card avatars.
+  face: {
+    eyeColorIndy: "#eafff5",  // bright green-white, matches the avatar eyes
+    eyeColorBrat: "#fff7d1",  // bright yellow-white
+    hitFlashSeconds: 0.55,    // how long Indy shows X eyes after a leak reaches him
+    lowCoreFrac: 0.34,        // core HP fraction at/below which Indy looks worried
+    eyeSpacing: 0.42,         // eye-center offset from shape center (× shape radius)
+    eyeRadius: 0.24,          // eye size (× shape radius)
+    eyeRise: 0.06,            // eyes sit this fraction of the radius above center
+    lineWidth: 1.6,           // eye stroke width
+    glowBlur: 4,              // px glow behind the eyes
+    // Idle blinking: both personas shut their eyes briefly now and then.
+    // Different intervals + a phase offset keep them from blinking in sync.
+    // Suppressed while a face is showing X eyes (being hit / defeated).
+    blinkDuration: 0.12,      // seconds the eyes stay shut per blink
+    blinkIntervalIndy: 4.3,   // avg seconds between Indy-7's blinks
+    blinkIntervalBrat: 5.7,   // avg seconds between Bratwurst-XL's blinks
+    blinkPhaseBrat: 2.1,      // time offset so Bratwurst doesn't blink with Indy
+  },
 };
 
 // Polygon sides for each enemy shape (renderer + shard explosions).
