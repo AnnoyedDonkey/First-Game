@@ -14,6 +14,7 @@ import {
   forfeitBattle, equipItem, unequipItem, debugGrantGear, getSkillsSnapshot,
   getUnlockedSpeeds, shouldShowOnboarding, shouldShowTutorial,
   shouldShowBeat, markBeatSeen, shouldShowEnemyIntro, markEnemyIntroSeen,
+  shouldShowTowerIntro, markTowerIntroSeen, isTowerUnlocked,
   shouldShowTowerBark, markTowerBarkSeen, getBarksEnabled,
 } from "./progression.js";
 import { render } from "./renderer.js";
@@ -114,6 +115,11 @@ function startLevel(level, endless = false) {
   // shouldShow* calls (already consumed by then) reading as "seen".
   const willShowTowerGuide = level.id === "level_002" && shouldShowTowerGuide();
   const willShowTutorial = level.id === "level_001" && shouldShowTutorial();
+  const towerIntroType = !endless && NARRATIVE.enabled &&
+    !willShowTowerGuide && !willShowTutorial
+    ? Object.keys(NARRATIVE.towerIntros || {}).find((type) =>
+        isTowerUnlocked(type) && shouldShowTowerIntro(type))
+    : null;
 
   // First visit to level 2: introduce the squad as characters (P4; replaces
   // the legacy auto-opening tower-guide panel). Gated on the same
@@ -130,6 +136,13 @@ function startLevel(level, endless = false) {
   // the real tray/tile/wave-button positions immediately.
   tutorial.maybeStartTutorial(level, endless);
 
+  // Late-tower recruit intro: consumes this visit's story-card slot so the
+  // level START beat waits for a later visit instead of being overwritten.
+  if (towerIntroType) {
+    markTowerIntroSeen(towerIntroType);
+    playCards([NARRATIVE.towerIntros[towerIntroType]]);
+  }
+
   // Per-level START story beat (P2): the first time a campaign level is
   // played, a pre-battle Indy-7 card. Suppressed on level_001/level_002
   // when the tutorial or legacy tower guide is about to run instead (both
@@ -140,7 +153,8 @@ function startLevel(level, endless = false) {
   if (!endless) {
     const beat = NARRATIVE.beats?.[level.id];
     const beatId = `${level.id}.start`;
-    if (beat?.start && shouldShowBeat(beatId) && !willShowTowerGuide && !willShowTutorial) {
+    if (beat?.start && shouldShowBeat(beatId) &&
+        !willShowTowerGuide && !willShowTutorial && !towerIntroType) {
       markBeatSeen(beatId);
       playCards([{ text: beat.start, speaker: "indy", mood: beat.startMood, cta: "BEGIN" }]);
     }

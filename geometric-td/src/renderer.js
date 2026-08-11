@@ -66,12 +66,32 @@ function drawGlow(ctx, x, y, radius, color, alpha = 1) {
 // Per-level palette: levels may override any LOOK color via their
 // `palette` field (see levels.js). Cached per level id.
 let pal = LOOK;
-let palLevelId = null;
+const paletteCache = new Map();
+const circuitCache = new Map();
+const RENDER_CACHE_LIMIT = 8;
+
+function cacheRenderAsset(cache, key, value) {
+  // The real board and tower-intro demos alternate every frame while a card
+  // is open. Keep both hot, but bound the cache so visiting many levels does
+  // not retain every offscreen canvas for the lifetime of the page.
+  if (cache.has(key)) cache.delete(key);
+  cache.set(key, value);
+  if (cache.size > RENDER_CACHE_LIMIT) {
+    cache.delete(cache.keys().next().value);
+  }
+  return value;
+}
 
 function activePalette(game) {
-  if (game.level.id !== palLevelId) {
-    pal = game.level.palette ? { ...LOOK, ...game.level.palette } : LOOK;
-    palLevelId = game.level.id;
+  const key = game.level.id;
+  if (paletteCache.has(key)) {
+    pal = cacheRenderAsset(paletteCache, key, paletteCache.get(key));
+  } else {
+    pal = cacheRenderAsset(
+      paletteCache,
+      key,
+      game.level.palette ? { ...LOOK, ...game.level.palette } : LOOK
+    );
   }
   return pal;
 }
@@ -111,9 +131,6 @@ function rgbOf(color) {
   }
   return "53,224,255";
 }
-
-let circuitCanvas = null;
-let circuitKey = "";
 
 function buildCircuitLayer(game) {
   const grid = game.grid;
@@ -262,10 +279,9 @@ function buildCircuitLayer(game) {
 
 function drawCircuitLayer(ctx, game) {
   const cacheKey = `${game.level.id}:${game.grid.tileSize}`;
-  if (circuitKey !== cacheKey) {
-    circuitCanvas = buildCircuitLayer(game);
-    circuitKey = cacheKey;
-  }
+  const circuitCanvas = circuitCache.has(cacheKey)
+    ? cacheRenderAsset(circuitCache, cacheKey, circuitCache.get(cacheKey))
+    : cacheRenderAsset(circuitCache, cacheKey, buildCircuitLayer(game));
   ctx.drawImage(circuitCanvas, 0, 0);
 }
 

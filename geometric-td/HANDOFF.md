@@ -8,7 +8,7 @@ current state, non-obvious mechanics, rules, tuning locations, and the file map.
 
 ## Current state — 2026-08-10
 
-Deployed build: `2026.08.10-10`. Also recently shipped (details in the
+Deployed build: `2026.08.10-11`. Also recently shipped (details in the
 archive): Shard-sink **stash economy** (stash expansion + per-rarity
 auto-junk, `config.js LOOT.stash`/`LOOT.autoJunk`); **STASH tab controls**
 (FILTER/SELL/CONFIG pill row, `ui.js renderStashTab`); **game-wide contrast**
@@ -85,6 +85,12 @@ just the map of what exists in code.
   wall (`main.js startLevel`, `NARRATIVE.squad` cards) — new players get an
   Indy-7-narrated intro to Laser/Pulse/Slow; existing players (already
   `seenTowerGuide`) skip it. The gear panel no longer auto-opens at L2.
+- **Live tower-intro cards** (`TOWER_INTRO_CARDS_PLAN.md`) — the three squad
+  cards plus the later Railgun/Rocket recruit cards carry real renderer-driven
+  micro-battles from `src/tower-demo.js`, with all presentation tuning in
+  `NARRATIVE.towerIntro`. Railgun and Rocket play once after their unlocks
+  (normally L6/L11); `seenTowerIntros` plus a veteran backfill prevents
+  retroactive cards, and the level START beat defers to the next visit.
 - **L1 tutorial reworked** in Indy-7's voice (`config.js TUTORIAL`, still
   driven by `src/tutorial.js`), plus two new explainer steps (CREDITS,
   CORE/lose-condition) and phone-feedback polish: the welcome step spotlights
@@ -334,20 +340,14 @@ BALANCE_LAB_PLAN.md  approved Balance Lab L0-L7 plan
   - **Minor:** story copy occasionally uses `*emphasis*` markdown but
     `ui.js storyCardHtml` doesn't parse it (asterisks render literally
     in-game). Not reported by the player yet; cheap cleanup whenever.
-- **IDENTIFIED, not spec'd — the debuts that still arrive unannounced.** Came
-  out of the enemy-debut survey above (2026-08-10); the user has seen this
-  list and deliberately deferred all three. The enemy-intro card machinery
-  (freeze + spotlight + parade, `ui.js updateStoryOverlay`) is reusable for
-  the first two.
+- **IDENTIFIED, not spec'd — onboarding gaps still deferred.** Came out of
+  the enemy-debut survey above (2026-08-10); the user has seen these remaining
+  two and deliberately deferred both.
   - **World 4 tile mechanics** — wormholes + conduits first appear at L16,
     fields at L17, all three from L18 on. Brand-new mechanics that change how
     a level plays, currently explained ONLY if the player thinks to tap the
     tile (`ui.js maybeShowTileInfo`) — pure discoverability, easy to miss
     entirely. Biggest of the three gaps.
-  - **Railgun / Rocket unlocks** — awarded for clearing L5 and L10
-    (`progression.js isTowerUnlocked`), with no introduction; "Meet the
-    Squad" only covers Laser/Pulse/Slow. Better on the menu or the next
-    level's start card than mid-battle.
   - **L1 is card-heavy** — four of the six enemy cards fire in level 1 alone
     (Basic/Fast/Armored/Boss), on top of the tutorial steps and the L1 story
     beat. Consider spacing them out or folding some together.
@@ -390,6 +390,9 @@ BALANCE_LAB_PLAN.md  approved Balance Lab L0-L7 plan
 - `ONBOARDING_ENEMY_INTROS_PLAN.md` — enemy-intro pause-and-tap rebuild:
   the approved copy (with its `damageMult` traceability table), the delivery
   decision, and an "As built" record. SHIPPED in `2026.08.10-8`.
+- `TOWER_INTRO_CARDS_PLAN.md` — renderer-faithful tower micro-battles in story
+  cards, the Railgun/Rocket one-time unlock flow, and the shipped "As built"
+  record for `2026.08.10-11`.
 - `LOOT_DESIGN.md` / `GEAR_UI_DESIGN.md` — loot and equipment design/history.
 - `CIRCUIT_MENU_DESIGN.md` — menu-board design/history.
 - `SUPABASE_SETUP.md` — telemetry and leaderboard database setup.

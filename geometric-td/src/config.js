@@ -1083,15 +1083,28 @@ export const NARRATIVE = {
   squad: [
     { speaker: "indy", cta: "TAP TO CONTINUE", mood: "happy",
       text: "Right, {name} — you survived first contact, and you did it leaning on my towers. Problem is, I never actually introduced you. Rude of me. Let's fix that — meet the squad, properly this time." },
-    { speaker: "indy", cta: "TAP TO CONTINUE", mood: "happy",
-      text: "First up, the Laser. Fast, precise, locks onto one target and never lets go. Your reliable bread-and-butter — build these early and often.\n\nL-01: \"Hi hi hi! Did you SEE me last fight? I can do it again!\"\n\n...He's eager. We're working on it." },
-    { speaker: "indy", cta: "TAP TO CONTINUE", mood: "happy",
-      text: "Next, the Pulse. Slower, but it lobs a blast that hits everything in a little zone at once. When they come in crowds — and they will — this is your answer.\n\nP-02: \"PULSE in the house! Everybody in the blast radius, say hi!\"\n\nSubtle, it is not." },
-    { speaker: "indy", cta: "TAP TO CONTINUE", mood: "happy",
-      text: "And the Slow. Barely dents them — not its job. It drags them to a crawl and makes them take extra damage, so everyone else does the dinging. Force multiplier. Deeply underrated.\n\nS-01: \"I won't rush this introduction. Neither, shortly, will they.\"\n\nSee — that one gets it." },
+    { speaker: "indy", cta: "TAP TO CONTINUE", mood: "happy", towerType: "laser",
+      text: "First up, the Laser. Your reliable bread-and-butter — build these early and often.\n\nL-01: \"Hi hi hi! Did you SEE me last fight? I can do it again!\"\n\n...He's eager. We're working on it." },
+    { speaker: "indy", cta: "TAP TO CONTINUE", mood: "happy", towerType: "pulse",
+      text: "Next, the Pulse. When they come in crowds — and they will — this is your answer.\n\nP-02: \"PULSE in the house! Everybody in the blast radius, say hi!\"\n\nSubtle, it is not." },
+    { speaker: "indy", cta: "TAP TO CONTINUE", mood: "happy", towerType: "slow",
+      text: "And the Slow. Force multiplier. Deeply underrated.\n\nS-01: \"I won't rush this introduction. Neither, shortly, will they.\"\n\nSee — that one gets it." },
     { speaker: "indy", cta: "LET'S GO", mood: "happy",
       text: "That's your starting three, {name}: Laser to poke, Pulse for crowds, Slow to set the table. Oh — and the shapes you're shooting aren't all the same. Some shrug off certain weapons; some melt to them. Match your tower to your target and you'll do triple the work for the same shard. Now — level two. Let's give the squad something to shoot." },
   ],
+  // Late-tower recruit cards: played once when an unlocked Railgun/Rocket is
+  // first carried into a later level. These are pre-battle story cards, so
+  // they follow NARRATIVE.enabled rather than the in-battle banter toggle.
+  towerIntros: {
+    railgun: {
+      speaker: "indy", towerType: "railgun", mood: "smug", cta: "TAP TO CONTINUE",
+      text: "New recruit, {name}: the Railgun. Fires down an entire lane and punches straight through everything in it — placement is everything.\n\nR-01: \"One line. Everything on it. ...Too dramatic? No. Exactly dramatic enough.\"\n\nHe rehearses those. In a mirror. We don't have mirrors.",
+    },
+    rocket: {
+      speaker: "indy", towerType: "rocket", mood: "happy", cta: "TAP TO CONTINUE",
+      text: "New recruit, {name}: the Rocket. Reaches anywhere on the board, hits hard, and invoices accordingly. Expensive and high-maintenance — treat it like the diva it is.\n\nRK-01: \"You rang? This had better be worth the fuel budget. I do NOT deploy for skirmishes, darling.\"\n\nWorth every shard. Don't tell it I said that.",
+    },
+  },
   // ---------- Per-level story beats (P2) ----------
   // Shown the FIRST time each level is played (`start`, pre-battle card) and
   // the first time each is WON (`win`, results-screen lines), gated by
@@ -1258,6 +1271,34 @@ export const NARRATIVE = {
     // box; the min keeps a lone enemy from getting a keyhole.
     spotlightPadTiles: 1.1,
     spotlightMinTiles: 3.2,
+  },
+  // Tower-intro cards host a real renderer-driven micro-battle rather than a
+  // decorative lookalike (TOWER_INTRO_CARDS_PLAN.md). All sandbox geometry,
+  // pacing, durability, and casting choices live here so tower-demo.js stays
+  // mechanics-only. Enemy choices follow ENEMIES[*].damageMult: Fast is weak
+  // to Laser, Armored to Railgun, and Boss to Rocket; Pulse uses familiar
+  // Basics to demonstrate splash, while Slow pins Fast for a Laser partner.
+  towerIntro: {
+    tilePx: 48,
+    gridWidth: 7,
+    gridHeight: 3,
+    laneRow: 1,
+    towerTile: { x: 3, y: 0 },
+    supportTile: { x: 5, y: 2 },
+    spawnInterval: 0.25,
+    groupSpacingTiles: 0.3,
+    shotsToKill: 1.25,
+    maxEnemies: 8,
+    maxFrameDt: 0.05,
+    reducedMotionSeconds: 2.5,
+    reducedMotionStep: 1 / 60,
+    cast: {
+      laser: { enemies: [{ type: "fast", count: 1 }] },
+      pulse: { enemies: [{ type: "basic", count: 3 }] },
+      slow: { enemies: [{ type: "fast", count: 1 }], supportTower: "laser" },
+      railgun: { enemies: [{ type: "armored", count: 4 }] },
+      rocket: { enemies: [{ type: "boss", count: 1 }, { type: "basic", count: 2 }] },
+    },
   },
   enemyIntros: {
     basic: "Basic units — the little triangles. Bratwurst-XL's entry-level interns. Anything you build stops them. Good warm-up.\n\nNo resistances or weaknesses — anything works.",

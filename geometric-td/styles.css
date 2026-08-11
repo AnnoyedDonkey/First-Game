@@ -541,18 +541,27 @@ button.hud-item {
    featured above the copy. Hidden entirely on every other story card. The
    marchers are phase-offset copies of ONE animation — each is a full-width
    rail, so translateX percentages are of the band, not the glyph. */
+#story-enemy-parade,
+#story-tower-demo {
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid var(--panel-border);
+  background: rgba(5, 6, 15, 0.6);
+}
 #story-enemy-parade {
   position: relative;
   /* Tall enough for the biggest enemy drawn at --glyph-tile (boss = 0.42 of
      a tile, so 0.84 of it) plus its glow. Set by ui.js renderEnemyParade
      from NARRATIVE.enemyIntro.glyphTilePx. */
   height: calc(var(--glyph-tile, 52px) + 12px);
-  overflow: hidden;
-  border-radius: 8px;
-  border: 1px solid var(--panel-border);
-  background: rgba(5, 6, 15, 0.6);
 }
 #story-enemy-parade.hidden { display: none; }
+#story-tower-demo {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+#story-tower-demo.hidden { display: none; }
 /* The track they march along — echoes the level path, tinted to the enemy's
    own color (--parade-color, set inline by ui.js renderEnemyParade). */
 #story-enemy-parade::after {

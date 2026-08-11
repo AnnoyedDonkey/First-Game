@@ -30,6 +30,7 @@ const DEFAULT_SAVE = {
   onboardingDone: false, // first-load story intro (P1) shown once
   narrativeSeen: {},     // { beatId: true } — per-level START/WIN story beats (P2), beatId = `${levelId}.start`|`${levelId}.win`
   seenEnemyIntros: [],   // enemy type ids whose first-appearance Indy-7 bark (P3) has fired
+  seenTowerIntros: [],   // late tower type ids whose pre-battle recruit card has fired
   seenTowerBarks: [],    // tower type ids whose one-liner has fired (once ever, first placement)
   barksEnabled: true,    // master toggle for in-battle banter (enemy intros / boss / tower barks)
 };

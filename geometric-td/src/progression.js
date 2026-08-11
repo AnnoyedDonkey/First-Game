@@ -72,6 +72,8 @@ state.narrativeSeen ||= {};
 backfillNarrativeSeen(); // P2: spare existing players a retroactive story dump
 state.seenEnemyIntros ||= [];
 backfillEnemyIntros(); // P3: spare existing players retroactive enemy tutorials
+state.seenTowerIntros ||= [];
+backfillTowerIntros(); // Tower cards: spare veterans retroactive recruit intros
 state.seenTowerBarks ||= [];
 if (state.barksEnabled === undefined) state.barksEnabled = true;
 
@@ -224,6 +226,22 @@ function backfillEnemyIntros() {
   for (const type of Object.keys(NARRATIVE.enemyIntros || {})) {
     if (!state.seenEnemyIntros.includes(type)) {
       state.seenEnemyIntros.push(type);
+      changed = true;
+    }
+  }
+  if (changed) writeSave(state);
+}
+
+// Late-tower recruit cards belong at the moment a tower unlocks, not years
+// later for an existing player. At load, mark every already-unlocked recruit
+// seen; a tower unlocked later in this session remains unseen and gets its
+// card on the next level. Idempotent — safe to run every load.
+function backfillTowerIntros() {
+  state.seenTowerIntros ||= [];
+  let changed = false;
+  for (const type of Object.keys(NARRATIVE.towerIntros || {})) {
+    if (isTowerUnlocked(type) && !state.seenTowerIntros.includes(type)) {
+      state.seenTowerIntros.push(type);
       changed = true;
     }
   }
@@ -435,6 +453,17 @@ export function shouldShowEnemyIntro(type) {
 export function markEnemyIntroSeen(type) {
   if (state.seenEnemyIntros.includes(type)) return;
   state.seenEnemyIntros.push(type);
+  writeSave(state);
+}
+
+// Pre-battle recruit cards for late tower unlocks. Veterans are spared
+// retroactive cards via backfillTowerIntros() at load.
+export function shouldShowTowerIntro(type) {
+  return !state.seenTowerIntros.includes(type);
+}
+export function markTowerIntroSeen(type) {
+  if (state.seenTowerIntros.includes(type)) return;
+  state.seenTowerIntros.push(type);
   writeSave(state);
 }
 

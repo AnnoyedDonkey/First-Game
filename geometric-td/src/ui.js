@@ -47,6 +47,9 @@ import {
 import { WORLDS } from "./levels.js";
 import { enemyPosition } from "./enemies.js";
 import { ENEMY_LOOK } from "./renderer.js";
+import {
+  createTowerDemo, stepTowerDemo, renderTowerDemo, destroyTowerDemo,
+} from "./tower-demo.js";
 
 const el = {
   towerButtons: document.getElementById("tower-buttons"),
@@ -133,6 +136,7 @@ const el = {
   storyAvatar: document.getElementById("story-avatar"),
   storySpeaker: document.getElementById("story-speaker"),
   storyEnemyParade: document.getElementById("story-enemy-parade"),
+  storyTowerDemo: document.getElementById("story-tower-demo"),
   storySpotlight: document.getElementById("story-spotlight"),
   storyCardText: document.getElementById("story-card-text"),
   storyNameInput: document.getElementById("story-name-input"),
@@ -3231,6 +3235,98 @@ function renderEnemyParade(type) {
   band.classList.remove("hidden");
 }
 
+// Tower-intro cards run a real sandboxed battle in their canvas. The card
+// owns the animation lifetime: card changes destroy it, while tab hiding only
+// pauses it so returning resumes the same cast instead of resetting the demo.
+let storyTowerDemo = null;
+let storyTowerDemoCtx = null;
+let storyTowerDemoFrame = null;
+let storyTowerDemoLastTime = null;
+
+function cancelStoryTowerDemoFrame() {
+  if (storyTowerDemoFrame != null) cancelAnimationFrame(storyTowerDemoFrame);
+  storyTowerDemoFrame = null;
+  storyTowerDemoLastTime = null;
+}
+
+function stopStoryTowerDemo() {
+  cancelStoryTowerDemoFrame();
+  if (storyTowerDemo) destroyTowerDemo(storyTowerDemo);
+  storyTowerDemo = null;
+  storyTowerDemoCtx = null;
+  el.storyTowerDemo?.classList.add("hidden");
+}
+
+function animateStoryTowerDemo(time) {
+  storyTowerDemoFrame = null;
+  if (!storyTowerDemo || !storyTowerDemoCtx || document.hidden) return;
+  if (storyTowerDemoLastTime != null) {
+    const dt = Math.min(
+      (time - storyTowerDemoLastTime) / 1000,
+      NARRATIVE.towerIntro.maxFrameDt
+    );
+    stepTowerDemo(storyTowerDemo, dt);
+  }
+  storyTowerDemoLastTime = time;
+  renderTowerDemo(storyTowerDemo, storyTowerDemoCtx);
+  storyTowerDemoFrame = requestAnimationFrame(animateStoryTowerDemo);
+}
+
+function startStoryTowerDemo(type) {
+  stopStoryTowerDemo();
+  const canvas = el.storyTowerDemo;
+  if (!type || !canvas) return;
+
+  storyTowerDemo = createTowerDemo(type);
+  canvas.width = storyTowerDemo.game.grid.width * storyTowerDemo.game.grid.tileSize;
+  canvas.height = storyTowerDemo.game.grid.height * storyTowerDemo.game.grid.tileSize;
+  storyTowerDemoCtx = canvas.getContext("2d");
+  if (!storyTowerDemoCtx) {
+    stopStoryTowerDemo();
+    return;
+  }
+  canvas.classList.remove("hidden");
+
+  const knobs = NARRATIVE.towerIntro;
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    const steps = Math.ceil(knobs.reducedMotionSeconds / knobs.reducedMotionStep);
+    for (let i = 0; i < steps; i++) {
+      stepTowerDemo(storyTowerDemo, knobs.reducedMotionStep);
+    }
+    renderTowerDemo(storyTowerDemo, storyTowerDemoCtx);
+    return;
+  }
+  renderTowerDemo(storyTowerDemo, storyTowerDemoCtx);
+  storyTowerDemoFrame = requestAnimationFrame(animateStoryTowerDemo);
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    cancelStoryTowerDemoFrame();
+  } else if (storyTowerDemo && storyTowerDemoCtx) {
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      renderTowerDemo(storyTowerDemo, storyTowerDemoCtx);
+    } else if (storyTowerDemoFrame == null) {
+      storyTowerDemoFrame = requestAnimationFrame(animateStoryTowerDemo);
+    }
+  }
+});
+
+function towerIntroStatLine(type) {
+  const tower = TOWERS[type];
+  if (!tower) return "";
+  const best = Object.values(ENEMIES)
+    .filter((enemy) => (enemy.damageMult?.[tower.damageType] ?? 1) > 1)
+    .map((enemy) => enemy.name);
+  if (best.length) return `Best against: ${best.join(", ")}.`;
+  if (tower.slowPercent != null && tower.vulnerability != null) {
+    const slow = Math.round(tower.slowPercent * 100);
+    const vulnerability = Math.round(tower.vulnerability * 100);
+    return `Support: ${slow}% slow + ${vulnerability}% vulnerability mark.`;
+  }
+  return "";
+}
+
 // Screen-space box around every live enemy of `type`, used to cut a window in
 // the intro card's veil so the player can see the real thing being described
 // (feedback: the card explained enemies it was covering up). Padded and
@@ -3335,6 +3431,10 @@ function storyCardHtml(text) {
       (resists ? `<span class="hl-resist">${resists}</span>` : "")
   );
   html = html.replace(/^(No resistances or weaknesses[^\n]*)$/m, `<span class="hl-weak">$1</span>`);
+  // Tower-intro stat lines are derived from live balance data above, then use
+  // the enemy-card weakness treatment so the actionable line scans the same.
+  html = html.replace(/^(Best against:|Support:)([^\n]*)$/m,
+    `<span class="hl-weak">$1$2</span>`);
   html = html.replaceAll("{name}", `<span class="hl-name">${escapeHtml(getPlayerName())}</span>`);
   return html;
 }
@@ -3348,6 +3448,7 @@ function renderOnboardingCard() {
   const card = currentOnboardingCard();
   if (!el.storyOverlay) return;
   if (!isOnboardingActive() || !card) {
+    stopStoryTowerDemo();
     el.storyOverlay.classList.add("hidden");
     el.storyOverlay.classList.remove("spotlighting", "card-above", "card-below");
     el.storySpotlight?.classList.add("hidden");
@@ -3370,7 +3471,10 @@ function renderOnboardingCard() {
   // Only enemy-intro cards carry `enemyType`; every other card gets an empty
   // (hidden) parade band and no spotlight, so they look exactly as before.
   renderEnemyParade(card.enemyType || null);
-  el.storyCardText.innerHTML = storyCardHtml(card.text);
+  startStoryTowerDemo(card.towerType || null);
+  const towerStat = towerIntroStatLine(card.towerType);
+  const cardText = towerStat ? `${card.text}\n\n${towerStat}` : card.text;
+  el.storyCardText.innerHTML = storyCardHtml(cardText);
   el.storyCardCta.textContent = card.cta || "TAP TO CONTINUE";
 
   el.storyNameInput.classList.toggle("hidden", !card.isNameStep);
