@@ -1122,10 +1122,12 @@ export const NARRATIVE = {
   // forfeit, not endless), gated via progression.shouldShowBeat("firstLoss").
   // Assembled in main.js: `intro`, then `skillNote` ONLY when the player has
   // >=1 unspent skill point ({n} = count, {s} = plural suffix), then `rally`.
+  // [hl-pink]/[hl-blue] inline markup is colored by ui.js storyCardHtml to
+  // draw the eye to "stronger" (pink) and the skill-point count (blue).
   firstLoss: {
     s: "indy",
     m: "smile",
-    intro: "Tough loss, but don't worry, towers become stronger with each game played.",
+    intro: "Tough loss, but don't worry, towers become [hl-pink]stronger[/hl] with each game played.",
     skillNote: "You also have {n} skill point{s}, go assign {it}.",
     rally: "Keep playing and you'll soon have a strong enough roster to clear this level. I believe in you!",
   },

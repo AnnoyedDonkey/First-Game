@@ -475,7 +475,7 @@ function checkEndState() {
     const next = LEVELS[LEVELS.indexOf(level) + 1];
     const buttons = [];
     if (next) {
-      buttons.push({ text: `NEXT: ${next.name.toUpperCase()}`, onTap: () => startLevel(next) });
+      buttons.push({ text: `NEXT: ${next.name.toUpperCase()}`, onTap: () => startLevel(next), fullWidth: true });
     }
     buttons.push({ text: "RETRY LEVEL", onTap: () => startLevel(level), secondary: !!next });
     buttons.push(...lootTailButtons(items, stashFull));
@@ -537,7 +537,7 @@ function checkEndState() {
       const parts = [fl.intro];
       if (pts > 0) {
         parts.push(fl.skillNote
-          .replace("{n}", pts)
+          .replace("{n}", `[hl-blue]${pts}[/hl]`)
           .replace("{s}", pts === 1 ? "" : "s")
           .replace("{it}", pts === 1 ? "it" : "them"));
       }

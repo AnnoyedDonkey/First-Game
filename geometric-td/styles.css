@@ -2564,6 +2564,9 @@ button.hud-item {
 .overlay-narrative-text .hl-indy { color: var(--indy-color); text-shadow: 0 0 8px rgba(74,255,161,.5); }
 .overlay-narrative-text .hl-villain { color: var(--brat-color); text-shadow: 0 0 6px rgba(255,226,74,.4); }
 .overlay-narrative-text .hl-name { color: var(--neon-yellow); font-weight: 700; text-shadow: 0 0 6px rgba(255, 226, 74, 0.4); }
+/* Attention highlights for the first-loss pep talk (config.js firstLoss). */
+.overlay-narrative-text .hl-pink { color: var(--neon-magenta); font-weight: 700; text-shadow: 0 0 6px rgba(255, 63, 212, 0.45); }
+.overlay-narrative-text .hl-blue { color: var(--neon-cyan);    font-weight: 700; text-shadow: 0 0 6px rgba(53, 224, 255, 0.45); }
 .overlay-narrative-text .hl-code {
   font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   color: var(--text-dim);
@@ -2596,15 +2599,27 @@ button.hud-item {
 
 #overlay p:empty { display: none; }
 
+/* Two-per-row grid so the results screen isn't a tall single stack. A
+   button with fullWidth:true (the win screen's NEXT action) spans both
+   columns to stay the prominent primary; the rest flow two-up. A lone
+   trailing button is given .full-span in ui.js so no row is half-empty. */
 #overlay-buttons {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 10px;
   width: 100%;
-  max-width: 300px;
+  max-width: 340px;
 }
 
-#overlay-buttons .big-button { min-width: 0; width: 100%; }
+#overlay-buttons .big-button {
+  min-width: 0;
+  width: 100%;
+  white-space: normal;   /* long labels (ASSIGN SKILL POINTS) wrap at half width */
+  line-height: 1.15;
+  letter-spacing: 0.5px;
+}
+
+#overlay-buttons .big-button.full-span { grid-column: 1 / -1; }
 
 /* Secondary actions (skill tree, main menu) are visually quieter */
 #overlay-buttons .big-button.secondary {

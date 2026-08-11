@@ -2852,15 +2852,21 @@ export function showOverlay({ title, subtitle, type, buttons, items, note, narra
   renderFeedbackStrip(feedback);
 
   el.overlayButtons.innerHTML = "";
-  for (const spec of buttons) {
+  // Buttons flow two-per-row (CSS grid). `fullWidth` specs span both columns.
+  // If that leaves an odd number of two-up buttons, the LAST one would sit
+  // alone at half width — span it instead so every row is balanced.
+  const flowIdxs = buttons.map((s, i) => (s.fullWidth ? -1 : i)).filter((i) => i >= 0);
+  const loneIdx = flowIdxs.length % 2 === 1 ? flowIdxs[flowIdxs.length - 1] : -1;
+  buttons.forEach((spec, i) => {
     const btn = document.createElement("button");
     btn.className = "big-button" +
       (spec.secondary ? " secondary" : "") +
-      (spec.danger ? " danger" : "");
+      (spec.danger ? " danger" : "") +
+      (spec.fullWidth || i === loneIdx ? " full-span" : "");
     btn.textContent = spec.text;
     btn.addEventListener("click", spec.onTap);
     el.overlayButtons.appendChild(btn);
-  }
+  });
 
   const loot = (items || []).filter(Boolean);
   if (loot.length) {
@@ -3436,6 +3442,11 @@ function storyCardHtml(text) {
   html = html.replace(/^(Best against:|Support:)([^\n]*)$/m,
     `<span class="hl-weak">$1$2</span>`);
   html = html.replaceAll("{name}", `<span class="hl-name">${escapeHtml(getPlayerName())}</span>`);
+  // Inline attention markup: [hl-pink]text[/hl] / [hl-blue]text[/hl]. Runs on
+  // already-escaped text (brackets survive escapeHtml), so the wrapped content
+  // stays safe. Used by the first-loss pep talk (config.js NARRATIVE.firstLoss).
+  html = html.replace(/\[hl-(pink|blue)\]([\s\S]*?)\[\/hl\]/g,
+    (m, tone, inner) => `<span class="hl-${tone}">${inner}</span>`);
   return html;
 }
 
