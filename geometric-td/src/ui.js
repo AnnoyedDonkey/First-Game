@@ -45,6 +45,7 @@ import {
   fetchAllBoards, publishAllLocalBests,
 } from "./leaderboard.js";
 import { WORLDS } from "./levels.js";
+import { RARITIES } from "./loot.js";
 import { enemyPosition } from "./enemies.js";
 import { ENEMY_LOOK } from "./renderer.js";
 import {
@@ -2875,7 +2876,10 @@ export function showOverlay({ title, subtitle, type, buttons, items, note, narra
     el.overlayButtons.appendChild(btn);
   });
 
-  const loot = (items || []).filter(Boolean);
+  // Sort the loot grid rarest-first (RARITIES is common -> singularity, so
+  // higher index = rarer). Stable sort keeps same-rarity drops in drop order.
+  const loot = (items || []).filter(Boolean)
+    .sort((a, b) => RARITIES.indexOf(b.item.rarity) - RARITIES.indexOf(a.item.rarity));
   if (loot.length) {
     el.overlayItems.innerHTML = loot.map((p, i) =>
       tileHtml(p.item, {
