@@ -709,7 +709,7 @@ export const VFX = {
     eyeColorBrat: "#fff7d1",  // bright yellow-white
     hitFlashSeconds: 0.55,    // how long Indy shows X eyes after a leak reaches him
     lowCoreFrac: 0.34,        // core HP fraction at/below which Indy looks worried
-    eyeSpacing: 0.42,         // eye-center offset from shape center (× shape radius)
+    eyeSpacing: 0.30,         // eye-center offset from shape center (× shape radius; matches the story-card avatars)
     eyeRadius: 0.24,          // eye size (× shape radius)
     eyeRise: 0.06,            // eyes sit this fraction of the radius above center
     lineWidth: 1.6,           // eye stroke width
