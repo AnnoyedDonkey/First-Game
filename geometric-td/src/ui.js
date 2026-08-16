@@ -38,7 +38,7 @@ import {
   getBarksEnabled, setBarksEnabled,
   getLang, setLang,
 } from "./progression.js";
-import { t, onLangChange } from "./i18n.js";
+import { t, tf, onLangChange } from "./i18n.js";
 import {
   canEquipItem, GEAR_SLOTS, normalizeGear, masteryRankFor as gearMasteryRankFor,
 } from "./equipment.js";
@@ -79,7 +79,6 @@ const el = {
   levelList: document.getElementById("level-list"),
   shardsValue: document.getElementById("shards-value"),
   menuActions: document.getElementById("menu-actions"),
-  langToggle: document.getElementById("lang-toggle"),
   worldPrev: document.getElementById("world-prev"),
   worldNext: document.getElementById("world-next"),
   worldName: document.getElementById("world-name"),
@@ -218,18 +217,18 @@ function updateWaveButton(game) {
 
   switch (game.phase) {
     case "ready":
-      label = "START WAVE";
+      label = t("ui.startWave", "START WAVE");
       sub = String(game.waveIndex + 1);
       disabled = false;
       break;
     case "countdown":
-      label = "NEXT IN";
+      label = t("ui.nextIn", "NEXT IN");
       sub = `${Math.ceil(game.countdown)}s`;
       disabled = false; // tapping starts the wave early
       break;
     case "wave":
-      label = `WAVE ${game.waveIndex + 1}`;
-      sub = "ACTIVE";
+      label = tf("ui.waveN", "WAVE {n}", { n: game.waveIndex + 1 });
+      sub = t("ui.active", "ACTIVE");
       disabled = true;
       break;
     default:
@@ -305,38 +304,40 @@ export function updateUpgradePanel(game, tower) {
   const dpsText = `${dps >= 100 ? Math.round(dps) : dps.toFixed(1)} DPS`;
   setText(el.upName, "upName", tower.name + (rank > 0 ? ` ★${rank}` : ""));
   // Veterans show their unlocked potential, e.g. "LV 1/3".
+  const lvAbbr = t("ui.lv", "LV");
   const lvText = tower.maxUnlockedLevel > tower.level
-    ? `LV ${tower.level}/${tower.maxUnlockedLevel}`
-    : `LV ${tower.level}`;
+    ? `${lvAbbr} ${tower.level}/${tower.maxUnlockedLevel}`
+    : `${lvAbbr} ${tower.level}`;
   setText(el.upLevel, "upLevel", lvText);
   // Past level 5, the XP line tracks mastery progress instead.
   let xpText;
+  const xpReadyText = t("ui.xpReady", "XP READY");
   if (threshold !== null && tower.xp < threshold) {
     xpText = `XP ${tower.xp}/${threshold}`;
   } else if (threshold !== null) {
     // Eligible (or a veteran re-leveling): no confusing 99999/100.
-    xpText = rank > 0 ? `★${rank} · XP READY` : `XP READY`;
+    xpText = rank > 0 ? `★${rank} · ${xpReadyText}` : xpReadyText;
   } else {
     const toNext = xpToNextMastery(tower.xp);
     const pct = Math.round(rank * TOWER_UPGRADES.mastery.damagePerRank * 100);
     xpText = toNext === null
-      ? `★${rank} MAX · +${pct}% DMG`
-      : `★${rank} (+${pct}%) · NEXT ★ IN ${toNext} XP`;
+      ? `★${rank} ${t("ui.max", "MAX")} · +${pct}% DMG`
+      : `★${rank} (+${pct}%) · ${tf("ui.nextStarIn", "NEXT ★ IN {n} XP", { n: toNext })}`;
   }
   setText(el.upXp, "upXp", `${dpsText} · ${xpText}`);
 
   // Button: what's between this tower and its next level?
   let label, sub, disabled;
   if (threshold === null) {
-    label = "MAX";
-    sub = "LEVEL";
+    label = t("ui.max", "MAX");
+    sub = t("ui.level", "LEVEL");
     disabled = true;
   } else if (!eligible) {
-    label = "NEED";
-    sub = "XP";
+    label = t("ui.need", "NEED");
+    sub = t("ui.xp", "XP");
     disabled = true;
   } else {
-    label = "UPGRADE";
+    label = t("ui.upgrade", "UPGRADE");
     sub = `$${cost}`;
     disabled = game.money < cost;
   }
@@ -668,8 +669,11 @@ function renderWorld() {
   if (!unlocked) {
     const note = document.createElement("div");
     note.className = "world-locked-note board-note";
-    note.textContent =
-      `LOCKED — clear all of ${WORLDS[currentWorld - 1].name} to unlock ${world.name}.`;
+    note.textContent = tf(
+      "ui.worldLocked",
+      "LOCKED — clear all of {prev} to unlock {world}.",
+      { prev: WORLDS[currentWorld - 1].name, world: world.name }
+    );
     el.levelList.appendChild(note);
   }
 
@@ -960,13 +964,9 @@ function appendGlobalMenuButtons() {
 el.worldPrev.addEventListener("click", () => navigateWorld(-1));
 el.worldNext.addEventListener("click", () => navigateWorld(1));
 
-// Home-screen language pill (EN|FR). Flips the language; setLang persists
-// and re-points i18n. The onLangChange listener below rebuilds the menu.
-if (el.langToggle) {
-  el.langToggle.addEventListener("click", () => setLang(getLang() === "fr" ? "en" : "fr"));
-}
-// When the language changes, rebuild the (generated) menu so its labels
-// re-translate. Static [data-i18n] markup is handled by i18n itself.
+// When the language changes (via the menu LANGUE entry), rebuild the
+// (generated) menu so its labels re-translate. Static [data-i18n] markup is
+// handled by i18n itself.
 onLangChange(() => { if (menuCtx) renderWorld(); });
 
 // Horizontal swipe on the overlay pages between worlds. Kept distinct
@@ -1427,11 +1427,11 @@ function openItemSheet({ stashId, towerName, slot }) {
   const sellVal = LOOT.gen.sellValues[item.rarity] || 0;
   const actionsHtml = equippedOn
     ? `<div class="gear-sheet-actions">` +
-      `<button class="gear-sheet-btn" id="sheet-replace">REPLACE</button>` +
-      `<button class="gear-sheet-btn" id="sheet-unequip">UNEQUIP</button></div>`
+      `<button class="gear-sheet-btn" id="sheet-replace">${t("gear.replace", "REPLACE")}</button>` +
+      `<button class="gear-sheet-btn" id="sheet-unequip">${t("gear.unequip", "UNEQUIP")}</button></div>`
     : `<div class="gear-sheet-actions">` +
-      `<button class="gear-sheet-btn" id="sheet-equip">EQUIP</button>` +
-      `<button class="gear-sheet-btn sell" id="sheet-sell">SELL &#9670;${sellVal}</button>` +
+      `<button class="gear-sheet-btn" id="sheet-equip">${t("gear.equip", "EQUIP")}</button>` +
+      `<button class="gear-sheet-btn sell" id="sheet-sell">${t("gear.sell", "SELL")} &#9670;${sellVal}</button>` +
       `</div>`;
 
   el.gearSheet.innerHTML =
@@ -1458,7 +1458,7 @@ function openItemSheet({ stashId, towerName, slot }) {
     sellBtn.addEventListener("click", () => {
       if (needsConfirm && !sellBtn.classList.contains("armed")) {
         sellBtn.classList.add("armed", "danger");
-        sellBtn.textContent = "SELL? TAP AGAIN";
+        sellBtn.textContent = t("gear.sellConfirm", "SELL? TAP AGAIN");
         return;
       }
       sellStashItem(item.id);
@@ -1479,7 +1479,7 @@ function openPendingItemSheet(itemId) {
     `<div class="gear-sheet-sub">${item.rarity.toUpperCase()} &middot; ${item.slot.toUpperCase()} &middot; ` +
     `UNCLAIMED (STASH WAS FULL)</div>` +
     itemAffixRowsHtml(item) +
-    `<div class="gear-sheet-actions"><button class="gear-sheet-btn sell" id="sheet-sell-pending">SELL &#9670;${sellVal}</button></div>`;
+    `<div class="gear-sheet-actions"><button class="gear-sheet-btn sell" id="sheet-sell-pending">${t("gear.sell", "SELL")} &#9670;${sellVal}</button></div>`;
   openSheet();
   bindTraitDisclosures();
   document.getElementById("sheet-sell-pending").addEventListener("click", () => {
@@ -1533,13 +1533,13 @@ function openCompareSheet(current, incoming, opts = {}) {
     : "";
 
   const footer = readOnly
-    ? `<div class="gear-sheet-actions"><button class="gear-sheet-btn" id="cmp-close">CLOSE</button></div>`
+    ? `<div class="gear-sheet-actions"><button class="gear-sheet-btn" id="cmp-close">${t("ui.close", "CLOSE")}</button></div>`
     : `<div class="gear-sheet-actions">` +
-      `<button class="gear-sheet-btn" id="cmp-equip">EQUIP NEW</button>` +
-      `<button class="gear-sheet-btn sell" id="cmp-keep">KEEP CURRENT</button></div>`;
+      `<button class="gear-sheet-btn" id="cmp-equip">${t("gear.equipNew", "EQUIP NEW")}</button>` +
+      `<button class="gear-sheet-btn sell" id="cmp-keep">${t("gear.keepCurrent", "KEEP CURRENT")}</button></div>`;
 
   el.gearSheet.innerHTML =
-    `<div class="gear-sheet-title">${slotGlyph(slot, "#8fa0c8")} COMPARE &middot; ${SLOT_LABEL[slot]}</div>` +
+    `<div class="gear-sheet-title">${slotGlyph(slot, "#8fa0c8")} ${t("gear.compare", "COMPARE")} &middot; ${SLOT_LABEL[slot]}</div>` +
     `<div class="cmp-head"><span class="cmp-label"></span>` +
     `<span class="cmp-cell" style="color:${curColor}">${escapeHtml(itemTitle(current))}` +
     `<small>${current.rarity.toUpperCase()}</small></span>` +
@@ -1582,7 +1582,7 @@ function openPickerSheet(towerName, slot) {
     `<div class="gear-sheet-sub">${current ? "REPLACE EQUIPPED GEAR" : "EMPTY SLOT"} &middot; PICK FROM STASH</div>` +
     `<div class="gear-picker-label">${candidates.length ? "COMPATIBLE IN STASH" : "NOTHING COMPATIBLE"}</div>` +
     rows +
-    `<div class="gear-sheet-actions" style="margin-top:6px"><button class="gear-sheet-btn danger" id="sheet-cancel">CANCEL</button></div>`;
+    `<div class="gear-sheet-actions" style="margin-top:6px"><button class="gear-sheet-btn danger" id="sheet-cancel">${t("ui.cancel", "CANCEL")}</button></div>`;
   openSheet();
   document.getElementById("sheet-cancel").addEventListener("click", closeSheet);
   el.gearSheet.querySelectorAll("[data-equip-item]").forEach((btn) => {
@@ -1619,10 +1619,10 @@ function openEquipTargetSheet(item) {
     : `<div class="gear-empty-note">No eligible tower yet — needs &#9733;1 MASTERY and a type match.</div>`;
 
   el.gearSheet.innerHTML =
-    `<div class="gear-sheet-title" style="color:${color}">${slotGlyph(item.slot, color)} EQUIP ${escapeHtml(itemTitle(item))}</div>` +
+    `<div class="gear-sheet-title" style="color:${color}">${slotGlyph(item.slot, color)} ${t("gear.equip", "EQUIP")} ${escapeHtml(itemTitle(item))}</div>` +
     `<div class="gear-sheet-sub">PICK A TOWER &mdash; CURRENT ${item.slot.toUpperCase()} SHOWN</div>` +
     rows +
-    `<div class="gear-sheet-actions" style="margin-top:6px"><button class="gear-sheet-btn danger" id="sheet-cancel">CANCEL</button></div>`;
+    `<div class="gear-sheet-actions" style="margin-top:6px"><button class="gear-sheet-btn danger" id="sheet-cancel">${t("ui.cancel", "CANCEL")}</button></div>`;
   openSheet();
   document.getElementById("sheet-cancel").addEventListener("click", closeSheet);
   el.gearSheet.querySelectorAll("[data-target-tower]").forEach((btn) => {
@@ -1898,7 +1898,7 @@ function bulkSellSheetRowsHtml(items, kind) {
     present.map((r) =>
       `<div class="bulk-sell-row">` +
       `<span class="bulk-sell-label" style="color:${RARITY_COLOR[r]}">${r.toUpperCase()} (${counts[r]})</span>` +
-      `<button class="bulk-sell-btn" data-bulk-kind="${kind}" data-bulk-rarity="${r}">SELL ALL</button>` +
+      `<button class="bulk-sell-btn" data-bulk-kind="${kind}" data-bulk-rarity="${r}">${t("gear.sellAll", "SELL ALL")}</button>` +
       `</div>`
     ).join("") +
     `</div>`;
@@ -1907,9 +1907,9 @@ function bulkSellSheetRowsHtml(items, kind) {
 function openBulkSellSheet(kind) {
   const items = kind === "pending" ? getPendingLoot() : getStash();
   el.gearSheet.innerHTML =
-    `<div class="gear-sheet-title" style="color:var(--neon-yellow)">${kind === "pending" ? "SELL UNCLAIMED DROPS" : "BULK SELL"}</div>` +
+    `<div class="gear-sheet-title" style="color:var(--neon-yellow)">${kind === "pending" ? t("gear.sellUnclaimedTitle", "SELL UNCLAIMED DROPS") : t("gear.bulkSellTitle", "BULK SELL")}</div>` +
     bulkSellSheetRowsHtml(items, kind) +
-    `<div class="gear-sheet-actions" style="margin-top:12px"><button class="gear-sheet-btn" id="sheet-close">CLOSE</button></div>`;
+    `<div class="gear-sheet-actions" style="margin-top:12px"><button class="gear-sheet-btn" id="sheet-close">${t("ui.close", "CLOSE")}</button></div>`;
   openSheet();
   document.getElementById("sheet-close").addEventListener("click", closeSheet);
   el.gearSheet.querySelectorAll("[data-bulk-rarity]").forEach((btn) => {
@@ -1922,7 +1922,7 @@ function openBulkSellSheet(kind) {
         openBulkSellSheet(kind);
       } else {
         btn.classList.add("confirming");
-        btn.textContent = "TAP AGAIN";
+        btn.textContent = t("ui.tapAgain", "TAP AGAIN");
       }
     });
   });
@@ -1984,7 +1984,7 @@ function renderStashTab() {
         renderGearPanel();
       } else {
         leaveBtn.classList.add("confirming");
-        leaveBtn.textContent = "LOSE THEM? TAP AGAIN";
+        leaveBtn.textContent = t("gear.loseConfirm", "LOSE THEM? TAP AGAIN");
       }
     });
   }
@@ -2066,7 +2066,7 @@ function closeGearPanel() {
     discardPendingLoot();
   }
   el.gearClose.classList.remove("confirming");
-  el.gearClose.textContent = "CLOSE";
+  el.gearClose.textContent = t("ui.close", "CLOSE");
   closeSheet();
   el.gearOverlay.classList.add("hidden");
 }
@@ -2093,7 +2093,7 @@ function openStoreItemSheet(item) {
     `${itemReqText(item)} &middot; ILVL ${item.ilvl}`;
   const price = LOOT.store.prices[item.rarity] || 0;
   const free = stashSlotsFree();
-  const buyLabel = free > 0 ? `BUY &#9670;${price}` : "STASH FULL";
+  const buyLabel = free > 0 ? `${t("store.buy", "BUY")} &#9670;${price}` : t("store.stashFull", "STASH FULL");
   const buyDisabled = free <= 0 || getShards() < price;
 
   el.storeSheet.innerHTML =
@@ -2140,12 +2140,12 @@ function openSkillPointStoreSheet() {
   const cost = storeSkillPointCost();
   const canAfford = getShards() >= cost;
   el.storeSheet.innerHTML =
-    `<div class="gear-sheet-title store-skill-title">&#9733; BUY SKILL POINT</div>` +
+    `<div class="gear-sheet-title store-skill-title">&#9733; ${t("store.buySkillPoint", "BUY SKILL POINT")}</div>` +
     `<div class="gear-sheet-sub">Adds 1 permanent point to spend in the Skill Tree. ` +
     `The price rises after each purchase, up to &#9670;${LOOT.store.skillPointCost.cap}.</div>` +
     `<div class="gear-sheet-actions">` +
     `<button class="gear-sheet-btn store-buy" id="store-skill-confirm"${canAfford ? "" : " disabled"}>` +
-    `BUY 1 POINT &mdash; &#9670;${cost}</button></div>`;
+    `${t("store.buyOnePoint", "BUY 1 POINT")} &mdash; &#9670;${cost}</button></div>`;
   el.storeSheetOverlay.classList.remove("hidden");
   if (canAfford) {
     document.getElementById("store-skill-confirm").addEventListener("click", () => {
@@ -2174,7 +2174,7 @@ function renderStorePanel() {
   skillPoint.className = "store-skill-point";
   skillPoint.innerHTML =
     `<span class="store-skill-icon">&#9733;</span>` +
-    `<span class="store-skill-copy"><b>BUY SKILL POINT</b>` +
+    `<span class="store-skill-copy"><b>${t("store.buySkillPoint", "BUY SKILL POINT")}</b>` +
     `<small>PERMANENT &middot; USE IN THE SKILL TREE</small></span>` +
     `<span class="store-skill-price${shards < skillCost ? " cannot-afford" : ""}">&#9670;${skillCost}</span>`;
   skillPoint.addEventListener("click", openSkillPointStoreSheet);
@@ -2210,7 +2210,7 @@ function renderStorePanel() {
 
   const reroll = document.createElement("button");
   reroll.className = "gear-action store-reroll";
-  reroll.textContent = `REROLL ◆ ${rerollCost}`;
+  reroll.textContent = `${t("store.reroll", "REROLL")} ◆ ${rerollCost}`;
   reroll.disabled = shards < rerollCost;
   reroll.addEventListener("click", () => { rerollStore(); renderStorePanel(); });
   el.storeActions.appendChild(reroll);
@@ -2263,7 +2263,7 @@ export function initSkillTree(onSkillBought) {
       location.reload();
     } else {
       el.resetSave.classList.add("confirming");
-      el.resetSave.textContent = "SURE? TAP AGAIN";
+      el.resetSave.textContent = t("skill.resetSaveConfirm", "SURE? TAP AGAIN");
       setTimeout(resetConfirmState, 3000);
     }
   });
@@ -2280,7 +2280,7 @@ export function openSkillTree() {
 
 function resetConfirmState() {
   el.resetSave.classList.remove("confirming");
-  el.resetSave.textContent = "RESET SAVE";
+  el.resetSave.textContent = t("skill.resetSave", "RESET SAVE");
 }
 
 // Cumulative effect text at a given tier, from the node's `kind`. Per-tower
@@ -2584,8 +2584,11 @@ function bindSkillTreeGestures() {
 
 function renderSkillTree(onSkillBought, recenter = false) {
   const points = getSkillPoints();
-  el.skillPointsLine.innerHTML =
-    `AVAILABLE POINTS: <b>${points}</b> &mdash; win battles or buy in Store &middot; pinch or &plusmn; to zoom`;
+  el.skillPointsLine.innerHTML = tf(
+    "skill.pointsLine",
+    "AVAILABLE POINTS: <b>{points}</b> &mdash; win battles or buy in Store &middot; pinch or &plusmn; to zoom",
+    { points }
+  );
   el.skillList.classList.add("skill-tree-host");
   el.skillList.innerHTML =
     `<div class="skill-tree-scroll">${buildSkillTreeSvg()}</div>` +
@@ -2654,15 +2657,15 @@ function openSkillSheet(id, onSkillBought) {
   // Buy button label / disabled reasoning.
   let btnLabel, disabled = false, lockNote = "";
   if (node.free) {
-    btnLabel = "UNLOCKED &mdash; FREE"; disabled = true;
+    btnLabel = t("skill.free", "UNLOCKED &mdash; FREE"); disabled = true;
   } else if (cost === null) {
-    btnLabel = "MAXED"; disabled = true;
+    btnLabel = t("skill.maxed", "MAXED"); disabled = true;
   } else if (!unlocked) {
     const parent = SKILLS[node.parent];
-    btnLabel = "LOCKED"; disabled = true;
+    btnLabel = t("skill.locked", "LOCKED"); disabled = true;
     lockNote = `<div class="skill-sheet-lock">Unlock <b>${parent.name}</b> first.</div>`;
   } else {
-    btnLabel = `BUY &mdash; ${cost} PT`;
+    btnLabel = tf("skill.buy", "BUY &mdash; {cost} PT", { cost });
     disabled = points < cost;
   }
 
@@ -2774,10 +2777,10 @@ el.publishScores.addEventListener("click", async () => {
     return;
   }
   el.publishScores.disabled = true;
-  el.publishScores.textContent = "PUBLISHING…";
+  el.publishScores.textContent = t("lb.publishing", "PUBLISHING…");
   const { ok, fail } = await publishAllLocalBests(getProgress().endlessBest || {});
   el.publishScores.disabled = false;
-  el.publishScores.textContent = "PUBLISH MY SCORES";
+  el.publishScores.textContent = t("lb.publish", "PUBLISH MY SCORES");
   flashLbMsg(
     ok
       ? `Published ${ok} score${ok === 1 ? "" : "s"}.` + (fail ? ` (${fail} failed)` : "")

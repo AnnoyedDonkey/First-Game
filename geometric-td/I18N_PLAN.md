@@ -94,7 +94,27 @@ translated** (do NOT redo in later phases): `menu.*` keys —
 skills/towers/store/board/replayIntro/banter/language/reset/resetConfirm/
 welcomeBack.
 
-### Phase A — static chrome + core UI  ⬜ TODO
+### Phase A — static chrome + core UI  ✅ DONE & verified (2026-08-16, build 2026.08.16-2)
+Static `index.html` labels (HUD, overlay headers, CLOSE/SAVE/PUBLISH, tabs,
+speed-control titles, nickname placeholder) via `data-i18n`; `ui.js` generated
+chrome (wave button `VAGUE ▶`, SELL, upgrade panel, two-tap confirms, gear/
+store/skill sheet button verbs, world-locked note) via `t()`/`tf()`. Keys
+under the `hud.*/ui.*/gear.*/store.*/lb.*/skill.*` sections of `fr.js`.
+Verified at 375px: no clipping on any menu-reachable overlay (skill tree,
+store, leaderboard, gear sheets) or the wave/upgrade buttons; no console
+errors. Also **removed the home-screen `#lang-toggle` pill** (user: redundant
+with the pinned menu LANGUE button) — markup/CSS/JS binding gone, menu toggle
++ `onLangChange` re-render kept.
+- **Deferred to a later sweep (agent flagged, intentionally out of Phase A):**
+  level-select board/sheet chrome (CLEARED/LOCKED/ENDLESS/PLAY/STORY/
+  CHALLENGES/MILESTONES), item rarity/slot labels (OPTIC/COMMON/… → Phase E),
+  leaderboard status messages (→ Phase E), and descriptive sheet copy ("PICK A
+  TOWER", "REPLACE EQUIPPED GEAR", "COMPATIBLE IN STASH", etc.). These render
+  English amid French for now.
+- **Unverified (needs a live battle / on-device):** the in-battle upgrade XP
+  status line (`up-xp`, e.g. "PROCHAINE ★ DANS 340 XP") — a text line, not a
+  button; couldn't measure its flex layout headlessly.
+
 `index.html` static labels + `src/ui.js` generated strings that are NOT
 covered by later phases. HUD (CREDITS/WAVE/CORE/SKILLS), speed-control
 titles, overlay headers (TOWERS/STASH/STORE/LEADERBOARD/SKILL TREE), all

@@ -13,7 +13,7 @@
 
     <!-- Update nudge: shown by update.js when a newer build is deployed -->
     <div id="update-banner" class="hidden" role="button" tabindex="0">
-      <span class="update-text">&#8635; UPDATE AVAILABLE — TAP TO RELOAD</span>
+      <span class="update-text" data-i18n="ui.updateAvailable">&#8635; UPDATE AVAILABLE — TAP TO RELOAD</span>
       <button class="update-dismiss" aria-label="Dismiss">&#10005;</button>
     </div>
 
@@ -49,7 +49,7 @@
         <span id="tutorial-card-cta"></span>
       </div>
       <div id="tutorial-spotlight" class="hidden"></div>
-      <button id="tutorial-skip">SKIP TUTORIAL</button>
+      <button id="tutorial-skip" data-i18n="ui.skipTutorial">SKIP TUTORIAL</button>
     </div>
 
     <!-- Narrative onboarding (P1): first-load story intro, a linear
@@ -81,33 +81,33 @@
                autocomplete="off" autocapitalize="words" />
         <button id="story-card-cta"></button>
       </div>
-      <button id="story-skip">SKIP</button>
+      <button id="story-skip" data-i18n="ui.skip">SKIP</button>
     </div>
 
     <!-- Top HUD: money / wave / core health -->
     <header id="hud">
       <div class="hud-item" id="hud-money">
-        <span class="hud-label">CREDITS</span>
+        <span class="hud-label" data-i18n="hud.credits">CREDITS</span>
         <span class="hud-value" id="money-value">0</span>
       </div>
       <div class="hud-item" id="hud-wave">
-        <span class="hud-label">WAVE</span>
+        <span class="hud-label" data-i18n="hud.wave">WAVE</span>
         <span class="hud-value" id="wave-value">-</span>
       </div>
       <div class="hud-item" id="hud-core">
-        <span class="hud-label">CORE</span>
+        <span class="hud-label" data-i18n="hud.core">CORE</span>
         <span class="hud-value" id="core-value">0</span>
       </div>
       <button class="hud-item" id="skills-button">
-        <span class="hud-label">SKILLS</span>
+        <span class="hud-label" data-i18n="hud.skills">SKILLS</span>
         <span class="hud-value" id="skill-points-value">0</span>
       </button>
       <!-- Game speed: half / pause / double -->
       <div id="speed-controls">
-        <button class="speed-btn" id="speed-slow" title="Half speed">&#9664;</button>
-        <button class="speed-btn" id="speed-pause" title="Pause">&#10074;&#10074;</button>
-        <button class="speed-btn" id="speed-fast" title="Double speed">&#9654;</button>
-        <button class="speed-btn exit-btn" id="exit-button" title="Exit battle">&#10005;</button>
+        <button class="speed-btn" id="speed-slow" title="Half speed" data-i18n-attr="title:ui.speedHalf">&#9664;</button>
+        <button class="speed-btn" id="speed-pause" title="Pause" data-i18n-attr="title:ui.speedPause">&#10074;&#10074;</button>
+        <button class="speed-btn" id="speed-fast" title="Double speed" data-i18n-attr="title:ui.speedDouble">&#9654;</button>
+        <button class="speed-btn exit-btn" id="exit-button" title="Exit battle" data-i18n-attr="title:ui.exitBattle">&#10005;</button>
       </div>
     </header>
 
@@ -132,7 +132,7 @@
         <div id="overlay-milestones" class="hidden"></div>
         <div id="overlay-feedback" class="hidden"></div>
         <div id="overlay-buttons"></div>
-        <div id="overlay-loot-head" class="hidden">LOOT EARNED</div>
+        <div id="overlay-loot-head" class="hidden" data-i18n="ui.lootEarned">LOOT EARNED</div>
         <div id="overlay-items" class="hidden"></div>
       </div>
 
@@ -142,14 +142,6 @@
 
       <!-- Level select overlay (shown at startup) -->
       <div id="level-overlay" class="hidden">
-        <!-- Discreet language toggle (EN default | FR). Active segment is
-             highlighted purely from <html data-lang> via CSS, so a French
-             speaker can find and flip it without reading English. Mirrored
-             in the menu footer (ui.js appendGlobalMenuButtons). i18n.js. -->
-        <button id="lang-toggle" type="button" aria-label="Language / Langue">
-          <span class="lang-seg lang-en">EN</span>
-          <span class="lang-seg lang-fr">FR</span>
-        </button>
         <h1>GEOMETRIC TD</h1>
         <div id="welcome-back" class="hidden"></div>
         <div id="shards-readout">&#9670; <span id="shards-value">0</span></div>
@@ -180,19 +172,19 @@
       <!-- Gear overlay: tower-first equipment screen (TOWERS/STASH tabs) -->
       <div id="gear-overlay" class="hidden">
         <div id="gear-header">
-          <h1>TOWERS</h1>
+          <h1 data-i18n="gear.towers">TOWERS</h1>
           <button id="gear-help" aria-label="Gear guide">?</button>
         </div>
         <div id="gear-wallet"></div>
         <div id="gear-tabs">
-          <button id="gear-tab-towers" class="gear-tab active">TOWERS</button>
-          <button id="gear-tab-stash" class="gear-tab">STASH<span id="gear-stash-badge" class="gear-tab-badge hidden"></span></button>
+          <button id="gear-tab-towers" class="gear-tab active" data-i18n="gear.towers">TOWERS</button>
+          <button id="gear-tab-stash" class="gear-tab"><span data-i18n="gear.stash">STASH</span><span id="gear-stash-badge" class="gear-tab-badge hidden"></span></button>
         </div>
         <div id="gear-scroll">
           <div id="gear-view-towers"></div>
           <div id="gear-view-stash" class="hidden"></div>
         </div>
-        <button id="gear-close" class="big-button">CLOSE</button>
+        <button id="gear-close" class="big-button" data-i18n="ui.close">CLOSE</button>
 
         <!-- Bottom sheet: item detail / picker / equip-target / guide -->
         <div id="gear-sheet-overlay" class="hidden">
@@ -205,14 +197,14 @@
            components; no logic changes, P5 store logic untouched). -->
       <div id="store-overlay" class="hidden">
         <div id="store-header">
-          <h1>STORE</h1>
+          <h1 data-i18n="store.title">STORE</h1>
         </div>
         <div id="store-wallet" class="store-wallet"></div>
         <div id="store-scroll">
           <div id="store-actions" class="gear-actions-row"></div>
           <div id="store-grid"></div>
         </div>
-        <button id="store-close" class="big-button">CLOSE</button>
+        <button id="store-close" class="big-button" data-i18n="ui.close">CLOSE</button>
 
         <!-- Bottom sheet: item detail with BUY -->
         <div id="store-sheet-overlay" class="hidden">
@@ -222,28 +214,29 @@
 
       <!-- Leaderboard overlay: shared online best-wave scores by level -->
       <div id="leaderboard-overlay" class="hidden">
-        <h1>LEADERBOARD</h1>
-        <p>ENDLESS BEST WAVE, BY LEVEL</p>
+        <h1 data-i18n="lb.title">LEADERBOARD</h1>
+        <p data-i18n="lb.subtitle">ENDLESS BEST WAVE, BY LEVEL</p>
         <div id="nickname-bar">
           <input id="nickname-input" type="text" maxlength="16"
                  placeholder="YOUR NICKNAME" autocomplete="off"
-                 autocapitalize="characters" spellcheck="false">
-          <button id="nickname-save" class="lb-action">SAVE</button>
+                 autocapitalize="characters" spellcheck="false"
+                 data-i18n-attr="placeholder:lb.nickname">
+          <button id="nickname-save" class="lb-action" data-i18n="lb.save">SAVE</button>
         </div>
-        <button id="publish-scores" class="lb-action lb-publish">PUBLISH MY SCORES</button>
+        <button id="publish-scores" class="lb-action lb-publish" data-i18n="lb.publish">PUBLISH MY SCORES</button>
         <div id="leaderboard-msg"></div>
         <div id="leaderboard-list"></div>
-        <button id="leaderboard-close" class="big-button">CLOSE</button>
+        <button id="leaderboard-close" class="big-button" data-i18n="ui.close">CLOSE</button>
       </div>
 
       <!-- Skill tree overlay -->
       <div id="skill-overlay" class="hidden">
-        <h1>SKILL TREE</h1>
+        <h1 data-i18n="skill.title">SKILL TREE</h1>
         <p id="skill-points-line"></p>
         <div id="skill-list"></div>
         <div id="skill-actions">
-          <button id="skill-close" class="big-button">CLOSE</button>
-          <button id="reset-save">RESET SAVE</button>
+          <button id="skill-close" class="big-button" data-i18n="ui.close">CLOSE</button>
+          <button id="reset-save" data-i18n="skill.resetSave">RESET SAVE</button>
         </div>
 
         <!-- Bottom sheet: node detail with BUY -->
@@ -274,7 +267,7 @@
           <span id="upgrade-btn-sub" class="stack-button-sub"></span>
         </button>
         <button id="sell-button" class="big-button stack-button">
-          <span id="sell-btn-label">SELL</span>
+          <span id="sell-btn-label" data-i18n="ui.sell">SELL</span>
           <span id="sell-btn-sub" class="stack-button-sub"></span>
         </button>
       </div>
