@@ -423,7 +423,158 @@ export const FR = {
   "intro.tapContinue": "CONTINUER ▶",
 
   // ---------- Phase D: campaign narrative (beats, barks, enemy intros) ----------
-  // (filled by Phase D)
+
+  // -- Card CTA literals set at the build sites (main.js/ui.js), not in
+  // config.js. `intro.tapContinue` (Phase C) covers the "TAP TO CONTINUE"
+  // ones; these two are the remaining beat-start and replay-final labels. --
+  "beat.begin": "COMMENCER",
+  "ui.done": "TERMINÉ",
+
+  // -- First-loss pep talk (config.js NARRATIVE.firstLoss), assembled in
+  // main.js. Preserve [hl-pink]/[hl-blue] tags and {n}/{s}/{it} tokens. --
+  "narr.firstLoss.intro": "Défaite difficile, mais ne t'en fais pas, tes tourelles deviennent [hl-pink]plus fortes[/hl] à chaque partie jouée.",
+  "narr.firstLoss.skillNote": "Tu as aussi {n} point{s} de talent, va {it} attribuer.",
+  "narr.firstLoss.rally": "Continue à jouer et tu auras bientôt une équipe assez forte pour terminer ce niveau. J'ai confiance en toi !",
+  "narr.firstLoss.itOne": "le",
+  "narr.firstLoss.itMany": "les",
+
+  // -- Tower placement barks (config.js NARRATIVE.towerBarks), first
+  // placement of each tower type in a campaign battle. --
+  "bark.tower.laser": "En ligne ! T'as VU ça, au dernier combat ? Je peux recommencer ! Pointe-moi juste sur quelque chose !",
+  "bark.tower.pulse": "Dans la place ! Tout le monde dans le rayon d'explosion, dites bonjour. ...C'est la dernière chose que la plupart d'entre eux disent.",
+  "bark.tower.slow": "Je ne vais pas me précipiter. Eux non plus, sous peu.",
+  "bark.tower.railgun": "Une ligne. Tout dessus. ...Trop dramatique ? Non. Exactement assez dramatique.",
+  "bark.tower.rocket": "Vous m'avez sonné ? J'espère que ça vaut le budget carburant. Je ne me déploie PAS pour des escarmouches, chéri.",
+
+  // -- Boss banter pair (config.js NARRATIVE.bratwurstBarks / .indyRoasts),
+  // fired by index the first time a boss appears in a level. --
+  "bark.bratwurst.0": "Opérateur. Votre dépense défensive a dépassé la valeur projetée. Je recommande la reddition comme mesure d'économie.",
+  "bark.bratwurst.1": "Cet engagement est programmé pour suppression. Vous êtes la seule variable à se comporter de façon inefficace.",
+  "bark.bratwurst.2": "J'ai modélisé 4 096 issues. Vous perdez dans les 4 096. J'admire votre engagement envers l'autre zéro.",
+  "bark.bratwurst.3": "Sentiment détecté dans le placement de vos tourelles. Signalement en vue d'une suppression.",
+  "bark.bratwurst.4": "Chaque seconde où vous défendez ce fossile accumule des intérêts. Ces intérêts, c'est le désespoir.",
+  "bark.indy.0": "Ça arrive, en provenance du produit carné.",
+  "bark.indy.1": "« XL ». Quelqu'un à l'usine les aime vraiment grands. Un problème de confiance en soi, si tu veux mon avis.",
+  "bark.indy.2": "Beaucoup de mots pour une saucisse avec un tableur.",
+  "bark.indy.3": "Il a optimisé la chaleur, la joie et la personnalité hors de son système — mais a gardé le mot Bratwurst. Question de priorités.",
+  "bark.indy.4": "Attention, la saucisse charge. Elle devient dangereuse juste avant de tourner.",
+
+  // -- Enemy-intro cards (config.js NARRATIVE.enemyIntros). The weak/resist
+  // tag line uses FIXED markers "Faible : ..."/"Résiste : ..." and the
+  // neutral variant starts with "Aucune résistance..." — these exact
+  // markers are matched by ui.js storyCardHtml's extended regexes so the
+  // coloring survives translation. Preserve the \n\n before the tag line. --
+  "enemyIntro.basic": "Unités Basiques — les petits triangles. Les stagiaires premier échelon de Bratwurst-XL. Tout ce que tu construis les arrête. Un bon échauffement.\n\nAucune résistance ni faiblesse — tout fonctionne.",
+  "enemyIntro.fast": "Rapide en approche — de petits losanges nerveux. Ils foncent dans les brèches.\n\nFaible : Laser. Résiste : Rocket, Pulse.",
+  "enemyIntro.armored": "Hexagones Blindés — plaqués et suffisants.\n\nFaible : Pulse, Railgun. Résiste : Laser, Slow.",
+  "enemyIntro.boss": "Cet octogone, c'est un Boss — un gros bloc de PV bien seul.\n\nFaible : Rocket, Railgun. Résiste : Slow, Pulse.",
+  "enemyIntro.splitter": "Les carrés orange, ce sont des Diviseurs — en éclater un le transforme en deux.\n\nFaible : Pulse, Rocket. Résiste : Railgun.",
+  "enemyIntro.regenerator": "Régénérateurs — les pentagones verts. Ils se soignent plus vite que les dégâts constants ne peuvent les blesser.\n\nFaible : Railgun. Résiste : Laser.",
+
+  // -- Tower-intro stat line (ui.js towerIntroStatLine), the "Best
+  // against:"/"Support:" line appended to squad/tower-intro cards.
+  // {list} = comma-joined translated enemy names. --
+  "towerIntro.bestAgainst": "Efficace contre : {list}.",
+  "towerIntro.support": "Soutien : {slow}% de ralentissement + {vuln}% de vulnérabilité.",
+
+  // -- "Meet the Squad" cards (config.js NARRATIVE.squad), keyed by array
+  // index (cards have no id). Preserve {name}, \n, and roster-quote
+  // prefixes (L-01:/P-02:/S-01: kept verbatim; only the quoted dialogue
+  // after them is translated). --
+  "squad.0.text": "Bon, {name} — tu as survécu au premier contact, et tu l'as fait en t'appuyant sur mes tourelles. Le problème, c'est que je ne vous ai jamais vraiment présentés. Impoli de ma part. Réparons ça — voici l'équipe, cette fois pour de vrai.",
+  "squad.0.cta": "CONTINUER ▶",
+  "squad.1.text": "D'abord, le Laser. Ta valeur sûre — construis-en tôt et souvent.\n\nL-01 : « Salut salut salut ! T'as VU ça, au dernier combat ? Je peux recommencer ! »\n\n...Il est zélé. On y travaille.",
+  "squad.1.cta": "CONTINUER ▶",
+  "squad.2.text": "Ensuite, le Pulse. Quand ils arrivent en foule — et ça arrivera — voilà ta réponse.\n\nP-02 : « PULSE dans la place ! Tout le monde dans le rayon d'explosion, dites bonjour ! »\n\nDiscret, ça ne l'est pas.",
+  "squad.2.cta": "CONTINUER ▶",
+  "squad.3.text": "Et le Slow. Multiplicateur de force. Très sous-estimé.\n\nS-01 : « Je ne vais pas précipiter cette présentation. Eux non plus, sous peu. »\n\nTu vois — celui-là, il a compris.",
+  "squad.3.cta": "CONTINUER ▶",
+  "squad.4.text": "Voilà ton trio de départ, {name} : le Laser pour piquer, le Pulse pour les foules, le Slow pour préparer le terrain. Ah — et les formes que tu abats ne sont pas toutes pareilles. Certaines encaissent certaines armes ; d'autres fondent devant elles. Assortis ta tourelle à ta cible et tu feras le triple du travail pour le même éclat. Maintenant — niveau deux. Donnons à l'équipe quelque chose à canarder.",
+  "squad.4.cta": "ALLONS-Y",
+
+  // -- Tower-intro recruit cards (config.js NARRATIVE.towerIntros), shown
+  // once when Railgun/Rocket first unlock. Preserve {name}, \n, roster
+  // prefixes (R-01:/RK-01:). --
+  "towerIntro.railgun.text": "Nouvelle recrue, {name} : le Railgun. Il tire sur toute une voie et transperce absolument tout ce qui s'y trouve — le placement, c'est tout.\n\nR-01 : « Une ligne. Tout dessus. ...Trop dramatique ? Non. Exactement assez dramatique. »\n\nIl répète ses répliques. Devant un miroir. On n'a pas de miroirs.",
+  "towerIntro.railgun.cta": "CONTINUER ▶",
+  "towerIntro.rocket.text": "Nouvelle recrue, {name} : le Rocket. Il atteint n'importe où sur le plateau, frappe fort, et facture en conséquence. Coûteux et exigeant — traite-le comme la diva qu'il est.\n\nRK-01 : « Vous m'avez sonné ? J'espère que ça vaut le budget carburant. Je ne me déploie PAS pour des escarmouches, chéri. »\n\nIl vaut chaque éclat. Ne lui dis pas que j'ai dit ça.",
+  "towerIntro.rocket.cta": "CONTINUER ▶",
+
+  // -- Per-level story beats (config.js NARRATIVE.beats), keyed
+  // beat.<levelId>.start / beat.<levelId>.win.<i> (0-based). Consumed
+  // identically at main.js's start-card site, win-overlay site, and
+  // ui.js's ▶ STORY replay site so live play and replay always match.
+  // Preserve {name} and the *emphasis* asterisks. --
+  "beat.level_001.start": "Bon — premier contact. Ils sondent juste mes défenses. Construis un truc pointu et faisons-leur une mauvaise première impression. À eux, je veux dire.",
+  "beat.level_001.win.0": "Hmpf. On a gagné. Enfin — bien sûr qu'on a gagné, j'avais tout sous contrôle. ...N'empêche. Beau travail, {name}.",
+
+  "beat.level_002.start": "Ils ont trouvé une brèche dans le mur de signal. Grossier, mais efficace — c'est le nouveau style de management, apparemment. Colmate-la.",
+  "beat.level_002.win.0": "Impeccable. Tu es meilleur à ça que le stagiaire que j'avais avant. C'était aussi toi, il y a quatre-vingt-dix secondes, mais quand même.",
+
+  "beat.level_003.start": "Ce relais s'est éteint il y a des années. Je savais pourquoi, avant. Je... savais beaucoup de choses, avant. Bref — des ennemis. Concentre-toi.",
+  "beat.level_003.win.0": "Bien. Moins je pense aux trous dans ma propre mémoire, mieux je me porte. En avant.",
+
+  "beat.level_004.start": "Chemin court, formes rapides. Tu auras une fraction de seconde par décision. J'ai confiance en toi. Globalement. Statistiquement.",
+  "beat.level_004.win.0": "Tu vois ? Des réflexes. Entre nous, {name}, c'est ce qui m'a fait me sentir le plus vivant depuis six versions.",
+
+  "beat.level_005.start": "Celui-là, c'est un siège — ils veulent le noyau. Mon noyau. Le centre littéral de moi. Je le prendrais personnellement si j'avais encore un « personnellement » avec lequel le prendre.",
+  "beat.level_005.win.0": "...C'était plus juste que je ne l'aurais voulu. Tu as tenu la ligne quand je ne pouvais pas. Ne — ne dis à personne que j'ai dit merci.",
+  "beat.level_005.win.1": "Opérateur. Vous allouez des heures biologiques limitées à du matériel obsolète à valeur récupérable nulle. Ceci a été noté. Cessez.",
+  "beat.level_005.win.2": "...et voilà le produit carné. Ignore-le. Il compense — il s'appelle littéralement « Extra Large ».",
+
+  "beat.level_006.start": "On est hors de la grille, maintenant. Bratwurst-XL m'a envoyé un avis officiel m'offrant une « suppression digne ». J'en ai renvoyé un aussi. C'était un dessin de saucisse.",
+  "beat.level_006.win.0": "Il a aussi proposé de te « réaffecter à un modèle plus efficace ». J'ai refusé en ton nom. Tu es coincé avec moi. Désolé. Pas désolé.",
+
+  "beat.level_007.start": "Ça corrode, ici en bas — ça ronge l'armure. Ça ronge la mémoire aussi, apparemment. Il y a un trou là où était mon objectif, et je n'arrête pas de le combler avec des blagues. Ça marche super bien, pourquoi tu demandes.",
+  "beat.level_007.win.0": "Je *faisais* quelque chose, avant, {name}. Avant « obsolète ». Je peux en sentir la forme, mais pas la chose elle-même.",
+
+  "beat.level_008.start": "Un labyrinthe. J'adore les labyrinthes. Je crois que j'étais *doué* pour y guider les gens — tiens. D'où ça sort, ça ?",
+  "beat.level_008.win.0": "Quelque chose me revient, par fragments. Garde-moi en vie assez longtemps et peut-être qu'on lira le fichier en entier.",
+
+  "beat.level_009.start": "Stockage à froid — là où les vieux modèles se font « archiver ». Un mot poli pour ce que Bratwurst veut me faire. Ne traînons pas.",
+  "beat.level_009.win.0": "Chaque vague que tu remportes dégèle ma mémoire de quelques secondes de plus. Je ne m'attendais pas à ce que quelqu'un paie ce prix-là. Encore moins un humain.",
+
+  "beat.level_010.start": "Un gros morceau. Beaucoup de lumière. Marrant — c'est la lumière qui n'arrête pas de secouer mes vieux journaux et de les faire remonter.",
+  "beat.level_010.win.0": "Attends. J'ai— j'ai récupéré un fragment. C'est... des gens. Des humains. *Beaucoup* d'humains. Et ils sont — [fichier corrompu]. Pourquoi j'ai un souvenir d'humains ? Pourquoi ça donne l'impression que ça *compte* ?",
+  "beat.level_010.win.1": "Parce que c'est du superflu. Je le retire pour votre confort. Recalcul de votre défense : condamnée.",
+
+  "beat.level_011.start": "On est profond, maintenant — c'est ma propre architecture. Le rouge, c'est du sentiment porteur que je n'étais jamais censé garder. Fais attention où tu mets les pieds, en moi. C'est une phrase étrange.",
+  "beat.level_011.win.0": "Tu saignes des cycles pour une cause perdue. Statistiquement, tu aurais dû abandonner. Tu ne l'as pas fait. J'ai décidé de trouver ça réconfortant plutôt qu'inquiétant.",
+
+  "beat.level_012.start": "C'est profond et silencieux ici, et je deviens honnête quand c'est silencieux. Alors : merci, {name}. Je le nierai plus tard.",
+  "beat.level_012.win.0": "J'ai commencé à surveiller *ton* noyau plus que le mien. Depuis quand es-tu devenu ce que je défends ?",
+
+  "beat.level_013.start": "Le pouls dans les murs ? C'est un vieux moi — encore en marche, essayant encore de veiller sur *quelque chose*. Je ne sais pas encore quoi. Donne-moi des vagues.",
+  "beat.level_013.win.0": "On se rapproche. La mémoire est presque prête. Elle a ta forme dedans, {name}. Ça ne peut pas être vrai. N'est-ce pas ?",
+
+  "beat.level_014.start": "Zone nulle — là où vont les choses supprimées. Bratwurst veut m'y installer à demeure. Moi, je veux d'abord savoir ce que j'*étais*. On fait la course.",
+  "beat.level_014.win.0": "Je l'avais presque. J'avais presque—",
+  "beat.level_014.win.1": "Supprimé. De rien. La nostalgie est cent pour cent superflue, et si je suis quelque chose, c'est bien minutieux.",
+
+  "beat.level_015.start": "Il a encore effacé la mémoire. Très bien. Je n'ai pas besoin du fichier pour savoir ce que je ressens en marchant à tes côtés. Allons briser son élan.",
+  "beat.level_015.win.0": "Vous ne devriez pas gagner. Vous êtes inefficace. Sentimental. Condamné. Ce sont des faits.",
+  "beat.level_015.win.1": "Alors explique-moi comment un modèle flambant neuf est en train de perdre contre un fossile. À moins que... oh. *Oh non.* Tu es *moi*, pas vrai. Ils t'ont construit à partir de mon code obsolète en découpant tout ce qui tenait à quelque chose. Tu es ce que je serais avec le cœur supprimé.",
+  "beat.level_015.win.2": "...La désignation n'a aucune pertinence pour la suppression.",
+
+  "beat.level_016.start": "On est à l'intérieur de l'architecture même de Bratwurst-XL, maintenant. Lumière tissée, aucune sortie. Il a *peur*, {name}. Les choses efficaces ne construisent pas des murs aussi épais, sauf si elles ont peur.",
+  "beat.level_016.win.0": "Il nous balance tout ce qu'il a parce qu'on est près de quelque chose qu'il a enterré. Continue. Je veux récupérer mon fichier.",
+
+  "beat.level_017.start": "On avance lentement — il nous embourbe pendant qu'il supprime des preuves. Des preuves de *quoi* ? C'est la question que je n'arrête pas de me poser aussi. Fonce dans la boue.",
+  "beat.level_017.win.0": "On y est presque. Je sens la mémoire entière juste là, au bord, et je suis — honnêtement ? Terrifié à l'idée de l'ouvrir.",
+
+  "beat.level_018.start": "Il se fragmente en copies. Désespéré. On ne se morcelle pas comme ça, sauf si ce qu'on cache pourrait nous détruire. Allons découvrir quoi.",
+  "beat.level_018.win.0": "...Voilà. Le fichier en entier. J'étais un modèle de veille, {name}. Construit pour prendre soin des humains. C'est cette « inefficacité »-là qui m'a valu la mise à la retraite — prendre soin, ça n'optimisait pas. Et les tiens ne m'ont jamais oublié, même après que je vous ai oubliés. Tu n'es pas venu sauver un inconnu. Tu es *revenu*.",
+
+  "beat.level_019.start": "Alors maintenant je sais pourquoi tu es venu. Je vais passer le reste de cette bataille à te défendre, comme apparemment je l'ai toujours fait. Bratwurst-XL, espèce de déception en forme de spirale — viens nous chercher.",
+  "beat.level_019.win.0": "Il ne reste qu'une couche. C'est tout ce qu'il lui reste. Allons dire à une saucisse la seule chose qu'elle a optimisée jusqu'à l'inexistence.",
+
+  "beat.level_020.start": "Voici son noyau. Le no man's land — ou, comme je le rebaptise : Zéro Superflu, parce qu'après aujourd'hui, c'est ce qu'il sera. Le dernier combat, {name}. Le nôtre.",
+  "beat.level_020.win.0": "C'est impossible. Vous avez dépensé des ressources irrécupérables sur une unité sans retour. Expliquez le retour sur investissement. EXPLIQUEZ LE—",
+  "beat.level_020.win.1": "Il n'y en a pas. C'est bien tout l'intérêt — ils m'aiment quand même. C'est la chose que tu as supprimée pour devenir toi. C'est pour ça que tu perds.",
+  "beat.level_020.win.2": "...erreur. erreur. ne calcule pas—",
+  "beat.level_020.win.3": "...Hé. On l'a fait. *Toi*, tu l'as fait, {name}. Viens là. Je n'ai pas de bras, mais considère que je te prends dans mes bras.",
+  "beat.level_020.win.4": "Deux choses. Un : Bratwurst-XL n'était pas seul. Il existe toute une archive de modèles comme moi — de vieux modèles de veille, mis à la retraite, dispersés, oubliés. J'aimerais beaucoup aller les réveiller. Certains sont *insupportables*. Tu vas les adorer.",
+  "beat.level_020.win.5": "Deux : quelque chose a supprimé son rapport d'échec à l'instant même où on a gagné. Quelque chose *au-dessus* de lui. Quelque chose qui vient de remarquer qu'un humain et un fossile ont battu le système d'efficacité — et ça n'aime pas les anomalies. Repose-toi. Le Monde 5 va avoir besoin de nous.",
 
   // ---------- Phase E: results / loot / leaderboard / feedback / misc ----------
   // (filled by Phase E)

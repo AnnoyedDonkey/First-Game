@@ -80,6 +80,15 @@
         <input id="story-name-input" class="hidden" type="text" maxlength="16"
                autocomplete="off" autocapitalize="words" />
         <button id="story-card-cta"></button>
+        <!-- First-load intro only: a language toggle under the very first
+             card, so a brand-new player (who hasn't reached the menu's LANGUE
+             entry yet) can switch to French before reading the story. ui.js
+             (renderOnboardingCard) reveals this only on the intro's welcome
+             card and re-renders the card live on toggle. -->
+        <button id="story-lang-toggle" class="hidden" type="button" aria-label="Language / Langue">
+          <span class="lang-seg lang-en">EN</span>
+          <span class="lang-seg lang-fr">FR</span>
+        </button>
       </div>
       <button id="story-skip" data-i18n="ui.skip">SKIP</button>
     </div>

@@ -533,6 +533,37 @@ html[data-lang="fr"] .menu-actions-row .skill-entry > span:first-child {
   box-shadow: 0 0 24px rgba(53, 224, 255, 0.35);
 }
 
+/* Intro-only language pill under the welcome card (shown by ui.js on the
+   intro's first card only). Same EN|FR segment styling as the retired
+   home-screen pill, centered as the last child of the flex card. */
+#story-lang-toggle {
+  align-self: center;
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  background: rgba(53, 224, 255, 0.08);
+  border: 1px solid rgba(53, 224, 255, 0.35);
+  border-radius: 999px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+#story-lang-toggle.hidden { display: none; }
+#story-lang-toggle .lang-seg {
+  font-size: 11px;
+  letter-spacing: 1px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  color: var(--text-dim);
+  transition: color 0.15s, background 0.15s;
+}
+html:not([data-lang="fr"]) #story-lang-toggle .lang-en,
+html[data-lang="fr"] #story-lang-toggle .lang-fr {
+  color: var(--bg);
+  background: var(--neon-cyan);
+  box-shadow: 0 0 8px rgba(53, 224, 255, 0.55);
+}
+
 #story-card-text {
   color: var(--text);
   font-size: 14px;

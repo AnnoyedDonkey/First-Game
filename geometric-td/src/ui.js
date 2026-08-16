@@ -160,6 +160,7 @@ const el = {
   storyCardText: document.getElementById("story-card-text"),
   storyNameInput: document.getElementById("story-name-input"),
   storyCardCta: document.getElementById("story-card-cta"),
+  storyLangToggle: document.getElementById("story-lang-toggle"),
   storySkip: document.getElementById("story-skip"),
   welcomeBack: document.getElementById("welcome-back"),
   leaderboardOverlay: document.getElementById("leaderboard-overlay"),
@@ -852,12 +853,13 @@ function openLevelSheet(nd, world, pick) {
   if (hasStory) {
     document.getElementById("level-sheet-story").addEventListener("click", () => {
       const replayCards = [];
-      if (beat.start) replayCards.push({ text: beat.start, speaker: "indy", cta: "TAP TO CONTINUE", mood: beat.startMood });
-      for (const line of beat.win || []) {
-        replayCards.push({ text: line.t, speaker: line.s, cta: "TAP TO CONTINUE", mood: line.m });
-      }
+      const contCta = t('intro.tapContinue', 'TAP TO CONTINUE');
+      if (beat.start) replayCards.push({ text: t('beat.' + level.id + '.start', beat.start), speaker: "indy", cta: contCta, mood: beat.startMood });
+      (beat.win || []).forEach((line, i) => {
+        replayCards.push({ text: t('beat.' + level.id + '.win.' + i, line.t), speaker: line.s, cta: contCta, mood: line.m });
+      });
       if (!replayCards.length) return;
-      replayCards[replayCards.length - 1].cta = "DONE";
+      replayCards[replayCards.length - 1].cta = t('ui.done', 'DONE');
       closeLevelSheet();
       playCards(replayCards);
     });
@@ -3417,14 +3419,14 @@ document.addEventListener("visibilitychange", () => {
 function towerIntroStatLine(type) {
   const tower = TOWERS[type];
   if (!tower) return "";
-  const best = Object.values(ENEMIES)
-    .filter((enemy) => (enemy.damageMult?.[tower.damageType] ?? 1) > 1)
-    .map((enemy) => enemy.name);
-  if (best.length) return `Best against: ${best.join(", ")}.`;
+  const best = Object.entries(ENEMIES)
+    .filter(([, enemy]) => (enemy.damageMult?.[tower.damageType] ?? 1) > 1)
+    .map(([key]) => enemyNameFor(key));
+  if (best.length) return tf('towerIntro.bestAgainst', 'Best against: {list}.', { list: best.join(", ") });
   if (tower.slowPercent != null && tower.vulnerability != null) {
     const slow = Math.round(tower.slowPercent * 100);
     const vulnerability = Math.round(tower.vulnerability * 100);
-    return `Support: ${slow}% slow + ${vulnerability}% vulnerability mark.`;
+    return tf('towerIntro.support', 'Support: {slow}% slow + {vuln}% vulnerability mark.', { slow, vuln: vulnerability });
   }
   return "";
 }
@@ -3526,16 +3528,20 @@ function storyCardHtml(text) {
   // Enemy-intro tag line ("Weak to X. Resists Y, Z." / the neutral variant),
   // kept on its own line by the copy's \n\n — colored so the actionable half
   // of the card reads at a glance instead of as more prose.
+  // Extended additively for French: "Weak to"/"Resists" -> "Faible :"/
+  // "Résiste :"; "No resistances..." -> "Aucune résistance..."; the
+  // tower-intro prefixes -> "Efficace contre :"/"Soutien :". The English
+  // alternatives keep matching exactly as before.
   html = html.replace(
-    /^(Weak to [^.]*\.)(\s*)(Resists [^.]*\.)?$/m,
+    /^((?:Weak to|Faible :) [^.]*\.)(\s*)((?:Resists|Résiste :) [^.]*\.)?$/m,
     (m, weak, gap, resists) =>
       `<span class="hl-weak">${weak}</span>${gap || ""}` +
       (resists ? `<span class="hl-resist">${resists}</span>` : "")
   );
-  html = html.replace(/^(No resistances or weaknesses[^\n]*)$/m, `<span class="hl-weak">$1</span>`);
+  html = html.replace(/^(No resistances or weaknesses[^\n]*|Aucune résistance[^\n]*)$/m, `<span class="hl-weak">$1</span>`);
   // Tower-intro stat lines are derived from live balance data above, then use
   // the enemy-card weakness treatment so the actionable line scans the same.
-  html = html.replace(/^(Best against:|Support:)([^\n]*)$/m,
+  html = html.replace(/^(Best against:|Support:|Efficace contre :|Soutien :)([^\n]*)$/m,
     `<span class="hl-weak">$1$2</span>`);
   html = html.replaceAll("{name}", `<span class="hl-name">${escapeHtml(getPlayerName())}</span>`);
   // Inline attention markup: [hl-pink]text[/hl] / [hl-blue]text[/hl]. Runs on
@@ -3593,9 +3599,19 @@ function renderOnboardingCard() {
     el.storyNameInput.placeholder = t('intro.namePlaceholder', NARRATIVE.namePlaceholder);
     el.storyNameInput.focus();
   }
+
+  // Language pill: only on the first-load intro's welcome card — a brand-new
+  // player meets the story before ever reaching the menu's LANGUE entry, so
+  // this is their first chance to switch to French. Only the intro's welcome
+  // card carries id "welcome"; beats/squad/enemy-intro/tower-intro cards have
+  // no id, so the pill stays hidden on them.
+  if (el.storyLangToggle) el.storyLangToggle.classList.toggle("hidden", card.id !== "welcome");
 }
 
 onOnboardingChange(renderOnboardingCard);
+// Toggling language re-renders the current onboarding card so its copy (and
+// the pill's own active segment) switch immediately, not on the next advance.
+onLangChange(() => { if (isOnboardingActive()) renderOnboardingCard(); });
 
 if (el.storyCardCta) {
   el.storyCardCta.addEventListener("click", () => {
@@ -3603,6 +3619,9 @@ if (el.storyCardCta) {
     if (card?.isNameStep) advanceOnboarding(el.storyNameInput.value);
     else advanceOnboarding();
   });
+}
+if (el.storyLangToggle) {
+  el.storyLangToggle.addEventListener("click", () => setLang(getLang() === "fr" ? "en" : "fr"));
 }
 if (el.storySkip) {
   el.storySkip.addEventListener("click", () => skipOnboarding());

@@ -37,6 +37,7 @@ import { initUpdateCheck } from "./update.js";
 import * as loot from "./loot.js";
 import * as tutorial from "./tutorial.js";
 import { startOnboarding, playCards, isOnboardingActive } from "./onboarding.js";
+import { t } from "./i18n.js";
 
 const TILE_SIZE = 64; // internal render resolution per tile
 
@@ -127,7 +128,11 @@ function startLevel(level, endless = false) {
   // do not get Meet the Squad, and new players see it exactly once.
   if (willShowTowerGuide) {
     markTowerGuideSeen();
-    playCards(NARRATIVE.squad);
+    playCards(NARRATIVE.squad.map((c, i) => ({
+      ...c,
+      text: t('squad.' + i + '.text', c.text),
+      cta: t('squad.' + i + '.cta', c.cta),
+    })));
   }
 
   // First-play walkthrough (T4): only actually starts for level_001's
@@ -140,7 +145,12 @@ function startLevel(level, endless = false) {
   // level START beat waits for a later visit instead of being overwritten.
   if (towerIntroType) {
     markTowerIntroSeen(towerIntroType);
-    playCards([NARRATIVE.towerIntros[towerIntroType]]);
+    const intro = NARRATIVE.towerIntros[towerIntroType];
+    playCards([{
+      ...intro,
+      text: t('towerIntro.' + towerIntroType + '.text', intro.text),
+      cta: t('towerIntro.' + towerIntroType + '.cta', intro.cta),
+    }]);
   }
 
   // Per-level START story beat (P2): the first time a campaign level is
@@ -156,7 +166,7 @@ function startLevel(level, endless = false) {
     if (beat?.start && shouldShowBeat(beatId) &&
         !willShowTowerGuide && !willShowTutorial && !towerIntroType) {
       markBeatSeen(beatId);
-      playCards([{ text: beat.start, speaker: "indy", mood: beat.startMood, cta: "BEGIN" }]);
+      playCards([{ text: t('beat.' + level.id + '.start', beat.start), speaker: "indy", mood: beat.startMood, cta: t('beat.begin', 'BEGIN') }]);
     }
   }
 }
@@ -249,7 +259,7 @@ bindCanvasInput(canvas, {
           NARRATIVE.towerBarks?.[result.tower.type]) {
         markTowerBarkSeen(result.tower.type);
         showBark({ name: result.tower.name, color: result.tower.def.color },
-                 NARRATIVE.towerBarks[result.tower.type]);
+                 t('bark.tower.' + result.tower.type, NARRATIVE.towerBarks[result.tower.type]));
       }
       if (!result.ok) {
         // Red flash on the rejected tile, then cancel placement mode —
@@ -494,7 +504,10 @@ function checkEndState() {
       const beat = NARRATIVE.beats?.[level.id];
       const beatId = `${level.id}.win`;
       if (beat?.win && shouldShowBeat(beatId)) {
-        narrative = beat.win;
+        narrative = beat.win.map((line, i) => ({
+          ...line,
+          t: t('beat.' + level.id + '.win.' + i, line.t),
+        }));
         markBeatSeen(beatId);
       }
     }
@@ -541,14 +554,16 @@ function checkEndState() {
     const fl = NARRATIVE.firstLoss;
     if (fl && shouldShowBeat("firstLoss")) {
       const pts = getSkillPoints();
-      const parts = [fl.intro];
+      const parts = [t('narr.firstLoss.intro', fl.intro)];
       if (pts > 0) {
-        parts.push(fl.skillNote
+        parts.push(t('narr.firstLoss.skillNote', fl.skillNote)
           .replace("{n}", `[hl-blue]${pts}[/hl]`)
           .replace("{s}", pts === 1 ? "" : "s")
-          .replace("{it}", pts === 1 ? "it" : "them"));
+          .replace("{it}", pts === 1
+            ? t('narr.firstLoss.itOne', "it")
+            : t('narr.firstLoss.itMany', "them")));
       }
-      parts.push(fl.rally);
+      parts.push(t('narr.firstLoss.rally', fl.rally));
       narrative = [{ s: fl.s, m: fl.m, t: parts.join(" ") }];
       markBeatSeen("firstLoss");
     }
@@ -608,9 +623,9 @@ function updateBarks(game) {
       introTypes.add(e.type);
       markEnemyIntroSeen(e.type);
       introCards.push({
-        text: NARRATIVE.enemyIntros[e.type],
+        text: t('enemyIntro.' + e.type, NARRATIVE.enemyIntros[e.type]),
         speaker: "indy",
-        cta: "TAP TO CONTINUE",
+        cta: t('intro.tapContinue', 'TAP TO CONTINUE'),
         enemyType: e.type, // parades the enemy's own shape on the card
       });
     }
@@ -630,11 +645,12 @@ function updateBarks(game) {
   if (bossOnField && !barkState.bossBarked && shouldShowBeat(bossBeatId)) {
     barkState.bossBarked = true;
     markBeatSeen(bossBeatId);
-    showBark("bratwurst", pickOne(NARRATIVE.bratwurstBarks));
-    showBark("indy", pickOne(NARRATIVE.indyRoasts));
+    const bi = Math.floor(Math.random() * NARRATIVE.bratwurstBarks.length);
+    const ii = Math.floor(Math.random() * NARRATIVE.indyRoasts.length);
+    showBark("bratwurst", t('bark.bratwurst.' + bi, NARRATIVE.bratwurstBarks[bi]));
+    showBark("indy", t('bark.indy.' + ii, NARRATIVE.indyRoasts[ii]));
   }
 }
-const pickOne = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
 // ---------- Game loop ----------
 let lastTime = performance.now();

@@ -166,11 +166,42 @@ l'opérateur", villain card `{name}`→"Opérateur", tutorial welcome step + CTA
 "COMMENCER"; clean console; CTAs kept short (CONTINUER ▶ / VALIDER /
 COMMENCER / ALLONS-Y), no clipping.
 
-### Phase D — campaign narrative  ⬜ TODO (largest)
-`config.js NARRATIVE.beats` (per-level start/win + world-end exchanges),
-in-battle barks, boss banter, `NARRATIVE.enemyIntro`, "Meet the Squad", and
-the tower-intro recruit cards. Preserve every `[hl-*]` tag, `{name}`, and
-`\n`. ~23k chars — the big one.
+### Phase D — campaign narrative  ✅ DONE & verified (2026-08-16, build 2026.08.16-5)
+`NARRATIVE.beats` (20 levels × start + indexed win lines, incl. world-end
+exchanges), `firstLoss`, tower placement barks, boss banter (`bratwurstBarks`/
+`indyRoasts`), `enemyIntros`, "Meet the Squad" (`squad`), tower-intro recruit
+cards (`towerIntros`), and `towerIntroStatLine`. 95 FR keys under the Phase D
+header. Wrapped at consumption/build sites in `main.js` + `ui.js` (config.js
+copy untouched). Key traps handled:
+- **Beats consumed at 3 sites** (main.js start card, main.js win overlay,
+  ui.js ▶ STORY replay) — all use identical keys `beat.<levelId>.start` /
+  `beat.<levelId>.win.<i>` so live + replay match.
+- **`storyCardHtml` weak/resist coloring was English-only** — its 3 regexes
+  were extended ADDITIVELY to also match the French tag markers `Faible :` /
+  `Résiste :` / `Aucune résistance` / `Efficace contre :` / `Soutien :`
+  (verified both EN and FR still match, groups intact).
+- **Boss banter** `pickOne` refactored to index-based selection so the random
+  line can be keyed (`bark.bratwurst.<i>` / `bark.indy.<i>`).
+- **`towerIntroStatLine`** now reuses Phase B's `enemyNameFor` for French
+  enemy names.
+- **Card CTA literals** set at build sites (not config.js) were also wrapped:
+  beat-start `BEGIN`→`beat.begin`, enemy-intro/replay `TAP TO CONTINUE`→the
+  Phase C `intro.tapContinue`, replay-final `DONE`→`ui.done`.
+
+Verified at 375px `data-lang=fr`: intro cards + beat replay (start/win, CTAs
+CONTINUER ▶ / TERMINÉ) render French with `{name}`→Opérateur; enemy weak/
+resist regex matches both languages; clean console. Squad / tower-intro
+recruit cards / live barks / firstLoss verified structurally (keys present +
+wrap sites correct + shared render pipeline proven) — need specific battle
+states to trigger live; the dad's on-device proofread is the wording pass.
+
+**Intro-screen language toggle (shipped same build).** A brand-new player
+meets the onboarding intro BEFORE the menu's LANGUE entry, so an `EN|FR` pill
+(`#story-lang-toggle`) now shows on the intro's welcome card only
+(`ui.js renderOnboardingCard`, gated `card.id === "welcome"`); tapping it
+`setLang()`s and re-renders the card live via a new `onLangChange`
+subscription. Markup in `index.html`, styles reuse the retired home pill's
+segment look.
 
 ### Phase E — results / loot / misc  ⬜ TODO
 `RESULT_ROASTS`, results-screen copy, loot rarity/labels
