@@ -15,6 +15,7 @@ import {
 } from "./config.js";
 import { levelMilestonesFor, updateMilestoneResults } from "./milestones.js";
 import { loadSave, writeSave, clearSave } from "./save.js";
+import { setActiveLang } from "./i18n.js";
 import { dropIlvl, generateGuaranteedDrop, generateItem, RARITIES } from "./loot.js";
 import {
   canEquipItem, emptyGear, masteryRankFor, normalizeGear,
@@ -76,6 +77,11 @@ state.seenTowerIntros ||= [];
 backfillTowerIntros(); // Tower cards: spare veterans retroactive recruit intros
 state.seenTowerBarks ||= [];
 if (state.barksEnabled === undefined) state.barksEnabled = true;
+// UI language (default English). Belt-and-suspenders alongside save.js's
+// DEFAULT_SAVE merge, then seed the i18n engine so the first render (and
+// static [data-i18n] markup) is already in the player's chosen language.
+if (state.lang !== "fr" && state.lang !== "en") state.lang = "en";
+setActiveLang(state.lang);
 
 function backfillGear() {
   state.roster ||= [];
@@ -487,6 +493,17 @@ export function getBarksEnabled() {
 export function setBarksEnabled(on) {
   state.barksEnabled = !!on;
   writeSave(state);
+}
+
+// UI language. getLang/setLang persist the choice and re-point the i18n
+// engine (which re-applies static markup and notifies UI to re-render).
+export function getLang() {
+  return state.lang === "fr" ? "fr" : "en";
+}
+export function setLang(lang) {
+  state.lang = lang === "fr" ? "fr" : "en";
+  writeSave(state);
+  setActiveLang(state.lang);
 }
 
 // Late towers are campaign rewards: the Railgun for clearing World 1

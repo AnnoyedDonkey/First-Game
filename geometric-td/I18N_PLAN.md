@@ -1,0 +1,136 @@
+# French Localization (i18n) — Plan & Living Tracker
+
+Goal: let the player's dad play in **French**, while the default experience
+stays **English** for everyone else, switchable via a discreet toggle.
+Approved 2026-08-16. Scope: **everything** (UI, gameplay data, tutorial,
+onboarding, and the full campaign narrative), delivered in phases.
+
+This file is the **source of truth** for the delegated phases — each agent
+should cold-read it and translate exactly one phase's surface.
+
+---
+
+## Architecture (built in Phase 0 — do not change)
+
+- **English is the source of truth.** Every UI string stays inline in the
+  code/markup as the fallback. French lives in ONE catalog,
+  `src/lang/fr.js`, keyed by dot-namespaced ids.
+- **`src/i18n.js`** is the engine. Public API:
+  - `t(key, en)` — returns the French for `key` when the active language is
+    French and the key exists; otherwise returns `en` (the inline English).
+    **Always pass the English as the second arg** so a missing key can never
+    render blank.
+  - `tf(key, en, {a,b})` — same, then fills `{a}`/`{b}` placeholders
+    (order-independent, so French may reorder tokens).
+  - `applyStaticI18n(root?)` — swaps `textContent`/attributes on static
+    `[data-i18n]` / `[data-i18n-attr]` markup in `index.html`. The authored
+    English is cached (`data-i18n-en`) as the fallback.
+  - `onLangChange(fn)` — subscribe; used to re-render generated UI on toggle.
+  - `getLang()` / `setActiveLang(lang)` — engine-level current language.
+- **Persistence:** a `lang` save field (`save.js` default `"en"` +
+  `progression.js` backfill). `progression.js` exposes `getLang()` /
+  `setLang(lang)`; `setLang` persists and calls `setActiveLang`, which
+  re-applies static markup and fires `onLangChange`. The engine is seeded at
+  load from the save.
+- **CSS hook:** `setActiveLang` sets `<html data-lang="fr">`. Use
+  `html[data-lang="fr"] …` selectors for French-only layout tweaks (e.g.
+  tightening a button a longer French label would overflow). English layout
+  is never touched.
+
+### Two ways to translate, by surface
+1. **Static markup** in `index.html` → add `data-i18n="key"` (text) or
+   `data-i18n-attr="placeholder:key"` (attributes). Add the French to
+   `fr.js`. No JS change needed; `applyStaticI18n` handles it on load/toggle.
+2. **Generated strings** (built in JS at render time) → wrap the literal in
+   `t('key', 'ENGLISH')`. If the surrounding view is generated once and
+   cached, make sure it re-renders on `onLangChange` (the home menu already
+   does via `renderWorld`).
+
+---
+
+## Translation rules (apply to every phase)
+
+- **Do NOT translate proper nouns:** tower names (**Laser, Pulse, Slow,
+  Railgun, Rocket**), characters (**Indy-7, Bratwurst-XL**), and the title
+  **"GEOMETRIC TD"**. Tower *descriptions* ARE translated.
+- **Enemy names ARE translated** (descriptive words: Basic→Basique,
+  Fast→Rapide, Armored→Blindé, Splitter→Diviseur,
+  Regenerator→Régénérateur, Splitling→Éclat, Boss→Boss/keep).
+- **Length:** French runs ~15–25% longer. For space-constrained buttons,
+  pick a SHORTER natural French word over a literal translation
+  (e.g. "Next Wave" → `VAGUE ▶`, not "Vague suivante"). If it still
+  overflows, add a `html[data-lang="fr"]` CSS rule — don't distort English.
+- **Preserve markup & tokens:** `{name}` and other `{placeholders}`,
+  `[hl-pink]/[hl-blue]/[hl-indy]/[hl-villain]/[hl-weak]/[hl-resist]` inline
+  tags, `\n` line breaks, and leading `>` boot-log markers must survive.
+- **Voice:** the narrative is Indy-7's snarky/warm voice (see
+  `NARRATIVE_DESIGN.md`). Match register in French; it will get a
+  native-speaker (the dad) proofread, so aim for natural, not literal.
+- **Never** change English source text, game logic, or balance data.
+- Add each phase's keys under its section header in `fr.js`. Don't
+  re-translate keys an earlier phase already provided.
+
+---
+
+## Verification (each phase)
+
+The player tests only on an iPhone after a push, so each delegated phase
+must leave the game **runnable** and report honestly what was and wasn't
+verified. The orchestrator (Claude/Opus) runs the browser preview
+(`serve.ps1` via `.claude/launch.json`, 375px viewport, `data-lang=fr`),
+checks the console is clean and nothing clips, then does the single
+`version.js` bump + commit + push. **Agents must not bump version, commit,
+or push.**
+
+---
+
+## Phases
+
+### Phase 0 — i18n core + toggle  ✅ DONE & verified (2026-08-16)
+Engine, save field + backfill, `getLang/setLang`, the home-screen `EN|FR`
+pill (`#lang-toggle` in `index.html` + styles), the menu `LANGUE` entry, and
+the `onLangChange`→`renderWorld` re-render. **Proof slice already
+translated** (do NOT redo in later phases): `menu.*` keys —
+skills/towers/store/board/replayIntro/banter/language/reset/resetConfirm/
+welcomeBack.
+
+### Phase A — static chrome + core UI  ⬜ TODO
+`index.html` static labels + `src/ui.js` generated strings that are NOT
+covered by later phases. HUD (CREDITS/WAVE/CORE/SKILLS), speed-control
+titles, overlay headers (TOWERS/STASH/STORE/LEADERBOARD/SKILL TREE), all
+CLOSE/SAVE/PUBLISH buttons, tab labels, wave button (`VAGUE ▶`), SELL,
+upgrade panel, two-tap confirm states ("TAP AGAIN"), world-locked note,
+gear/store/skill sheet chrome, nickname placeholder. Keys namespaced
+`hud.*`, `ui.*`, `gear.*`, `store.*`, `lb.*`, `skill.*` (chrome only — skill
+*names/descriptions* are Phase B).
+
+### Phase B — gameplay data  ⬜ TODO
+Level names + world names (`src/levels.js`, 20 + 4), enemy names, tower
+descriptions, skill names + descriptions (`src/config.js`). Translate at the
+consumption site with `t()` (or a small data-lookup helper) — keep English
+inline in the data. Keys `level.<id>.name`, `world.<id>.name`,
+`enemy.<id>.name`, `tower.<id>.desc`, `skill.<id>.name/desc`.
+
+### Phase C — tutorial + onboarding intro  ⬜ TODO
+`config.js TUTORIAL.steps[*].text/cta` and `NARRATIVE.intro[*]` +
+name-entry (`namePlaceholder`, `nameSkipLabel`). Rendered by
+`src/tutorial.js`, `src/onboarding.js`, `src/ui.js`. Preserve `{name}`.
+
+### Phase D — campaign narrative  ⬜ TODO (largest)
+`config.js NARRATIVE.beats` (per-level start/win + world-end exchanges),
+in-battle barks, boss banter, `NARRATIVE.enemyIntro`, "Meet the Squad", and
+the tower-intro recruit cards. Preserve every `[hl-*]` tag, `{name}`, and
+`\n`. ~23k chars — the big one.
+
+### Phase E — results / loot / misc  ⬜ TODO
+`RESULT_ROASTS`, results-screen copy, loot rarity/labels
+(`src/loot.js`/`ui.js`), leaderboard messages (`src/leaderboard.js`),
+feedback prompts (`src/feedback.js`), update nudge (`src/update.js`),
+milestone toasts (`src/milestones.js`).
+
+---
+
+## Push cadence
+Push 0: Phase 0 (foundation + toggle) — lets the dad sanity-check the toggle
+and button fit on-device. Then push after each subsequent phase (or a small
+batch), version-bumped, after browser verification.

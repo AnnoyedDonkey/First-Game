@@ -36,7 +36,9 @@ import {
   countUnseenStash, isItemSeen, markItemSeen,
   getPlayerName, hasPlayerName,
   getBarksEnabled, setBarksEnabled,
+  getLang, setLang,
 } from "./progression.js";
+import { t, onLangChange } from "./i18n.js";
 import {
   canEquipItem, GEAR_SLOTS, normalizeGear, masteryRankFor as gearMasteryRankFor,
 } from "./equipment.js";
@@ -77,6 +79,7 @@ const el = {
   levelList: document.getElementById("level-list"),
   shardsValue: document.getElementById("shards-value"),
   menuActions: document.getElementById("menu-actions"),
+  langToggle: document.getElementById("lang-toggle"),
   worldPrev: document.getElementById("world-prev"),
   worldNext: document.getElementById("world-next"),
   worldName: document.getElementById("world-name"),
@@ -382,7 +385,9 @@ function updateWelcomeBack() {
   if (!el.welcomeBack) return;
   const named = hasPlayerName();
   el.welcomeBack.classList.toggle("hidden", !named);
-  el.welcomeBack.textContent = named ? `WELCOME BACK, ${getPlayerName().toUpperCase()}` : "";
+  el.welcomeBack.textContent = named
+    ? `${t("menu.welcomeBack", "WELCOME BACK")}, ${getPlayerName().toUpperCase()}`
+    : "";
 }
 
 // Shows the mission list. onPick(level, endless) fires when a playable
@@ -854,7 +859,7 @@ function appendGlobalMenuButtons() {
   const skillBtn = document.createElement("button");
   skillBtn.className = "level-button skill-entry";
   skillBtn.innerHTML =
-    `<span>SKILLS</span>` +
+    `<span>${t("menu.skills", "SKILLS")}</span>` +
     `<span class="${points > 0 ? "level-points" : "level-done"}">` +
     (points > 0 ? `● ${points}` : "—") +
     `</span>`;
@@ -868,7 +873,7 @@ function appendGlobalMenuButtons() {
   const towersBtn = document.createElement("button");
   towersBtn.className = "level-button skill-entry gear-entry";
   towersBtn.innerHTML =
-    `<span>TOWERS</span>` +
+    `<span>${t("menu.towers", "TOWERS")}</span>` +
     `<span class="${newCount ? "level-points" : "level-done"}">` +
     (newCount ? `${newCount} NEW` : `${stash}/${getStashCap()}`) +
     `</span>`;
@@ -877,7 +882,7 @@ function appendGlobalMenuButtons() {
 
   const storeBtn = document.createElement("button");
   storeBtn.className = "level-button skill-entry store-entry";
-  storeBtn.innerHTML = `<span>STORE</span><span class="level-done">◆ ${getShards()}</span>`;
+  storeBtn.innerHTML = `<span>${t("menu.store", "STORE")}</span><span class="level-done">◆ ${getShards()}</span>`;
   storeBtn.addEventListener("click", openStorePanel);
   topRow.appendChild(storeBtn);
 
@@ -886,7 +891,7 @@ function appendGlobalMenuButtons() {
   if (lbEnabled()) {
     const lbBtn = document.createElement("button");
     lbBtn.className = "level-button skill-entry";
-    lbBtn.innerHTML = `<span>BOARD</span><span class="level-done">🏆</span>`;
+    lbBtn.innerHTML = `<span>${t("menu.board", "BOARD")}</span><span class="level-done">🏆</span>`;
     lbBtn.addEventListener("click", () => openLeaderboard(menuCtx.levels));
     topRow.appendChild(lbBtn);
   }
@@ -901,9 +906,20 @@ function appendGlobalMenuButtons() {
   introRow.className = "menu-actions-row";
   const introBtn = document.createElement("button");
   introBtn.className = "level-button skill-entry";
-  introBtn.innerHTML = `<span>REPLAY INTRO</span>`;
+  introBtn.innerHTML = `<span>${t("menu.replayIntro", "REPLAY INTRO")}</span>`;
   introBtn.addEventListener("click", () => startOnboarding());
   introRow.appendChild(introBtn);
+
+  // Language toggle (mirrors the home-screen EN|FR pill). Shows the
+  // ACTIVE language on the right; tapping swaps it. Persisted via setLang,
+  // which re-points i18n and (through onLangChange) re-renders this menu.
+  const langBtn = document.createElement("button");
+  langBtn.className = "level-button skill-entry";
+  const fr = getLang() === "fr";
+  langBtn.innerHTML =
+    `<span>${t("menu.language", "LANGUAGE")}</span><span class="level-done">${fr ? "FR" : "EN"}</span>`;
+  langBtn.addEventListener("click", () => setLang(getLang() === "fr" ? "en" : "fr"));
+  introRow.appendChild(langBtn);
 
   // STORY BANTER toggle: silences all in-battle barks (enemy intros, boss
   // taunts/roasts, tower one-liners) when OFF. Persisted via setBarksEnabled.
@@ -912,7 +928,7 @@ function appendGlobalMenuButtons() {
   const renderBanter = () => {
     const on = getBarksEnabled();
     banterBtn.innerHTML =
-      `<span>BANTER</span><span class="${on ? "level-done" : "level-points"}">${on ? "ON" : "OFF"}</span>`;
+      `<span>${t("menu.banter", "BANTER")}</span><span class="${on ? "level-done" : "level-points"}">${on ? "ON" : "OFF"}</span>`;
   };
   renderBanter();
   banterBtn.addEventListener("click", () => { setBarksEnabled(!getBarksEnabled()); renderBanter(); });
@@ -923,17 +939,17 @@ function appendGlobalMenuButtons() {
   // Reset all progress — two-tap confirm, then reload clean.
   const resetBtn = document.createElement("button");
   resetBtn.className = "menu-reset";
-  resetBtn.textContent = "RESET ALL PROGRESS";
+  resetBtn.textContent = t("menu.reset", "RESET ALL PROGRESS");
   resetBtn.addEventListener("click", () => {
     if (resetBtn.classList.contains("confirming")) {
       resetProgress();
       location.reload();
     } else {
       resetBtn.classList.add("confirming");
-      resetBtn.textContent = "WIPE ROSTER, SKILLS & LEVELS? TAP AGAIN";
+      resetBtn.textContent = t("menu.resetConfirm", "WIPE ROSTER, SKILLS & LEVELS? TAP AGAIN");
       setTimeout(() => {
         resetBtn.classList.remove("confirming");
-        resetBtn.textContent = "RESET ALL PROGRESS";
+        resetBtn.textContent = t("menu.reset", "RESET ALL PROGRESS");
       }, 3000);
     }
   });
@@ -943,6 +959,15 @@ function appendGlobalMenuButtons() {
 // Arrow + swipe navigation, bound once (state lives in menuCtx/currentWorld).
 el.worldPrev.addEventListener("click", () => navigateWorld(-1));
 el.worldNext.addEventListener("click", () => navigateWorld(1));
+
+// Home-screen language pill (EN|FR). Flips the language; setLang persists
+// and re-points i18n. The onLangChange listener below rebuilds the menu.
+if (el.langToggle) {
+  el.langToggle.addEventListener("click", () => setLang(getLang() === "fr" ? "en" : "fr"));
+}
+// When the language changes, rebuild the (generated) menu so its labels
+// re-translate. Static [data-i18n] markup is handled by i18n itself.
+onLangChange(() => { if (menuCtx) renderWorld(); });
 
 // Horizontal swipe on the overlay pages between worlds. Kept distinct
 // from the level list's vertical scroll: only a clearly-horizontal drag

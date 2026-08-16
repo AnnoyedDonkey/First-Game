@@ -160,6 +160,50 @@ button.hud-item {
 
 #level-overlay.hidden { display: none; }
 
+/* Discreet EN|FR language toggle, pinned top-right of the home overlay.
+   The active segment is lit from <html data-lang> (set by i18n.js), so
+   no per-tap JS styling is needed — JS only flips the language. */
+#lang-toggle {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  background: rgba(53, 224, 255, 0.08);
+  border: 1px solid rgba(53, 224, 255, 0.35);
+  border-radius: 999px;
+  z-index: 5;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+#lang-toggle .lang-seg {
+  font-size: 11px;
+  letter-spacing: 1px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  color: var(--text-dim);
+  transition: color 0.15s, background 0.15s;
+}
+html:not([data-lang="fr"]) #lang-toggle .lang-en,
+html[data-lang="fr"] #lang-toggle .lang-fr {
+  color: var(--bg);
+  background: var(--neon-cyan);
+  box-shadow: 0 0 8px rgba(53, 224, 255, 0.55);
+}
+
+/* French runs longer: give the account-menu buttons a touch more room to
+   fit words like TOURELLES / CLASSEMENT without clipping. English layout
+   is untouched. Verified on a 375px viewport; widen scope here if a
+   later phase surfaces another overflow. */
+html[data-lang="fr"] .menu-actions-row .skill-entry span {
+  letter-spacing: 0;
+}
+html[data-lang="fr"] .menu-actions-row .skill-entry > span:first-child {
+  font-size: 12px;
+}
+
 #level-overlay h1 {
   font-size: 26px;
   letter-spacing: 5px;

@@ -142,6 +142,14 @@
 
       <!-- Level select overlay (shown at startup) -->
       <div id="level-overlay" class="hidden">
+        <!-- Discreet language toggle (EN default | FR). Active segment is
+             highlighted purely from <html data-lang> via CSS, so a French
+             speaker can find and flip it without reading English. Mirrored
+             in the menu footer (ui.js appendGlobalMenuButtons). i18n.js. -->
+        <button id="lang-toggle" type="button" aria-label="Language / Langue">
+          <span class="lang-seg lang-en">EN</span>
+          <span class="lang-seg lang-fr">FR</span>
+        </button>
         <h1>GEOMETRIC TD</h1>
         <div id="welcome-back" class="hidden"></div>
         <div id="shards-readout">&#9670; <span id="shards-value">0</span></div>
