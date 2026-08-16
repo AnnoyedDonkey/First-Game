@@ -124,12 +124,29 @@ gear/store/skill sheet chrome, nickname placeholder. Keys namespaced
 `hud.*`, `ui.*`, `gear.*`, `store.*`, `lb.*`, `skill.*` (chrome only — skill
 *names/descriptions* are Phase B).
 
-### Phase B — gameplay data  ⬜ TODO
-Level names + world names (`src/levels.js`, 20 + 4), enemy names, tower
-descriptions, skill names + descriptions (`src/config.js`). Translate at the
-consumption site with `t()` (or a small data-lookup helper) — keep English
-inline in the data. Keys `level.<id>.name`, `world.<id>.name`,
-`enemy.<id>.name`, `tower.<id>.desc`, `skill.<id>.name/desc`.
+### Phase B — gameplay data  ✅ DONE & verified (2026-08-16, build 2026.08.16-3)
+Level names (20) + world names (4) via three `ui.js` display-name helpers
+(`worldNameFor`/`levelNameFor`/`enemyNameFor`, keyed off each object's
+injected `id`), wired into every render site (world header, per-node lock
+reason, the `ui.worldLocked` `tf` params, level-sheet header/tag, leaderboard
+section headers, guide-sheet enemy cheat-sheet, `describeWormhole`). Enemy
+names (7). Skill tree names + descriptions (~196 nodes) keyed per node id and
+translated at RENDER time in `ui.js` (NOT in `buildSkillGraph`, which runs once
+at import — a deliberate landmine) — skill sheet title/desc, branch-head labels
+(ÉCO/JEU; tower heads keep their English proper noun), lock note. Tower flavor:
+`tower.<id>.role`/`.specialtyDesc` (guide sheet) + `.specialtyPerk` (gear
+sheet) — the real player-facing tower-description strings; `TOWER_PRESENTATION`
+has no `desc` field, so the planned `tower.<id>.desc` key doesn't exist. 242 FR
+keys added under the Phase B header. Verified at 375px `data-lang=fr`: clean
+console (EN + FR), no world-name overflow, French rendering confirmed on the
+menu/level-sheet/skill-tree/skill-sheet/guide-sheet.
+- **Left English on purpose (later phases / not name-or-desc):** level DESC
+  paragraphs (user scoped Phase B to *names*); level-sheet board chrome
+  (LEVEL/NOT CLEARED/CHALLENGES — already Phase A-deferred to E); skill-sheet
+  hardcoded chrome words ("BRANCH", "next:", "MAXED", "Level cap → N"); the
+  Meet-the-Squad tower-intro "Best against:" line (`towerIntroStatLine`) and
+  `NARRATIVE.enemyIntro` — both **Phase D**; enemy weak/resist `counterText`
+  prose (chrome, not a name).
 
 ### Phase C — tutorial + onboarding intro  ⬜ TODO
 `config.js TUTORIAL.steps[*].text/cta` and `NARRATIVE.intro[*]` +

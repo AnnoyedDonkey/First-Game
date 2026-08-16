@@ -54,6 +54,22 @@ import {
   createTowerDemo, stepTowerDemo, renderTowerDemo, destroyTowerDemo,
 } from "./tower-demo.js";
 
+// ---- i18n display-name helpers (Phase B) ----
+// World/level/enemy identity data stays English at the source (levels.js /
+// config.js); these wrap the RENDER-time read so every call site shows the
+// active language without mutating the underlying data. Keyed by the
+// object's own stable `id` (worlds/levels) or type key (enemies).
+function worldNameFor(world) {
+  return t(`world.${world.id}.name`, world.name);
+}
+function levelNameFor(level) {
+  return t(`level.${level.id}.name`, level.name);
+}
+function enemyNameFor(type) {
+  const def = ENEMIES[type];
+  return t(`enemy.${type}.name`, def ? def.name : type);
+}
+
 const el = {
   towerButtons: document.getElementById("tower-buttons"),
   upgradePanel: document.getElementById("upgrade-panel"),
@@ -608,7 +624,7 @@ function renderWorld() {
   const { completedIds, levelById, pick } = menuCtx;
 
   // --- Header: name (+ lock accent), page dots, arrow states ---
-  el.worldName.textContent = world.name;
+  el.worldName.textContent = worldNameFor(world);
   el.worldName.classList.toggle("locked", !unlocked);
   el.worldName.style.color = unlocked ? world.accent : "";
   el.worldDots.innerHTML = WORLDS.map(
@@ -646,7 +662,7 @@ function renderWorld() {
     const lockReason = state !== "locked"
       ? null
       : !unlocked
-        ? `Clear all of ${WORLDS[currentWorld - 1].name} to unlock ${world.name}.`
+        ? `Clear all of ${worldNameFor(WORLDS[currentWorld - 1])} to unlock ${worldNameFor(world)}.`
         : "Clear the previous level to unlock.";
     return {
       level,
@@ -672,7 +688,7 @@ function renderWorld() {
     note.textContent = tf(
       "ui.worldLocked",
       "LOCKED — clear all of {prev} to unlock {world}.",
-      { prev: WORLDS[currentWorld - 1].name, world: world.name }
+      { prev: worldNameFor(WORLDS[currentWorld - 1]), world: worldNameFor(world) }
     );
     el.levelList.appendChild(note);
   }
@@ -797,8 +813,8 @@ function openLevelSheet(nd, world, pick) {
   const hasStory = !locked && !!beat;
 
   el.levelSheet.innerHTML =
-    `<h2 style="color:${world.accent}">${escapeHtml(level.name.toUpperCase())}</h2>` +
-    `<div class="level-sheet-tag">LEVEL ${nd.n} &mdash; ${escapeHtml(world.name)}</div>` +
+    `<h2 style="color:${world.accent}">${escapeHtml(levelNameFor(level).toUpperCase())}</h2>` +
+    `<div class="level-sheet-tag">LEVEL ${nd.n} &mdash; ${escapeHtml(worldNameFor(world))}</div>` +
     `<p class="level-sheet-desc">${escapeHtml(level.desc || "")}</p>` +
     `<div class="level-chip-row">${chips.join("")}</div>` +
     campaignHtml +
@@ -1105,18 +1121,18 @@ function guideExtrasHtml() {
       `<div class="skill-row"><div class="skill-text">` +
       `<span class="skill-name" style="color:${def.color}">${def.name.toUpperCase()}</span>` +
       `<span class="skill-desc">${stats}</span>` +
-      `<span class="skill-desc">${ROLE_TEXT[type] || ""}</span>` +
-      `<span class="skill-desc">${SPECIALTY_TEXT[type] || ""}</span>` +
+      `<span class="skill-desc">${t(`tower.${type}.role`, ROLE_TEXT[type] || "")}</span>` +
+      `<span class="skill-desc">${t(`tower.${type}.specialtyDesc`, SPECIALTY_TEXT[type] || "")}</span>` +
       `</div></div>`;
   }
 
   // Enemy cheat-sheet: what beats what (drives combo choices per level).
   html += `<div class="tower-section">KNOW YOUR ENEMY</div>`;
-  for (const [, edef] of Object.entries(ENEMIES)) {
+  for (const [etype, edef] of Object.entries(ENEMIES)) {
     if (edef.name === "Splitling") continue; // covered by Splitter
     html +=
       `<div class="skill-row"><div class="skill-text">` +
-      `<span class="skill-name" style="color:${edef.color}">${edef.name.toUpperCase()}</span>` +
+      `<span class="skill-name" style="color:${edef.color}">${enemyNameFor(etype).toUpperCase()}</span>` +
       `<span class="skill-desc">${counterText(edef)}</span>` +
       `</div></div>`;
   }
@@ -1679,7 +1695,7 @@ function openTowerStatSheet(towerName) {
     `<span class="src">MASTERY &#9733;${stats.masteryRank}</span>+${stats.masteryPct}% damage</div>` +
     (stats.specialtyLabel
       ? `<div class="gear-bonus-line" style="border-color:${def.color}"><span class="src">SPECIALTY</span>` +
-        `${escapeHtml(stats.specialtyLabel)} (+${stats.specialtyPct}%)</div>`
+        `${escapeHtml(t(`tower.${rec.type}.specialtyPerk`, stats.specialtyLabel))} (+${stats.specialtyPct}%)</div>`
       : "") +
     (bonuses ? `<div class="gear-picker-label" style="margin-top:12px">GEAR BONUSES</div>${bonuses}` : "") +
     `<div class="gear-sheet-actions" style="margin-top:12px"><button class="gear-sheet-btn" id="sheet-close">CLOSE</button></div>`;
@@ -2479,7 +2495,8 @@ function buildSkillTreeSvg() {
 
     // Branch-head label above the top-row heads (LASER / PULSE / MONEY / …).
     if (node.headLabel) {
-      svg += `<text x="${x}" y="${y - R - 3}" text-anchor="middle" font-size="4.8" font-weight="700" letter-spacing="0.4" fill="${color}" opacity=".92">${node.headLabel}</text>`;
+      const headLabel = t(`skill.${id}.headLabel`, node.headLabel);
+      svg += `<text x="${x}" y="${y - R - 3}" text-anchor="middle" font-size="4.8" font-weight="700" letter-spacing="0.4" fill="${color}" opacity=".92">${headLabel}</text>`;
     }
   }
 
@@ -2642,7 +2659,9 @@ function openSkillSheet(id, onSkillBought) {
 
   // `unlock`/`level` effect text is a full self-contained phrase, so don't
   // also append the node's descriptive noun (that would read redundantly).
-  const tail = (node.kind === "unlock" || node.kind === "level") ? "" : ` ${node.desc}`;
+  const tail = (node.kind === "unlock" || node.kind === "level")
+    ? ""
+    : ` ${t(`skill.${id}.desc`, node.desc)}`;
   let effectLine;
   if (node.free) {
     effectLine = "Branch unlocked automatically &mdash; FREE";
@@ -2663,7 +2682,8 @@ function openSkillSheet(id, onSkillBought) {
   } else if (!unlocked) {
     const parent = SKILLS[node.parent];
     btnLabel = t("skill.locked", "LOCKED"); disabled = true;
-    lockNote = `<div class="skill-sheet-lock">Unlock <b>${parent.name}</b> first.</div>`;
+    const parentName = t(`skill.${node.parent}.name`, parent.name);
+    lockNote = `<div class="skill-sheet-lock">Unlock <b>${parentName}</b> first.</div>`;
   } else {
     btnLabel = tf("skill.buy", "BUY &mdash; {cost} PT", { cost });
     disabled = points < cost;
@@ -2671,7 +2691,7 @@ function openSkillSheet(id, onSkillBought) {
 
   el.skillSheet.innerHTML =
     `<div class="skill-sheet-title" style="color:${color}; text-shadow:0 0 10px ${color}66">` +
-    `${node.glyph ? node.glyph + " " : ""}${node.name}</div>` +
+    `${node.glyph ? node.glyph + " " : ""}${t(`skill.${id}.name`, node.name)}</div>` +
     `<div class="skill-sheet-sub">${node.branch.toUpperCase()} BRANCH &middot; ${pips}</div>` +
     `<div class="skill-sheet-effect">${effectLine}</div>` +
     lockNote +
@@ -2735,7 +2755,7 @@ async function renderLeaderboard() {
   const me = getNickname();
   let html = "";
   for (const lv of withScores) {
-    html += `<div class="lb-section">${escapeHtml(lv.name.toUpperCase())}</div>`;
+    html += `<div class="lb-section">${escapeHtml(levelNameFor(lv).toUpperCase())}</div>`;
     boards[lv.id].forEach((row, i) => {
       const mine = me && row.nickname === me ? " lb-me" : "";
       html +=
@@ -3063,7 +3083,7 @@ function describeField(f) {
 
 function describeWormhole(wh) {
   const names = wh.types
-    ? wh.types.map((t) => (ENEMIES[t] && ENEMIES[t].name) || t).join(" & ")
+    ? wh.types.map((etype) => enemyNameFor(etype)).join(" & ")
     : "all";
   return `WORMHOLE — teleports ${names} enemies along the path`;
 }
