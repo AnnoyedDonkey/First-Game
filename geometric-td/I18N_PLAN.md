@@ -148,10 +148,23 @@ menu/level-sheet/skill-tree/skill-sheet/guide-sheet.
   `NARRATIVE.enemyIntro` — both **Phase D**; enemy weak/resist `counterText`
   prose (chrome, not a name).
 
-### Phase C — tutorial + onboarding intro  ⬜ TODO
-`config.js TUTORIAL.steps[*].text/cta` and `NARRATIVE.intro[*]` +
-name-entry (`namePlaceholder`, `nameSkipLabel`). Rendered by
-`src/tutorial.js`, `src/onboarding.js`, `src/ui.js`. Preserve `{name}`.
+### Phase C — tutorial + onboarding intro  ✅ DONE & verified (2026-08-16, build 2026.08.16-4)
+`TUTORIAL.steps[*].text/cta` (7 steps) and `NARRATIVE.intro[*].text/cta`
+(5 cards) + `namePlaceholder`, wrapped at their render sites in `ui.js`
+(`renderTutorialStep` ~3163, `renderOnboardingCard` ~3585) keyed
+`tutorial.<stepId>.*` / `intro.<cardId>.*`. Keying strictly on `card.id`
+scopes the shared card renderer to the 5 intro cards — Phase D cards (squad/
+towerIntros/beats/enemyIntros) have no `id`, so they fall back to English.
+The `nameSkipLabel` in config is **dead** (unconsumed); the real skip
+fallback is the hardcoded `"Operator"` in `progression.js getPlayerName()`,
+which now returns `t('intro.nameSkipLabel', 'Operator')` → "Opérateur" and
+flows through `{name}` everywhere. The no-`cta` tutorial steps use a ternary
+(not `t(key, step.cta) || …`) because `t(key, undefined)` returns the key
+string, not the fallback. Verified at 375px `data-lang=fr`: intro welcome
+(`> ` marker + `human_handler_004` preserved), name card placeholder "Nom de
+l'opérateur", villain card `{name}`→"Opérateur", tutorial welcome step + CTA
+"COMMENCER"; clean console; CTAs kept short (CONTINUER ▶ / VALIDER /
+COMMENCER / ALLONS-Y), no clipping.
 
 ### Phase D — campaign narrative  ⬜ TODO (largest)
 `config.js NARRATIVE.beats` (per-level start/win + world-end exchanges),

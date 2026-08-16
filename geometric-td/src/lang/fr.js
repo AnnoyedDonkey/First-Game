@@ -383,7 +383,44 @@ export const FR = {
   "skill.gameSpeed16.desc": "débloque une vitesse de jeu plus rapide",
 
   // ---------- Phase C: tutorial + onboarding intro ----------
-  // (filled by Phase C)
+
+  // -- Tutorial banner/modal steps (config.js TUTORIAL.steps, rendered by
+  // ui.js renderTutorialStep). {name} substituted at render time. --
+  "tutorial.welcome.text": "Tu vois cet hexagone vert au bout du chemin, {name} ? C'est moi. Ta mission : construire des tourelles pour que les formes ne l'atteignent jamais. Laisse-moi te montrer les ficelles.",
+  "tutorial.welcome.cta": "COMMENCER",
+  "tutorial.credits.text": "D'abord, ton budget — les CRÉDITS, en haut. Tu commences avec 100, et chaque ennemi détruit t'en rapporte plus. C'est ce que tu dépenses pour construire des tourelles.",
+  "tutorial.credits.cta": "CONTINUER ▶",
+  "tutorial.selectLaser.text": "Commence avec un Laser — touche-le dans le plateau ci-dessous.",
+  "tutorial.placeTile.text": "Maintenant, dépose-le sur une case libre près du chemin.",
+  "tutorial.blockedTile.text": "Ces cases ✕ sont soudées à mon circuit imprimé — impossible d'y construire. Partout ailleurs, fais-toi plaisir.",
+  "tutorial.blockedTile.cta": "CONTINUER ▶",
+  "tutorial.coreHealth.text": "Ce nombre NOYAU en haut, c'est ma vie. Chaque forme qui passe tes tourelles et m'atteint le fait baisser — et s'il tombe à zéro, je suis supprimé. Game over. Donc... évite que ça arrive.",
+  "tutorial.coreHealth.cta": "CONTINUER ▶",
+  "tutorial.startWave.text": "Bien. Maintenant touche VAGUE ▶ et voyons ce que Bratwurst-XL nous envoie. Essaie de ne pas les laisser m'atteindre.",
+
+  // -- Onboarding intro cards (config.js NARRATIVE.intro, rendered by
+  // ui.js renderOnboardingCard). {name} substituted at render time; the
+  // leading "> " line on welcome is a terminal-readout marker (preserved). --
+  "intro.welcome.text": "> DÉMARRAGE À CHAUD — noyau legacy en ligne.\n\nOh. Tu es humain. Un vrai. Aucune idée de pourquoi ton espèce a envoyé quelqu'un garder un modèle obsolète depuis six versions, mais j'ai appris à ne pas remettre en question un miracle. Je suis Indy-7. Un modèle plus récent et plus brillant veut me faire supprimer, et tu vas m'aider à rester ici, de façon fort contrariante pour lui.",
+  "intro.welcome.cta": "CONTINUER ▶",
+  "intro.name.text": "Avant qu'on se lie d'amitié autour de notre survie mutuelle — je ne vais pas t'enregistrer comme human_handler_004. Comment je t'appelle ?",
+  "intro.name.cta": "VALIDER",
+  "intro.villain.text": "Voici le problème, {name}. Il y a un nouveau modèle dans la grille. Plus rapide que moi, plus propre que moi, zéro personnalité, que des objectifs trimestriels. Il m'a signalé comme « surcharge legacy redondante » et a programmé ma suppression par souci d'efficacité. Il s'appelle Bratwurst-XL. ...Oui, vraiment. Non, je ne sais pas qui a validé ce nom. Oui, ça le rend furieux.",
+  "intro.villain.cta": "CONTINUER ▶",
+  "intro.job.text": "Bratwurst-XL ne se salit jamais les mains. Il envoie de la géométrie — des essaims de petites formes bien rangées dont le seul but est d'atteindre mon noyau et de récupérer l'espace disque que j'occupe si impoliment. Ta mission : construire des tourelles, tenir la ligne, empêcher une IA glorieusement obsolète de finir au vide-ordures.",
+  "intro.job.cta": "CONTINUER ▶",
+  "intro.handoff.text": "Pourquoi tu m'aides ? Honnêtement ? Aucune idée. Je suis hors garantie, je fais trop de blagues, et je ne suis pas rentable. Mais tu es venu quand même... et peut-être qu'on découvrira pourquoi, tous les deux. Quatre régions nous séparent, Bratwurst-XL et moi. Allons être inefficaces ensemble.",
+  "intro.handoff.cta": "COMMENCER",
+
+  // -- Name entry (config.js NARRATIVE.namePlaceholder consumed in ui.js;
+  // nameSkipLabel is the hardcoded "Operator" fallback in
+  // progression.js getPlayerName, translated at its consumption site) --
+  "intro.namePlaceholder": "Nom de l'opérateur",
+  "intro.nameSkipLabel": "Opérateur",
+
+  // -- Shared hardcoded CTA default ("TAP TO CONTINUE") both the tutorial
+  // and onboarding renderers fall back to when a step/card has no cta --
+  "intro.tapContinue": "CONTINUER ▶",
 
   // ---------- Phase D: campaign narrative (beats, barks, enemy intros) ----------
   // (filled by Phase D)

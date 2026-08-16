@@ -15,7 +15,7 @@ import {
 } from "./config.js";
 import { levelMilestonesFor, updateMilestoneResults } from "./milestones.js";
 import { loadSave, writeSave, clearSave } from "./save.js";
-import { setActiveLang } from "./i18n.js";
+import { setActiveLang, t } from "./i18n.js";
 import { dropIlvl, generateGuaranteedDrop, generateItem, RARITIES } from "./loot.js";
 import {
   canEquipItem, emptyGear, masteryRankFor, normalizeGear,
@@ -414,7 +414,7 @@ export function markTutorialDone() {
 // surfaced on the home screen and substituted into story copy. Mirrors
 // the leaderboard nickname's max length so the two stay consistent.
 export function getPlayerName() {
-  return state.playerName || "Operator"; // display fallback
+  return state.playerName || t('intro.nameSkipLabel', 'Operator'); // display fallback
 }
 export function hasPlayerName() {
   return !!state.playerName;

@@ -3160,8 +3160,11 @@ function renderTutorialStep() {
   // Indy-7 narrates the walkthrough: his avatar on the modal steps (the row is
   // hidden on banners via CSS), and {name}/character coloring in the text.
   if (el.tutorialAvatar) el.tutorialAvatar.innerHTML = speakerAvatarSvg("indy", step.mood);
-  el.tutorialCardText.innerHTML = storyCardHtml(step.text);
-  el.tutorialCardCta.textContent = freezing ? (step.cta || "TAP TO CONTINUE") : "";
+  el.tutorialCardText.innerHTML = storyCardHtml(t('tutorial.' + step.id + '.text', step.text));
+  const tutorialCtaText = step.cta
+    ? t('tutorial.' + step.id + '.cta', step.cta)
+    : t('intro.tapContinue', 'TAP TO CONTINUE');
+  el.tutorialCardCta.textContent = freezing ? tutorialCtaText : "";
 
   el.tutorialSpotlight.classList.toggle("hidden", !step.target);
 }
@@ -3579,14 +3582,15 @@ function renderOnboardingCard() {
   // a named multi-tower scenario (e.g. the onboarding "intro" battle).
   startStoryTowerDemo(card.towerType || card.demo || null);
   const towerStat = towerIntroStatLine(card.towerType);
-  const cardText = towerStat ? `${card.text}\n\n${towerStat}` : card.text;
+  const cardTextTranslated = t('intro.' + card.id + '.text', card.text);
+  const cardText = towerStat ? `${cardTextTranslated}\n\n${towerStat}` : cardTextTranslated;
   el.storyCardText.innerHTML = storyCardHtml(cardText);
-  el.storyCardCta.textContent = card.cta || "TAP TO CONTINUE";
+  el.storyCardCta.textContent = t('intro.' + card.id + '.cta', card.cta) || t('intro.tapContinue', 'TAP TO CONTINUE');
 
   el.storyNameInput.classList.toggle("hidden", !card.isNameStep);
   if (card.isNameStep) {
     el.storyNameInput.value = hasPlayerName() ? getPlayerName() : "";
-    el.storyNameInput.placeholder = NARRATIVE.namePlaceholder;
+    el.storyNameInput.placeholder = t('intro.namePlaceholder', NARRATIVE.namePlaceholder);
     el.storyNameInput.focus();
   }
 }
