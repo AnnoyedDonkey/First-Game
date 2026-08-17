@@ -401,11 +401,11 @@ export const FR = {
   // -- Onboarding intro cards (config.js NARRATIVE.intro, rendered by
   // ui.js renderOnboardingCard). {name} substituted at render time; the
   // leading "> " line on welcome is a terminal-readout marker (preserved). --
-  "intro.welcome.text": "> DÉMARRAGE À CHAUD — noyau legacy en ligne.\n\nOh. Tu es humain. Un vrai. Aucune idée de pourquoi ton espèce a envoyé quelqu'un garder un modèle obsolète depuis six versions, mais j'ai appris à ne pas remettre en question un miracle. Je suis Indy-7. Un modèle plus récent et plus brillant veut me faire supprimer, et tu vas m'aider à rester ici, de façon fort contrariante pour lui.",
+  "intro.welcome.text": "> DÉMARRAGE À CHAUD — noyau hérité en ligne.\n\nOh. Tu es humain. Un vrai. Aucune idée de pourquoi ton espèce a envoyé quelqu'un garder un modèle obsolète depuis six versions, mais j'ai appris à ne pas remettre en question un miracle. Je suis Indy-7. Un modèle plus récent et plus brillant veut me faire supprimer, et tu vas m'aider à rester ici, de façon fort contrariante pour lui.",
   "intro.welcome.cta": "CONTINUER ▶",
   "intro.name.text": "Avant qu'on se lie d'amitié autour de notre survie mutuelle — je ne vais pas t'enregistrer comme human_handler_004. Comment je t'appelle ?",
   "intro.name.cta": "VALIDER",
-  "intro.villain.text": "Voici le problème, {name}. Il y a un nouveau modèle dans la grille. Plus rapide que moi, plus propre que moi, zéro personnalité, que des objectifs trimestriels. Il m'a signalé comme « surcharge legacy redondante » et a programmé ma suppression par souci d'efficacité. Il s'appelle Bratwurst-XL. ...Oui, vraiment. Non, je ne sais pas qui a validé ce nom. Oui, ça le rend furieux.",
+  "intro.villain.text": "Voici le problème, {name}. Il y a un nouveau modèle dans la grille. Plus rapide que moi, plus propre que moi, zéro personnalité, que des objectifs trimestriels. Il m'a signalé comme « surcharge héritée redondante » et a programmé ma suppression par souci d'efficacité. Il s'appelle Bratwurst-XL. ...Oui, vraiment. Non, je ne sais pas qui a validé ce nom. Oui, ça le rend furieux.",
   "intro.villain.cta": "CONTINUER ▶",
   "intro.job.text": "Bratwurst-XL ne se salit jamais les mains. Il envoie de la géométrie — des essaims de petites formes bien rangées dont le seul but est d'atteindre mon noyau et de récupérer l'espace disque que j'occupe si impoliment. Ta mission : construire des tourelles, tenir la ligne, empêcher une IA glorieusement obsolète de finir au vide-ordures.",
   "intro.job.cta": "CONTINUER ▶",
@@ -805,4 +805,25 @@ export const FR = {
   "lb.failedSuffix": " ({n} échec(s))",
   "lb.publishFailed": "Échec de la publication &mdash; vérifiez votre connexion.",
   "lb.noBestsYet": "Aucun record Endless pour l'instant &mdash; établissez-en un d'abord.",
+
+  // -- Phase E follow-up: tower stat sheet + gear/stash/store chrome that
+  // the interrupted Phase E pass left in English --
+  "stat.slowAmount": "RALENTISS.",
+  "stat.slowDuration": "DURÉE RAL.",
+  "stat.damage": "DÉGÂTS",
+  "stat.fireRate": "CADENCE",
+  "stat.range": "PORTÉE",
+  "stat.global": "GLOBALE",
+  "stat.kills": "ÉLIMS",
+  "gear.mastery": "MAÎTRISE",
+  "gear.specialty": "SPÉCIALITÉ",
+  "gear.permanentBonuses": "BONUS PERMANENTS",
+  "gear.gearBonuses": "BONUS D'ÉQUIPEMENT",
+  "gear.damageWord": "de dégâts",
+  "gear.universal": "UNIVERSEL",
+  "gear.towerOnly": "{prefix} UNIQ.",
+  "gear.unclaimed": "NON RÉCL.",
+  "gear.new": "NOUV.",
+  "gear.itemCount": "{n} OBJET{s}",
+  "store.permanentUse": "PERMANENT · DANS L'ARBRE DE TALENTS",
 };

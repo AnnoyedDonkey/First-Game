@@ -1143,7 +1143,7 @@ function guideExtrasHtml() {
   let html = `<div class="tower-section">TOWER CLASSES</div>`;
   for (const [type, def] of Object.entries(TOWERS)) {
     const locked = !isTowerUnlocked(type);
-    const rangeStr = def.baseRange >= 50 ? "GLOBAL" : def.baseRange;
+    const rangeStr = def.baseRange >= 50 ? t("stat.global", "GLOBAL") : def.baseRange;
     const stats =
       `DMG ${def.baseDamage} · RANGE ${rangeStr} · ` +
       `${def.baseFireRate}s/shot · $${def.baseCost}` +
@@ -1181,7 +1181,7 @@ function itemUniqueName(item) {
 
 function itemTitle(item) {
   const slot = slotLabel(item.slot);
-  const lock = item.towerType ? `${TOWERS[item.towerType].rosterPrefix.toUpperCase()}-ONLY` : "UNIVERSAL";
+  const lock = item.towerType ? tf("gear.towerOnly", "{prefix}-ONLY", { prefix: TOWERS[item.towerType].rosterPrefix.toUpperCase() }) : t("gear.universal", "UNIVERSAL");
   const unique = itemUniqueName(item);
   return unique ? `${unique.toUpperCase()} ${slot}` : `${rarityLabel(item.rarity)} ${slot} ${lock}`;
 }
@@ -1473,7 +1473,7 @@ function openItemSheet({ stashId, towerName, slot }) {
   }
 
   const color = RARITY_COLOR[item.rarity];
-  const lockTag = item.towerType ? `${TOWERS[item.towerType].rosterPrefix.toUpperCase()}-ONLY` : "UNIVERSAL";
+  const lockTag = item.towerType ? tf("gear.towerOnly", "{prefix}-ONLY", { prefix: TOWERS[item.towerType].rosterPrefix.toUpperCase() }) : t("gear.universal", "UNIVERSAL");
   const sub =
     `${rarityLabel(item.rarity)} &middot; ${slotLabel(item.slot)} &middot; ${lockTag} &middot; ` +
     `${itemReqText(item)} &middot; ILVL ${item.ilvl}` +
@@ -1709,9 +1709,9 @@ function openTowerStatSheet(towerName) {
   const stats = careerStatsFor(rec);
   const gear = normalizeGear(rec.gear);
   const slowStats = stats.slowPercent == null ? "" :
-    `<div class="gear-stat-box"><div class="k">SLOW AMOUNT</div>` +
+    `<div class="gear-stat-box"><div class="k">${t("stat.slowAmount", "SLOW AMOUNT")}</div>` +
     `<div class="v" style="color:${def.color}">${Math.round(stats.slowPercent * 100)}%</div></div>` +
-    `<div class="gear-stat-box"><div class="k">SLOW DURATION</div>` +
+    `<div class="gear-stat-box"><div class="k">${t("stat.slowDuration", "SLOW DURATION")}</div>` +
     `<div class="v" style="color:${def.color}">${stats.slowDuration.toFixed(1)}s</div></div>`;
   const bonuses = GEAR_SLOTS.map((slot) => gear[slot]).filter(Boolean).map((item) => {
     const color = RARITY_COLOR[item.rarity];
@@ -1722,25 +1722,25 @@ function openTowerStatSheet(towerName) {
 
   el.gearSheet.innerHTML =
     `<div class="gear-sheet-title" style="color:${def.color}; text-shadow:0 0 10px ${def.color}55">${escapeHtml(rec.name)}</div>` +
-    `<div class="gear-sheet-sub">LV ${rec.maxLevel} &middot; ` +
-    `<span style="color:var(--neon-yellow)">&#9733;${stats.masteryRank} MASTERY</span> &middot; ${rec.kills} KILLS</div>` +
+    `<div class="gear-sheet-sub">${t("ui.lv", "LV")} ${rec.maxLevel} &middot; ` +
+    `<span style="color:var(--neon-yellow)">&#9733;${stats.masteryRank} ${t("gear.mastery", "MASTERY")}</span> &middot; ${rec.kills} ${t("stat.kills", "KILLS")}</div>` +
     `<div class="gear-stat-grid">` +
-    `<div class="gear-stat-box"><div class="k">DAMAGE</div><div class="v">${Math.round(stats.damage)}` +
+    `<div class="gear-stat-box"><div class="k">${t("stat.damage", "DAMAGE")}</div><div class="v">${Math.round(stats.damage)}` +
     (stats.masteryPct ? `<small>+${stats.masteryPct}%</small>` : "") + `</div></div>` +
-    `<div class="gear-stat-box"><div class="k">FIRE RATE</div><div class="v">${stats.fireRate.toFixed(1)}/s</div></div>` +
+    `<div class="gear-stat-box"><div class="k">${t("stat.fireRate", "FIRE RATE")}</div><div class="v">${stats.fireRate.toFixed(1)}/s</div></div>` +
     `<div class="gear-stat-box"><div class="k">DPS</div><div class="v" style="color:${def.color}">${Math.round(stats.dps)}</div></div>` +
-    `<div class="gear-stat-box"><div class="k">RANGE</div><div class="v">${def.baseRange >= 50 ? "GLOBAL" : stats.range.toFixed(1)}</div></div>` +
+    `<div class="gear-stat-box"><div class="k">${t("stat.range", "RANGE")}</div><div class="v">${def.baseRange >= 50 ? t("stat.global", "GLOBAL") : stats.range.toFixed(1)}</div></div>` +
     slowStats +
     `</div>` +
-    `<div class="gear-picker-label">PERMANENT BONUSES</div>` +
+    `<div class="gear-picker-label">${t("gear.permanentBonuses", "PERMANENT BONUSES")}</div>` +
     `<div class="gear-bonus-line" style="border-color:var(--neon-yellow)">` +
-    `<span class="src">MASTERY &#9733;${stats.masteryRank}</span>+${stats.masteryPct}% damage</div>` +
+    `<span class="src">${t("gear.mastery", "MASTERY")} &#9733;${stats.masteryRank}</span>+${stats.masteryPct}% ${t("gear.damageWord", "damage")}</div>` +
     (stats.specialtyLabel
-      ? `<div class="gear-bonus-line" style="border-color:${def.color}"><span class="src">SPECIALTY</span>` +
+      ? `<div class="gear-bonus-line" style="border-color:${def.color}"><span class="src">${t("gear.specialty", "SPECIALTY")}</span>` +
         `${escapeHtml(t(`tower.${rec.type}.specialtyPerk`, stats.specialtyLabel))} (+${stats.specialtyPct}%)</div>`
       : "") +
-    (bonuses ? `<div class="gear-picker-label" style="margin-top:12px">GEAR BONUSES</div>${bonuses}` : "") +
-    `<div class="gear-sheet-actions" style="margin-top:12px"><button class="gear-sheet-btn" id="sheet-close">CLOSE</button></div>`;
+    (bonuses ? `<div class="gear-picker-label" style="margin-top:12px">${t("gear.gearBonuses", "GEAR BONUSES")}</div>${bonuses}` : "") +
+    `<div class="gear-sheet-actions" style="margin-top:12px"><button class="gear-sheet-btn" id="sheet-close">${t("ui.close", "CLOSE")}</button></div>`;
   openSheet();
   document.getElementById("sheet-close").addEventListener("click", closeSheet);
 }
@@ -2011,7 +2011,7 @@ function renderStashTab() {
   const filterLabel = `FILTER${activeFilters ? ` (${activeFilters})` : ""} ${gearFiltersOpen ? "&#9652;" : "&#9662;"}`;
 
   html +=
-    `<div class="gear-stash-header"><span class="gear-stash-count">${shown.length} ITEM${shown.length === 1 ? "" : "S"}</span></div>` +
+    `<div class="gear-stash-header"><span class="gear-stash-count">${tf("gear.itemCount", "{n} ITEM{s}", { n: shown.length, s: shown.length === 1 ? "" : "S" })}</span></div>` +
     `<div class="gear-actions-row">` +
     `<button class="gear-mini-action filter-accent${gearFiltersOpen ? " on" : ""}" id="stash-filter">${filterLabel}</button>` +
     `<button class="gear-mini-action" id="stash-sell">SELL &#9662;</button>` +
@@ -2059,11 +2059,11 @@ function renderStashTab() {
 function renderGearHeader() {
   const pending = getPendingLoot().length;
   el.gearWallet.innerHTML =
-    `<b>&#9670; ${getShards()}</b> &nbsp;&middot;&nbsp; STASH ${getStash().length}/${getStashCap()}` +
-    (pending ? ` &nbsp;&middot;&nbsp; ${pending} UNCLAIMED` : "");
+    `<b>&#9670; ${getShards()}</b> &nbsp;&middot;&nbsp; ${t("gear.stash", "STASH")} ${getStash().length}/${getStashCap()}` +
+    (pending ? ` &nbsp;&middot;&nbsp; ${pending} ${t("gear.unclaimed", "UNCLAIMED")}` : "");
   const unseen = countUnseenStash();
   el.gearStashBadge.classList.toggle("hidden", unseen === 0);
-  el.gearStashBadge.textContent = `${unseen} NEW`;
+  el.gearStashBadge.textContent = `${unseen} ${t("gear.new", "NEW")}`;
 }
 
 function renderGearTabs() {
@@ -2145,7 +2145,7 @@ el.storeSheetOverlay.addEventListener("click", (e) => {
 
 function openStoreItemSheet(item) {
   const color = RARITY_COLOR[item.rarity];
-  const lockTag = item.towerType ? `${TOWERS[item.towerType].rosterPrefix.toUpperCase()}-ONLY` : "UNIVERSAL";
+  const lockTag = item.towerType ? tf("gear.towerOnly", "{prefix}-ONLY", { prefix: TOWERS[item.towerType].rosterPrefix.toUpperCase() }) : t("gear.universal", "UNIVERSAL");
   const sub =
     `${rarityLabel(item.rarity)} &middot; ${slotLabel(item.slot)} &middot; ${lockTag} &middot; ` +
     `${itemReqText(item)} &middot; ILVL ${item.ilvl}`;
@@ -2222,7 +2222,7 @@ function renderStorePanel() {
   const unlocks = getStoreUnlocks();
   el.storeWallet.innerHTML = `<b>&#9670; ${shards}</b> &nbsp;&middot;&nbsp; ` +
     `<span class="store-skill-balance">&#9733; ${getSkillPoints()} ${t("reward.skillPt", "SKILL PT")}</span> &nbsp;&middot;&nbsp; ` +
-    `STASH ${getStash().length}/${getStashCap()}`;
+    `${t("gear.stash", "STASH")} ${getStash().length}/${getStashCap()}`;
 
   el.storeActions.innerHTML = "";
 
@@ -2232,7 +2232,7 @@ function renderStorePanel() {
   skillPoint.innerHTML =
     `<span class="store-skill-icon">&#9733;</span>` +
     `<span class="store-skill-copy"><b>${t("store.buySkillPoint", "BUY SKILL POINT")}</b>` +
-    `<small>PERMANENT &middot; USE IN THE SKILL TREE</small></span>` +
+    `<small>${t("store.permanentUse", "PERMANENT · USE IN THE SKILL TREE")}</small></span>` +
     `<span class="store-skill-price${shards < skillCost ? " cannot-afford" : ""}">&#9670;${skillCost}</span>`;
   skillPoint.addEventListener("click", openSkillPointStoreSheet);
   el.storeActions.appendChild(skillPoint);
