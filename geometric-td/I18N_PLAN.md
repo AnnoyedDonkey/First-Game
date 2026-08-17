@@ -203,11 +203,35 @@ meets the onboarding intro BEFORE the menu's LANGUE entry, so an `EN|FR` pill
 subscription. Markup in `index.html`, styles reuse the retired home pill's
 segment look.
 
-### Phase E — results / loot / misc  ⬜ TODO
-`RESULT_ROASTS`, results-screen copy, loot rarity/labels
-(`src/loot.js`/`ui.js`), leaderboard messages (`src/leaderboard.js`),
-feedback prompts (`src/feedback.js`), update nudge (`src/update.js`),
-milestone toasts (`src/milestones.js`).
+### Phase E — results / loot / misc  ✅ DONE & verified (2026-08-16, build 2026.08.16-6)
+193 FR keys, all translated at consumption in `ui.js`/`main.js` (config.js
+`RESULT_ROASTS` + balance-data milestone labels stay inline as fallbacks):
+- **Result screen:** ~40 roast titles (`pickRoast` refactored to index-keyed
+  `roast.<bucket>.<i>`), win/loss/endless subtitles + buttons (`result.*`),
+  loot-tail buttons (MANAGE GEAR / ASSIGN … POINTS).
+- **Loot:** `rarityLabel`/`slotLabel` display helpers (17/13 uses) → `rarity.*`
+  / `slot.*`; reveal/compare/reward text (`reward.*`).
+- **Board + level sheet chrome** (Phase-A deferred): chips (CLEARED/LOCKED/
+  ENDLESS/CHALLENGES/MILESTONES), heads, PLAY/ENDLESS/STORY buttons, LEVEL
+  word (`board.*`).
+- **Gear/stash sheet chrome** (`gear.*` extended): REPLACE EQUIPPED / PICK A
+  TOWER / COMPATIBLE IN STASH etc.
+- **Skill-sheet effect text** (`skillfx.*`): Unlocks…/Level cap →N/Nx game
+  speed/next:/Unlock <b>…</b> first.
+- **Milestones** (57 keys): `milestoneLabelFor(m)` → `milestone.<id>.label`
+  (m carries a stable id), reward text, and `milestoneDescText`'s 7-template
+  grammar (`milestone.desc.*`).
+- **Feedback strip** (`feedback.*`) + **leaderboard status** (`lb.loading/
+  unreachable/noScores`).
+Verified at 375px `data-lang=fr`: level board (NON TERMINÉ / SANS FIN / DÉFIS,
+buttons JOUER/HISTOIRE), milestones (Sans faute, reward PT TALENT, French
+"how to earn" desc), store rarity labels (AMÉLIORÉ…), clean console.
+**Note:** the Phase E agent hit the account spend limit during its own verify
+pass — edits were already complete; the orchestrator verified + shipped.
+A few low-traffic chrome stragglers may remain English (safe fallback), e.g.
+the store point-buy sub-line + the STASH HUD readout — trivial follow-up.
+
+**The French localization (Phases 0/A/B/C/D/E) is now COMPLETE.**
 
 ---
 

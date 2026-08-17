@@ -62,12 +62,20 @@ import {
 function worldNameFor(world) {
   return t(`world.${world.id}.name`, world.name);
 }
-function levelNameFor(level) {
+export function levelNameFor(level) {
   return t(`level.${level.id}.name`, level.name);
 }
 function enemyNameFor(type) {
   const def = ENEMIES[type];
   return t(`enemy.${type}.name`, def ? def.name : type);
+}
+// Skill-sheet "X BRANCH" sub-header word (Phase E) — tower branches keep
+// their English proper noun (Laser/Pulse/...); the two non-tower branches
+// reuse the Phase B headLabel keys already used on the SVG tree.
+function branchWordFor(branch) {
+  if (branch === "economy") return t("skill.money_root.headLabel", "MONEY");
+  if (branch === "game") return t("skill.game_root.headLabel", "GAME");
+  return branch.toUpperCase();
 }
 
 const el = {
@@ -663,8 +671,9 @@ function renderWorld() {
     const lockReason = state !== "locked"
       ? null
       : !unlocked
-        ? `Clear all of ${worldNameFor(WORLDS[currentWorld - 1])} to unlock ${worldNameFor(world)}.`
-        : "Clear the previous level to unlock.";
+        ? tf("board.clearWorld", "Clear all of {prev} to unlock {world}.",
+            { prev: worldNameFor(WORLDS[currentWorld - 1]), world: worldNameFor(world) })
+        : t("board.clearPrev", "Clear the previous level to unlock.");
     return {
       level,
       n: level ? Number(id.slice(-3)) : "",
@@ -709,27 +718,39 @@ function renderWorld() {
 // per CIRCUIT_MENU_DESIGN.md M0 — a future 20-entry track renders the same way).
 function milestoneRewardText(reward) {
   if (reward.kind === "shards") return `&#9670; ${reward.amount}`;
-  if (reward.kind === "skillPoint") return `&#9733; ${reward.amount} SKILL PT`;
+  if (reward.kind === "skillPoint") return `&#9733; ${reward.amount} ${t("reward.skillPt", "SKILL PT")}`;
   if (reward.kind === "loot" || reward.rarity) {
-    return reward.rarity === "singularity" ? "SINGULARITY" : `${reward.rarity.toUpperCase()} LOOT`;
+    return reward.rarity === "singularity"
+      ? rarityLabel("singularity")
+      : tf("reward.loot", "{rarity} LOOT", { rarity: rarityLabel(reward.rarity) });
   }
   // Combined campaign-challenge shape: { skillPoints, shards }, both optional.
   const parts = [];
-  if (reward.skillPoints) parts.push(`&#9733; ${reward.skillPoints} SKILL PT`);
+  if (reward.skillPoints) parts.push(`&#9733; ${reward.skillPoints} ${t("reward.skillPt", "SKILL PT")}`);
   if (reward.shards) parts.push(`&#9670; ${reward.shards}`);
   return parts.join(" + ");
 }
 
+// Milestone display label (Phase E) — every LEVEL_MILESTONES / ENDLESS_REWARDS
+// entry (config.js, sourced from balance-data.json) carries a stable `id`, so
+// translation keys straightforwardly to that id rather than a derived slug.
+export function milestoneLabelFor(m) {
+  return t("milestone." + m.id + ".label", m.label);
+}
+
 // Friendly tower names for challenge descriptions (challenge labels like
 // "Battle-Hardened" don't say what to DO — this spells it out from the data).
+// Tower proper nouns stay English per I18N_PLAN.md; only the joining word
+// ("and") is translated.
 const CHALLENGE_TOWER_LABEL = {
   laser: "Laser", pulse: "Pulse", slow: "Slow", railgun: "Railgun", rocket: "Rocket",
 };
 function challengeTowerList(types) {
   const names = types.map((t) => CHALLENGE_TOWER_LABEL[t] || t);
+  const and = t("milestone.and", "and");
   if (names.length === 1) return names[0];
-  if (names.length === 2) return `${names[0]} and ${names[1]}`;
-  return `${names.slice(0, -1).join(", ")}, and ${names[names.length - 1]}`;
+  if (names.length === 2) return `${names[0]} ${and} ${names[1]}`;
+  return `${names.slice(0, -1).join(", ")}, ${and} ${names[names.length - 1]}`;
 }
 
 // Human "how to earn this" text, derived from a milestone's `check` clauses
@@ -737,20 +758,28 @@ function challengeTowerList(types) {
 // new challenges explain themselves.
 function milestoneDescText(check) {
   const parts = [];
-  if (check.clearNoLeaks) parts.push("Clear the level without letting a single enemy reach the core.");
+  if (check.clearNoLeaks) {
+    parts.push(t("milestone.desc.clearNoLeaks", "Clear the level without letting a single enemy reach the core."));
+  }
   if (check.onlyTowers) {
-    parts.push(`Win the level using only ${challengeTowerList(check.onlyTowers)} towers.`);
+    parts.push(tf("milestone.desc.onlyTowers", "Win the level using only {list} towers.",
+      { list: challengeTowerList(check.onlyTowers) }));
   }
   if (check.withoutTowers) {
-    parts.push(`Win the level without building any ${challengeTowerList(check.withoutTowers)} towers.`);
+    parts.push(tf("milestone.desc.withoutTowers", "Win the level without building any {list} towers.",
+      { list: challengeTowerList(check.withoutTowers) }));
   }
   if (check.towersAtLevel) {
     const [count, lvl] = check.towersAtLevel;
-    parts.push(`Have ${count} tower${count > 1 ? "s" : ""} at level ${lvl} or higher deployed at the same time.`);
+    const key = count > 1 ? "milestone.desc.towersAtLevel.many" : "milestone.desc.towersAtLevel.one";
+    const en = `Have ${count} tower${count > 1 ? "s" : ""} at level ${lvl} or higher deployed at the same time.`;
+    parts.push(tf(key, en, { count, lvl }));
   }
-  if (check.kills != null) parts.push(`Destroy at least ${check.kills} enemies.`);
-  if (check.throughWave != null) parts.push(`(Must be held through wave ${check.throughWave}.)`);
-  return parts.join(" ") || "Complete the level.";
+  if (check.kills != null) parts.push(tf("milestone.desc.kills", "Destroy at least {n} enemies.", { n: check.kills }));
+  if (check.throughWave != null) {
+    parts.push(tf("milestone.desc.throughWave", "(Must be held through wave {n}.)", { n: check.throughWave }));
+  }
+  return parts.join(" ") || t("milestone.desc.default", "Complete the level.");
 }
 
 // ---- Level detail bottom sheet (CIRCUIT_MENU_DESIGN.md M2) ----
@@ -768,13 +797,13 @@ function openLevelSheet(nd, world, pick) {
   const locked = nd.state === "locked";
 
   const chips = [
-    `<span class="level-chip ${cleared ? "on" : ""}">${cleared ? "&#10003; CLEARED" : locked ? "&#128274; LOCKED" : "NOT CLEARED"}</span>`,
-    `<span class="level-chip ${cleared ? "on" : ""}">&#8734; ENDLESS ${cleared ? (nd.best > 0 ? `&mdash; BEST W${nd.best}` : "UNLOCKED") : "LOCKED"}</span>`,
+    `<span class="level-chip ${cleared ? "on" : ""}">${cleared ? "&#10003; " + t("board.cleared", "CLEARED") : locked ? "&#128274; " + t("board.locked", "LOCKED") : t("board.notCleared", "NOT CLEARED")}</span>`,
+    `<span class="level-chip ${cleared ? "on" : ""}">&#8734; ${t("board.endlessWord", "ENDLESS")} ${cleared ? (nd.best > 0 ? tf("board.endlessBest", "&mdash; BEST W{n}", { n: nd.best }) : t("board.endlessUnlocked", "UNLOCKED")) : t("board.endlessLocked", "LOCKED")}</span>`,
   ];
   if (nd.campaign && nd.campaign.length) {
-    chips.push(`<span class="level-chip gold">&#9873; ${nd.campaignDone}/${nd.campaign.length} CHALLENGES</span>`);
+    chips.push(`<span class="level-chip gold">${tf("board.challenges", "&#9873; {a}/{b} CHALLENGES", { a: nd.campaignDone, b: nd.campaign.length })}</span>`);
   }
-  if (cleared) chips.push(`<span class="level-chip gold">&#9733; ${nd.done}/${nd.total} MILESTONES</span>`);
+  if (cleared) chips.push(`<span class="level-chip gold">${tf("board.milestones", "&#9733; {a}/{b} MILESTONES", { a: nd.done, b: nd.total })}</span>`);
 
   // Campaign challenges — shown whenever the level is playable (not locked).
   // Each row is tappable to expand a data-derived "how to earn this" line, so
@@ -784,12 +813,12 @@ function openLevelSheet(nd, world, pick) {
     const rows = nd.campaign.map((m, i) =>
       `<div class="level-mile challenge ${m.claimed ? "done" : ""}" data-mi="${i}">` +
       `<div class="tick"></div>` +
-      `<span class="m-label">${escapeHtml(m.label)}</span>` +
+      `<span class="m-label">${escapeHtml(milestoneLabelFor(m))}</span>` +
       `<span class="m-reward">${milestoneRewardText(m.reward)}</span>` +
       `<span class="m-chev">&#9662;</span></div>` +
       `<div class="mile-desc" data-mi-desc="${i}">${escapeHtml(milestoneDescText(m.check))}</div>`
     ).join("");
-    campaignHtml = `<div class="level-mile-head">CAMPAIGN CHALLENGES <span class="mile-hint">tap to learn</span></div>${rows}`;
+    campaignHtml = `<div class="level-mile-head">${t("board.campaignChallenges", "CAMPAIGN CHALLENGES")} <span class="mile-hint">${t("board.tapToLearn", "tap to learn")}</span></div>${rows}`;
   }
 
   let milestoneHtml;
@@ -797,13 +826,13 @@ function openLevelSheet(nd, world, pick) {
     const rows = nd.milestones.map((m) =>
       `<div class="level-mile ${m.claimed ? "done" : ""}">` +
       `<div class="tick"></div>` +
-      `<span class="m-label">${escapeHtml(m.label)}</span>` +
+      `<span class="m-label">${escapeHtml(milestoneLabelFor(m))}</span>` +
       `<span class="m-reward">${milestoneRewardText(m.reward)}</span></div>`
     ).join("");
-    milestoneHtml = `<div class="level-mile-head">ENDLESS MILESTONES</div>${rows}`;
+    milestoneHtml = `<div class="level-mile-head">${t("board.endlessMilestones", "ENDLESS MILESTONES")}</div>${rows}`;
   } else {
     milestoneHtml = `<p class="level-sheet-desc">${
-      locked ? escapeHtml(nd.lockReason) : "Beat the campaign level to unlock Endless mode and its milestone rewards."
+      locked ? escapeHtml(nd.lockReason) : t("board.endlessHint", "Beat the campaign level to unlock Endless mode and its milestone rewards.")
     }</p>`;
   }
 
@@ -815,15 +844,15 @@ function openLevelSheet(nd, world, pick) {
 
   el.levelSheet.innerHTML =
     `<h2 style="color:${world.accent}">${escapeHtml(levelNameFor(level).toUpperCase())}</h2>` +
-    `<div class="level-sheet-tag">LEVEL ${nd.n} &mdash; ${escapeHtml(worldNameFor(world))}</div>` +
+    `<div class="level-sheet-tag">${t("board.levelWord", "LEVEL")} ${nd.n} &mdash; ${escapeHtml(worldNameFor(world))}</div>` +
     `<p class="level-sheet-desc">${escapeHtml(level.desc || "")}</p>` +
     `<div class="level-chip-row">${chips.join("")}</div>` +
     campaignHtml +
     milestoneHtml +
     `<div class="level-sheet-actions">` +
-    `<button class="level-sheet-btn play" id="level-sheet-play"${locked ? " disabled" : ""}>&#9654; PLAY</button>` +
-    `<button class="level-sheet-btn endless" id="level-sheet-endless"${cleared ? "" : " disabled"}>&#8734; ENDLESS</button>` +
-    (hasStory ? `<button class="level-sheet-btn story" id="level-sheet-story">&#9654; STORY</button>` : "") +
+    `<button class="level-sheet-btn play" id="level-sheet-play"${locked ? " disabled" : ""}>${t("board.play", "&#9654; PLAY")}</button>` +
+    `<button class="level-sheet-btn endless" id="level-sheet-endless"${cleared ? "" : " disabled"}>${t("board.endless", "&#8734; ENDLESS")}</button>` +
+    (hasStory ? `<button class="level-sheet-btn story" id="level-sheet-story">${t("board.story", "&#9654; STORY")}</button>` : "") +
     `</div>`;
 
   el.levelSheetOverlay.classList.remove("hidden");
@@ -1151,10 +1180,10 @@ function itemUniqueName(item) {
 }
 
 function itemTitle(item) {
-  const slot = item.slot.toUpperCase();
+  const slot = slotLabel(item.slot);
   const lock = item.towerType ? `${TOWERS[item.towerType].rosterPrefix.toUpperCase()}-ONLY` : "UNIVERSAL";
   const unique = itemUniqueName(item);
-  return unique ? `${unique.toUpperCase()} ${slot}` : `${item.rarity.toUpperCase()} ${slot} ${lock}`;
+  return unique ? `${unique.toUpperCase()} ${slot}` : `${rarityLabel(item.rarity)} ${slot} ${lock}`;
 }
 
 function itemReqText(item) {
@@ -1168,6 +1197,15 @@ function compatibleRoster(item) {
 // ---- Tile components shared by both tabs + the bottom sheet ----
 
 const SLOT_LABEL = { optic: "OPTIC", emitter: "EMITTER", capacitor: "CAPACITOR", frame: "FRAME" };
+// i18n display helpers (Phase E) — analogous to the Phase B name helpers
+// near the top of the file; SLOT_LABEL/the raw rarity id stay the English
+// fallback so every item.rarity/item.slot render site can wrap uniformly.
+function rarityLabel(rarity) {
+  return t(`rarity.${rarity}`, rarity.toUpperCase());
+}
+function slotLabel(slot) {
+  return t(`slot.${slot}`, SLOT_LABEL[slot] || slot.toUpperCase());
+}
 // Raw hex (not var()) so JS can append alpha for glow shadows below.
 const RARITY_COLOR = {
   common: "#b7c0d5", enhanced: "#4affa1", rare: "#35e0ff",
@@ -1331,7 +1369,7 @@ function tileHtml(item, opts = {}) {
   return `<button class="item-tile ${RARITY_CLASS[item.rarity]}${extraClass}" ${dataAttr}>` +
     slotGlyph(item.slot, color) +
     cornerTag +
-    (isNew ? `<span class="new-tag">NEW</span>` : "") +
+    (isNew ? `<span class="new-tag">${t("reward.new", "NEW")}</span>` : "") +
     `</button>`;
 }
 
@@ -1343,13 +1381,15 @@ function tileHtml(item, opts = {}) {
 // if there's nothing to show).
 
 function revealDestHtml(p) {
-  if (p.dest === "equipped") return `AUTO-EQUIPPED &rarr; <b>${escapeHtml(p.towerName)}</b>`;
-  if (p.dest === "stash") return "&rarr; STASH";
-  if (p.dest === "junked") return `&rarr; AUTO-SOLD &#9670;${p.value}`;
-  return "&rarr; UNCLAIMED (stash was full)";
+  if (p.dest === "equipped") {
+    return `${t("gear.autoEquipped", "AUTO-EQUIPPED &rarr;")} <b>${escapeHtml(p.towerName)}</b>`;
+  }
+  if (p.dest === "stash") return t("reward.toStash", "&rarr; STASH");
+  if (p.dest === "junked") return tf("reward.autoSold", "&rarr; AUTO-SOLD &#9670;{value}", { value: p.value });
+  return t("reward.unclaimed", "&rarr; UNCLAIMED (stash was full)");
 }
 
-function renderRevealCard(p, index, total, tapLabel = "TAP TO CONTINUE") {
+function renderRevealCard(p, index, total, tapLabel = t("intro.tapContinue", "TAP TO CONTINUE")) {
   const item = p.item;
   const color = RARITY_COLOR[item.rarity];
   el.dropReveal.innerHTML =
@@ -1358,9 +1398,9 @@ function renderRevealCard(p, index, total, tapLabel = "TAP TO CONTINUE") {
     slotGlyph(item.slot, color) +
     `</div>` +
     `<div id="reveal-name" style="color:${color}; text-shadow:0 0 14px ${color}88">${escapeHtml(itemTitle(item))}</div>` +
-    `<div id="reveal-sub">${item.rarity.toUpperCase()} &middot; ${item.slot.toUpperCase()}</div>` +
+    `<div id="reveal-sub">${rarityLabel(item.rarity)} &middot; ${slotLabel(item.slot)}</div>` +
     `<div id="reveal-dest">${revealDestHtml(p)}</div>` +
-    (total > 1 ? `<div id="reveal-progress">ITEM ${index + 1}/${total}</div>` : "") +
+    (total > 1 ? `<div id="reveal-progress">${tf("reward.itemProgress", "ITEM {i}/{n}", { i: index + 1, n: total })}</div>` : "") +
     `<div id="reveal-tap">${tapLabel}</div>`;
   el.dropReveal.classList.remove("hidden");
 }
@@ -1376,7 +1416,7 @@ export function showItemDetail(placement) {
     el.dropReveal.innerHTML = "";
     el.dropReveal.onclick = null;
   };
-  renderRevealCard(placement, 0, 1, "TAP TO CLOSE");
+  renderRevealCard(placement, 0, 1, t("reward.tapClose", "TAP TO CLOSE"));
 }
 
 export function showDropReveal(placements, onDone) {
@@ -1435,10 +1475,10 @@ function openItemSheet({ stashId, towerName, slot }) {
   const color = RARITY_COLOR[item.rarity];
   const lockTag = item.towerType ? `${TOWERS[item.towerType].rosterPrefix.toUpperCase()}-ONLY` : "UNIVERSAL";
   const sub =
-    `${item.rarity.toUpperCase()} &middot; ${item.slot.toUpperCase()} &middot; ${lockTag} &middot; ` +
+    `${rarityLabel(item.rarity)} &middot; ${slotLabel(item.slot)} &middot; ${lockTag} &middot; ` +
     `${itemReqText(item)} &middot; ILVL ${item.ilvl}` +
     (equippedOn
-      ? `<br>EQUIPPED ON <span style="color:${TOWERS[equippedOn.type].color}">${escapeHtml(equippedOn.name)}</span>`
+      ? `<br>${t("gear.equippedOn", "EQUIPPED ON")} <span style="color:${TOWERS[equippedOn.type].color}">${escapeHtml(equippedOn.name)}</span>`
       : "");
 
   const needsConfirm = item.rarity === "prismatic" || item.rarity === "singularity";
@@ -1494,8 +1534,8 @@ function openPendingItemSheet(itemId) {
   el.gearSheet.innerHTML =
     `<div class="gear-sheet-title" style="color:${color}; text-shadow:0 0 10px ${color}55">` +
     `${slotGlyph(item.slot, color)} ${escapeHtml(itemTitle(item))}</div>` +
-    `<div class="gear-sheet-sub">${item.rarity.toUpperCase()} &middot; ${item.slot.toUpperCase()} &middot; ` +
-    `UNCLAIMED (STASH WAS FULL)</div>` +
+    `<div class="gear-sheet-sub">${rarityLabel(item.rarity)} &middot; ${slotLabel(item.slot)} &middot; ` +
+    `${t("gear.unclaimedFull", "UNCLAIMED (STASH WAS FULL)")}</div>` +
     itemAffixRowsHtml(item) +
     `<div class="gear-sheet-actions"><button class="gear-sheet-btn sell" id="sheet-sell-pending">${t("gear.sell", "SELL")} &#9670;${sellVal}</button></div>`;
   openSheet();
@@ -1557,12 +1597,12 @@ function openCompareSheet(current, incoming, opts = {}) {
       `<button class="gear-sheet-btn sell" id="cmp-keep">${t("gear.keepCurrent", "KEEP CURRENT")}</button></div>`;
 
   el.gearSheet.innerHTML =
-    `<div class="gear-sheet-title">${slotGlyph(slot, "#8fa0c8")} ${t("gear.compare", "COMPARE")} &middot; ${SLOT_LABEL[slot]}</div>` +
+    `<div class="gear-sheet-title">${slotGlyph(slot, "#8fa0c8")} ${t("gear.compare", "COMPARE")} &middot; ${slotLabel(slot)}</div>` +
     `<div class="cmp-head"><span class="cmp-label"></span>` +
     `<span class="cmp-cell" style="color:${curColor}">${escapeHtml(itemTitle(current))}` +
-    `<small>${current.rarity.toUpperCase()}</small></span>` +
+    `<small>${rarityLabel(current.rarity)}</small></span>` +
     `<span class="cmp-cell" style="color:${newColor}">${escapeHtml(itemTitle(incoming))}` +
-    `<small>${incoming.rarity.toUpperCase()}</small></span></div>` +
+    `<small>${rarityLabel(incoming.rarity)}</small></span></div>` +
     rows + uniqueRow + footer;
   openSheet();
 
@@ -1592,13 +1632,13 @@ function openPickerSheet(towerName, slot) {
           `<span class="pr-sub">${escapeHtml(itemAffixSummary(it))}</span></span>` +
           `<span class="pr-tag">${it.towerType ? TOWERS[it.towerType].rosterPrefix.toUpperCase() : "UNIV"}</span></button>`;
       }).join("")
-    : `<div class="gear-empty-note">Nothing compatible in the stash.</div>`;
+    : `<div class="gear-empty-note">${t("gear.nothingCompatibleNote", "Nothing compatible in the stash.")}</div>`;
 
   el.gearSheet.innerHTML =
     `<div class="gear-sheet-title" style="color:${def.color}">` +
-    `${slotGlyph(slot, def.color)} ${escapeHtml(rec.name)} &middot; ${SLOT_LABEL[slot]}</div>` +
-    `<div class="gear-sheet-sub">${current ? "REPLACE EQUIPPED GEAR" : "EMPTY SLOT"} &middot; PICK FROM STASH</div>` +
-    `<div class="gear-picker-label">${candidates.length ? "COMPATIBLE IN STASH" : "NOTHING COMPATIBLE"}</div>` +
+    `${slotGlyph(slot, def.color)} ${escapeHtml(rec.name)} &middot; ${slotLabel(slot)}</div>` +
+    `<div class="gear-sheet-sub">${current ? t("gear.replaceEquipped", "REPLACE EQUIPPED GEAR") : t("gear.emptySlot", "EMPTY SLOT")} &middot; ${t("gear.pickFromStash", "PICK FROM STASH")}</div>` +
+    `<div class="gear-picker-label">${candidates.length ? t("gear.compatible", "COMPATIBLE IN STASH") : t("gear.nothingCompatible", "NOTHING COMPATIBLE")}</div>` +
     rows +
     `<div class="gear-sheet-actions" style="margin-top:6px"><button class="gear-sheet-btn danger" id="sheet-cancel">${t("ui.cancel", "CANCEL")}</button></div>`;
   openSheet();
@@ -1632,13 +1672,13 @@ function openEquipTargetSheet(item) {
           `<span style="color:var(--text-dim); font-weight:400">LV ${rec.maxLevel} &middot; &#9733;${rank}</span></span>` +
           `<span class="pr-sub">${current
             ? `swaps out: <span style="color:${RARITY_COLOR[current.rarity]}">${escapeHtml(itemTitle(current))}</span>`
-            : "empty slot"}</span></span></button>`;
+            : t("gear.emptySlotNote", "empty slot")}</span></span></button>`;
       }).join("")
     : `<div class="gear-empty-note">No eligible tower yet — needs &#9733;1 MASTERY and a type match.</div>`;
 
   el.gearSheet.innerHTML =
     `<div class="gear-sheet-title" style="color:${color}">${slotGlyph(item.slot, color)} ${t("gear.equip", "EQUIP")} ${escapeHtml(itemTitle(item))}</div>` +
-    `<div class="gear-sheet-sub">PICK A TOWER &mdash; CURRENT ${item.slot.toUpperCase()} SHOWN</div>` +
+    `<div class="gear-sheet-sub">${tf("gear.pickTower", "PICK A TOWER &mdash; CURRENT {slot} SHOWN", { slot: slotLabel(item.slot) })}</div>` +
     rows +
     `<div class="gear-sheet-actions" style="margin-top:6px"><button class="gear-sheet-btn danger" id="sheet-cancel">${t("ui.cancel", "CANCEL")}</button></div>`;
   openSheet();
@@ -1676,7 +1716,7 @@ function openTowerStatSheet(towerName) {
   const bonuses = GEAR_SLOTS.map((slot) => gear[slot]).filter(Boolean).map((item) => {
     const color = RARITY_COLOR[item.rarity];
     return `<div class="gear-bonus-line" style="border-color:${color}">` +
-      `<span class="src" style="color:${color}">${item.slot.toUpperCase()} &middot; ${escapeHtml(itemTitle(item))}</span>` +
+      `<span class="src" style="color:${color}">${slotLabel(item.slot)} &middot; ${escapeHtml(itemTitle(item))}</span>` +
       `${escapeHtml(itemAffixSummary(item))}</div>`;
   }).join("");
 
@@ -1742,13 +1782,13 @@ function stashSettingsHtml() {
     ? `<div class="bulk-sell-list">${ownedRarities.map((r) => {
         const enabled = isAutoJunkRarityEnabled(r);
         return `<div class="bulk-sell-row">` +
-          `<span class="bulk-sell-label" style="color:${enabled ? RARITY_COLOR[r] : "var(--text-dim)"}">${r.toUpperCase()}${enabled ? "" : " &mdash; PAUSED"}</span>` +
+          `<span class="bulk-sell-label" style="color:${enabled ? RARITY_COLOR[r] : "var(--text-dim)"}">${rarityLabel(r)}${enabled ? "" : " &mdash; PAUSED"}</span>` +
           `<button class="bulk-sell-btn${enabled ? " pause-btn" : ""}" data-junk-rarity="${r}">${enabled ? "PAUSE" : "RESUME"}</button>` +
           `</div>`;
       }).join("")}</div>`
     : `<div class="gear-empty-note">Nothing purchased yet.</div>`;
   const junkBtn = nextTier
-    ? `<div class="gear-sheet-actions"><button class="gear-sheet-btn" id="junk-upgrade"${getShards() < nextTier.cost ? " disabled" : ""}>UNLOCK ${nextTier.rarity.toUpperCase()} &#9670;${nextTier.cost}</button></div>`
+    ? `<div class="gear-sheet-actions"><button class="gear-sheet-btn" id="junk-upgrade"${getShards() < nextTier.cost ? " disabled" : ""}>${tf("store.unlockRarity", "UNLOCK {rarity} &#9670;{cost}", { rarity: rarityLabel(nextTier.rarity), cost: nextTier.cost })}</button></div>`
     : `<div class="gear-sheet-sub">ALL TIERS OWNED</div>`;
 
   return (
@@ -1828,13 +1868,13 @@ function renderTowersTab() {
             const item = gear[slot];
             if (!item) {
               return `<button class="gear-tile empty" data-picker-tower="${escapeHtml(rec.name)}" data-picker-slot="${slot}">` +
-                slotGlyph(slot, "#5a668f") + `<span class="tile-label">${SLOT_LABEL[slot]}</span></button>`;
+                slotGlyph(slot, "#5a668f") + `<span class="tile-label">${slotLabel(slot)}</span></button>`;
             }
             const justEquipped = equipFlashTarget &&
               equipFlashTarget.towerName === rec.name && equipFlashTarget.slot === slot;
             return `<button class="gear-tile filled ${RARITY_CLASS[item.rarity]}${justEquipped ? " just-equipped" : ""}" data-item-tower="${escapeHtml(rec.name)}" data-item-slot="${slot}">` +
               slotGlyph(slot, RARITY_COLOR[item.rarity]) +
-              `<span class="tile-label" style="color:${RARITY_COLOR[item.rarity]}">${SLOT_LABEL[slot]}</span></button>`;
+              `<span class="tile-label" style="color:${RARITY_COLOR[item.rarity]}">${slotLabel(slot)}</span></button>`;
           }).join("") +
           `</div></div>`;
       }).join("")
@@ -1883,10 +1923,10 @@ function buildGearFilters() {
   const box = document.getElementById("gear-filters");
   if (!box) return;
   box.innerHTML =
-    GEAR_SLOTS.map((s) => `<button class="gear-chip ${gearFilterSlot === s ? "on" : ""}" data-filter-slot="${s}">${SLOT_LABEL[s]}</button>`).join("") +
+    GEAR_SLOTS.map((s) => `<button class="gear-chip ${gearFilterSlot === s ? "on" : ""}" data-filter-slot="${s}">${slotLabel(s)}</button>`).join("") +
     RARITY_ORDER.slice().reverse().map((r) => {
       const on = gearFilterRarity === r;
-      return `<button class="gear-chip ${on ? "on" : ""}" style="${on ? `color:${RARITY_COLOR[r]};border-color:${RARITY_COLOR[r]}` : ""}" data-filter-rarity="${r}">${r.toUpperCase()}</button>`;
+      return `<button class="gear-chip ${on ? "on" : ""}" style="${on ? `color:${RARITY_COLOR[r]};border-color:${RARITY_COLOR[r]}` : ""}" data-filter-rarity="${r}">${rarityLabel(r)}</button>`;
     }).join("");
   box.querySelectorAll("[data-filter-slot]").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -1915,7 +1955,7 @@ function bulkSellSheetRowsHtml(items, kind) {
   return `<div class="bulk-sell-list">` +
     present.map((r) =>
       `<div class="bulk-sell-row">` +
-      `<span class="bulk-sell-label" style="color:${RARITY_COLOR[r]}">${r.toUpperCase()} (${counts[r]})</span>` +
+      `<span class="bulk-sell-label" style="color:${RARITY_COLOR[r]}">${rarityLabel(r)} (${counts[r]})</span>` +
       `<button class="bulk-sell-btn" data-bulk-kind="${kind}" data-bulk-rarity="${r}">${t("gear.sellAll", "SELL ALL")}</button>` +
       `</div>`
     ).join("") +
@@ -2107,7 +2147,7 @@ function openStoreItemSheet(item) {
   const color = RARITY_COLOR[item.rarity];
   const lockTag = item.towerType ? `${TOWERS[item.towerType].rosterPrefix.toUpperCase()}-ONLY` : "UNIVERSAL";
   const sub =
-    `${item.rarity.toUpperCase()} &middot; ${item.slot.toUpperCase()} &middot; ${lockTag} &middot; ` +
+    `${rarityLabel(item.rarity)} &middot; ${slotLabel(item.slot)} &middot; ${lockTag} &middot; ` +
     `${itemReqText(item)} &middot; ILVL ${item.ilvl}`;
   const price = LOOT.store.prices[item.rarity] || 0;
   const free = stashSlotsFree();
@@ -2138,12 +2178,11 @@ function openUnlockSheet(rarity) {
   const canAfford = getShards() >= cost;
   el.storeSheet.innerHTML =
     `<div class="gear-sheet-title" style="color:${color}; text-shadow:0 0 10px ${color}55">` +
-    `&#9632; UNLOCK ${rarity.toUpperCase()}</div>` +
-    `<div class="gear-sheet-sub">Spend &#9670;${cost} shards to add ` +
-    `${rarity.toUpperCase()} items to the store roll.</div>` +
+    `${tf("store.unlockTitle", "&#9632; UNLOCK {rarity}", { rarity: rarityLabel(rarity) })}</div>` +
+    `<div class="gear-sheet-sub">${tf("store.unlockBody", "Spend &#9670;{cost} shards to add {rarity} items to the store roll.", { cost, rarity: rarityLabel(rarity) })}</div>` +
     `<div class="gear-sheet-actions">` +
     `<button class="gear-sheet-btn" id="store-unlock-confirm"${canAfford ? "" : " disabled"}>` +
-    `UNLOCK &#9670;${cost}</button></div>`;
+    `${t("store.unlockWord", "UNLOCK")} &#9670;${cost}</button></div>`;
   el.storeSheetOverlay.classList.remove("hidden");
   if (canAfford) {
     document.getElementById("store-unlock-confirm").addEventListener("click", () => {
@@ -2182,7 +2221,7 @@ function renderStorePanel() {
   const shards = getShards();
   const unlocks = getStoreUnlocks();
   el.storeWallet.innerHTML = `<b>&#9670; ${shards}</b> &nbsp;&middot;&nbsp; ` +
-    `<span class="store-skill-balance">&#9733; ${getSkillPoints()} SKILL PT</span> &nbsp;&middot;&nbsp; ` +
+    `<span class="store-skill-balance">&#9733; ${getSkillPoints()} ${t("reward.skillPt", "SKILL PT")}</span> &nbsp;&middot;&nbsp; ` +
     `STASH ${getStash().length}/${getStashCap()}`;
 
   el.storeActions.innerHTML = "";
@@ -2205,7 +2244,7 @@ function renderStorePanel() {
     const row = document.createElement("div");
     row.className = "store-unlock-row";
     row.innerHTML =
-      `<div class="store-unlock-label">UNLOCK RARITIES</div>` +
+      `<div class="store-unlock-label">${t("store.unlockRaritiesHead", "UNLOCK RARITIES")}</div>` +
       `<div class="store-unlock-tiles">` +
       lockedRarities.map((rarity) => {
         const cost = rarityUnlocks[rarity];
@@ -2215,7 +2254,7 @@ function renderStorePanel() {
         return `<button class="store-unlock-tile" data-unlock-rarity="${rarity}" ` +
           `style="border-color:${color}; color:${color}">` +
           `<span class="unlock-padlock">&#9632;</span>` +
-          `<span class="unlock-name">${rarity.toUpperCase()}</span>` +
+          `<span class="unlock-name">${rarityLabel(rarity)}</span>` +
           `<span class="unlock-price" style="color:${priceColor}">&#9670;${cost}</span>` +
           `</button>`;
       }).join("") +
@@ -2238,7 +2277,7 @@ function renderStorePanel() {
       const price = LOOT.store.prices[item.rarity] || 0;
       return tileHtml(item, { storeId: item.id, priceTag: price, unaffordable: free <= 0 || shards < price });
     }).join("")
-    : `<div class="gear-grid-empty">SOLD OUT &mdash; reroll to restock.</div>`;
+    : `<div class="gear-grid-empty">${t("store.soldOut", "SOLD OUT &mdash; reroll to restock.")}</div>`;
 
   el.storeScroll.scrollTop = scrollTop;
 
@@ -2306,9 +2345,16 @@ function resetConfirmState() {
 // core/economy nodes read their per-tier value from SKILL_VALUES.
 function skillEffectText(id, tier) {
   const node = SKILLS[id];
-  if (node.kind === "unlock") return `Unlocks ${node.name.replace(/ Core$/, "")} upgrades`;
-  if (node.kind === "level") return `Level cap &rarr; ${node.lvl}`;
-  if (node.kind === "speed") return `Unlocks ${node.speedMult}&times; game speed`;
+  // Prefer the Phase B translated node name (falls back to English node.name
+  // when untranslated); " Core" only ever trails the raw English source, so
+  // stripping it after translation is a no-op for French and unchanged
+  // behavior for English.
+  if (node.kind === "unlock") {
+    const name = t(`skill.${id}.name`, node.name).replace(/ Core$/, "");
+    return tf("skillfx.unlocks", "Unlocks {name} upgrades", { name });
+  }
+  if (node.kind === "level") return tf("skillfx.levelCap", "Level cap &rarr; {lvl}", { lvl: node.lvl });
+  if (node.kind === "speed") return tf("skillfx.gameSpeed", "Unlocks {mult}&times; game speed", { mult: node.speedMult });
   const step = SKILL_VALUES[id] ?? node.step ?? 0;
   const kind = node.kind || (step < 1 ? "pct" : "flat");
   switch (kind) {
@@ -2666,11 +2712,11 @@ function openSkillSheet(id, onSkillBought) {
     : ` ${t(`skill.${id}.desc`, node.desc)}`;
   let effectLine;
   if (node.free) {
-    effectLine = "Branch unlocked automatically &mdash; FREE";
+    effectLine = t("skill.free", "Branch unlocked automatically &mdash; FREE");
   } else if (cost === null) {
-    effectLine = `${skillEffectText(id, tier)}${tail} &mdash; MAXED`;
+    effectLine = `${skillEffectText(id, tier)}${tail} &mdash; ${t("skill.maxed", "MAXED")}`;
   } else if (tier === 0) {
-    effectLine = `next: ${skillEffectText(id, 1)}${tail}`;
+    effectLine = `${t("skillfx.next", "next:")} ${skillEffectText(id, 1)}${tail}`;
   } else {
     effectLine = `${skillEffectText(id, tier)} &rarr; ${skillEffectText(id, tier + 1)}${tail}`;
   }
@@ -2685,7 +2731,7 @@ function openSkillSheet(id, onSkillBought) {
     const parent = SKILLS[node.parent];
     btnLabel = t("skill.locked", "LOCKED"); disabled = true;
     const parentName = t(`skill.${node.parent}.name`, parent.name);
-    lockNote = `<div class="skill-sheet-lock">Unlock <b>${parentName}</b> first.</div>`;
+    lockNote = `<div class="skill-sheet-lock">${tf("skillfx.unlockFirst", "Unlock <b>{name}</b> first.", { name: parentName })}</div>`;
   } else {
     btnLabel = tf("skill.buy", "BUY &mdash; {cost} PT", { cost });
     disabled = points < cost;
@@ -2694,7 +2740,7 @@ function openSkillSheet(id, onSkillBought) {
   el.skillSheet.innerHTML =
     `<div class="skill-sheet-title" style="color:${color}; text-shadow:0 0 10px ${color}66">` +
     `${node.glyph ? node.glyph + " " : ""}${t(`skill.${id}.name`, node.name)}</div>` +
-    `<div class="skill-sheet-sub">${node.branch.toUpperCase()} BRANCH &middot; ${pips}</div>` +
+    `<div class="skill-sheet-sub">${branchWordFor(node.branch)} ${t("skillfx.branch", "BRANCH")} &middot; ${pips}</div>` +
     `<div class="skill-sheet-effect">${effectLine}</div>` +
     lockNote +
     `<div class="skill-sheet-actions">` +
@@ -2733,7 +2779,7 @@ export function openLeaderboard(levels) {
 }
 
 async function renderLeaderboard() {
-  el.leaderboardList.innerHTML = `<div class="lb-status">Loading…</div>`;
+  el.leaderboardList.innerHTML = `<div class="lb-status">${t("lb.loading", "Loading…")}</div>`;
 
   let boards;
   try {
@@ -2741,16 +2787,16 @@ async function renderLeaderboard() {
   } catch (err) {
     console.warn("Leaderboard fetch failed:", err);
     el.leaderboardList.innerHTML =
-      `<div class="lb-status">Couldn't reach the leaderboard.<br>` +
-      `Check your connection and try again.</div>`;
+      `<div class="lb-status">${t("lb.unreachable",
+        "Couldn't reach the leaderboard.<br>Check your connection and try again.")}</div>`;
     return;
   }
 
   const withScores = lbLevels.filter((lv) => boards[lv.id] && boards[lv.id].length);
   if (!withScores.length) {
     el.leaderboardList.innerHTML =
-      `<div class="lb-status">No scores yet.<br>` +
-      `Play an Endless run and publish your best wave to claim the top spot.</div>`;
+      `<div class="lb-status">${t("lb.noScores",
+        "No scores yet.<br>Play an Endless run and publish your best wave to claim the top spot.")}</div>`;
     return;
   }
 
@@ -2790,12 +2836,12 @@ el.leaderboardClose.addEventListener("click", () => {
 el.nicknameSave.addEventListener("click", () => {
   const val = setNickname(el.nicknameInput.value);
   el.nicknameInput.value = val;
-  flashLbMsg(val ? `Nickname set to ${val}.` : "Nickname cleared.");
+  flashLbMsg(val ? tf("lb.nicknameSet", "Nickname set to {name}.", { name: val }) : t("lb.nicknameCleared", "Nickname cleared."));
 });
 
 el.publishScores.addEventListener("click", async () => {
   if (!getNickname()) {
-    flashLbMsg("Enter a nickname first, then Save.");
+    flashLbMsg(t("lb.enterNicknameFirst", "Enter a nickname first, then Save."));
     return;
   }
   el.publishScores.disabled = true;
@@ -2805,10 +2851,11 @@ el.publishScores.addEventListener("click", async () => {
   el.publishScores.textContent = t("lb.publish", "PUBLISH MY SCORES");
   flashLbMsg(
     ok
-      ? `Published ${ok} score${ok === 1 ? "" : "s"}.` + (fail ? ` (${fail} failed)` : "")
+      ? (ok === 1 ? t("lb.publishedOne", "Published 1 score.") : tf("lb.publishedMany", "Published {n} scores.", { n: ok }))
+        + (fail ? tf("lb.failedSuffix", " ({n} failed)", { n: fail }) : "")
       : fail
-        ? "Publish failed — check your connection."
-        : "No Endless bests yet — set one first."
+        ? t("lb.publishFailed", "Publish failed — check your connection.")
+        : t("lb.noBestsYet", "No Endless bests yet — set one first.")
   );
   renderLeaderboard();
 });
@@ -2874,13 +2921,13 @@ export function showOverlay({ title, subtitle, type, buttons, items, note, narra
   if (miles.length) {
     const anyDesc = miles.some((m) => m.check);
     const head = anyDesc
-      ? `<div class="recap-head">CHALLENGES <span class="mile-hint">tap to learn</span></div>`
+      ? `<div class="recap-head">${t("milestone.recapChallenges", "CHALLENGES")} <span class="mile-hint">${t("board.tapToLearn", "tap to learn")}</span></div>`
       : "";
     el.overlayMilestones.innerHTML = head + miles.map((m, i) => {
       const desc = m.check ? milestoneDescText(m.check) : "";
       return `<div class="recap-mile${m.isNew ? " new" : ""}${desc ? " challenge" : ""}" data-rc="${i}">` +
         `<span class="recap-star">&#9733;</span>` +
-        `<span class="recap-label">${escapeHtml(m.label)}${m.isNew ? " &mdash; NEW!" : ""}</span>` +
+        `<span class="recap-label">${escapeHtml(m.label)}${m.isNew ? t("milestone.new", " &mdash; NEW!") : ""}</span>` +
         `<span class="recap-reward">${milestoneRewardText(m.reward)}</span>` +
         (desc ? `<span class="recap-chev">&#9662;</span>` : "") +
         `</div>` +
@@ -2961,9 +3008,9 @@ export function hideOverlay() {
 // optional note field appears; SEND re-submits rating + note. Re-tapping
 // a different chip just re-sends — the backend upserts the same run row.
 const FEEDBACK_CHOICES = [
-  { rating: "too_easy", label: "TOO EASY" },
-  { rating: "just_right", label: "JUST RIGHT" },
-  { rating: "too_hard", label: "TOO HARD" },
+  { rating: "too_easy", label: "TOO EASY", key: "feedback.tooEasy" },
+  { rating: "just_right", label: "JUST RIGHT", key: "feedback.justRight" },
+  { rating: "too_hard", label: "TOO HARD", key: "feedback.tooHard" },
 ];
 
 function renderFeedbackStrip(feedback) {
@@ -2976,18 +3023,18 @@ function renderFeedbackStrip(feedback) {
   }
 
   box.innerHTML =
-    `<div class="fb-head">HOW WAS THIS LEVEL?</div>` +
+    `<div class="fb-head">${t("feedback.head", "HOW WAS THIS LEVEL?")}</div>` +
     `<div class="fb-chips">` +
     FEEDBACK_CHOICES.map(
-      (c) => `<button class="fb-chip" data-rating="${c.rating}">${c.label}</button>`
+      (c) => `<button class="fb-chip" data-rating="${c.rating}">${t(c.key, c.label)}</button>`
     ).join("") +
     `</div>` +
     `<div class="fb-note-row hidden">` +
     `<input class="fb-note" type="text" maxlength="${FEEDBACK.maxNoteLength}"` +
-    ` placeholder="Anything else? (optional)">` +
-    `<button class="fb-send">SEND</button>` +
+    ` placeholder="${t("feedback.notePlaceholder", "Anything else? (optional)")}">` +
+    `<button class="fb-send">${t("feedback.send", "SEND")}</button>` +
     `</div>` +
-    `<div class="fb-thanks hidden">&#9733; THANKS &mdash; FEEDBACK SENT</div>`;
+    `<div class="fb-thanks hidden">${t("feedback.thanks", "&#9733; THANKS &mdash; FEEDBACK SENT")}</div>`;
   box.classList.remove("hidden");
 
   const noteRow = box.querySelector(".fb-note-row");

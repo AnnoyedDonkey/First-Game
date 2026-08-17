@@ -26,7 +26,7 @@ import {
   initSkillTree, showLevelSelect, openSkillTree, hideOverlay,
   initSpeedControls, onExitButtonTap, openLeaderboard,
   openGearPanel, showMilestoneToast, updateTutorialOverlay, maybeShowTileInfo,
-  showBark, updateStoryOverlay,
+  showBark, updateStoryOverlay, levelNameFor, milestoneLabelFor,
 } from "./ui.js";
 import { submitScore, isEnabled as lbEnabled } from "./leaderboard.js";
 import {
@@ -37,7 +37,7 @@ import { initUpdateCheck } from "./update.js";
 import * as loot from "./loot.js";
 import * as tutorial from "./tutorial.js";
 import { startOnboarding, playCards, isOnboardingActive } from "./onboarding.js";
-import { t } from "./i18n.js";
+import { t, tf } from "./i18n.js";
 
 const TILE_SIZE = 64; // internal render resolution per tile
 
@@ -300,19 +300,24 @@ function goToMainMenu() {
   showLevelSelect(LEVELS, getProgress().completedLevels, startLevel);
 }
 
-// One of the config roast pools, picked at random for the results title.
+// One of the config roast pools, picked at random for the results title —
+// picks an INDEX so the pick can be keyed (fr.js roast.<bucket>.<i>) rather
+// than translating the raw English string (which would break the mapping).
 function pickRoast(bucket) {
   const pool = RESULT_ROASTS[bucket] || RESULT_ROASTS.victory;
-  return pool[Math.floor(Math.random() * pool.length)];
+  const key = (RESULT_ROASTS[bucket] ? bucket : "victory");
+  const i = Math.floor(Math.random() * pool.length);
+  return t(`roast.${key}.${i}`, pool[i]);
 }
 
 // Red warning when the run's loot overflowed a full stash (dest "pending").
 function stashOverflowNote(items) {
   const n = items.filter((p) => p.dest === "pending").length;
-  return n
-    ? `Stash full — ${n} item${n === 1 ? "" : "s"} couldn't be stored. ` +
-      `Manage your gear to make room.`
-    : "";
+  if (!n) return "";
+  const key = n === 1 ? "result.stashOverflowNote.one" : "result.stashOverflowNote.many";
+  const en = `Stash full — ${n} item${n === 1 ? "" : "s"} couldn't be stored. ` +
+    `Manage your gear to make room.`;
+  return tf(key, en, { n });
 }
 
 // Buttons shared by every results screen, appended after the state-specific
@@ -322,7 +327,7 @@ function lootTailButtons(items, stashFull) {
   const tail = [];
   if (items.length) {
     tail.push({
-      text: "MANAGE GEAR",
+      text: t("result.manageGear", "MANAGE GEAR"),
       danger: stashFull,
       secondary: !stashFull,
       onTap: () => openGearPanel({ closeMode: "triage" }),
@@ -330,15 +335,17 @@ function lootTailButtons(items, stashFull) {
   }
   const pts = getSkillPoints();
   if (pts > 0) {
+    const key = pts === 1 ? "result.assignPoints.one" : "result.assignPoints.many";
     const noun = pts === 1 ? "SKILL POINT" : "SKILL POINTS";
+    const en = `ASSIGN {n} ${noun}`;
     tail.push({
-      text: `ASSIGN ${pts} ${noun}`,                              // plain fallback / aria
-      html: `ASSIGN <span class="btn-count">${pts}</span> ${noun}`, // count tinted magenta
+      text: tf(key, en, { n: pts }),                                          // plain fallback / aria
+      html: tf(key, en, { n: `<span class="btn-count">${pts}</span>` }),       // count tinted magenta
       onTap: openSkillTree,
       secondary: true,
     });
   }
-  tail.push({ text: "MAIN MENU", onTap: goToMainMenu, secondary: true });
+  tail.push({ text: t("menu.mainMenu", "MAIN MENU"), onTap: goToMainMenu, secondary: true });
   return tail;
 }
 
@@ -392,7 +399,7 @@ function endlessRecapEntries() {
   const rewards = game && game.endlessResult ? game.endlessResult.newRewards : null;
   if (!rewards || !rewards.length) return [];
   return rewards.map((m) => ({
-    label: `Wave ${m.threshold}`,
+    label: tf("milestone.recapWave", "Wave {n}", { n: m.threshold }),
     reward: m.reward,
     isNew: true,
   }));
@@ -404,7 +411,7 @@ function campaignRecapEntries() {
   const cm = game && game.campaignMilestones;
   if (!cm || !cm.attained.length) return [];
   return cm.attained.map((m) => ({
-    label: m.label,
+    label: milestoneLabelFor(m),
     reward: m.reward,
     isNew: cm.newIds.has(m.id),
     check: m.check, // drives the tap-to-expand "how to earn this" line
@@ -432,15 +439,15 @@ onExitButtonTap(() => {
   if (!game || overlayShown || exitConfirming) return;
   exitConfirming = true;
   showOverlay({
-    title: "FORFEIT BATTLE?",
-    subtitle:
+    title: t("result.forfeitTitle", "FORFEIT BATTLE?"),
+    subtitle: t("result.forfeitSubtitle",
       "You'll return to the main menu and this battle ends early — no " +
       "win, no completion credit. Your towers keep the XP they've " +
-      "earned so far.",
+      "earned so far."),
     type: "loss",
     buttons: [
       {
-        text: "FORFEIT",
+        text: t("result.forfeit", "FORFEIT"),
         onTap: () => {
           exitConfirming = false;
           forfeitBattle(game);
@@ -453,12 +460,12 @@ onExitButtonTap(() => {
           const stashFull = items.some((p) => p.dest === "pending");
           showOverlay({
             title: pickRoast("forfeit"),
-            subtitle:
+            subtitle: t("result.forfeitNote",
               "You bailed — no win or completion credit. Towers kept the XP " +
-              "and shards they earned.",
+              "and shards they earned."),
             type: "loss",
             buttons: [
-              { text: "RETRY LEVEL", onTap: () => startLevel(level, endless) },
+              { text: t("result.retryLevel", "RETRY LEVEL"), onTap: () => startLevel(level, endless) },
               ...lootTailButtons(items, stashFull),
             ],
             items,
@@ -469,7 +476,7 @@ onExitButtonTap(() => {
         },
       },
       {
-        text: "CANCEL",
+        text: t("ui.cancel", "CANCEL"),
         onTap: () => { exitConfirming = false; hideOverlay(); },
         secondary: true,
       },
@@ -492,9 +499,12 @@ function checkEndState() {
     const next = LEVELS[LEVELS.indexOf(level) + 1];
     const buttons = [];
     if (next) {
-      buttons.push({ text: `NEXT: ${next.name.toUpperCase()}`, onTap: () => startLevel(next), fullWidth: true });
+      buttons.push({
+        text: tf("result.next", "NEXT: {name}", { name: levelNameFor(next).toUpperCase() }),
+        onTap: () => startLevel(next), fullWidth: true,
+      });
     }
-    buttons.push({ text: "RETRY LEVEL", onTap: () => startLevel(level), secondary: !!next });
+    buttons.push({ text: t("result.retryLevel", "RETRY LEVEL"), onTap: () => startLevel(level), secondary: !!next });
     buttons.push(...lootTailButtons(items, stashFull));
     // Per-level WIN story beat (P2): campaign only (not endless), first
     // clear only. World-end levels' win array interleaves the Indy-7 <->
@@ -513,7 +523,7 @@ function checkEndState() {
     }
     showOverlay({
       title: pickRoast("victory"),
-      subtitle: `All ${game.totalWaves} waves repelled. +1 skill point earned.`,
+      subtitle: tf("result.winSubtitle", "All {n} waves repelled. +1 skill point earned.", { n: game.totalWaves }),
       type: "win",
       buttons,
       items,
@@ -528,16 +538,16 @@ function checkEndState() {
     // only fires if a nickname is set — see leaderboard.js). A failed
     // network call can't affect the overlay below.
     if (isNewBest) submitScore(level.id, waveReached);
-    const buttons = [{ text: "RETRY ENDLESS", onTap: () => startLevel(level, true) }];
+    const buttons = [{ text: t("result.retryEndless", "RETRY ENDLESS"), onTap: () => startLevel(level, true) }];
     if (lbEnabled()) {
-      buttons.push({ text: "PUBLISH SCORE", onTap: () => openLeaderboard(LEVELS), secondary: true });
+      buttons.push({ text: t("result.publishScore", "PUBLISH SCORE"), onTap: () => openLeaderboard(LEVELS), secondary: true });
     }
     buttons.push(...lootTailButtons(items, stashFull));
     showOverlay({
       title: pickRoast("endless"),
       subtitle:
-        `${level.name.toUpperCase()} ENDLESS — reached wave ${waveReached}` +
-        (isNewBest ? " · NEW BEST!" : ` · best wave ${bestWave}`),
+        tf("result.endlessSubtitle", "{name} ENDLESS — reached wave {w}", { name: levelNameFor(level).toUpperCase(), w: waveReached }) +
+        (isNewBest ? t("result.newBest", " · NEW BEST!") : tf("result.bestWave", " · best wave {w}", { w: bestWave })),
       type: "loss",
       buttons,
       items,
@@ -545,7 +555,7 @@ function checkEndState() {
       milestones: endlessRecapEntries(),
     });
   } else {
-    const buttons = [{ text: "RETRY LEVEL", onTap: () => startLevel(level) }];
+    const buttons = [{ text: t("result.retryLevel", "RETRY LEVEL"), onTap: () => startLevel(level) }];
     buttons.push(...lootTailButtons(items, stashFull));
     // First-ever campaign defeat: a one-time Indy-7 pep talk (config.js
     // NARRATIVE.firstLoss). The skill-point nudge only appears if the player
@@ -569,7 +579,7 @@ function checkEndState() {
     }
     showOverlay({
       title: pickRoast("defeat"),
-      subtitle: `The core fell on wave ${game.waveIndex + 1}.`,
+      subtitle: tf("result.lossSubtitle", "The core fell on wave {n}.", { n: game.waveIndex + 1 }),
       type: "loss",
       buttons,
       items,
