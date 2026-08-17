@@ -599,9 +599,18 @@ function fireShot(game, tower, target, targetPos, damageScale) {
           game, enemy, tower.slowPercent, tower.slowDuration,
           tower.vulnerability, tower
         );
-        enemy.distance = Math.max(
-          0, enemy.distance - LOOT.combat.gravityDragTiles * game.grid.tileSize
-        );
+        // Diminishing pullback: each enemy builds resistance to the well, so the
+        // drag shrinks toward zero and the enemy always eventually walks through.
+        // Ramps by HIT COUNT (not time), so no fire rate / slow amount can turn
+        // this into a permanent wall. Runtime-only field; not persisted.
+        const gravHits = enemy.gravHits || 0;
+        const gravResist = Math.min(1, gravHits * LOOT.combat.gravityResistStep);
+        const gravDrag =
+          LOOT.combat.gravityDragTiles * game.grid.tileSize * (1 - gravResist);
+        if (gravDrag > 0) {
+          enemy.distance = Math.max(0, enemy.distance - gravDrag);
+        }
+        enemy.gravHits = gravHits + 1;
       }
       game.effects.push({
         kind: "ring", x: targetPos.x, y: targetPos.y, color: def.color,

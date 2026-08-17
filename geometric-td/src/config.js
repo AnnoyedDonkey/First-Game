@@ -361,7 +361,8 @@ export const LOOT = {
     executionDamage: 40,         // bonus damage while execute is active
     overflowEveryShots: 5,       // every Nth trigger fires a free bonus volley
     gravityRadiusTiles: 0.9,     // area around the Slow tower's primary target
-    gravityDragTiles: 0.22,      // path distance pulled backward per zap
+    gravityDragTiles: 0.22,      // BASE path distance pulled backward per zap (before resistance)
+    gravityResistStep: 0.1,      // resistance gained per zap; drag reaches 0 after ceil(1/step) zaps, so enemies always break free
     fractalBomblets: 3,
     fractalDamage: 35,           // each bomblet's damage as % of the main blast
     fractalRadius: 45,           // each bomblet's radius as % of main blast
