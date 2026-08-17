@@ -845,7 +845,7 @@ function openLevelSheet(nd, world, pick) {
   el.levelSheet.innerHTML =
     `<h2 style="color:${world.accent}">${escapeHtml(levelNameFor(level).toUpperCase())}</h2>` +
     `<div class="level-sheet-tag">${t("board.levelWord", "LEVEL")} ${nd.n} &mdash; ${escapeHtml(worldNameFor(world))}</div>` +
-    `<p class="level-sheet-desc">${escapeHtml(level.desc || "")}</p>` +
+    `<p class="level-sheet-desc">${escapeHtml(t("level." + level.id + ".desc", level.desc || ""))}</p>` +
     `<div class="level-chip-row">${chips.join("")}</div>` +
     campaignHtml +
     milestoneHtml +
@@ -1014,7 +1014,7 @@ el.worldNext.addEventListener("click", () => navigateWorld(1));
 // When the language changes (via the menu LANGUE entry), rebuild the
 // (generated) menu so its labels re-translate. Static [data-i18n] markup is
 // handled by i18n itself.
-onLangChange(() => { if (menuCtx) renderWorld(); });
+onLangChange(() => { if (menuCtx) renderWorld(); updateWelcomeBack(); });
 
 // Horizontal swipe on the overlay pages between worlds. Kept distinct
 // from the level list's vertical scroll: only a clearly-horizontal drag
@@ -1773,8 +1773,8 @@ function stashSettingsHtml() {
   const maxCap = LOOT.stash.baseStashSize + LOOT.stash.upgradeSize * LOOT.stash.upgradeCosts.length;
   const nextCost = nextStashUpgradeCost();
   const expandBtn = nextCost != null
-    ? `<div class="gear-sheet-actions"><button class="gear-sheet-btn" id="stash-expand"${getShards() < nextCost ? " disabled" : ""}>+${LOOT.stash.upgradeSize} SLOTS &#9670;${nextCost}</button></div>`
-    : `<div class="gear-sheet-sub">MAX CAPACITY REACHED</div>`;
+    ? `<div class="gear-sheet-actions"><button class="gear-sheet-btn" id="stash-expand"${getShards() < nextCost ? " disabled" : ""}>${tf("stash.addSlots", "+{n} SLOTS &#9670;{cost}", { n: LOOT.stash.upgradeSize, cost: nextCost })}</button></div>`
+    : `<div class="gear-sheet-sub">${t("stash.maxCapacity", "MAX CAPACITY REACHED")}</div>`;
 
   const ownedRarities = ownedAutoJunkRarities();
   const nextTier = nextAutoJunkTier();
@@ -1782,23 +1782,21 @@ function stashSettingsHtml() {
     ? `<div class="bulk-sell-list">${ownedRarities.map((r) => {
         const enabled = isAutoJunkRarityEnabled(r);
         return `<div class="bulk-sell-row">` +
-          `<span class="bulk-sell-label" style="color:${enabled ? RARITY_COLOR[r] : "var(--text-dim)"}">${rarityLabel(r)}${enabled ? "" : " &mdash; PAUSED"}</span>` +
-          `<button class="bulk-sell-btn${enabled ? " pause-btn" : ""}" data-junk-rarity="${r}">${enabled ? "PAUSE" : "RESUME"}</button>` +
+          `<span class="bulk-sell-label" style="color:${enabled ? RARITY_COLOR[r] : "var(--text-dim)"}">${rarityLabel(r)}${enabled ? "" : " &mdash; " + t("stash.paused", "PAUSED")}</span>` +
+          `<button class="bulk-sell-btn${enabled ? " pause-btn" : ""}" data-junk-rarity="${r}">${enabled ? t("stash.pause", "PAUSE") : t("stash.resume", "RESUME")}</button>` +
           `</div>`;
       }).join("")}</div>`
-    : `<div class="gear-empty-note">Nothing purchased yet.</div>`;
+    : `<div class="gear-empty-note">${t("stash.nothingPurchased", "Nothing purchased yet.")}</div>`;
   const junkBtn = nextTier
     ? `<div class="gear-sheet-actions"><button class="gear-sheet-btn" id="junk-upgrade"${getShards() < nextTier.cost ? " disabled" : ""}>${tf("store.unlockRarity", "UNLOCK {rarity} &#9670;{cost}", { rarity: rarityLabel(nextTier.rarity), cost: nextTier.cost })}</button></div>`
-    : `<div class="gear-sheet-sub">ALL TIERS OWNED</div>`;
+    : `<div class="gear-sheet-sub">${t("stash.allTiersOwned", "ALL TIERS OWNED")}</div>`;
 
   return (
-    `<div class="gear-picker-label">STASH CAPACITY</div>` +
-    `<div class="gear-sheet-sub">${cap} / ${maxCap} SLOTS</div>` +
+    `<div class="gear-picker-label">${t("stash.capacity", "STASH CAPACITY")}</div>` +
+    `<div class="gear-sheet-sub">${cap} / ${maxCap} ${t("stash.slots", "SLOTS")}</div>` +
     expandBtn +
-    `<div class="gear-picker-label" style="margin-top:14px">AUTO-JUNK</div>` +
-    `<div class="gear-empty-note" style="padding:0 0 10px">Auto-sells matching drops the instant you earn them ` +
-    `(kills, end-of-run, Endless milestones) instead of filling a stash or triage slot. Buy a rarity once to ` +
-    `unlock it for good; pause/resume anytime per rarity.</div>` +
+    `<div class="gear-picker-label" style="margin-top:14px">${t("stash.autoJunk", "AUTO-JUNK")}</div>` +
+    `<div class="gear-empty-note" style="padding:0 0 10px">${t("stash.autoJunkDesc", "Auto-sells matching drops the instant you earn them (kills, end-of-run, Endless milestones) instead of filling a stash or triage slot. Buy a rarity once to unlock it for good; pause/resume anytime per rarity.")}</div>` +
     junkRows +
     junkBtn
   );
@@ -1806,9 +1804,9 @@ function stashSettingsHtml() {
 
 export function openStashSettingsSheet() {
   el.gearSheet.innerHTML =
-    `<div class="gear-sheet-title" style="color:var(--neon-yellow)">STASH SETTINGS</div>` +
+    `<div class="gear-sheet-title" style="color:var(--neon-yellow)">${t("stash.settingsTitle", "STASH SETTINGS")}</div>` +
     stashSettingsHtml() +
-    `<div class="gear-sheet-actions" style="margin-top:12px"><button class="gear-sheet-btn" id="sheet-close">CLOSE</button></div>`;
+    `<div class="gear-sheet-actions" style="margin-top:12px"><button class="gear-sheet-btn" id="sheet-close">${t("ui.close", "CLOSE")}</button></div>`;
   openSheet();
   document.getElementById("sheet-close").addEventListener("click", closeSheet);
   const expandBtn = document.getElementById("stash-expand");
@@ -1878,7 +1876,7 @@ function renderTowersTab() {
           }).join("") +
           `</div></div>`;
       }).join("")
-    : `<div class="gear-empty">No towers have reached &#9733;1 MASTERY yet — keep playing to unlock gear slots.</div>`;
+    : `<div class="gear-empty">${t("gear.noMastery", "No towers have reached &#9733;1 MASTERY yet — keep playing to unlock gear slots.")}</div>`;
 
   if (lockedCount > 0) {
     html += `<button class="gear-locked-note" id="gear-locked-toggle">` +
@@ -1951,7 +1949,7 @@ function bulkSellSheetRowsHtml(items, kind) {
   const counts = {};
   for (const it of items) counts[it.rarity] = (counts[it.rarity] || 0) + 1;
   const present = RARITY_ORDER.filter((r) => counts[r]);
-  if (!present.length) return `<div class="gear-empty-note">Nothing to sell.</div>`;
+  if (!present.length) return `<div class="gear-empty-note">${t("gear.nothingToSell", "Nothing to sell.")}</div>`;
   return `<div class="bulk-sell-list">` +
     present.map((r) =>
       `<div class="bulk-sell-row">` +
@@ -1993,12 +1991,12 @@ function renderStashTab() {
 
   if (pending.length) {
     html += `<div id="gear-triage">` +
-      `<div class="gear-triage-title">${pending.length} DROP${pending.length === 1 ? "" : "S"} UNCLAIMED &mdash; STASH IS FULL</div>` +
+      `<div class="gear-triage-title">${tf("gear.dropsUnclaimed", "{n} DROP{s} UNCLAIMED &mdash; STASH IS FULL", { n: pending.length, s: pending.length === 1 ? "" : "S" })}</div>` +
       `<div class="gear-triage-grid">${pending.map((item) => tileHtml(item, { pendingId: item.id })).join("")}</div>` +
       `<div class="gear-actions-row">` +
-      `<button class="gear-action" id="triage-claim"${stashSlotsFree() <= 0 ? " disabled" : ""}>CLAIM (${stashSlotsFree()} FREE)</button>` +
-      `<button class="gear-action" id="triage-sell">SELL</button>` +
-      `<button class="gear-action danger" id="triage-leave">LEAVE DROPS</button>` +
+      `<button class="gear-action" id="triage-claim"${stashSlotsFree() <= 0 ? " disabled" : ""}>${tf("gear.claimFree", "CLAIM ({n} FREE)", { n: stashSlotsFree() })}</button>` +
+      `<button class="gear-action" id="triage-sell">${t("gear.sell", "SELL")}</button>` +
+      `<button class="gear-action danger" id="triage-leave">${t("gear.leaveDrops", "LEAVE DROPS")}</button>` +
       `</div></div>`;
   }
 
@@ -2008,19 +2006,19 @@ function renderStashTab() {
     (!gearFilterSlot || it.slot === gearFilterSlot) && (!gearFilterRarity || it.rarity === gearFilterRarity));
 
   const activeFilters = (gearFilterSlot ? 1 : 0) + (gearFilterRarity ? 1 : 0);
-  const filterLabel = `FILTER${activeFilters ? ` (${activeFilters})` : ""} ${gearFiltersOpen ? "&#9652;" : "&#9662;"}`;
+  const filterLabel = `${t("gear.filter", "FILTER")}${activeFilters ? ` (${activeFilters})` : ""} ${gearFiltersOpen ? "&#9652;" : "&#9662;"}`;
 
   html +=
     `<div class="gear-stash-header"><span class="gear-stash-count">${tf("gear.itemCount", "{n} ITEM{s}", { n: shown.length, s: shown.length === 1 ? "" : "S" })}</span></div>` +
     `<div class="gear-actions-row">` +
     `<button class="gear-mini-action filter-accent${gearFiltersOpen ? " on" : ""}" id="stash-filter">${filterLabel}</button>` +
-    `<button class="gear-mini-action" id="stash-sell">SELL &#9662;</button>` +
+    `<button class="gear-mini-action" id="stash-sell">${t("gear.sell", "SELL")} &#9662;</button>` +
     `<button class="gear-mini-action config-accent" id="stash-config">CONFIG</button>` +
     `</div>` +
     `<div id="gear-filters" class="${gearFiltersOpen ? "" : "hidden"}"></div>` +
     `<div id="gear-stash-grid">${shown.length
       ? shown.map((item) => tileHtml(item, { stashId: item.id })).join("")
-      : `<div class="gear-grid-empty">${stash.length ? "NO MATCHING GEAR" : "No stored gear yet. Every battle now grants at least one drop."}</div>`
+      : `<div class="gear-grid-empty">${stash.length ? t("gear.noMatching", "NO MATCHING GEAR") : t("gear.noStoredGear", "No stored gear yet. Every battle now grants at least one drop.")}</div>`
     }</div>`;
 
   el.gearViewStash.innerHTML = html;
