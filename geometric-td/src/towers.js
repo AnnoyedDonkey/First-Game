@@ -340,29 +340,39 @@ function findTarget(game, tower, excluded = null) {
 // pierces the MOST enemies, so lining the tower up with a straight run of
 // the path clears the whole lane. Ties break toward the enemy furthest
 // along the path. Returns { angle, target } or null.
+//
+// The railgun has TWO ranges: it only TRIGGERS on (and aims the line through)
+// an enemy inside its range ring (tower.range), but the beam it fires REACHES
+// and pierces out to railLength (range x over-penetration). Using the big
+// reach for triggering too would make it fire at enemies past its ring.
 function findRailgunAim(game, tower) {
-  // Over-penetration (railPen skill) lets the rail aim through and hit
-  // enemies out to railLength, not just the range ring.
+  // Over-penetration (railPen skill) lets the rail hit enemies out to
+  // railLength; the range ring itself stays the smaller trigger range.
   const railLength = tower.range * (tower.beamLengthMult || 1);
-  const r2 = railLength * railLength;
-  const inRange = [];
+  const reach2 = railLength * railLength;
+  const trigger2 = tower.range * tower.range;
+  const reachable = []; // any enemy the fired beam could hit (scoring victims)
+  const triggers = [];  // enemies close enough to start a shot / define the line
   for (const e of game.enemies) {
     if (!e.alive) continue;
     const pos = enemyPosition(e, game.grid);
     const dx = pos.x - tower.pos.x;
     const dy = pos.y - tower.pos.y;
-    if (dx * dx + dy * dy > r2) continue;
-    inRange.push({ e, dx, dy });
+    const d2 = dx * dx + dy * dy;
+    if (d2 > reach2) continue;
+    const c = { e, dx, dy };
+    reachable.push(c);
+    if (d2 <= trigger2) triggers.push(c);
   }
-  if (!inRange.length) return null;
+  if (!triggers.length) return null;
 
   let best = null;
-  for (const c of inRange) {
+  for (const c of triggers) {
     const len = Math.hypot(c.dx, c.dy) || 1;
     const dirX = c.dx / len;
     const dirY = c.dy / len;
     let count = 0;
-    for (const o of inRange) {
+    for (const o of reachable) {
       const along = o.dx * dirX + o.dy * dirY;
       if (along < 0 || along > railLength) continue;
       const perp = Math.abs(o.dx * dirY - o.dy * dirX);
