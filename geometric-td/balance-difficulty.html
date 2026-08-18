@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Balance Dashboard — Geometric TD</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b0e14; --panel: #121722; --panel2: #0e131c; --line: #1c2230;
+      --text: #dfe4ee; --dim: #8892a6; --faint: #6b7488;
+      --cyan: #4ad0ff; --green: #57e08a; --yellow: #ffd24a; --orange: #ff9a4a; --red: #ff6b7d;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 0 0 60px; background: var(--bg); color: var(--text);
+      font: 15px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    .wrap { max-width: 1000px; margin: 0 auto; padding: 0 20px; }
+    header.top { padding: 26px 0 10px; }
+    h1 { font-size: 24px; margin: 0 0 6px; letter-spacing: -0.02em; }
+    h1 .accent { color: var(--cyan); }
+    h2 { font-size: 19px; margin: 34px 0 4px; letter-spacing: -0.01em;
+      display: flex; align-items: baseline; gap: 10px; }
+    h2 .tag { font-size: 11px; font-weight: 700; color: var(--bg); background: var(--cyan);
+      padding: 2px 7px; border-radius: 999px; letter-spacing: 0.03em; }
+    h3 { font-size: 14px; margin: 18px 0 6px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.05em; }
+    p { margin: 6px 0 12px; }
+    p.lede { color: var(--dim); max-width: 78ch; }
+    .num, .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+    /* Callout answer boxes */
+    .answer { border: 1px solid var(--line); border-left: 3px solid var(--cyan);
+      background: var(--panel); border-radius: 8px; padding: 12px 16px; margin: 12px 0 18px; }
+    .answer h4 { margin: 0 0 6px; font-size: 15px; color: var(--cyan); }
+    .answer.warn { border-left-color: var(--orange); } .answer.warn h4 { color: var(--orange); }
+    .answer ul { margin: 6px 0 0; padding-left: 18px; } .answer li { margin: 3px 0; }
+    .answer .verdict { font-weight: 600; color: var(--text); }
+    /* Tables */
+    table { border-collapse: collapse; width: 100%; margin: 8px 0 6px; font-size: 14px; }
+    .scroll { overflow-x: auto; }
+    th, td { text-align: right; padding: 6px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+    th:first-child, td:first-child { text-align: left; }
+    th { color: var(--dim); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+    th[title] { cursor: help; text-decoration: underline dotted var(--faint); text-underline-offset: 3px; }
+    td.lbl { color: var(--text); font-weight: 500; }
+    td .sub { color: var(--faint); font-size: 12px; }
+    tr.flag td { background: rgba(255,154,74,0.08); }
+    tr.spike td { background: rgba(255,107,125,0.09); }
+    /* Bars */
+    .barcell { width: 100%; }
+    .bar { display: inline-block; height: 13px; border-radius: 3px; vertical-align: middle; min-width: 2px; }
+    .best { color: var(--green); font-weight: 700; } .worst { color: var(--red); }
+    .c-green { color: var(--green); } .c-yellow { color: var(--yellow); }
+    .c-orange { color: var(--orange); } .c-red { color: var(--red); } .c-dim { color: var(--dim); }
+    .bg-green{background:var(--green)}.bg-yellow{background:var(--yellow)}
+    .bg-orange{background:var(--orange)}.bg-red{background:var(--red)}.bg-cyan{background:var(--cyan)}
+    .chip { display:inline-block; padding:1px 7px; border-radius:999px; font-size:12px; font-weight:600;
+      font-family: var(--mono); }
+    .chip.green{background:rgba(87,224,138,.15);color:var(--green)}
+    .chip.yellow{background:rgba(255,210,74,.15);color:var(--yellow)}
+    .chip.orange{background:rgba(255,154,74,.15);color:var(--orange)}
+    .chip.red{background:rgba(255,107,125,.15);color:var(--red)}
+    details { margin: 10px 0; border: 1px solid var(--line); border-radius: 8px; background: var(--panel2); }
+    summary { cursor: pointer; padding: 10px 14px; color: var(--cyan); font-weight: 600; font-size: 14px; }
+    details[open] summary { border-bottom: 1px solid var(--line); }
+    details .body { padding: 6px 14px 12px; }
+    .legend { display:flex; flex-wrap:wrap; gap:14px; margin:8px 0; font-size:13px; color:var(--dim); }
+    .legend span b { font-family: var(--mono); }
+    .note { color: var(--faint); font-size: 12.5px; margin-top: 6px; }
+    #status { color: var(--yellow); font-family: var(--mono); font-size: 13px; }
+    a.jump { color: var(--dim); text-decoration: none; font-size: 13px; margin-right: 14px; }
+    a.jump:hover { color: var(--cyan); }
+    nav.toc { padding: 8px 0 4px; border-bottom: 1px solid var(--line); margin-bottom: 6px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <h1>Geometric TD — <span class="accent">Balance Dashboard</span></h1>
+      <p class="lede">Everything is measured in one unit: the <b>laser-equivalent (laser-eq)</b> —
+        the firepower of a single un-upgraded Laser tower (≈23 damage/second). A level
+        <b>demands</b> a certain number of laser-eq to clear; a roster <b>supplies</b> some;
+        their ratio says whether a level is too easy, fair, or too hard. Local balancing tool —
+        nothing here is shown to players.</p>
+      <nav class="toc">
+        <a class="jump" href="#curve">① Difficulty curve</a>
+        <a class="jump" href="#towers">② Tower balance</a>
+        <a class="jump" href="#skills">③ Skill value</a>
+        <a class="jump" href="#map">Recommended-level map</a>
+        <a class="jump" href="#detail">Raw detail</a>
+      </nav>
+      <div id="status">Computing…</div>
+    </header>
+    <main id="out"></main>
+  </div>
+
+  <script type="module">
+    import { analyzeCampaign, DIFF_TUNING } from "./src/level-difficulty.js";
+    import { arsenalPower, towerFirepower, ARSENAL_TUNING } from "./src/arsenal-power.js";
+
+    const $ = (h) => { const d = document.createElement("div"); d.innerHTML = h; return d; };
+    const out = document.getElementById("out");
+    const push = (h) => out.appendChild($(h));
+    const TOWER_COST = { laser: 50, pulse: 105, railgun: 140, rocket: 120, slow: 60 };
+
+    // Column tooltips (native title = no clipping inside the scroll containers).
+    const TIP = {
+      wave: "Which wave in the level (1 = the opener).",
+      regime: "What kind of pressure the wave is: 'swarm' (throughput — many enemies to grind down at once), 'burst' (one tough enemy to drop while it crosses a tower's range), or 'mixed' (a tanky boss AND a trailing swarm at the same time — the hardest kind).",
+      count: "Total number of enemies in the wave.",
+      demand: "The firepower this wave needs, in raw DPS = max(swarm, burst + rest). swarm = total effective-HP ÷ the time you have to kill it. burst = DPS to drop the single tankiest enemy (boss) in transit. On a MIXED wave the boss's burst and the throughput to clear everything else ADD, because you must handle both at once (plain max() under-rated boss+swarm finales). effective-HP already divides out the best damage counter available by this level.",
+      demandDPS: "The hardest wave's demand, in raw DPS (before converting to base-Laser units).",
+      reqL: "'demand' expressed in base-Laser-equivalents = demand ÷ one base Laser's effective DPS (18.3). i.e. how many un-upgraded Lasers of firepower this wave takes.",
+      affordL: "How many base Lasers the level's economy can field over this wave = money banked before it + the 'cap' share of THIS wave's own bounty (you buy towers as bounty flows in mid-wave, and demand is itself an average over the wave). A raw-cash yardstick — a real roster brings upgraded/veteran towers worth far more each.",
+      ratio: "req ÷ afford. Above 1 means the wave demands more firepower than early cash can pay for = an economy crunch (usually an early wave).",
+      bounty: "Gold this wave pays out when cleared (bounty).",
+      xp: "Tower XP this wave grants to your towers.",
+      capture: "Mid-wave capture — the share of THIS wave's own bounty that lands early enough to spend on towers that help the same wave (the rest still carries to later waves). Auto-computed from the wave's bounty timing and calibrated to the real engine: ~0.3 for swarms that die late, up to ~0.6 for front-loaded or boss waves.",
+      peakW: "Which wave is the hardest (drives the level's difficulty number).",
+      reqLevel: "The level's difficulty = its hardest wave's req, in base-Laser-equivalents.",
+      cover: "Nominal on-path coverage (tiles) a well-placed Laser gets — captures the map's geometry (corner pockets cover more).",
+      crunch: "The tightest early wave's req ÷ afford — the economy-crunch number.",
+    };
+    const th = (label, key, align) => `<th title="${TIP[key]}"${align ? ` style="text-align:${align}"` : ""}>${label}</th>`;
+
+    try {
+      const camp = analyzeCampaign();
+
+      // =====================================================================
+      // ① DIFFICULTY CURVE
+      // =====================================================================
+      const maxReq = Math.max(...camp.filter(c => c.reqLasers < 1000).map(c => c.reqLasers));
+      // Auto-detect curve problems for the plain-language callout.
+      const flags = [];
+      for (let i = 0; i < camp.length; i++) {
+        const c = camp[i], prev = camp[i - 1];
+        if (c.reqLasers > 1000)
+          flags.push({ lvl: c.levelNum, kind: "anomaly", text:
+            `<b>L${c.levelNum} = ${c.reqLasers.toFixed(0)} laser-eq</b> is an off-the-chart spike (the enemy
+             HP multipliers stack to a huge number). Almost certainly a data artifact, not intended
+             difficulty — this is the geometry level meant to be solved by pierce, so verify the HP stack.` });
+        else if (prev && prev.reqLasers < 1000 && c.reqLasers > prev.reqLasers * 1.4)
+          flags.push({ lvl: c.levelNum, kind: "jump", text:
+            `<b>L${prev.levelNum}→L${c.levelNum}</b> jumps ${Math.round((c.reqLasers/prev.reqLasers-1)*100)}%
+             (${prev.reqLasers.toFixed(0)}→${c.reqLasers.toFixed(0)} laser-eq) — a difficulty wall that can
+             stall players who were coasting.` });
+        else if (prev && prev.reqLasers < 1000 && c.reqLasers < prev.reqLasers * 0.82)
+          flags.push({ lvl: c.levelNum, kind: "dip", text:
+            `<b>L${prev.levelNum}→L${c.levelNum}</b> drops ${Math.round((1-c.reqLasers/prev.reqLasers)*100)}%
+             (${prev.reqLasers.toFixed(0)}→${c.reqLasers.toFixed(0)}) — an inversion (a later level easier than
+             an earlier one) reads as anticlimactic.` });
+        // early economy crunch (demand outruns money at the tightest early wave)
+        if (c.ecoRatio >= 1.6 && c.ecoWave <= 4)
+          flags.push({ lvl: c.levelNum, kind: "eco", text:
+            `<b>L${c.levelNum} W${c.ecoWave}</b> money crunch (${c.ecoRatio}× harder than early cash can
+             answer) — an early wave that punishes before the economy has ramped.` });
+      }
+
+      push(`<h2 id="curve">Difficulty curve <span class="tag">Q1 · pacing</span></h2>`);
+      push(`<p class="lede">Bar length = the firepower the <b>hardest wave</b> of each level demands
+        (the level's difficulty number). Bar color = the <b>early money crunch</b>
+        (<span class="c-green">green</span> = easy money → <span class="c-red">red</span> = cash-starved
+        opener). A pleasant campaign rises in a smooth staircase; the flags below are where it doesn't.</p>`);
+
+      let rows = "";
+      const eb = (r) => (r < 0.8 ? "green" : r < 1.3 ? "yellow" : r < 2.2 ? "orange" : "red");
+      for (const c of camp) {
+        const capped = Math.min(c.reqLasers, maxReq);
+        const w = Math.max(2, Math.round((capped / maxReq) * 560));
+        const anomaly = c.reqLasers > 1000;
+        rows += `<tr class="${anomaly ? "spike" : flags.some(f => f.lvl === c.levelNum) ? "flag" : ""}">
+          <td class="lbl">L${c.levelNum}</td>
+          <td class="barcell"><span class="bar bg-${eb(c.ecoRatio)}" style="width:${w}px"></span>
+            ${anomaly ? '<span class="c-red mono" style="margin-left:6px">off-chart</span>' : ""}</td>
+          <td class="num">${c.reqLasers.toFixed(0)}</td>
+          <td class="num c-dim">W${c.peakWave}</td>
+          <td class="c-dim" style="text-align:left;font-size:12.5px">${c.peakRegime}</td>
+        </tr>`;
+      }
+      push(`<div class="scroll"><table>
+        <tr><th>level</th><th>peak firepower demanded (laser-eq)</th><th>req</th><th>at</th><th>hardest wave is…</th></tr>
+        ${rows}</table></div>
+        <div class="legend"><span>bar color = early money crunch:</span>
+          <span class="chip green">easy</span><span class="chip yellow">fair</span>
+          <span class="chip orange">tight</span><span class="chip red">crunch</span></div>`);
+
+      push(`<div class="answer"><h4>Answer — where to retune for pacing</h4>
+        <p class="verdict">The overall shape rises correctly, but ${flags.length} spots break the
+        smooth staircase:</p>
+        <ul>${flags.map(f => `<li>${f.text}</li>`).join("")}</ul>
+        <p class="note">Guiding rule you gave: players should always want <i>one more</i> — never a wall,
+        never a coast. Smooth the jumps, lift the dips, and confirm the off-chart level is intentional.</p></div>`);
+
+      // =====================================================================
+      // ② TOWER BALANCE
+      // =====================================================================
+      push(`<h2 id="towers">Tower balance <span class="tag">Q2 · are any OP?</span></h2>`);
+      push(`<p class="lede">For each tower, at three upgrade levels: raw DPS, its worth in laser-eq
+        (splash &amp; pierce folded in), and — the balance number — <b>laser-eq per 100 gold</b>
+        (bang for buck). The best value in each row is <span class="best">green</span>, the worst
+        <span class="worst">red</span>. Slow deals ~no damage (it's a force-multiplier), so it's shown
+        for reference only.</p>`);
+
+      const dmgTypes = ["laser", "pulse", "railgun", "rocket", "slow"];
+      for (const lv of [1, 5, 10]) {
+        const data = dmgTypes.map(t => {
+          const f = towerFirepower({ type: t, level: lv });
+          return { t, dps: f.rawDPS, leq: f.laserEq, perGold: f.laserEq / TOWER_COST[t] * 100 };
+        });
+        const dmg = data.filter(d => d.t !== "slow");
+        const bestPG = Math.max(...dmg.map(d => d.perGold));
+        const worstPG = Math.min(...dmg.map(d => d.perGold));
+        let r = "";
+        for (const d of data) {
+          const cls = d.t === "slow" ? "c-dim" : d.perGold === bestPG ? "best" : d.perGold === worstPG ? "worst" : "";
+          r += `<tr><td class="lbl">${d.t}</td><td class="num c-dim">$${TOWER_COST[d.t]}</td>
+            <td class="num">${d.dps.toFixed(0)}</td><td class="num">${d.leq.toFixed(1)}</td>
+            <td class="num ${cls}">${d.t === "slow" ? "—" : d.perGold.toFixed(1)}</td></tr>`;
+        }
+        push(`<h3>At tower level ${lv}${lv === 1 ? " (just placed)" : lv === 5 ? " (base cap)" : " (Overclock cap)"}</h3>
+          <div class="scroll"><table>
+          <tr><th>tower</th><th>cost</th><th>DPS</th><th>laser-eq</th><th>laser-eq / 100g</th></tr>${r}</table></div>`);
+      }
+
+      push(`<div class="answer"><h4>Answer — Railgun is the scaler; Pulse is fine</h4>
+        <ul>
+        <li><span class="verdict c-red">Railgun scales into overpowered.</span> Mediocre value when
+          placed (L1), but by L10 it's the best value in the game — ~1.5× a Laser and ~2.5× Pulse/Rocket
+          per gold — because its high damage growth <i>compounds with pierce</i> (one shot hits up to 4
+          enemies in a line). The engine oracle confirms it: on a dense wave, <b>4 railguns clear what
+          10+ lasers cannot</b>. On scattered/fast waves it's the <i>worst</i> value, so it's a
+          density specialist that dominates exactly the bunched late-game content.</li>
+        <li><span class="verdict">Pulse is not overpowered by value</span> — it's actually the
+          <i>lowest</i> laser-eq per gold at every level. It <i>feels</i> strong because its splash
+          reliably clears swarms a single-target tower can't, not because it's efficient. Leave it, or
+          trim splash/cost only slightly.</li>
+        <li><span class="verdict c-dim">Rocket looks under-powered</span> by pure value and couldn't
+          solo a fast swarm — its worth is global range + dense-wave splash. Don't nerf; consider a
+          small buff.</li>
+        </ul>
+        <p class="note"><b>If you want to nerf the Railgun:</b> the lever is its high-level scaling, not
+          its base. Options: lower its damage growth per level, drop basePierce 4→3, or raise its
+          per-level upgrade cost so climbing to L10 costs more.</p></div>`);
+
+      // Oracle evidence (static — measured via balance-sim.js, 2026-08-15)
+      push(`<details><summary>Engine-oracle evidence — min base towers to clear a wave (gold cost)</summary>
+        <div class="body"><p class="note">Measured by driving the real game engine (balance-sim.js),
+        base level-1 towers on the best pockets. Lower gold = more cost-effective on that wave.</p>
+        <div class="scroll"><table>
+        <tr><th>wave</th><th>laser</th><th>pulse</th><th>railgun</th><th>rocket</th></tr>
+        <tr><td class="lbl">L1 W3 — fast, scattered</td><td class="num best">6 · $300</td>
+          <td class="num">5 · $525</td><td class="num worst">5 · $700</td><td class="num c-red">&gt;10 ✗</td></tr>
+        <tr><td class="lbl">L3 W10 — dense swarm</td><td class="num c-red">&gt;10 ✗</td>
+          <td class="num">8 · $840</td><td class="num">4 · $560</td><td class="num best">4 · $480</td></tr>
+        </table></div>
+        <p class="note">Reads as healthy rock-paper-scissors: Laser wins scattered, Railgun/Rocket win
+        dense. The imbalance is that <i>late-game waves are mostly dense</i>, so the dense-wave winners
+        (esp. Railgun once upgraded) dominate the back half.</p></div></details>`);
+
+      // =====================================================================
+      // ③ SKILL VALUE
+      // =====================================================================
+      push(`<h2 id="skills">Skill-point value <span class="tag">Q3 · too generous?</span></h2>`);
+      push(`<p class="lede">Players earn <b>1 skill point per level won</b> (≈20 across the campaign,
+        plus shard-bought extras). Fully maxing one tower type (damage + level-cap + a perk) costs
+        ~18 points — so a whole campaign maxes roughly <b>one</b> tower. That aggregate pace is fine.
+        The issue is <i>internal</i>: one chain is far stronger per point than the rest.</p>`);
+      const skillRows = [
+        ["Level cap (Overclock)", "7", "Raises a tower's in-battle cap 5 → 10", "≈ ×7 DPS ceiling (111→803 DPS at L10)", "red", "OUTLIER — by far the most power per point. You still pay in-battle to climb it, but it unlocks a 7× ceiling."],
+        ["Core Health", "5", "+5 core each box, 20 → 45", "×2.25 survivability", "orange", "Very generous on defense — more than doubles your margin for error."],
+        ["Money (economy)", "5", "+10% bounty each box", "×1.5 income (compounds all game)", "orange", "Strong; snowballs every wave."],
+        ["Damage (per tower)", "5", "+10% damage each box", "×1.5 damage", "green", "Reasonably tuned — this is the baseline to judge others against."],
+        ["Third branch (pierce / blast / …)", "~5", "Perk, e.g. railgun +pierce, pulse +blast", "varies (pierce is the strong one)", "yellow", "Mostly fair; railgun's pierce perk compounds the OP issue above."],
+        ["Interest / shard / XP", "5 ea", "+2% interest, +2% shards, +10% XP per box", "compounding utility", "green", "Fine — slow-burn quality-of-life."],
+      ];
+      let sr = "";
+      for (const [name, pts, effect, mult, chip, verdict] of skillRows) {
+        sr += `<tr><td class="lbl">${name}</td><td class="num">${pts}</td>
+          <td style="text-align:left" class="c-dim">${effect}</td>
+          <td style="text-align:left"><span class="chip ${chip}">${mult}</span></td>
+          <td style="text-align:left;font-size:12.5px" class="c-dim">${verdict}</td></tr>`;
+      }
+      push(`<div class="scroll"><table>
+        <tr><th>skill chain</th><th>pts</th><th>effect (maxed)</th><th>power</th><th>verdict</th></tr>${sr}</table></div>`);
+      push(`<div class="answer warn"><h4>Answer — skills aren't too generous overall, but the Level-cap chain is</h4>
+        <ul>
+        <li><span class="verdict">Overall pace is fine:</span> ~20 points ≈ one fully-maxed tower type.
+          You can't max everything, which is correct progression.</li>
+        <li><span class="verdict c-orange">Dial back the Level-cap (Overclock) chain</span> — it gives
+          ~×7 for 7 points while the Damage chain gives ×1.5 for 5. Players rush it because nothing else
+          compares. Options: make it cost more points, or cap it at 5→8 instead of 5→10, or make the
+          high-level in-battle upgrades cost more so the ceiling is expensive to reach.</li>
+        <li><span class="verdict c-orange">Core Health (+25) and Money (+50%)</span> are the next most
+          generous. If the game feels too safe/rich, trim these before touching the damage boxes.</li>
+        <li>The <b>Damage</b> chain (+50% for 5 pts) is well-tuned — use it as your yardstick.</li>
+        </ul></div>`);
+
+      // =====================================================================
+      // RECOMMENDED-LEVEL MAP (supply ÷ demand)
+      // =====================================================================
+      const TIER_POWER = { "Fresh · L5, no skills": 1.0, "Mid · L7 + skills/gear": 1.4, "Veteran · L10 + skills/gear": 2.0 };
+      const ARSENALS = {
+        "Fresh · L5, no skills": { towers: [
+          { type: "laser", level: 5 }, { type: "laser", level: 5 }, { type: "laser", level: 5 },
+          { type: "pulse", level: 5 }, { type: "slow", level: 5 } ] },
+        "Mid · L7 + skills/gear": { towers: [
+          { type: "laser", level: 7, xp: 2e4 }, { type: "laser", level: 7, xp: 2e4 }, { type: "laser", level: 7, xp: 2e4 },
+          { type: "pulse", level: 6, xp: 2e4 }, { type: "railgun", level: 7, xp: 2e4 }, { type: "slow", level: 6, xp: 2e4 } ] },
+        "Veteran · L10 + skills/gear": { towers: [
+          { type: "laser", level: 10, xp: 1e6 }, { type: "laser", level: 8, xp: 1e6 }, { type: "laser", level: 8, xp: 1e6 },
+          { type: "pulse", level: 10, xp: 1e6 }, { type: "railgun", level: 10, xp: 1e6 }, { type: "rocket", level: 10, xp: 1e6 },
+          { type: "slow", level: 8, xp: 1e6 } ] },
+      };
+      for (const [n, ar] of Object.entries(ARSENALS)) ar.towers = ar.towers.map(t => ({ ...t, powerMult: TIER_POWER[n] }));
+      const rpgBand = (r) => (r >= 1.3 ? "green" : r >= 0.7 ? "yellow" : r >= 0.45 ? "orange" : "red");
+
+      push(`<h2 id="map">Recommended-level map</h2>`);
+      push(`<p class="lede">The RPG "you're the right level for this zone" view. Each cell is a sample
+        roster's <b>power ÷ the level's demand</b>: <span class="c-green">green ≥1.3 (out-powered)</span>,
+        <span class="c-yellow">yellow 0.7–1.3 (fair — the lose-improve-win zone)</span>,
+        <span class="c-orange">orange (hard)</span>, <span class="c-red">red (a wall)</span>. Supply is
+        economy-gated (each roster spends the level's own money to place and upgrade toward its ceiling).</p>`);
+      const names = Object.keys(ARSENALS);
+      const supply = {};
+      for (const n of names) supply[n] = camp.map(c => arsenalPower(ARSENALS[n], c.levelId));
+      let mr = `<tr><th>level</th><th>demand</th>${names.map(n => `<th>${n}</th>`).join("")}</tr>`;
+      for (let i = 0; i < camp.length; i++) {
+        const c = camp[i];
+        mr += `<tr class="${c.levelNum >= 16 ? "spike" : ""}"><td class="lbl">L${c.levelNum}</td>
+          <td class="num c-dim">${c.reqLasers > 1000 ? "off-chart" : c.reqLasers.toFixed(0)}</td>`;
+        for (const n of names) {
+          const s = supply[n][i], ratio = s.supplyLaserEq / c.reqLasers;
+          mr += `<td class="num c-${rpgBand(ratio)}">${ratio.toFixed(2)}× <span class="sub">(${s.supplyLaserEq})</span></td>`;
+        }
+        mr += `</tr>`;
+      }
+      push(`<div class="scroll"><table>${mr}</table></div>`);
+      const wsum = names.map(n => {
+        const rs = camp.slice(0, 15).map((c, i) => supply[n][i].supplyLaserEq / c.reqLasers);
+        return `<b>${n}</b>: ${rs.filter(r => rpgBand(r) === "green" || rpgBand(r) === "yellow").length}/15 fair-or-better, ` +
+          `${rs.filter(r => rpgBand(r) === "red").length} walls`;
+      }).join(" · ");
+      push(`<div class="answer"><h4>How the tiers land across Worlds 1–3 (where the map is trustworthy)</h4>
+        <p>${wsum}</p>
+        <p class="note">Reads right: a Fresh roster grinds, a Mid roster is comfortable, a maxed Veteran
+        facerolls the early campaign — the expected RPG gradient.</p></div>`);
+      push(`<div class="answer warn"><h4>Two caveats — don't over-trust these numbers</h4>
+        <ul>
+        <li><b>World 4 (L16–20) reads far harsher than it plays.</b> Those levels are built around
+          pierce + conduit + spiral geometry that force-multiplies one tower many-fold, which the model
+          doesn't capture. In reality W4 is <i>too easy</i> for a maxed roster — the opposite of the red
+          you see. Treat W4 rows as indicative only.</li>
+        <li><b>Skills &amp; gear are an assumption</b> (a per-tier ×1 / ×1.4 / ×2 multiplier grounded in
+          the real ×1.5 max damage skill), not read from a live save — retune the tier if your players
+          look different.</li>
+        </ul></div>`);
+
+      // =====================================================================
+      // RAW DETAIL (collapsibles)
+      // =====================================================================
+      push(`<h2 id="detail">Raw detail</h2>`);
+      let dr = "";
+      for (const c of camp) {
+        const b = eb(c.ecoRatio);
+        dr += `<tr class="${c.reqLasers > 1000 ? "spike" : ""}"><td class="lbl">L${c.levelNum}</td>
+          <td class="num c-dim">${c.coreHealth}</td><td class="num c-dim">${c.startingMoney}</td>
+          <td class="num c-dim">${c.coverageTiles}</td><td class="num">${c.peakWave}</td>
+          <td class="c-dim" style="text-align:left">${c.peakRegime}</td><td class="num">${c.peakDemand}</td>
+          <td class="num">${c.reqLasers}</td><td class="num c-dim">W${c.ecoWave}</td>
+          <td class="num c-${b}">${c.ecoRatio}×</td><td class="num c-dim">${c.totalXP}</td></tr>`;
+      }
+      push(`<details><summary>Per-level table (core, money, coverage, peak, economy)</summary>
+        <div class="body scroll"><table>
+        <tr><th>lvl</th><th>core</th><th>$start</th>${th("cover","cover")}${th("peak W","peakW")}${th("regime","regime","left")}
+        ${th("demand DPS","demandDPS")}${th("req L","reqLevel")}${th("eco W","crunch")}${th("crunch","crunch")}<th>total XP</th></tr>${dr}</table></div></details>`);
+
+      let pw = "";
+      for (const c of camp) {
+        const wr = c.waves.map(w => `<tr><td class="lbl">W${w.wave}</td><td class="c-dim" style="text-align:left">${w.regime}</td>
+          <td class="num">${w.count}</td><td class="num">${w.demand.toFixed(0)}</td>
+          <td class="num">${w.reqLasers.toFixed(1)}</td><td class="num c-dim">${w.affordLasers.toFixed(1)}</td>
+          <td class="num c-${eb(w.ratio)}" style="font-weight:600">${w.ratio.toFixed(2)}×</td><td class="num c-dim">${w.bounty}</td>
+          <td class="num c-dim">${w.capture.toFixed(2)}</td><td class="num c-dim">${w.xp}</td></tr>`).join("");
+        pw += `<details><summary>Level ${c.levelNum} — hardest W${c.peakWave} needs ${c.reqLasers} laser-eq · crunch ${c.ecoRatio}× @W${c.ecoWave}</summary>
+          <div class="body scroll"><table><tr>${th("wave","wave")}${th("regime","regime","left")}${th("#","count")}${th("demand","demand")}${th("req L","reqL")}${th("afford L","affordL")}${th("req/afford","ratio")}${th("$","bounty")}${th("cap","capture")}${th("xp","xp")}</tr>${wr}</table></div></details>`;
+      }
+      push(`<details><summary>Per-wave breakdown (all levels)</summary><div class="body">
+        <p class="note" style="margin-top:0"><b>What this is:</b> an <b>affordability
+        check</b> — can the money the player has by each wave buy enough firepower for it?
+        Lasers are just the shared currency (the player really buys a few upgraded towers).</p>
+        <p class="note" style="margin-top:0"><b>Column key</b> (hover any header for the full definition):
+        <b>demand</b> = firepower the wave needs, in raw DPS · <b>req L</b> = that same demand in
+        base-Laser units (÷18.3) · <b>afford L</b> = base Lasers the level's cash could buy by then ·
+        <b>req/afford</b> = economy crunch (&gt;1 = demand outpaces early money) ·
+        <b>cap</b> = mid-wave capture used for that wave (auto, engine-calibrated).</p>
+        <div class="legend"><span><b>req/afford</b> color — where to tune:</span>
+          <span class="chip green">&lt;0.8 easy money · could tune UP</span>
+          <span class="chip yellow">0.8–1.3 fair (the target)</span>
+          <span class="chip orange">1.3–2.2 tight</span>
+          <span class="chip red">&gt;2.2 crunch · likely too hard</span></div>
+        ${pw}</div></details>`);
+
+      push(`<p class="note" style="margin-top:24px">Tuning — demand: utilization ${DIFF_TUNING.utilization}
+        (calibrated L1 W1→1.8, W2→4.4); mid-wave capture is auto per-wave from
+        bounty timing (transitFrac ${DIFF_TUNING.captureTransitFrac}, engine-calibrated on
+        L1–L3 — swarms ~0.3–0.4, boss waves ~0.5–0.6). Supply: splashWeight pulse ${ARSENAL_TUNING.splashWeight.pulse} /
+        rocket ${ARSENAL_TUNING.splashWeight.rocket}, pierceWeight railgun ${ARSENAL_TUNING.pierceWeight.railgun},
+        slow +${ARSENAL_TUNING.slowSupportPerTower}/tower — all oracle-calibrated (balance-sim.js).
+        Skills/gear enter as a per-tier powerMult. World-4 geometry multipliers are unmodeled.</p>`);
+
+      document.getElementById("status").textContent = "Done — " + camp.length + " levels analyzed.";
+    } catch (e) {
+      out.innerHTML = `<pre style="color:#ff6b7d;white-space:pre-wrap">${(e.stack || e).toString()}</pre>`;
+      document.getElementById("status").textContent = "Error.";
+    }
+  </script>
+</body>
+</html>
