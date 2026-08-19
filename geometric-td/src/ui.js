@@ -2158,6 +2158,7 @@ function openStoreItemSheet(item) {
     `<div class="gear-sheet-sub">${sub}</div>` +
     itemAffixRowsHtml(item) +
     `<div class="gear-sheet-actions"><button class="gear-sheet-btn" id="store-sheet-buy"${buyDisabled ? " disabled" : ""}>${buyLabel}</button></div>`;
+  bindTraitDisclosures(el.storeSheet);
   el.storeSheetOverlay.classList.remove("hidden");
 
   const buyBtn = document.getElementById("store-sheet-buy");
