@@ -104,6 +104,7 @@
         <a class="jump" href="#skills">③ Skill value</a>
         <a class="jump" href="#map">Recommended-level map</a>
         <a class="jump" href="#detail">Raw detail</a>
+        <a class="jump" href="#telemetry">Player telemetry</a>
       </nav>
       <div id="status">Computing…</div>
     </header>
@@ -113,6 +114,8 @@
   <script type="module">
     import { analyzeCampaign, DIFF_TUNING } from "./src/level-difficulty.js";
     import { arsenalPower, towerFirepower, ARSENAL_TUNING } from "./src/arsenal-power.js";
+    import { LEADERBOARD, FEEDBACK } from "./src/config.js";
+    import { APP_VERSION } from "./src/version.js";
 
     const $ = (h) => { const d = document.createElement("div"); d.innerHTML = h; return d; };
     const out = document.getElementById("out");
@@ -429,6 +432,381 @@
       out.innerHTML = `<pre style="color:#ff6b7d;white-space:pre-wrap">${(e.stack || e).toString()}</pre>`;
       document.getElementById("status").textContent = "Error.";
     }
+
+    // =====================================================================
+    // PLAYER TELEMETRY — live `feedback` Supabase table, fetched client-side.
+    // Intentionally OUTSIDE the try/catch above: a bug in the synchronous
+    // analytic sections must never block this, and vice versa.
+    // =====================================================================
+    push(`<h2 id="telemetry">Player telemetry <span class="tag">from real play</span></h2>`);
+    push(`<p class="lede">Live aggregates from the <code>feedback</code> table — actual runs,
+      actual wins/losses/forfeits, actual opt-in difficulty ratings. Read-only; nothing here is
+      shown to players. Fetches up to 5000 most-recent rows once; the filters below re-aggregate
+      client-side without refetching.</p>`);
+    push(`<div id="tele-body">Loading telemetry…</div>`);
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, (c) =>
+        ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+    // Trailing-number natural sort so level_001..level_020 order correctly
+    // (plain string sort would put level_10 before level_2); anything
+    // without a trailing number (e.g. a future endless id) sorts after.
+    function levelNumFrom(id) {
+      const m = /(\d+)\s*$/.exec(String(id ?? ""));
+      return m ? parseInt(m[1], 10) : null;
+    }
+    function levelSort(a, b) {
+      const na = levelNumFrom(a), nb = levelNumFrom(b);
+      if (na != null && nb != null) return na - nb;
+      if (na != null) return -1;
+      if (nb != null) return 1;
+      return String(a).localeCompare(String(b));
+    }
+    function median(nums) {
+      const arr = nums.filter((n) => typeof n === "number" && !Number.isNaN(n)).sort((a, b) => a - b);
+      if (!arr.length) return null;
+      const mid = Math.floor(arr.length / 2);
+      return arr.length % 2 ? arr[mid] : (arr[mid - 1] + arr[mid]) / 2;
+    }
+    function avg(nums) {
+      const arr = nums.filter((n) => typeof n === "number" && !Number.isNaN(n));
+      if (!arr.length) return null;
+      return arr.reduce((a, b) => a + b, 0) / arr.length;
+    }
+    function pct(n, total) {
+      if (!total) return "—";
+      return ((n / total) * 100).toFixed(0) + "%";
+    }
+    function distinctCount(arr) {
+      return new Set(arr).size;
+    }
+    function byLevel(rows) {
+      const m = new Map();
+      for (const r of rows) {
+        const id = r.level_id ?? "unknown";
+        if (!m.has(id)) m.set(id, []);
+        m.get(id).push(r);
+      }
+      return [...m.entries()].sort((a, b) => levelSort(a[0], b[0]));
+    }
+    // n < 5 = thin sample — dim the row and flag it via tooltip rather than
+    // hiding it (the reader still needs to see it exists, just discount it).
+    function thinAttr(n) {
+      return n < 5 ? ` style="opacity:.55" title="thin sample (n<5) — treat as noise, not signal"` : "";
+    }
+
+    function struggleMapPanel(rows) {
+      if (!rows.length) return `<p class="note">No campaign runs in this filter.</p>`;
+      let tr = "";
+      for (const [levelId, rs] of byLevel(rows)) {
+        const n = rs.length;
+        const won = rs.filter((r) => r.outcome === "won").length;
+        const forfeit = rs.filter((r) => r.outcome === "forfeit").length;
+        const wall = median(rs.filter((r) => r.outcome === "lost").map((r) => r.waves_cleared));
+        const coreAvg = avg(rs.filter((r) => r.outcome === "won").map((r) => r.core_health));
+        tr += `<tr${thinAttr(n)}><td class="lbl">${escapeHtml(levelId)}</td><td class="num">${n}</td>
+          <td class="num">${pct(won, n)}</td><td class="num">${pct(forfeit, n)}</td>
+          <td class="num">${wall == null ? "—" : wall}</td>
+          <td class="num">${coreAvg == null ? "—" : coreAvg.toFixed(0)}</td></tr>`;
+      }
+      return `<div class="scroll"><table>
+        <tr><th>level</th><th>n</th><th>win %</th><th>forfeit %</th>
+          <th title="Median wave reached on LOST runs — the wall players hit.">wall (median wave, lost)</th>
+          <th title="Average core health remaining on WON runs — how close the wins are.">avg core hp (won)</th></tr>
+        ${tr}</table></div>
+        <p class="note">Rows with n&lt;5 are dimmed — thin sample, treat as noise.</p>`;
+    }
+
+    function killerWavesPanel(rows) {
+      const lost = rows.filter((r) => r.outcome === "lost");
+      if (!lost.length) return `<p class="note">No lost campaign runs in this filter.</p>`;
+      let tr = "";
+      for (const [levelId, rs] of byLevel(lost)) {
+        const n = rs.length;
+        const waveCounts = new Map();
+        for (const r of rs) waveCounts.set(r.waves_cleared, (waveCounts.get(r.waves_cleared) || 0) + 1);
+        const top = [...waveCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3)
+          .map(([w, c]) => `wave ${w} (${c})`).join(", ");
+        tr += `<tr${thinAttr(n)}><td class="lbl">${escapeHtml(levelId)}</td><td class="num">${n}</td>
+          <td style="text-align:left">${top}</td></tr>`;
+      }
+      return `<div class="scroll"><table>
+        <tr><th>level</th><th>n (losses)</th><th style="text-align:left">top loss waves — the wall</th></tr>
+        ${tr}</table></div>`;
+    }
+
+    function dropoffPanel(rows) {
+      if (!rows.length) return `<p class="note">No campaign runs in this filter.</p>`;
+      const counts = byLevel(rows).map(([levelId, rs]) => [levelId, distinctCount(rs.map((r) => r.client_id))]);
+      const first = counts.length ? counts[0][1] : 0;
+      let tr = "", prev = null;
+      for (const [levelId, n] of counts) {
+        const ofFirst = first ? ((n / first) * 100).toFixed(0) + "%" : "—";
+        const dropped = prev != null && prev > 0 ? (prev - n) / prev : 0;
+        const dropLbl = prev != null && prev > 0 ? (dropped * 100).toFixed(0) + "%" : "—";
+        const cliff = prev != null && dropped >= 0.3;
+        tr += `<tr class="${cliff ? "flag" : ""}"><td class="lbl">${escapeHtml(levelId)}</td>
+          <td class="num">${n}</td><td class="num c-dim">${ofFirst}</td>
+          <td class="num ${cliff ? "c-red" : "c-dim"}">${dropLbl}</td></tr>`;
+        prev = n;
+      }
+      return `<div class="scroll"><table>
+        <tr><th>level</th><th>distinct players (n)</th><th>% of first level's players</th>
+          <th>drop from prior level</th></tr>
+        ${tr}</table></div>
+        <p class="note">Rows flagged where 30%+ of the prior level's players never showed up
+        here — the single most important quit signal.</p>`;
+    }
+
+    function attemptsToClearPanel(rows) {
+      if (!rows.length) return `<p class="note">No campaign runs in this filter.</p>`;
+      const byLevelClient = new Map();
+      for (const r of rows) {
+        const lvl = r.level_id ?? "unknown", cid = r.client_id ?? "unknown";
+        if (!byLevelClient.has(lvl)) byLevelClient.set(lvl, new Map());
+        const cm = byLevelClient.get(lvl);
+        if (!cm.has(cid)) cm.set(cid, []);
+        cm.get(cid).push(r);
+      }
+      const levelIds = [...byLevelClient.keys()].sort(levelSort);
+      let tr = "";
+      for (const levelId of levelIds) {
+        const attempts = [];
+        for (const runs of byLevelClient.get(levelId).values()) {
+          const sorted = [...runs].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+          const winIdx = sorted.findIndex((r) => r.outcome === "won");
+          if (winIdx >= 0) attempts.push(winIdx); // lost/forfeit runs before that client's first win
+        }
+        if (!attempts.length) continue;
+        tr += `<tr${thinAttr(attempts.length)}><td class="lbl">${escapeHtml(levelId)}</td>
+          <td class="num">${attempts.length}</td><td class="num">${median(attempts)}</td></tr>`;
+      }
+      if (!tr) return `<p class="note">No client has a recorded win in this filter yet.</p>`;
+      return `<div class="scroll"><table>
+        <tr><th>level</th><th>n (eventual winners)</th>
+          <th title="Median count of lost/forfeit runs that client logged at this level before their first win.">median attempts before win</th></tr>
+        ${tr}</table></div>`;
+    }
+
+    function towerUsagePanel(allRows, campaignRows) {
+      if (!allRows.length) return `<p class="note">No runs in this filter.</p>`;
+      const types = ["laser", "pulse", "slow", "railgun", "rocket"];
+      let tr = "";
+      for (const type of types) {
+        const withType = allRows.filter((r) => Array.isArray(r.details.typesUsed) && r.details.typesUsed.includes(type));
+        const campWithType = campaignRows.filter((r) => Array.isArray(r.details.typesUsed) && r.details.typesUsed.includes(type));
+        const won = campWithType.filter((r) => r.outcome === "won").length;
+        tr += `<tr><td class="lbl">${type}</td><td class="num">${pct(withType.length, allRows.length)}</td>
+          <td class="num">${campWithType.length ? pct(won, campWithType.length) : "—"}</td>
+          <td class="num c-dim">${campWithType.length}</td></tr>`;
+      }
+      const counts = new Map();
+      for (const r of allRows) {
+        if (!Array.isArray(r.details.typesUsed)) continue;
+        const len = r.details.typesUsed.length;
+        counts.set(len, (counts.get(len) || 0) + 1);
+      }
+      const total = [...counts.values()].reduce((a, b) => a + b, 0);
+      const monoRow = [...counts.entries()].sort((a, b) => a[0] - b[0])
+        .map(([len, c]) => `${len} type${len === 1 ? "" : "s"}: ${pct(c, total)}`).join(" · ");
+      return `<div class="scroll"><table>
+        <tr><th>tower</th><th>% of runs it appears in</th>
+          <th>win % (campaign runs, when present)</th><th class="c-dim">n (campaign)</th></tr>
+        ${tr}</table></div>
+        <p class="note">Distinct tower types fielded per run: ${monoRow || "—"}. If most runs
+        cluster at 1–2 types, that's a monoculture signal.</p>`;
+    }
+
+    function adoptionPanel(rows) {
+      if (!rows.length) return `<p class="note">No runs in this filter.</p>`;
+      const unspentOf = (r) => (typeof r.details.unspentSkillPoints === "number" ? r.details.unspentSkillPoints : 0);
+      const withUnspent = rows.filter((r) => unspentOf(r) > 0);
+      const avgUnspent = avg(rows.map((r) => r.details.unspentSkillPoints).filter((v) => typeof v === "number"));
+      const won = rows.filter((r) => r.outcome === "won"), lost = rows.filter((r) => r.outcome === "lost");
+      const wonUnspentPct = won.length ? pct(won.filter((r) => unspentOf(r) > 0).length, won.length) : "—";
+      const lostUnspentPct = lost.length ? pct(lost.filter((r) => unspentOf(r) > 0).length, lost.length) : "—";
+
+      const allTowers = [];
+      for (const r of rows) if (Array.isArray(r.details.towers)) allTowers.push(...r.details.towers);
+      const isUngeared = (t) => !Array.isArray(t.gear) || t.gear.length === 0;
+      const ungearedPct = allTowers.length ? pct(allTowers.filter(isUngeared).length, allTowers.length) : "—";
+
+      const byType = new Map();
+      for (const t of allTowers) {
+        const type = t.type ?? "unknown";
+        if (!byType.has(type)) byType.set(type, { total: 0, ungeared: 0 });
+        const e = byType.get(type);
+        e.total++;
+        if (isUngeared(t)) e.ungeared++;
+      }
+      const byTypeRows = [...byType.entries()]
+        .map(([type, e]) => `<tr><td class="lbl">${escapeHtml(type)}</td><td class="num">${e.total}</td>
+          <td class="num">${pct(e.ungeared, e.total)}</td></tr>`).join("");
+
+      return `<p><span class="chip yellow">${pct(withUnspent.length, rows.length)}</span> of runs end with
+        unspent skill points (avg ${avgUnspent == null ? "—" : avgUnspent.toFixed(1)} unspent) —
+        won: ${wonUnspentPct}, lost: ${lostUnspentPct}.</p>
+        <p><span class="chip yellow">${ungearedPct}</span> of all placed towers across these runs
+        carry no gear at all.</p>
+        ${allTowers.length ? `<div class="scroll"><table>
+        <tr><th>tower</th><th>n placed</th><th>ungeared %</th></tr>${byTypeRows}</table></div>` : ""}`;
+    }
+
+    function feltVsMeasuredPanel(rows) {
+      if (!rows.length) return `<p class="note">No campaign runs in this filter.</p>`;
+      let tr = "";
+      for (const [levelId, rs] of byLevel(rows)) {
+        const n = rs.length;
+        const winPct = pct(rs.filter((r) => r.outcome === "won").length, n);
+        const rated = rs.filter((r) => r.rating);
+        const easy = rated.filter((r) => r.rating === "too_easy").length;
+        const fair = rated.filter((r) => r.rating === "just_right").length;
+        const hard = rated.filter((r) => r.rating === "too_hard").length;
+        tr += `<tr${thinAttr(rated.length)}><td class="lbl">${escapeHtml(levelId)}</td>
+          <td class="num">${winPct}</td><td class="num">${rated.length}</td>
+          <td class="num c-green">${easy}</td><td class="num c-yellow">${fair}</td><td class="num c-red">${hard}</td></tr>`;
+      }
+      return `<div class="scroll"><table>
+        <tr><th>level</th><th>win %</th><th>n rated</th><th>too easy</th><th>just right</th><th>too hard</th></tr>
+        ${tr}</table></div>
+        <p class="note">Ratings are OPT-IN, so samples are thin — treat as a tiebreaker, not proof.
+        A level rated "too hard" alongside a high win % is a <i>clarity</i> problem, not a balance one.</p>`;
+    }
+
+    function economyPanel(rows) {
+      const won = rows.filter((r) => r.outcome === "won");
+      if (!won.length) return `<p class="note">No won campaign runs in this filter.</p>`;
+      let tr = "";
+      for (const [levelId, rs] of byLevel(won)) {
+        const n = rs.length;
+        const moneyAvg = avg(rs.map((r) => r.details.moneyLeft).filter((v) => typeof v === "number"));
+        const leaksAvg = avg(rs.map((r) => r.details.leaks).filter((v) => typeof v === "number"));
+        tr += `<tr${thinAttr(n)}><td class="lbl">${escapeHtml(levelId)}</td><td class="num">${n}</td>
+          <td class="num">${moneyAvg == null ? "—" : moneyAvg.toFixed(0)}</td>
+          <td class="num">${leaksAvg == null ? "—" : leaksAvg.toFixed(1)}</td></tr>`;
+      }
+      return `<div class="scroll"><table>
+        <tr><th>level</th><th>n (won)</th><th>avg $ left</th><th>avg leaks</th></tr>
+        ${tr}</table></div>`;
+    }
+
+    function buildPanels(rows, version, mode) {
+      const versionFiltered = version === "all" ? rows : rows.filter((r) => r.app_version === version);
+      const modeFiltered = mode === "all" ? versionFiltered : versionFiltered.filter((r) => r.mode === mode);
+      const campaignRows = modeFiltered.filter((r) => r.mode === "campaign");
+
+      const safe = (label, fn) => {
+        try { return fn(); } catch (err) {
+          return `<p class="note">⚠ ${label} failed to render (${escapeHtml(String((err && err.message) || err))}).</p>`;
+        }
+      };
+      const safeDetails = (summary, label, fn) => {
+        let inner;
+        try { inner = fn(); } catch (err) {
+          inner = `<p class="note">⚠ ${label} failed to render (${escapeHtml(String((err && err.message) || err))}).</p>`;
+        }
+        return `<details><summary>${summary}</summary><div class="body">${inner}</div></details>`;
+      };
+
+      return `
+        <h3>Struggle map</h3>
+        ${safe("Struggle map", () => struggleMapPanel(campaignRows))}
+        <h3>Killer waves</h3>
+        ${safe("Killer waves", () => killerWavesPanel(campaignRows))}
+        <h3>Drop-off funnel</h3>
+        ${safe("Drop-off funnel", () => dropoffPanel(campaignRows))}
+        ${safeDetails("Attempts to clear (per level, among eventual winners)", "Attempts to clear",
+          () => attemptsToClearPanel(campaignRows))}
+        <h3>Tower usage &amp; mix</h3>
+        ${safe("Tower usage", () => towerUsagePanel(modeFiltered, campaignRows))}
+        <h3>"Forgot to…" adoption</h3>
+        ${safe("Adoption", () => adoptionPanel(modeFiltered))}
+        <h3>Felt vs. measured</h3>
+        ${safe("Felt vs measured", () => feltVsMeasuredPanel(campaignRows))}
+        ${safeDetails("Economy (won runs — money left, leaks)", "Economy", () => economyPanel(campaignRows))}
+      `;
+    }
+
+    async function renderTelemetry() {
+      const body = document.getElementById("tele-body");
+      if (!LEADERBOARD.url || !LEADERBOARD.anonKey) {
+        body.innerHTML = `<p class="note">Telemetry not configured (no Supabase URL/key in src/config.js).</p>`;
+        return;
+      }
+
+      let res;
+      try {
+        res = await fetch(
+          `${LEADERBOARD.url}/rest/v1/${FEEDBACK.table}?select=*&order=created_at.desc&limit=5000`,
+          { headers: { apikey: LEADERBOARD.anonKey, Authorization: `Bearer ${LEADERBOARD.anonKey}` } }
+        );
+      } catch (err) {
+        body.innerHTML = `<p class="note">Couldn't reach telemetry (the Supabase project may be paused,
+          or there's no network). <span class="c-dim">${escapeHtml(String((err && err.message) || err))}</span></p>`;
+        return;
+      }
+      if (!res.ok) {
+        body.innerHTML = `<p class="note">Couldn't reach telemetry (the Supabase project may be paused,
+          or there's no data yet) — HTTP ${res.status}.</p>`;
+        return;
+      }
+
+      let rows;
+      try {
+        rows = await res.json();
+      } catch (err) {
+        body.innerHTML = `<p class="note">Couldn't reach telemetry (unreadable response).</p>`;
+        return;
+      }
+      if (!Array.isArray(rows) || rows.length === 0) {
+        body.innerHTML = `<p class="note">No runs recorded yet.</p>`;
+        return;
+      }
+
+      // Defensive normalization — older rows may predate a `details` field
+      // entirely, or carry a partial one.
+      for (const r of rows) {
+        if (!r.details || typeof r.details !== "object") r.details = {};
+      }
+
+      const versions = [...new Set(rows.map((r) => r.app_version).filter(Boolean))]
+        .sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
+      const defaultVersion = versions.includes(APP_VERSION) ? APP_VERSION : "all";
+
+      body.innerHTML = `
+        <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin:8px 0 4px">
+          <label class="note" style="margin:0">Version
+            <select id="tele-version" class="mono" style="margin-left:6px">
+              <option value="all"${defaultVersion === "all" ? " selected" : ""}>All versions</option>
+              ${versions.map((v) => `<option value="${escapeHtml(v)}"${v === defaultVersion ? " selected" : ""}>${escapeHtml(v)}</option>`).join("")}
+            </select>
+          </label>
+          <label class="note" style="margin:0">Mode
+            <select id="tele-mode" class="mono" style="margin-left:6px">
+              <option value="all" selected>All modes</option>
+              <option value="campaign">campaign</option>
+              <option value="endless">endless</option>
+            </select>
+          </label>
+          <span class="note" style="margin:0">${rows.length} row${rows.length === 1 ? "" : "s"} fetched</span>
+        </div>
+        <div id="tele-panels"></div>`;
+
+      const versionSel = document.getElementById("tele-version");
+      const modeSel = document.getElementById("tele-mode");
+      const panels = document.getElementById("tele-panels");
+      const redraw = () => { panels.innerHTML = buildPanels(rows, versionSel.value, modeSel.value); };
+      versionSel.addEventListener("change", redraw);
+      modeSel.addEventListener("change", redraw);
+      redraw();
+    }
+
+    renderTelemetry().catch((err) => {
+      const body = document.getElementById("tele-body");
+      if (body) body.innerHTML = `<p class="note">Telemetry failed to render
+        (${escapeHtml(String((err && err.message) || err))}).</p>`;
+    });
   </script>
 </body>
 </html>
