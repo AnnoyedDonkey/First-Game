@@ -1446,14 +1446,16 @@ export const BALANCE = {
         {
           "groups": [
             {
-              "count": 14,
-              "healthMult": 5,
+              "bountyMult": 1.6,
+              "count": 12,
+              "healthMult": 3.8,
               "spawnInterval": 0.4,
               "type": "basic"
             },
             {
-              "count": 10,
-              "healthMult": 4.5,
+              "bountyMult": 1.6,
+              "count": 8,
+              "healthMult": 3.4,
               "spawnInterval": 0.3,
               "startDelay": 3,
               "type": "fast"
