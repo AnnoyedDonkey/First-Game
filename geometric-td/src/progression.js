@@ -217,6 +217,15 @@ function backfillNarrativeSeen() {
       }
     }
   }
+  // First-Mastery explainer: if any roster tower has ALREADY reached Mastery,
+  // this player understands the mechanic — pre-mark it seen so a fresh tower
+  // ranking up 0->1 later doesn't trigger a retroactive card. masteryRankFor
+  // uses the same config anchor as the live equip-gate, so this matches it.
+  if (!state.narrativeSeen.firstMastery &&
+      (state.roster || []).some((rec) => masteryRankFor(rec.xp || 0) >= 1)) {
+    state.narrativeSeen.firstMastery = true;
+    changed = true;
+  }
   if (changed) writeSave(state);
 }
 
@@ -1173,4 +1182,40 @@ export function resetProgress() {
   state.seenLoot ||= [];
   backfillGear();
   migrateRosterNames();
+}
+
+// LOCAL TOOLING ONLY (balance sims — never called by the game). After
+// resetProgress(), install a synthetic VETERAN roster so takeRosterUnit deploys
+// leveled/mastery/geared towers, modelling the career carry-over a player brings
+// into L2+. records: [{ type, maxLevel, xp?, gear?, count? }] — `count` clones the
+// record so multiple towers of that type can deploy as veterans. maxLevel is the
+// career-UNLOCKED level (a veteran re-buys up to it for money, no XP gate); xp is
+// banked mastery. This is separate from in-battle levels, which still reset to 1.
+export function seedRoster(records) {
+  const roster = [];
+  let i = 0;
+  for (const r of records || []) {
+    for (let c = 0; c < (r.count || 1); c++) {
+      roster.push({
+        name: `${r.type}-vet-${i++}`, type: r.type,
+        maxLevel: r.maxLevel || 1, xp: r.xp || 0, kills: r.kills || 0,
+        gear: normalizeGear(r.gear),
+      });
+    }
+  }
+  state.roster = roster;
+  writeSave(state);
+}
+
+// LOCAL TOOLING ONLY (balance sims). Install an owned SKILL set so getTowerDamageMult
+// / getTowerLevelCap / economy getters reflect a progressed player. ownedIds =
+// array of skill node ids (all set to tier 1), e.g. "laser_dmg1", "laser_lvl6",
+// "eco_money1". Skills are a SEPARATE ledger from career levels — a real veteran
+// has both; seed both for a faithful roster.
+export function seedSkills(spec) {
+  const sk = {};
+  if (Array.isArray(spec)) { for (const id of spec) sk[id] = 1; }        // ids → tier 1
+  else if (spec) { for (const id in spec) sk[id] = spec[id]; }           // {id: tier} (multi-tier)
+  state.skills = sk;
+  writeSave(state);
 }

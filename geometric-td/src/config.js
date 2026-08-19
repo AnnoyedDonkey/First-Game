@@ -1206,6 +1206,21 @@ export const NARRATIVE = {
     skillNote: "You also have {n} skill point{s}, go assign {it}.",
     rally: "Keep playing and you'll soon have a strong enough roster to clear this level. I believe in you!",
   },
+  // ---------- First Mastery unlock ----------
+  // Shown ONCE ever, the first time ANY tower crosses into Mastery rank 1
+  // mid-battle (career XP past the mastery threshold), gated via
+  // progression.shouldShowBeat("firstMastery"). Assembled/played in main.js
+  // updateBarks; deliberately fires even when STORY BANTER is OFF because it
+  // teaches a real mechanic (gear unlocks at Mastery). The card runs the
+  // `mastery` tower-demo (a tower leveling up on a loop), featuring the
+  // tower type that just ranked up. {tower} = that tower's display name.
+  // [hl-pink]/[hl-blue] inline markup is colored by ui.js storyCardHtml.
+  firstMastery: {
+    speaker: "indy",
+    mood: "happy",
+    cta: "NICE",
+    text: "Well, well — your {tower} just hit [hl-blue]Mastery[/hl]. All that combat experience finally paid off.\n\nTwo things just happened: it got a [hl-pink]permanent[/hl] damage boost — one it keeps for good, and grows with every Mastery rank — plus a temporary power surge for the rest of this fight. See the gold.\n\nAnd here's the good part: a Mastered tower can be fitted with [hl-blue]gear[/hl]. Pop into the Towers menu between battles and bolt some loot onto it.",
+  },
   // ---------- Tower placement barks (P4) ----------
   // First time each tower TYPE is placed in a campaign battle, it quips on
   // the bark ticker; the roster name prefix (e.g. "L-01:") is supplied at
@@ -1387,6 +1402,13 @@ export const NARRATIVE = {
       // (Laser + Pulse) cut them down mid-lane. `tower` sets the featured
       // tower since the key isn't a real tower type.
       intro: { tower: "laser", supportTower: "pulse", enemies: [{ type: "basic", count: 2 }, { type: "fast", count: 1 }] },
+      // Named scenario for the first-Mastery card: a lone tower that LEVELS UP
+      // on a loop — no enemies, just the golden power surge (rings + splash +
+      // aura + "LEVEL UP") re-firing every `surgeLoop.interval` seconds. The
+      // `tower` here is only a fallback; the card passes the ranked-up tower's
+      // real type as an override so the animation shows THAT tower. `surgeLoop`
+      // is honored by tower-demo.js stepTowerDemo (see applyLevelUpSurge).
+      mastery: { tower: "laser", enemies: [], surgeLoop: { firstAt: 0.3, interval: 5.5 } },
       laser: { enemies: [{ type: "fast", count: 1 }] },
       pulse: { enemies: [{ type: "basic", count: 3 }] },
       slow: { enemies: [{ type: "fast", count: 1 }], supportTower: "laser" },

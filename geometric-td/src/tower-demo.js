@@ -8,7 +8,7 @@
 
 import { ENEMIES, NARRATIVE } from "./config.js";
 import { createGridModel } from "./grid.js";
-import { createTower, updateTowers } from "./towers.js";
+import { createTower, updateTowers, applyLevelUpSurge } from "./towers.js";
 import { createEnemy, updateEnemies } from "./enemies.js";
 import { updateProjectiles, updateEffects } from "./projectiles.js";
 import { updateParticles } from "./particles.js";
@@ -70,14 +70,16 @@ function spawnDemoGroup(demo) {
   }
 }
 
-export function createTowerDemo(demoKey) {
+export function createTowerDemo(demoKey, options = {}) {
   const knobs = NARRATIVE.towerIntro;
   const cast = knobs.cast[demoKey];
   if (!cast) throw new Error(`Unknown tower demo type: ${demoKey}`);
   // The cast key is normally a real tower type (the featured tower). A named
-  // scenario (e.g. "intro") instead sets `cast.tower` explicitly so the key
-  // can be a label rather than a tower id.
-  const featuredType = cast.tower || demoKey;
+  // scenario (e.g. "intro"/"mastery") instead sets `cast.tower` explicitly so
+  // the key can be a label rather than a tower id. An explicit
+  // `options.towerType` override wins over both — the first-Mastery card
+  // features whichever tower just ranked up.
+  const featuredType = options.towerType || cast.tower || demoKey;
 
   const level = {
     id: `demo_${demoKey}`,
@@ -124,6 +126,9 @@ export function createTowerDemo(demoKey) {
     knobs,
     groupSize: cast.enemies.reduce((total, entry) => total + entry.count, 0),
     nextSpawnAt: 0,
+    // Level-up loop (mastery card): re-fire the golden surge on the featured
+    // tower every surgeLoop.interval seconds. null = no loop (normal demos).
+    nextSurgeAt: cast.surgeLoop ? cast.surgeLoop.firstAt : null,
     destroyed: false,
   };
 }
@@ -132,24 +137,34 @@ export function stepTowerDemo(demo, dt) {
   if (!demo || demo.destroyed || !demo.game) return;
   const { game, knobs } = demo;
 
-  let concurrent = game.enemies.reduce(
-    (count, enemy) => count + (enemy.alive ? 1 : 0),
-    0
-  );
-  while (
-    game.time >= demo.nextSpawnAt &&
-    concurrent + demo.groupSize <= knobs.maxEnemies
-  ) {
-    spawnDemoGroup(demo);
-    concurrent += demo.groupSize;
-    demo.nextSpawnAt += knobs.spawnInterval;
+  // Enemy-less scenarios (the mastery level-up loop) skip spawning entirely —
+  // guarding on groupSize also avoids a no-op catch-up churn on nextSpawnAt.
+  if (demo.groupSize > 0) {
+    let concurrent = game.enemies.reduce(
+      (count, enemy) => count + (enemy.alive ? 1 : 0),
+      0
+    );
+    while (
+      game.time >= demo.nextSpawnAt &&
+      concurrent + demo.groupSize <= knobs.maxEnemies
+    ) {
+      spawnDemoGroup(demo);
+      concurrent += demo.groupSize;
+      demo.nextSpawnAt += knobs.spawnInterval;
+    }
+    // Do not unleash a catch-up burst after the cast has been held at its cap.
+    if (
+      concurrent + demo.groupSize > knobs.maxEnemies &&
+      game.time >= demo.nextSpawnAt
+    ) {
+      demo.nextSpawnAt = game.time + knobs.spawnInterval;
+    }
   }
-  // Do not unleash a catch-up burst after the cast has been held at its cap.
-  if (
-    concurrent + demo.groupSize > knobs.maxEnemies &&
-    game.time >= demo.nextSpawnAt
-  ) {
-    demo.nextSpawnAt = game.time + knobs.spawnInterval;
+
+  // Loop the golden level-up surge on the featured tower (mastery card only).
+  if (demo.nextSurgeAt != null && demo.featuredTower && game.time >= demo.nextSurgeAt) {
+    applyLevelUpSurge(game, demo.featuredTower);
+    demo.nextSurgeAt = game.time + demo.cast.surgeLoop.interval;
   }
 
   game.springGrid.update(dt);

@@ -439,6 +439,18 @@ function triggerLevelUpSurge(game, tower) {
   }
 }
 
+// Kick off the level-up surge on a tower: the temporary damage/fire-rate buff
+// (with golden shots) for VFX.levelUp.buffDuration, plus the one-shot golden
+// VFX. recomputeStats applies the buff (it reads _surgeActive) and refreshes
+// the mastery rank. Shared by the live mid-battle rank-up (updateTowers) and
+// the first-Mastery card's looping tower-demo (tower-demo.js).
+export function applyLevelUpSurge(game, tower) {
+  tower._surgeUntil = game.time + VFX.levelUp.buffDuration;
+  tower._surgeActive = true;
+  recomputeStats(tower, game.grid); // refreshes _masteryRank AND applies the surge buff
+  triggerLevelUpSurge(game, tower);
+}
+
 export function updateTowers(game, dt) {
   for (const tower of game.towers) {
     // Rank up live: kills mid-battle can push a tower over its next mastery
@@ -446,10 +458,12 @@ export function updateTowers(game, dt) {
     // gaining experience" moment — celebrate it with a golden power surge and
     // a brief boost (see triggerLevelUpSurge).
     if (masteryRankFor(tower.xp) > tower._masteryRank) {
-      tower._surgeUntil = game.time + VFX.levelUp.buffDuration;
-      tower._surgeActive = true;
-      recomputeStats(tower, game.grid); // refreshes _masteryRank AND applies the surge buff
-      triggerLevelUpSurge(game, tower);
+      // First tower EVER to reach Mastery (rank 0 -> 1) flags a one-time
+      // Indy-7 explainer card, consumed in main.js updateBarks (which also
+      // owns the save-gate + veteran backfill). Read the OLD rank here,
+      // BEFORE applyLevelUpSurge recomputes it. First one this frame wins.
+      if (tower._masteryRank === 0) game.pendingFirstMastery ??= tower.type;
+      applyLevelUpSurge(game, tower);
     } else if (masteryRankFor(tower.xp) !== tower._masteryRank) {
       // Rank changed without going up (e.g. a re-anchored mastery start): keep
       // stats honest but skip the celebration.

@@ -3422,12 +3422,12 @@ function animateStoryTowerDemo(time) {
   storyTowerDemoFrame = requestAnimationFrame(animateStoryTowerDemo);
 }
 
-function startStoryTowerDemo(type) {
+function startStoryTowerDemo(type, towerTypeOverride) {
   stopStoryTowerDemo();
   const canvas = el.storyTowerDemo;
   if (!type || !canvas) return;
 
-  storyTowerDemo = createTowerDemo(type);
+  storyTowerDemo = createTowerDemo(type, towerTypeOverride ? { towerType: towerTypeOverride } : {});
   canvas.width = storyTowerDemo.game.grid.width * storyTowerDemo.game.grid.tileSize;
   canvas.height = storyTowerDemo.game.grid.height * storyTowerDemo.game.grid.tileSize;
   storyTowerDemoCtx = canvas.getContext("2d");
@@ -3632,7 +3632,9 @@ function renderOnboardingCard() {
   renderEnemyParade(card.enemyType || null);
   // `towerType` = a single-tower intro (also drives the stat line); `demo` =
   // a named multi-tower scenario (e.g. the onboarding "intro" battle).
-  startStoryTowerDemo(card.towerType || card.demo || null);
+  // `demoTowerType` overrides which tower a named scenario features (the
+  // first-Mastery card's "mastery" loop shows whichever tower ranked up).
+  startStoryTowerDemo(card.towerType || card.demo || null, card.demoTowerType);
   const towerStat = towerIntroStatLine(card.towerType);
   const cardTextTranslated = t('intro.' + card.id + '.text', card.text);
   const cardText = towerStat ? `${cardTextTranslated}\n\n${towerStat}` : cardTextTranslated;

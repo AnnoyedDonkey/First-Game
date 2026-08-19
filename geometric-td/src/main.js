@@ -612,11 +612,37 @@ window.updateBarks = () => updateBarks(game);
 // pause the battle and play as a story card instead. Both paths stay gated
 // by the one STORY BANTER toggle (getBarksEnabled).
 function updateBarks(game) {
-  if (!game || game.endless || !NARRATIVE.enabled || !barkState || !getBarksEnabled()) return;
+  if (!game || game.endless || !NARRATIVE.enabled || !barkState) return;
   // A card is already up (and the sim is frozen behind it) — do nothing this
   // frame rather than stomping it or firing ticker barks nobody can see.
   // Nothing is lost: the same enemies are still on the field next frame.
   if (isOnboardingActive()) return;
+  // First-Mastery unlock card: shown ONCE ever, the first time any tower
+  // reaches Mastery rank 1 mid-battle (towers.js sets game.pendingFirstMastery
+  // on the 0->1 crossing). It fires even when STORY BANTER is OFF — checked
+  // BEFORE the getBarksEnabled bail — because it teaches a real mechanic (gear
+  // unlocks at Mastery). Save-gated via shouldShowBeat; veterans who already
+  // have a Mastered tower are pre-marked in progression.backfillNarrativeSeen.
+  if (game.pendingFirstMastery) {
+    const towerType = game.pendingFirstMastery;
+    game.pendingFirstMastery = null;
+    if (shouldShowBeat("firstMastery")) {
+      markBeatSeen("firstMastery");
+      const fm = NARRATIVE.firstMastery;
+      const towerName = TOWERS[towerType]?.name || "tower";
+      playCards([{
+        id: "firstMastery",
+        speaker: fm.speaker,
+        mood: fm.mood,
+        cta: fm.cta,
+        demo: "mastery",           // runs the leveling-up tower-demo loop
+        demoTowerType: towerType,  // featuring the tower that just ranked up
+        text: fm.text.replace("{tower}", towerName),
+      }]);
+      return;
+    }
+  }
+  if (!getBarksEnabled()) return;
   const introCards = [];
   const introTypes = new Set();
   let bossOnField = false;
