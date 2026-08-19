@@ -737,9 +737,22 @@
     // from the game key so we never mint a phantom id here.
     const EXCLUDE_KEY = "tele-exclude-ids";
     const HIDE_KEY = "tele-hide-me";
+    // The dashboard owner's own two saves (Home-Screen all-cleared + Safari
+    // testing), excluded by DEFAULT so the page shows other players out of the
+    // box. Seeded only on first visit (no stored list yet); once the viewer
+    // adds/removes any id their explicit list takes over and these are never
+    // re-injected — so removing one here sticks.
+    const DEFAULT_EXCLUDED = [
+      "fd146ee0-9acd-40ee-ba03-2efd615f73b6",
+      "60c452bb-d4ab-4f51-90d1-66350285e1eb",
+    ];
     function loadExcluded() {
-      try { const a = JSON.parse(localStorage.getItem(EXCLUDE_KEY) || "[]"); return Array.isArray(a) ? a : []; }
-      catch { return []; }
+      try {
+        const raw = localStorage.getItem(EXCLUDE_KEY);
+        if (raw == null) return DEFAULT_EXCLUDED.slice(); // first visit: seed defaults
+        const a = JSON.parse(raw);
+        return Array.isArray(a) ? a : [];
+      } catch { return DEFAULT_EXCLUDED.slice(); }
     }
     function saveExcluded(a) { try { localStorage.setItem(EXCLUDE_KEY, JSON.stringify(a)); } catch {} }
     function addExcluded(id) {
