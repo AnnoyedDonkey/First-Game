@@ -6,7 +6,7 @@ July **and** August 2026); the original pre-cleanup handoff is preserved in Git
 at commit `2650204`. This file keeps only what you need to start work:
 current state, non-obvious mechanics, rules, tuning locations, and the file map.
 
-## Current state — 2026-08-16
+## Current state — 2026-08-18
 
 **IN PROGRESS — French localization (i18n).** A discreet `EN|FR` language
 toggle (default English) so the player's dad can play in French. Read
@@ -20,7 +20,7 @@ en)` looks it up; `lang` save field via `progression.js getLang/setLang`;
 proper nouns** (tower names Laser/Pulse/Slow/Railgun/Rocket, Indy-7,
 Bratwurst-XL, "GEOMETRIC TD").
 
-**Deployed build: `2026.08.19-1`.**
+**Deployed build: `2026.08.19-3`.**
 
 ### Player telemetry dashboard + L004 ease (2026.08.19-1)
 - **Player Telemetry** section added to `balance-difficulty.html` (the deployed
@@ -37,6 +37,33 @@ Bratwurst-XL, "GEOMETRIC TD").
   cliff): W3 basic 14@5.0x→12@3.8x, fast 10@4.5x→8@3.4x, +group `bountyMult 1.6`
   (net ~1.3x after the level's 0.82). Reverses the earlier "intentional gate"
   stance — watch whether the L2→L6 drop-off funnel flattens next telemetry.
+
+### Tower level-up surge (new, `2026.08.19-2..-3`)
+A mastery **rank-up** mid-battle now gets a golden celebration instead of a lone
+yellow ring. **Trigger is mastery ONLY** — banked XP crossing a rank threshold
+(fresh towers start earning ranks past `TOWER_UPGRADES.mastery.xpStart` ≈ 700),
+fired in `towers.js updateTowers` when `masteryRankFor(xp) > tower._masteryRank`.
+Deliberately NOT the paid in-battle level-up: measured that raw XP does not buff
+a tower at all (XP only makes it *eligible*; money buys the level), so there was
+nothing to celebrate at the eligibility moment. On rank-up:
+- **Visual surge** — an expanding shockwave ring, two nested gold rings, and a
+  shimmering gold+white spark splash (`particles.js emitLevelUpSplash`), plus an
+  optional floating **"LEVEL UP"** label (new `floatText` effect kind in
+  `renderer.js drawEffects`, gated by `showText`).
+- **Sustained aura** — a pulsing golden halo wraps the tower for the whole buff
+  window (`renderer.js drawSurgeAura`, keyed off `tower._surgeUntil`), so the
+  "powered up" state is unmissable and lasts as long as the boost.
+- **Temporary buff** — ×1.35 damage, ×1.5 fire rate for 5s, with **golden
+  shots** for the duration (`towers.js fireShot` `shotColor`; `projectiles.js`
+  orbs/rockets accept `shot.color`). Applied at the END of `recomputeStats` from
+  `tower._surgeActive`; runtime-only, **no save change**.
+- **Speed compensation (the important bit)** — the one-shot VFX decays on the
+  speed-scaled game clock, so at x2/x4 it used to flash past. `main.js` exposes
+  `game.effectiveSpeed` (= `DEBUG.gameSpeed * speedFactor`) and the surge scales
+  those lifetimes UP by it, so the burst lasts a constant REAL-time length at any
+  speed. The buff + aura stay honest game-time.
+- **All knobs in `config.js VFX.levelUp`** (colors, shockwave/ring/splash/text
+  sizes+ttls, aura radius/alpha/pulse, `showText`, `buffDuration` + the two mults).
 
 Older recently-shipped — `2026.08.11-7`, shipped 2026.08.11 (detail in the archive):
 - **First-loss pep talk** — one-time Indy-7 encouragement on the first genuine
