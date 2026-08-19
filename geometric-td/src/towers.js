@@ -5,7 +5,7 @@
 // that is inside their range ("first" targeting).
 // ============================================================
 
-import { TOWERS, TOWER_UPGRADES, LOOT } from "./config.js";
+import { TOWERS, TOWER_UPGRADES, LOOT, VFX } from "./config.js";
 import { enemyPosition, damageEnemy, slowEnemy } from "./enemies.js";
 import { spawnPulseOrb, spawnRocket } from "./projectiles.js";
 import {
@@ -13,7 +13,7 @@ import {
   getTowerLevelCap, getRailBeamLengthMult, getLaserFireRateMult, getPulseBlastRadiusMult,
   getRocketBlastRadiusMult,
 } from "./progression.js";
-import { emitHitSparks } from "./particles.js";
+import { emitHitSparks, emitLevelUpSplash } from "./particles.js";
 import {
   aggregateGear, masteryRankFor, normalizeGear, xpToNextMastery,
 } from "./equipment.js";
@@ -155,6 +155,17 @@ function recomputeStats(tower, grid) {
     tower.range *= conduit.rangeMult;
     tower.fireInterval /= conduit.fireRateMult;
     if (conduit.pierceBonus) tower.pierce += conduit.pierceBonus;
+  }
+
+  // Level-up power surge: a brief damage + fire-rate boost after a mastery
+  // rank-up. Applied LAST (like conduits) so it scales the fully-computed
+  // stats. `_surgeActive` is toggled in updateTowers as the timer starts and
+  // expires, which re-runs recomputeStats — so this stays idempotent and
+  // needs no base-stat snapshot. Runtime-only; never persisted.
+  if (tower._surgeActive) {
+    const lu = VFX.levelUp;
+    tower.damage *= lu.buffDamageMult;
+    tower.fireInterval /= lu.buffFireRateMult;
   }
 }
 
@@ -387,16 +398,54 @@ function findRailgunAim(game, tower) {
   return best;
 }
 
+// The golden level-up celebration: a power surge wraps the tower (two nested
+// gold rings) and dissipates into a shimmering spark splash, plus an optional
+// small floating "LEVEL UP" label. Purely cosmetic — the buff itself is set in
+// updateTowers. All knobs live in config.js VFX.levelUp.
+function triggerLevelUpSurge(game, tower) {
+  const lu = VFX.levelUp;
+  const ts = game.grid.tileSize;
+  // Outer halo, then a tighter inner ring, for a layered "wrap" that blooms
+  // outward as it fades (rings expand while their life drains — see drawEffects).
+  game.effects.push({
+    kind: "ring", x: tower.pos.x, y: tower.pos.y, color: lu.color,
+    radius: ts * lu.ringRadiusTiles, ttl: lu.ringTtl, maxTtl: lu.ringTtl,
+  });
+  game.effects.push({
+    kind: "ring", x: tower.pos.x, y: tower.pos.y, color: lu.color,
+    radius: ts * lu.innerRingRadiusTiles, ttl: lu.innerRingTtl, maxTtl: lu.innerRingTtl,
+  });
+  emitLevelUpSplash(game, tower.pos.x, tower.pos.y);
+  if (lu.showText) {
+    game.effects.push({
+      kind: "floatText", text: lu.text, color: lu.color, font: lu.textFont,
+      x: tower.pos.x, y: tower.pos.y - ts * lu.textStartYTiles,
+      rise: ts * lu.textRiseTiles, ttl: lu.textTtl, maxTtl: lu.textTtl,
+    });
+  }
+}
+
 export function updateTowers(game, dt) {
   for (const tower of game.towers) {
-    // Rank up live: kills mid-battle can push a tower over its next
-    // mastery threshold, buffing its damage on the spot.
-    if (masteryRankFor(tower.xp) !== tower._masteryRank) {
+    // Rank up live: kills mid-battle can push a tower over its next mastery
+    // threshold, permanently buffing its damage. This is the "leveled up from
+    // gaining experience" moment — celebrate it with a golden power surge and
+    // a brief boost (see triggerLevelUpSurge).
+    if (masteryRankFor(tower.xp) > tower._masteryRank) {
+      tower._surgeUntil = game.time + VFX.levelUp.buffDuration;
+      tower._surgeActive = true;
+      recomputeStats(tower, game.grid); // refreshes _masteryRank AND applies the surge buff
+      triggerLevelUpSurge(game, tower);
+    } else if (masteryRankFor(tower.xp) !== tower._masteryRank) {
+      // Rank changed without going up (e.g. a re-anchored mastery start): keep
+      // stats honest but skip the celebration.
       recomputeStats(tower, game.grid);
-      game.effects.push({
-        kind: "ring", x: tower.pos.x, y: tower.pos.y, color: "#ffe24a",
-        radius: game.grid.tileSize * 0.55, ttl: 0.5, maxTtl: 0.5,
-      });
+    }
+
+    // Expire the surge boost when its timer runs out (recompute drops the buff).
+    if (tower._surgeActive && game.time >= tower._surgeUntil) {
+      tower._surgeActive = false;
+      recomputeStats(tower, game.grid);
     }
 
     tower.cooldown -= dt;
@@ -491,6 +540,9 @@ function fireShot(game, tower, target, targetPos, damageScale) {
   const rng = game.rng || Math.random;
   const crit = rng() < tower.critChance;
   const damage = tower.damage * damageScale * (crit ? 1 + tower.critDamage : 1);
+  // While a level-up surge is active, the tower's shots glow gold. Only the
+  // def-colored visuals are retinted; white-hot cores (railgun/crit) stay white.
+  const shotColor = tower._surgeActive ? VFX.levelUp.color : def.color;
 
   if (tower.type === "railgun") {
     tower.aimAngle = Math.atan2(targetPos.y - tower.pos.y, targetPos.x - tower.pos.x);
@@ -502,7 +554,7 @@ function fireShot(game, tower, target, targetPos, damageScale) {
     kind: "muzzle",
     x: tower.pos.x + Math.cos(tower.aimAngle) * barrel,
     y: tower.pos.y + Math.sin(tower.aimAngle) * barrel,
-    color: def.color,
+    color: shotColor,
     radius: 5 + tower.level * 2,
     ttl: 0.07, maxTtl: 0.07,
   });
@@ -525,7 +577,7 @@ function fireShot(game, tower, target, targetPos, damageScale) {
       kind: "beam",
       x1: tower.pos.x, y1: tower.pos.y,
       x2: beamEnd.x, y2: beamEnd.y,
-      color: def.color,
+      color: shotColor,
       width: 1.5 + tower.level * 0.5,
       ttl: 0.08, maxTtl: 0.08,
     });
@@ -560,13 +612,13 @@ function fireShot(game, tower, target, targetPos, damageScale) {
       kind: "beam",
       x1: tower.pos.x, y1: tower.pos.y,
       x2: endX, y2: endY,
-      color: def.color,
+      color: shotColor,
       width: 6 + tower.level * 2,
       ttl: 0.1, maxTtl: 0.1,
     });
     for (let i = 0; i < victims.length; i++) {
       const v = victims[i];
-      emitHitSparks(game, v.pos.x, v.pos.y, def.color, 6);
+      emitHitSparks(game, v.pos.x, v.pos.y, shotColor, 6);
       if (crit) emitCritVfx(game, tower, v.pos.x, v.pos.y);
       const ramp = hasUnique(tower, "cascadeRail")
         ? 1 + i * LOOT.combat.cascadeDamageRamp / 100
@@ -581,11 +633,11 @@ function fireShot(game, tower, target, targetPos, damageScale) {
 
   } else if (tower.type === "pulse") {
     // Slow homing orb that explodes on impact (see projectiles.js).
-    spawnPulseOrb(game, tower, target, { damage, crit });
+    spawnPulseOrb(game, tower, target, { damage, crit, color: shotColor });
 
   } else if (tower.type === "rocket") {
     // Global-range artillery: lob an explosive rocket at the target.
-    spawnRocket(game, tower, target, { damage, crit });
+    spawnRocket(game, tower, target, { damage, crit, color: shotColor });
 
   } else if (tower.type === "slow") {
     // Instant zap: light damage + slow debuff.
@@ -593,7 +645,7 @@ function fireShot(game, tower, target, targetPos, damageScale) {
       kind: "beam",
       x1: tower.pos.x, y1: tower.pos.y,
       x2: targetPos.x, y2: targetPos.y,
-      color: def.color,
+      color: shotColor,
       width: 1.2 + tower.level * 0.4,
       ttl: 0.12, maxTtl: 0.12,
     });
@@ -623,7 +675,7 @@ function fireShot(game, tower, target, targetPos, damageScale) {
         enemy.gravHits = gravHits + 1;
       }
       game.effects.push({
-        kind: "ring", x: targetPos.x, y: targetPos.y, color: def.color,
+        kind: "ring", x: targetPos.x, y: targetPos.y, color: shotColor,
         radius, ttl: 0.3, maxTtl: 0.3,
       });
     } else {

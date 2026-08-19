@@ -725,6 +725,39 @@ export const VFX = {
     doubleBlinkChance: 0.35,  // fraction of blinks that are a quick double-blink
     blinkGap: 0.1,            // eyes-open pause between the two blinks of a double
   },
+
+  // Tower level-up (MASTERY rank-up) celebration. A rank-up is automatic —
+  // banked XP crossing a mastery threshold mid-battle (towers.js updateTowers)
+  // — so this is the "leveled up from gaining experience" payoff. A golden
+  // power surge wraps the tower and dissipates in a shimmering spark splash,
+  // an optional small "LEVEL UP" label floats above it, and the tower gets a
+  // brief damage + fire-rate boost with GOLDEN shots for the duration. Visual
+  // effects render in renderer.js drawEffects; the buff + gold shots live in
+  // towers.js (recomputeStats applies the multipliers, fire() tints the shot).
+  // Runtime-only — nothing here touches the save. One-stop tuning:
+  levelUp: {
+    color: "#ffd24a",         // the surge gold — used for rings, splash, text, and shots
+    // --- the power surge that wraps the tower ---
+    ringRadiusTiles: 0.62,    // outer radius the golden halo expands to (× tile)
+    ringTtl: 0.6,             // seconds the surge halo lives before fading
+    innerRingTtl: 0.45,       // a second, tighter ring for a layered "wrap" look
+    innerRingRadiusTiles: 0.4,
+    // --- the shimmering splash it dissipates into ---
+    splashSparks: 16,         // golden sparks flung out as the surge breaks apart
+    splashSpeed: [70, 240],   // px/sec range for the splash sparks
+    splashTtl: [0.35, 0.75],  // seconds range before a splash spark fades
+    // --- the floating "LEVEL UP" label ---
+    showText: true,           // flip off in one line if it reads as disturbing on phone
+    text: "LEVEL UP",
+    textFont: "700 13px system-ui, sans-serif",
+    textRiseTiles: 0.9,       // how far above the tower the text drifts up (× tile)
+    textTtl: 1.1,             // seconds the label lives
+    textStartYTiles: 0.5,     // initial offset above the tower center (× tile)
+    // --- the temporary combat buff (gameplay) ---
+    buffDuration: 4.0,        // seconds the surge boost lasts
+    buffDamageMult: 1.35,     // damage multiplier while surging
+    buffFireRateMult: 1.5,    // fire-rate multiplier while surging (fireInterval /= this)
+  },
 };
 
 // Polygon sides for each enemy shape (renderer + shard explosions).

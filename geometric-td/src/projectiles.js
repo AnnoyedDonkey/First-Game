@@ -24,7 +24,7 @@ export function spawnPulseOrb(game, tower, targetEnemy, shot) {
     damage: shot.damage,
     crit: shot.crit,
     splashRadius: tower.splashRadius,
-    color: tower.def.color,
+    color: shot.color || tower.def.color, // gold while the tower is surging (level-up buff)
     sourceTower: tower,
   });
 }
@@ -43,7 +43,7 @@ export function spawnRocket(game, tower, targetEnemy, shot) {
     damage: shot.damage,
     crit: shot.crit,
     splashRadius: tower.splashRadius,
-    color: tower.def.color,
+    color: shot.color || tower.def.color, // gold while the tower is surging (level-up buff)
     sourceTower: tower,
   });
 }

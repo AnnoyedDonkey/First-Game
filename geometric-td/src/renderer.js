@@ -971,6 +971,18 @@ function drawEffects(ctx, game) {
       ctx.fillStyle = fx.color;
       ctx.globalAlpha = life * 0.35;
       ctx.fillRect(fx.x * ts, fx.y * ts, ts, ts);
+    } else if (fx.kind === "floatText") {
+      // Small label that drifts up and fades (e.g. tower "LEVEL UP"). Drawn in
+      // the additive pass, so the gold glows over the tower without shadowBlur.
+      // Ease-out on both fade and rise so it lingers legibly then whisps away.
+      const t = 1 - life;                 // 0 -> 1 over its lifetime
+      const y = fx.y - (fx.rise || 0) * (1 - (1 - t) * (1 - t));
+      ctx.globalAlpha = life * life;      // hold, then fade quicker at the end
+      ctx.fillStyle = fx.color;
+      ctx.font = fx.font || "700 13px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(fx.text, fx.x, y);
     }
 
     ctx.restore();

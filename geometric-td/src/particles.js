@@ -37,6 +37,27 @@ export function emitHitSparks(game, x, y, color, count = VFX.hitSparkCount) {
   }
 }
 
+// Golden level-up splash: the power surge breaks apart into a shimmering
+// spray of gold + white-hot sparks. Uses its own VFX.levelUp knobs so the
+// shimmer can be tuned independently of combat-hit sparks.
+export function emitLevelUpSplash(game, x, y) {
+  const lu = VFX.levelUp;
+  for (let i = 0; i < lu.splashSparks; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const speed = rand(lu.splashSpeed[0], lu.splashSpeed[1]);
+    push(game, {
+      kind: "spark",
+      x, y,
+      vx: Math.cos(a) * speed,
+      vy: Math.sin(a) * speed,
+      color: i % 3 === 0 ? "#ffffff" : lu.color, // white-hot glints shimmer through the gold
+      size: rand(1.6, 3.4),
+      ttl: rand(lu.splashTtl[0], lu.splashTtl[1]),
+      maxTtl: lu.splashTtl[1],
+    });
+  }
+}
+
 // The signature effect: the enemy's polygon breaks into its own
 // edges, which fly apart as spinning line segments.
 // `power` = the killing tower's level: stronger towers blow enemies
