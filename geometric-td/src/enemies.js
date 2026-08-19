@@ -5,7 +5,7 @@
 import { ENEMIES, ECONOMY, VFX, LOOT } from "./config.js";
 import { getMoneyMult, getXpMult, getSkillShardFindMult } from "./progression.js";
 import { rollKillDrop } from "./loot.js";
-import { emitHitSparks, emitDeathShards } from "./particles.js";
+import { emitHitSparks, emitDeathShards, emitCoins } from "./particles.js";
 
 let nextEnemyId = 1;
 
@@ -242,11 +242,13 @@ export function damageEnemy(game, enemy, sourceTower, amount) {
 
   enemy.alive = false;
   game.kills = (game.kills || 0) + 1; // B5 milestone tracking
-  game.money += Math.round(
+  const isBoss = enemy.type === "boss";
+  const earned = Math.round(
     enemy.bounty * ECONOMY.moneyPerKillMultiplier * getMoneyMult() *
     (sourceTower ? sourceTower.bountyMult || 1 : 1) *
     (game.level && game.level.bountyMult != null ? game.level.bountyMult : 1)
   );
+  game.money += earned;
 
   // The base XP pool is split without inflation; equipped XP Gain then
   // multiplies each recipient's awarded share.
@@ -284,7 +286,32 @@ export function damageEnemy(game, enemy, sourceTower, amount) {
   // GeoDefense-style shatter: edges fly apart + a grid shockwave.
   // Stronger killers produce a more violent explosion.
   emitDeathShards(game, pos.x, pos.y, enemy.def, ts, sourceTower ? sourceTower.level : 1);
-  const isBoss = enemy.type === "boss";
+
+  // Credit Juice: coins pop out and rain down on the track. Bosses throw a
+  // much bigger, harder-flung haul.
+  const coinRange = isBoss ? VFX.coins.bossPerKill : VFX.coins.perKill;
+  const coinCount = Math.round(coinRange[0] + Math.random() * (coinRange[1] - coinRange[0]));
+  emitCoins(game, pos.x, pos.y, coinCount, isBoss ? VFX.coins.bossSpeedMult : 1, ts);
+
+  // Credit Juice: gear-drop flash — a rarity-colored diamond pops at the
+  // drop site (echoed by a matching expanding ring), so a loot drop reads
+  // instantly instead of only showing up later in the loot tray.
+  if (drop) {
+    const gd = VFX.gearDrop;
+    const spd = game.effectiveSpeed || 1; // one-shot VFX decay on speed-scaled time
+    // Only the RARITY travels with the effect: the renderer owns the color
+    // map, so enemies.js needs no import from it (renderer.js already imports
+    // enemyPosition from here, and the reverse edge would make that circular).
+    // The expanding ring is drawn by the gearFlash branch for the same reason.
+    game.effects.push({
+      kind: "gearFlash", rarity: drop.rarity, x: pos.x, y: pos.y,
+      size: ts * gd.sizeTiles, rise: ts * gd.riseTiles,
+      popScale: gd.popScale, glowMult: gd.glowMult,
+      ringRadius: ts * gd.ringRadiusTiles, ringFrac: gd.ringTtl / gd.ttl,
+      ttl: gd.ttl * spd, maxTtl: gd.ttl * spd,
+    });
+  }
+
   game.springGrid.applyShock(
     pos.x, pos.y,
     ts * VFX.warp.shockRadiusTiles * (isBoss ? 2 : 1),

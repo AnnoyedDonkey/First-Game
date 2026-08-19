@@ -5,7 +5,7 @@
 import {
   TOWERS, ENEMIES, SKILLS, SKILL_VALUES, TOWER_UPGRADES, LOOT,
   SKILL_BRANCH_COLORS, SKILL_TREE_VIEWBOX, FEEDBACK, TUTORIAL, NARRATIVE,
-  SHAPE_SIDES,
+  SHAPE_SIDES, VFX,
 } from "./config.js";
 import {
   onTutorialChange, isTutorialActive, currentStep as currentTutorialStep,
@@ -219,7 +219,42 @@ function setText(node, key, value) {
   node.textContent = value;
 }
 
+// Credit Juice: HUD gold pulse whenever CREDITS increases. `lastMoney` tracks
+// the previous frame's value so a spend (money going down) never pulses, and
+// starts null so loading into a battle's first HUD update doesn't either.
+let lastMoney = null;
+let lastMoneyGame = null; // identity of the battle lastMoney belongs to
+let creditPulseTimer = null;
+let lastCreditPulseAt = -Infinity;
+
+function triggerCreditPulse() {
+  const cg = VFX.creditGain;
+  const now = performance.now();
+  // Rapid gains (x4 speed, multi-kill frames) would otherwise restart the
+  // animation so often it strobes instead of pulsing — let the in-flight
+  // animation keep running instead of retriggering it too soon.
+  if (now - lastCreditPulseAt < cg.hudPulseMinGapMs) return;
+  lastCreditPulseAt = now;
+  el.money.classList.remove("credit-gain");
+  void el.money.offsetWidth; // force reflow so the animation restarts
+  el.money.classList.add("credit-gain");
+  if (creditPulseTimer) clearTimeout(creditPulseTimer);
+  creditPulseTimer = setTimeout(() => {
+    el.money.classList.remove("credit-gain");
+    creditPulseTimer = null;
+  }, cg.hudPulseMs);
+}
+
 export function updateHUD(game) {
+  // Each battle gets a fresh baseline: startLevel builds a new game object, so
+  // comparing identity resets the tracker without needing a lifecycle hook.
+  // Without this, starting a level richer than the last one ended would pulse.
+  if (game !== lastMoneyGame) {
+    lastMoneyGame = game;
+    lastMoney = null;
+  }
+  if (lastMoney !== null && game.money > lastMoney) triggerCreditPulse();
+  lastMoney = game.money;
   setText(el.money, "money", String(game.money));
 
   const waveNum = game.waveIndex + 1;

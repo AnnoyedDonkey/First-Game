@@ -726,6 +726,58 @@ export const VFX = {
     blinkGap: 0.1,            // eyes-open pause between the two blinks of a double
   },
 
+  // Credit Juice Phase 1: coins that pop out of a dying enemy, arc under
+  // gravity, and settle on the track before fading. Purely cosmetic — the
+  // money award itself is untouched (enemies.js). Physics runs on honest
+  // game-time (not speed-compensated); only the resting fade would need
+  // that treatment and it's short enough not to matter.
+  coins: {
+    // --- regular kills ---
+    perKill: [2, 4],        // random count per normal enemy death
+    // --- boss kills ---
+    bossPerKill: [18, 26],  // the "explosion of coins" moment
+    bossSpeedMult: 1.6,     // bosses throw them harder and wider
+    // --- physics (game-time, not speed-compensated) ---
+    speed: [55, 130],       // initial burst speed, px/s
+    upBias: 0.55,           // 0..1, how much of the burst is aimed upward
+    gravity: 420,           // px/s^2 pulling coins back down to the board
+    drag: 0.6,              // horizontal air drag (lower than the 2.2 sparks use)
+    landSpreadTiles: 0.45,  // how far below the death point a coin may settle
+    // --- look ---
+    color: "#ffe24a",       // matches --neon-yellow / the CREDITS HUD color
+    rimColor: "#fff6c0",    // bright rim so the coin reads as metal
+    size: [2.6, 4.2],       // coin radius in px
+    spin: [6, 13],          // flip speed, rad/s (drawn as a horizontal squash)
+    spinDamp: 2.2,          // how fast a landed coin's flip settles flat
+    glowMult: 2.6,          // glow sprite radius as a multiple of coin size
+    // --- lifetime ---
+    flightTtl: [0.55, 0.9], // max airborne time; a coin still in the air when
+                            // this runs out is forced to land (safety budget,
+                            // not a fade — coins stay bright until they land)
+    restTtl: [0.7, 1.3],    // how long a landed coin lies there before fading
+  },
+
+  // Credit Juice: HUD pulse when CREDITS goes up (ui.js updateHUD toggles a
+  // CSS class on #money-value; the class's animation-duration in styles.css
+  // is the one accepted duplicate of hudPulseMs — keep them in sync).
+  creditGain: {
+    hudPulseMs: 420,        // duration of the HUD pulse animation
+    hudPulseMinGapMs: 90,   // don't retrigger faster than this (retrigger only)
+  },
+
+  // Credit Juice: gear-drop flash — a small rarity-colored diamond pops at
+  // the enemy when a loot item drops, echoing the diamond orbitals gear
+  // draws around towers (drawTowerGear) so it reads instantly as "gear".
+  gearDrop: {
+    ttl: 1.1,             // seconds on screen (speed-compensated)
+    riseTiles: 0.7,        // how far it floats up over its life
+    sizeTiles: 0.3,        // diamond half-size as a fraction of a tile
+    popScale: 1.6,         // scales up from this to 1 in the first ~20% of life
+    ringTtl: 0.45,         // expanding rarity ring behind it
+    ringRadiusTiles: 0.85,
+    glowMult: 2.2,
+  },
+
   // Tower level-up (MASTERY rank-up) celebration. A rank-up is automatic —
   // banked XP crossing a mastery threshold mid-battle (towers.js updateTowers)
   // — so this is the "leveled up from gaining experience" payoff. A golden

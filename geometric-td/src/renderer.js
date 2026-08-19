@@ -9,7 +9,7 @@ import { GEAR_SLOTS } from "./equipment.js";
 
 // Rarity accent colors for in-battle gear orbitals (B4). Mirrors the
 // RARITY_COLOR map in ui.js — kept local so the renderer takes no UI import.
-const GEAR_RARITY_COLOR = {
+export const GEAR_RARITY_COLOR = {
   common: "#b7c0d5", enhanced: "#4affa1", rare: "#35e0ff",
   prismatic: "#ff3fd4", singularity: "#ffe24a",
 };
@@ -1005,6 +1005,36 @@ function drawEffects(ctx, game) {
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(fx.text, fx.x, y);
+    } else if (fx.kind === "gearFlash") {
+      // Credit Juice: gear-drop flash. A rarity-colored diamond (same shape
+      // drawTowerGear uses for equipped orbitals, so it reads instantly as
+      // "gear") pops in, drifts up, and fades — same rise/fade easing as
+      // floatText above, plus a pop-in scale for the first fifth of its life.
+      const color = GEAR_RARITY_COLOR[fx.rarity] || GEAR_RARITY_COLOR.common;
+      const t = 1 - life;                 // 0 -> 1 over its lifetime
+      const y = fx.y - fx.rise * (1 - (1 - t) * (1 - t));
+      const pop = t < 0.2 ? fx.popScale - (fx.popScale - 1) * (t / 0.2) : 1;
+      const half = fx.size * pop;
+      // Expanding rarity ring over the first ringFrac of the life, drawn here
+      // rather than pushed as a separate `ring` effect so the drop site never
+      // has to resolve a color (see enemies.js).
+      if (t < fx.ringFrac) {
+        const rt = t / fx.ringFrac;       // 0 -> 1 across the ring's own life
+        ctx.globalAlpha = (1 - rt) * (1 - rt);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = LOOK.lineWidth;
+        ctx.beginPath();
+        ctx.arc(fx.x, y, fx.ringRadius * rt, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = life * life;      // hold, then fade quicker at the end
+      drawGlow(ctx, fx.x, y, fx.size * fx.glowMult, color, life * life);
+      ctx.save();
+      ctx.translate(fx.x, y);
+      ctx.rotate(Math.PI / 4);
+      ctx.fillStyle = color;
+      ctx.fillRect(-half, -half, half * 2, half * 2);
+      ctx.restore();
     }
 
     ctx.restore();
@@ -1028,6 +1058,25 @@ function drawParticles(ctx, game) {
       ctx.lineTo(p.x + cos, p.y + sin);
       ctx.stroke();
       ctx.globalAlpha = 1;
+    } else if (p.kind === "coin") {
+      // A flipping coin: filled disc squashed horizontally by its spin so
+      // it reads as a spinning edge-on flip, plus a thin metal rim.
+      const c = VFX.coins;
+      const squash = Math.max(0.15, Math.abs(Math.cos(p.rot)));
+      ctx.globalAlpha = life;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.scale(squash, 1);
+      ctx.beginPath();
+      ctx.arc(0, 0, p.size, 0, Math.PI * 2);
+      ctx.fillStyle = p.color;
+      ctx.fill();
+      ctx.lineWidth = 0.8;
+      ctx.strokeStyle = c.rimColor;
+      ctx.stroke();
+      ctx.restore();
+      ctx.globalAlpha = 1;
+      drawGlow(ctx, p.x, p.y, p.size * c.glowMult, p.color, life * (p.landed ? 0.7 : 1));
     } else {
       // Spark: glowing dot + a motion-trail streak behind it.
       ctx.globalAlpha = life;

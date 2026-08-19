@@ -61,6 +61,49 @@ export function emitLevelUpSplash(game, x, y) {
   }
 }
 
+// Credit Juice: coins that pop out of a dying enemy. Full-circle spray
+// biased upward so it fountains up and rains back down, then each coin
+// settles at a random spot near the death point and fades. `tileSize` is
+// passed in by the caller rather than pulled from grid state (see
+// enemies.js). `speedMult` lets bosses throw their haul harder (bossSpeedMult).
+export function emitCoins(game, x, y, count, speedMult = 1, tileSize) {
+  const c = VFX.coins;
+  for (let i = 0; i < count; i++) {
+    const rest = rand(c.restTtl[0], c.restTtl[1]);
+    const a = Math.random() * Math.PI * 2;
+    let dx = Math.cos(a);
+    let dy = Math.sin(a);
+    // Blend the vertical component toward straight-up by upBias so the
+    // spray fountains rather than firing sideways.
+    dy = dy * (1 - c.upBias) + -1 * c.upBias;
+    const len = Math.hypot(dx, dy) || 1;
+    dx /= len;
+    dy /= len;
+    const speed = rand(c.speed[0], c.speed[1]) * speedMult;
+    push(game, {
+      kind: "coin",
+      x, y,
+      vx: dx * speed,
+      vy: dy * speed,
+      size: rand(c.size[0], c.size[1]),
+      color: c.color,
+      rot: Math.random() * Math.PI * 2,
+      spin: (Math.random() < 0.5 ? -1 : 1) * rand(c.spin[0], c.spin[1]),
+      landY: y + rand(0, c.landSpreadTiles) * tileSize,
+      landed: false,
+      // A coin is fully bright for its whole flight and only fades once it
+      // has settled, so ttl/maxTtl are seeded from restTtl (ttl === maxTtl
+      // keeps life at 1 in the air). `flight` is a separate safety budget:
+      // a coin flung near-vertically can be airborne longer than any single
+      // fade would allow, so airborne time must NOT consume ttl or fast
+      // coins would wink out mid-arc.
+      flight: rand(c.flightTtl[0], c.flightTtl[1]),
+      ttl: rest,
+      maxTtl: rest,
+    });
+  }
+}
+
 // The signature effect: the enemy's polygon breaks into its own
 // edges, which fly apart as spinning line segments.
 // `power` = the killing tower's level: stronger towers blow enemies
@@ -110,7 +153,37 @@ export function emitDeathShards(game, x, y, def, tileSize, power = 1) {
 
 export function updateParticles(game, dt) {
   const drag = 2.2;
+  const c = VFX.coins;
   for (const p of game.particles) {
+    if (p.kind === "coin") {
+      // Coins arc under gravity, land, and settle — unlike sparks/shards
+      // they don't just drift-and-fade in a straight line. Airborne time
+      // burns `flight`, NOT `ttl`, so a coin stays fully bright for its
+      // whole arc and only starts fading once it has landed.
+      if (!p.landed) {
+        p.flight -= dt;
+        p.vy += c.gravity * dt;
+        p.vx -= p.vx * c.drag * dt;
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.rot += p.spin * dt;
+        // Land on contact — or force it down if the flight budget runs out,
+        // since a near-vertical throw can outlast any single fade window.
+        if ((p.y >= p.landY && p.vy > 0) || p.flight <= 0) {
+          p.landed = true;
+          p.vx = 0;
+          p.vy = 0;
+          p.y = p.landY;
+        }
+      } else {
+        // Settled flat: spin damps toward 0, position holds until it fades.
+        p.ttl -= dt;
+        p.spin -= p.spin * c.spinDamp * dt;
+        p.rot += p.spin * dt;
+      }
+      continue;
+    }
+
     p.ttl -= dt;
     p.x += p.vx * dt;
     p.y += p.vy * dt;

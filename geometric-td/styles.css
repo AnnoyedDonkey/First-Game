@@ -90,6 +90,25 @@ html, body {
 #hud-core  .hud-value { color: var(--neon-green);  text-shadow: 0 0 8px rgba(74, 255, 161, 0.5); }
 #hud-core .hud-value.danger { color: var(--neon-red); text-shadow: 0 0 8px rgba(255, 74, 94, 0.6); }
 
+/* Credit Juice: pulsed on #money-value by ui.js updateHUD whenever CREDITS
+   increases. The 420ms duration mirrors VFX.creditGain.hudPulseMs in
+   config.js — keep them in sync if that knob changes. */
+.credit-gain { animation: creditGainPulse 420ms ease-out; }
+@keyframes creditGainPulse {
+  0%   { color: var(--neon-yellow); text-shadow: 0 0 8px rgba(255, 226, 74, 0.5); transform: scale(1); }
+  30%  { color: #fffef2; text-shadow: 0 0 26px rgba(255, 226, 74, 0.95), 0 0 10px rgba(255, 255, 255, 0.8); transform: scale(1.12); }
+  100% { color: var(--neon-yellow); text-shadow: 0 0 8px rgba(255, 226, 74, 0.5); transform: scale(1); }
+}
+/* Reduced motion: keep the brightness bloom, drop the scale pop. */
+@media (prefers-reduced-motion: reduce) {
+  .credit-gain { animation-name: creditGainPulseReduced; }
+}
+@keyframes creditGainPulseReduced {
+  0%   { color: var(--neon-yellow); text-shadow: 0 0 8px rgba(255, 226, 74, 0.5); }
+  30%  { color: #fffef2; text-shadow: 0 0 26px rgba(255, 226, 74, 0.95), 0 0 10px rgba(255, 255, 255, 0.8); }
+  100% { color: var(--neon-yellow); text-shadow: 0 0 8px rgba(255, 226, 74, 0.5); }
+}
+
 button.hud-item {
   background: none;
   border: 1px solid var(--panel-border);
