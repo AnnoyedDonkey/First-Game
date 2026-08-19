@@ -217,15 +217,10 @@ function backfillNarrativeSeen() {
       }
     }
   }
-  // First-Mastery explainer: if any roster tower has ALREADY reached Mastery,
-  // this player understands the mechanic — pre-mark it seen so a fresh tower
-  // ranking up 0->1 later doesn't trigger a retroactive card. masteryRankFor
-  // uses the same config anchor as the live equip-gate, so this matches it.
-  if (!state.narrativeSeen.firstMastery &&
-      (state.roster || []).some((rec) => masteryRankFor(rec.xp || 0) >= 1)) {
-    state.narrativeSeen.firstMastery = true;
-    changed = true;
-  }
+  // NOTE: the First-Mastery explainer is intentionally NOT backfilled here.
+  // Even a seasoned player who has never seen the card should meet it on their
+  // next Mastery rank-up (towers.js flags any rank-up; main.js gates on the
+  // one-time shouldShowBeat("firstMastery")), so we leave that gate open.
   if (changed) writeSave(state);
 }
 

@@ -617,12 +617,12 @@ function updateBarks(game) {
   // frame rather than stomping it or firing ticker barks nobody can see.
   // Nothing is lost: the same enemies are still on the field next frame.
   if (isOnboardingActive()) return;
-  // First-Mastery unlock card: shown ONCE ever, the first time any tower
-  // reaches Mastery rank 1 mid-battle (towers.js sets game.pendingFirstMastery
-  // on the 0->1 crossing). It fires even when STORY BANTER is OFF — checked
-  // BEFORE the getBarksEnabled bail — because it teaches a real mechanic (gear
-  // unlocks at Mastery). Save-gated via shouldShowBeat; veterans who already
-  // have a Mastered tower are pre-marked in progression.backfillNarrativeSeen.
+  // First-Mastery unlock card: shown ONCE ever, on the first Mastery rank-up a
+  // player sees (towers.js sets game.pendingFirstMastery on ANY rank-up, so a
+  // seasoned player who never saw it still catches it on their next one). It
+  // fires even when STORY BANTER is OFF — checked BEFORE the getBarksEnabled
+  // bail — because it teaches a real mechanic (gear unlocks at Mastery).
+  // Save-gated via shouldShowBeat; not backfilled (see progression.js).
   if (game.pendingFirstMastery) {
     const towerType = game.pendingFirstMastery;
     game.pendingFirstMastery = null;

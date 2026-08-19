@@ -20,17 +20,18 @@ en)` looks it up; `lang` save field via `progression.js getLang/setLang`;
 proper nouns** (tower names Laser/Pulse/Slow/Railgun/Rocket, Indy-7,
 Bratwurst-XL, "GEOMETRIC TD").
 
-**Deployed build: `2026.08.19-6`.**
+**Deployed build: `2026.08.19-7`.**
 
 ### First-Mastery moment (new, `2026.08.19-5`, two-card in `-6`)
-The first time ANY tower crosses into **Mastery rank 1** mid-battle, the game
-pauses and Indy-7 plays a **two-card** story sequence. One-time, save-gated via
+On the first **Mastery rank-up a player ever sees** mid-battle, the game pauses
+and Indy-7 plays a **two-card** story sequence. One-time, save-gated via
 `shouldShowBeat("firstMastery")`; fires **even with STORY BANTER off** (it
 teaches a mechanic). Trigger: `towers.js updateTowers` sets
-`game.pendingFirstMastery` on the genuine 0→1 crossing (old `_masteryRank===0`),
-consumed in `main.js updateBarks` (before the banter bail), which assembles both
-cards. Veterans who already own a Mastered tower are pre-marked in
-`progression.backfillNarrativeSeen` so it never fires retroactively.
+`game.pendingFirstMastery` on **any** Mastery rank-up (not just the 0→1
+crossing), consumed in `main.js updateBarks` (before the banter bail), which
+assembles both cards. **Deliberately NOT backfilled** (`-7`): a seasoned player
+who never saw the card still meets it on their next rank-up, even if their
+towers are already past rank 1.
 - **Card 1 (`NARRATIVE.firstMastery.surge`)** — celebration: runs the
   `NARRATIVE.towerIntro.cast.mastery` tower-demo, which **loops the golden
   level-up surge** on the tower that ranked up (`tower-demo.js` featured-tower

@@ -458,11 +458,12 @@ export function updateTowers(game, dt) {
     // gaining experience" moment — celebrate it with a golden power surge and
     // a brief boost (see triggerLevelUpSurge).
     if (masteryRankFor(tower.xp) > tower._masteryRank) {
-      // First tower EVER to reach Mastery (rank 0 -> 1) flags a one-time
-      // Indy-7 explainer card, consumed in main.js updateBarks (which also
-      // owns the save-gate + veteran backfill). Read the OLD rank here,
-      // BEFORE applyLevelUpSurge recomputes it. First one this frame wins.
-      if (tower._masteryRank === 0) game.pendingFirstMastery ??= tower.type;
+      // Any Mastery rank-up flags the one-time Indy-7 explainer card, consumed
+      // in main.js updateBarks (which owns the save-gate). ANY rank-up
+      // qualifies — not just the 0->1 crossing — so a seasoned player whose
+      // towers are already past rank 1 still meets the card on their next
+      // rank-up if they've never seen it. First one this frame wins.
+      game.pendingFirstMastery ??= tower.type;
       applyLevelUpSurge(game, tower);
     } else if (masteryRankFor(tower.xp) !== tower._masteryRank) {
       // Rank changed without going up (e.g. a re-anchored mastery start): keep
