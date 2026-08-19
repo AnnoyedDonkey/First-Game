@@ -6,10 +6,39 @@ July **and** August 2026); the original pre-cleanup handoff is preserved in Git
 at commit `2650204`. This file keeps only what you need to start work:
 current state, non-obvious mechanics, rules, tuning locations, and the file map.
 
-## Current state — 2026-08-11
+## Current state — 2026-08-16
 
-Deployed build: `2026.08.11-7`. Shipped this session (2026.08.11, detail in
-the archive):
+**IN PROGRESS — French localization (i18n).** A discreet `EN|FR` language
+toggle (default English) so the player's dad can play in French. Read
+**`I18N_PLAN.md`** first for any i18n work. Phase 0 (engine + toggle +
+persistence) shipped & verified 2026-08-16; Phases A–E (chrome, gameplay
+data, tutorial/onboarding, narrative, misc) translate the rest, delegated to
+Sonnet agents cold-reading the plan. Architecture: English stays inline as
+the fallback; French lives only in `src/lang/fr.js`; `src/i18n.js` `t(key,
+en)` looks it up; `lang` save field via `progression.js getLang/setLang`;
+`<html data-lang="fr">` is the CSS hook for length tweaks. **Never translate
+proper nouns** (tower names Laser/Pulse/Slow/Railgun/Rocket, Indy-7,
+Bratwurst-XL, "GEOMETRIC TD").
+
+**Deployed build: `2026.08.19-1`.**
+
+### Player telemetry dashboard + L004 ease (2026.08.19-1)
+- **Player Telemetry** section added to `balance-difficulty.html` (the deployed
+  read-only Balance Dashboard): reads the live Supabase `feedback` table and
+  aggregates real play — struggle map, killer waves, drop-off funnel, attempts-
+  to-clear, tower usage & mix, "forgot to…" adoption (unspent skill points /
+  ungeared towers), felt-vs-measured ratings, economy; version + mode filters.
+  A **"Hide my runs"** filter excludes the viewer's own `client_id`(s) (owner's
+  two saves excluded by default). Reminder: telemetry is sent for EVERY battle
+  end automatically; only the difficulty rating is opt-in. Full "as built"
+  record + the queued Scope B (mastery★ + `arsenalPower` → power-to-clear) live
+  in **`TELEMETRY_DASHBOARD_PLAN.md`**.
+- **L004 wave-3 eased** off that data (it read as an early wall + retention
+  cliff): W3 basic 14@5.0x→12@3.8x, fast 10@4.5x→8@3.4x, +group `bountyMult 1.6`
+  (net ~1.3x after the level's 0.82). Reverses the earlier "intentional gate"
+  stance — watch whether the L2→L6 drop-off funnel flattens next telemetry.
+
+Older recently-shipped — `2026.08.11-7`, shipped 2026.08.11 (detail in the archive):
 - **First-loss pep talk** — one-time Indy-7 encouragement on the first genuine
   campaign defeat (`config.js NARRATIVE.firstLoss`, gated `narrativeSeen.firstLoss`),
   with a conditional unspent-skill-point nudge. Colors "stronger"/count via new
@@ -200,7 +229,9 @@ Both hit ONE Supabase project (`config.js` LEADERBOARD/FEEDBACK). It's free-
 tier and **auto-pauses after ~7 idle days**, which surfaces in-game as
 "Couldn't reach the leaderboard" and silently kills telemetry. Fix = restore
 the project (Supabase dashboard, or MCP `restore_project`); ~5 min, no code
-change. Data survives the pause. First hit + restored 2026-08-08.
+change. Data survives the pause. First hit + restored 2026-08-08. The
+`balance-difficulty.html` **Player Telemetry** section reads this `feedback`
+table to visualize it (see `TELEMETRY_DASHBOARD_PLAN.md`).
 
 ## Non-negotiable constraints
 
@@ -315,7 +346,7 @@ src/towers.js       placement, targeting, firing, upgrades, roster use
 src/enemies.js      movement, damage/death, bounty, XP, shards, status effects
 src/projectiles.js  projectiles and transient combat effects
 src/renderer.js     Canvas rendering and visual constants
-src/progression.js  persistent roster, skills, shards, migration/backfills
+src/progression.js  persistent roster, skills, shards, migration/backfills (+ tooling-only seedRoster/seedSkills exports for balance sims)
 src/equipment.js    equipped-item stat aggregation and mastery helpers
 src/loot.js         item generation
 src/endless.js      deterministic Endless generation
@@ -330,6 +361,11 @@ src/save.js          localStorage schema/read/write/reset
 src/version.js       deployed build stamp
 src/update.js        home-screen update nudge
 serve.ps1            local static server + localhost-only Balance Lab API
+src/level-difficulty.js Level Calculator (local): analytic DEMAND side (per-level peak firepower)
+src/arsenal-power.js Level Calculator (local): analytic SUPPLY side (arsenal power, economy-gated)
+src/balance-sim.js   Level Calculator (local): headless real-engine oracle (drives updateGame)
+balance-difficulty.html Level Calculator (local) + deployed read-only Balance Dashboard: difficulty curve, tower balance, skill value, recommended-level map, AND the live Player Telemetry section (reads the Supabase feedback table)
+balance-mix.html    Level Calculator (local): Survival Solver — min surviving tower mix per level, fresh vs maxed roster (drives solveLevelMix)
 BALANCE_LAB_PLAN.md  approved Balance Lab L0-L7 plan
 ```
 
@@ -454,19 +490,64 @@ BALANCE_LAB_PLAN.md  approved Balance Lab L0-L7 plan
   fully-maxed 7-tower platform, so a level can't challenge the max without
   walling everyone else. Iterate via phone feedback; HP is a free lever
   (perf-wise), enemy count is not. No telemetry yet for W4 — watch first rounds.
+- **NEXT — PWA / installable home-screen app (Path A):** full phased plan in
+  **`PWA_HOMESCREEN_PLAN.md`** (designed 2026-08-13, **build NOT started**).
+  Makes the game an installable, **offline-capable** home-screen app on iOS
+  **and** Android (Android gets a true one-tap install button; iOS gets a
+  coached "Share → Add to Home Screen" overlay), plus a service worker so it
+  launches with no network. Written as delegatable phases; orchestrator does the
+  single `version.js` bump + push. **Supersedes two DEFERRED items below:** the
+  service worker's `sw.js?v=APP_VERSION` cache-versioning is the durable
+  cache-buster, and offline precaching mitigates iOS localStorage eviction (a
+  full save export/import is still a separate nice-to-have). **BLOCKED on the
+  app icon:** user is supplying artwork; `geometric-td/icons/` exists but
+  `icons/source.png` (≥512×512) is not on disk yet — see the plan's Phase 0
+  (incl. the busy-screenshot legibility caveat).
+- **DONE — Level Difficulty Calculator (local tool):** all three goals delivered
+  2026-08-15. Design + findings in **`LEVEL_CALCULATOR_PLAN.md`**; to resume read
+  only **`LEVEL_CALCULATOR_RESUME.md`**. A local balancing tool that reduces every
+  level and arsenal to comparable numbers in one unit (**base-laser-equivalents**):
+  - **Demand** (`src/level-difficulty.js`, analytic) — each level → peak-firepower
+    number (L1≈17 laser-eq) + a separate economy-crunch flag.
+  - **Supply** (`src/arsenal-power.js`, analytic, reuses `towers.js careerStatsFor`)
+    — a roster → economy-gated firepower via a greedy buy+upgrade model.
+  - **Recommended-level map** (`balance-difficulty.html`) — per level × roster,
+    `supply÷demand` → green/yellow/orange/red RPG band.
+  - **Oracle** (`src/balance-sim.js`, drives the real `updateGame`) calibrated the
+    constants: `ARSENAL_TUNING` splashWeight.pulse 1.55 / slow 0.20; skills/gear as
+    a per-tier `powerMult`. Local tooling only (no version bump; the throwaway
+    preview port has its own empty localStorage so the real save is never in
+    scope). **Known gap:** World 4's pierce/conduit/spiral force-multipliers are
+    unmodeled, so W4 rows read falsely-hard (flagged on the page).
 - **DEFERRED — Endless:** retune its ramp after campaign balance stabilizes.
 - **DEFERRED:** save export/import for iOS localStorage eviction; sound;
   additional tower classes (Tesla was the runner-up); pre-battle loadouts;
   a durable cache-buster (`?v=APP_VERSION` on module imports) to end the
-  stale-module-after-deploy confusion on iOS.
+  stale-module-after-deploy confusion on iOS. (Cache-buster + eviction are
+  largely addressed by the PWA plan above once built.)
 
 ## Related documents
 
+- `LEVEL_CALCULATOR_RESUME.md` — **read this first** to continue the Level
+  Calculator: current lean state (demand + supply + map all delivered,
+  oracle-calibrated), the corrected mistakes, and remaining nice-to-haves.
+- `LEVEL_CALCULATOR_PLAN.md` — deep archive: architecture (Plan C: analytic
+  front-end + headless real-engine oracle), the modeling findings (coverage/
+  corner-premium, bunching, targeting efficiency), the level-1 calibration
+  anchors, and the full as-built record. Started 2026-08-14; all 3 goals +
+  oracle calibration delivered 2026-08-15.
 - `BALANCE_LAB_USAGE.md` — local editing, testing, restore, and manual Git
   workflow.
 - `WORLD_4_PLAN.md` — World 4 (SINGULARITY) design + original maps/waves
   (several levels have since diverged in balance passes; L19 fully redesigned).
+- `I18N_PLAN.md` — French localization plan + living tracker: the i18n
+  architecture (Phase 0, built), the translation rules, and the per-phase
+  breakdown (A–E) for delegated agents. **Read this first for i18n work.**
 - `GAME_BRIEF.md` — original feature specification.
+- `PWA_HOMESCREEN_PLAN.md` — phased plan to make the game an installable,
+  offline-capable home-screen app (iOS + Android) with an in-game install
+  button. Designed 2026-08-13, not yet built; blocked on the app icon source
+  file. See "Active and deferred work" above.
 - `NARRATIVE_DESIGN.md` — story bible: Indy-7 / Bratwurst-XL / tower personas,
   the campaign arc + full per-level script, the delivery/save model. Most of
   it is now BUILT (see "Current state" above) — read it for the story itself
@@ -483,6 +564,10 @@ BALANCE_LAB_PLAN.md  approved Balance Lab L0-L7 plan
 - `LOOT_DESIGN.md` / `GEAR_UI_DESIGN.md` — loot and equipment design/history.
 - `CIRCUIT_MENU_DESIGN.md` — menu-board design/history.
 - `SUPABASE_SETUP.md` — telemetry and leaderboard database setup.
+- `TELEMETRY_DASHBOARD_PLAN.md` — the Player Telemetry section on
+  `balance-difficulty.html`: build spec + "as built" record (Scope A dashboard,
+  the "Hide my runs" client_id exclusion, first findings) and the queued Scope B
+  (mastery★ + `arsenalPower` payload additions → a per-level power-to-clear curve).
 - `BALANCE_LAB_PLAN.md` — approved Balance Lab architecture and phases.
 - `BALANCE_LAB_L0.md` — L0 schema contract: value inventory, data-home paths,
   validation rules (verified data shape: 15 levels / 159 waves / 313 groups).

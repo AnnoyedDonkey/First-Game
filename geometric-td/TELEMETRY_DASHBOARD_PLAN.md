@@ -165,4 +165,60 @@ Keep the aggregation code readable — small pure helper functions
   `details` is missing/partial (older rows), and `rating: null`.
 - Report honestly what you could and could NOT verify (you cannot reach a
   browser or the live Supabase table — say so; the orchestrator verifies both).
+
+---
+
+## As built — shipped 2026.08.19
+
+**Scope A (dashboard) — SHIPPED, `commit 3a87444`, no version bump (tooling
+page).** A **Player telemetry** section was added to `balance-difficulty.html`:
+async read of the live `feedback` table (reuses `LEADERBOARD`/`FEEDBACK` keys,
+5000-row cap), version + mode filters (default = current build), fail-soft on
+not-configured / paused / network-error / empty. All 8 panels built: struggle
+map, killer waves, drop-off funnel, attempts-to-clear (`<details>`), tower usage
+& mix, "forgot to…" adoption, felt-vs-measured, economy (`<details>`). Verified
+in-browser against **965 live rows**; aggregation cross-checked against the raw
+DB (L004 = 108 runs / 25% win, exact match); console clean.
+
+**"Hide my runs" exclusion — `commit ebddeac`; owner's saves excluded by default
+— `commit 81f89dc`.** The viewer can exclude their own `client_id`(s) to see
+other players. Excluded ids persist in the dashboard page's OWN localStorage
+(`tele-exclude-ids`), with a "Hide my runs" toggle (`tele-hide-me`). The current
+device's game id is auto-detected **read-only** from the
+`geometric-td-leaderboard-v1` key (never mints a phantom via `getClientId`). The
+owner's two saves are seeded as `DEFAULT_EXCLUDED` (applied on a fresh visit
+only; any manual add/remove then takes over and defaults are never re-injected):
+- `fd146ee0-9acd-40ee-ba03-2efd615f73b6` — Home-Screen save (all levels cleared)
+- `60c452bb-d4ab-4f51-90d1-66350285e1eb` — Safari browser TESTING save (L1–L8)
+
+Ground-truthed by having the owner forfeit L4 on each save and reading the two
+fresh rows. **`e54287f9-…` (185 runs) is a REAL other player** (progressed
+through all of World 4), deliberately kept visible.
+
+**Key facts worth remembering:**
+- Telemetry is collected for **every** battle end automatically (win/loss/
+  forfeit, `main.js runTelemetry` → `feedback.js submitRun`), fire-and-forget,
+  no retry. Only the difficulty **rating** is opt-in (and rarely tapped) — lean
+  on the behavioral panels.
+- **iOS storage split:** a Home-Screen (standalone) web app and the same site in
+  Safari keep SEPARATE localStorage, so one phone yields two+ `client_id`s; iOS
+  storage eviction can also mint fresh ids over time (fragments telemetry — more
+  fuel for the PWA plan).
+
+**First findings (All-versions, ~965 rows):** early wall L3→L4 (win% 61→37→25);
+the drop-off funnel matches it (≈half of players gone by L4 — the retention
+cliff); World 4 has a **forfeit** problem (L16 48%, L18 62% — quitting mid-
+battle, not losing — likely the unexplained special-tile mechanics). L004 wave-3
+was eased in response (`2026.08.19-1`; details in HANDOFF's current-state).
+
+## Scope B — QUEUED (not built)
+
+Add per-tower career **mastery★ / maxUnlockedLevel** and a roster **`arsenalPower`**
+snapshot (reuse `src/arsenal-power.js`) to the `runTelemetry` payload in
+`main.js`, so the dashboard can plot a per-level **power-to-clear** curve
+(winners vs losers, in base-laser-equivalents) — directly answering "what
+arsenal do you need to clear level X" and calibrating the Level Calculator
+against real humans. **Touches game code → needs a `version.js` bump + push**
+(unlike Scope A). No save-format change required (read from live state at
+battle end).
 ```
