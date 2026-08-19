@@ -691,8 +691,9 @@
         ${tr}</table></div>`;
     }
 
-    function buildPanels(rows, version, mode) {
-      const versionFiltered = version === "all" ? rows : rows.filter((r) => r.app_version === version);
+    function buildPanels(rows, version, mode, excludeSet) {
+      const included = excludeSet && excludeSet.size ? rows.filter((r) => !excludeSet.has(r.client_id)) : rows;
+      const versionFiltered = version === "all" ? included : included.filter((r) => r.app_version === version);
       const modeFiltered = mode === "all" ? versionFiltered : versionFiltered.filter((r) => r.mode === mode);
       const campaignRows = modeFiltered.filter((r) => r.mode === "campaign");
 
@@ -726,6 +727,35 @@
         ${safe("Felt vs measured", () => feltVsMeasuredPanel(campaignRows))}
         ${safeDetails("Economy (won runs — money left, leaks)", "Economy", () => economyPanel(campaignRows))}
       `;
+    }
+
+    // ---- "Hide my runs" exclusion (dashboard-local, read-only) ----
+    // Each game save mints its own anonymous client_id (leaderboard.js, under
+    // the game's own localStorage key). To see OTHER players we let the viewer
+    // exclude their own id(s). The excluded list persists in THIS page's
+    // localStorage (per-device); the current device's id is read READ-ONLY
+    // from the game key so we never mint a phantom id here.
+    const EXCLUDE_KEY = "tele-exclude-ids";
+    const HIDE_KEY = "tele-hide-me";
+    function loadExcluded() {
+      try { const a = JSON.parse(localStorage.getItem(EXCLUDE_KEY) || "[]"); return Array.isArray(a) ? a : []; }
+      catch { return []; }
+    }
+    function saveExcluded(a) { try { localStorage.setItem(EXCLUDE_KEY, JSON.stringify(a)); } catch {} }
+    function addExcluded(id) {
+      id = String(id || "").trim();
+      if (!id) return;
+      const a = loadExcluded();
+      if (!a.includes(id)) { a.push(id); saveExcluded(a); }
+    }
+    function removeExcluded(id) { saveExcluded(loadExcluded().filter((x) => x !== id)); }
+    function hideEnabled() { return localStorage.getItem(HIDE_KEY) !== "0"; } // default on
+    function setHideEnabled(on) { try { localStorage.setItem(HIDE_KEY, on ? "1" : "0"); } catch {} }
+    // Read the game's stored client_id WITHOUT creating one (do not import
+    // getClientId — it mints+writes on miss).
+    function thisDeviceClientId() {
+      try { return (JSON.parse(localStorage.getItem("geometric-td-leaderboard-v1") || "{}") || {}).clientId || null; }
+      catch { return null; }
     }
 
     async function renderTelemetry() {
@@ -791,15 +821,66 @@
           </label>
           <span class="note" style="margin:0">${rows.length} row${rows.length === 1 ? "" : "s"} fetched</span>
         </div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;margin:2px 0 4px">
+          <label class="note" style="margin:0"><input type="checkbox" id="tele-hide-me"${hideEnabled() ? " checked" : ""} style="vertical-align:middle;margin-right:5px">Hide my runs</label>
+          <span id="tele-this-device" class="note" style="margin:0"></span>
+          <input id="tele-exclude-input" class="mono" placeholder="paste a client_id to exclude" style="flex:1;min-width:180px;font-size:12px">
+          <button id="tele-exclude-add" class="mono" style="font-size:12px">Add ID</button>
+          <span id="tele-exclude-summary" class="note" style="margin:0;flex-basis:100%"></span>
+          <div id="tele-exclude-chips" style="flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px"></div>
+        </div>
         <div id="tele-panels"></div>`;
 
       const versionSel = document.getElementById("tele-version");
       const modeSel = document.getElementById("tele-mode");
       const panels = document.getElementById("tele-panels");
-      const redraw = () => { panels.innerHTML = buildPanels(rows, versionSel.value, modeSel.value); };
+      const hideChk = document.getElementById("tele-hide-me");
+      const exInput = document.getElementById("tele-exclude-input");
+      const exAdd = document.getElementById("tele-exclude-add");
+      const exSummary = document.getElementById("tele-exclude-summary");
+      const exChips = document.getElementById("tele-exclude-chips");
+      const thisDev = document.getElementById("tele-this-device");
+
+      const renderExcludeUI = () => {
+        const ids = loadExcluded();
+        exChips.innerHTML = ids.length
+          ? ids.map((id) => `<span class="tag" style="cursor:default">${escapeHtml(id.length > 14 ? id.slice(0, 12) + "…" : id)}` +
+              `<a href="#" data-id="${escapeHtml(id)}" class="tele-chip-x" style="margin-left:6px;text-decoration:none" title="stop excluding">✕</a></span>`).join("")
+          : "";
+        exChips.querySelectorAll(".tele-chip-x").forEach((a) =>
+          a.addEventListener("click", (e) => { e.preventDefault(); removeExcluded(a.getAttribute("data-id")); refresh(); }));
+        const my = thisDeviceClientId();
+        if (my) {
+          const already = ids.includes(my);
+          thisDev.innerHTML = `This device: <span class="mono">${escapeHtml(my.slice(0, 12))}…</span> ` +
+            (already ? `<span class="c-dim">(excluded)</span>` : `<a href="#" id="tele-add-this">exclude it</a>`);
+          const addThis = document.getElementById("tele-add-this");
+          if (addThis) addThis.addEventListener("click", (e) => { e.preventDefault(); addExcluded(my); refresh(); });
+        } else {
+          thisDev.innerHTML = `<span class="c-dim">This device has no saved game id (play the game here first, or paste an id).</span>`;
+        }
+      };
+
+      const redraw = () => {
+        const ex = new Set(hideChk.checked ? loadExcluded() : []);
+        panels.innerHTML = buildPanels(rows, versionSel.value, modeSel.value, ex);
+        const scope = rows.filter((r) =>
+          (versionSel.value === "all" || r.app_version === versionSel.value) &&
+          (modeSel.value === "all" || r.mode === modeSel.value));
+        const removed = scope.filter((r) => ex.has(r.client_id)).length;
+        exSummary.textContent = ex.size
+          ? `Hiding ${removed} of your run${removed === 1 ? "" : "s"} in this view — ${scope.length - removed} shown.`
+          : (loadExcluded().length ? "Excluding is OFF (checkbox unchecked)." : "No IDs excluded yet.");
+      };
+
+      const refresh = () => { renderExcludeUI(); redraw(); };
+
       versionSel.addEventListener("change", redraw);
       modeSel.addEventListener("change", redraw);
-      redraw();
+      hideChk.addEventListener("change", () => { setHideEnabled(hideChk.checked); redraw(); });
+      exAdd.addEventListener("click", () => { addExcluded(exInput.value); exInput.value = ""; refresh(); });
+      exInput.addEventListener("keydown", (e) => { if (e.key === "Enter") { addExcluded(exInput.value); exInput.value = ""; refresh(); } });
+      refresh();
     }
 
     renderTelemetry().catch((err) => {
