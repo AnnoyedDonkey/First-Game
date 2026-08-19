@@ -147,6 +147,13 @@ function explodeBomblets(game, orb) {
 
 // Tick down all transient visual effects.
 export function updateEffects(game, dt) {
-  for (const fx of game.effects) fx.ttl -= dt;
+  for (const fx of game.effects) {
+    fx.ttl -= dt;
+    // An effect may ask for the moment it finishes to be stamped on the game
+    // (`expireStamp: "someField"`), so other systems can react to it ending
+    // without this module knowing what the effect was. The gear-drop flash
+    // uses it to tell Indy-7's face it just swallowed a piece of loot.
+    if (fx.ttl <= 0 && fx.expireStamp) game[fx.expireStamp] = game.time;
+  }
   game.effects = game.effects.filter((fx) => fx.ttl > 0);
 }

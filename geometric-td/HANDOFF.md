@@ -20,7 +20,7 @@ en)` looks it up; `lang` save field via `progression.js getLang/setLang`;
 proper nouns** (tower names Laser/Pulse/Slow/Railgun/Rocket, Indy-7,
 Bratwurst-XL, "GEOMETRIC TD").
 
-**Deployed build: `2026.08.19-9`.**
+**Deployed build: `2026.08.19-10`.**
 
 ### Credit Juice (new, `2026.08.19-8`)
 Earning credits used to be silent — the only cue was a number changing. Now
@@ -39,21 +39,35 @@ daughter after comparing the game to Block Blast):
   keyframes in `styles.css`). Spending never pulses, and the tracker resets
   per battle by comparing `game` object identity, so starting a level richer
   than the last one ended doesn't fire. `VFX.creditGain`.
-- **Gear-drop flash** — the dropped item's own **slot glyph** (optic/emitter/
-  capacitor/frame) pops, rises, and fades at the enemy that dropped it, in its
-  rarity color with an expanding rarity ring. `VFX.gearDrop`. Player rejected
-  the first version (a generic rarity diamond) in `-9`: they want to see WHAT
-  dropped. `renderer.js drawSlotGlyph` is a **vertex-for-vertex canvas port of
-  `ui.js slotGlyph`'s SVG**, drawn in the same 100-unit viewBox space — the
-  two are deliberately parallel copies because the renderer takes no UI
-  import, so **artwork changes must be made in both**. Only the rarity + slot
-  travel on the effect: the renderer owns `GEAR_RARITY_COLOR` and draws the
-  ring itself, because `renderer.js` already imports from `enemies.js` and
-  resolving color at the drop site would make that circular.
+- **Gear drop → Indy eats it** (`-10`, iterated twice from player feedback).
+  The dropped item appears as **its own stash tile** — rounded plate, rarity
+  border, slot glyph (optic/emitter/capacitor/frame) — **lifts** off the
+  corpse, then **zips into Indy-7 and is swallowed**, after which Indy shows
+  **happy eyes** for `smileSeconds`. One effect, two phases on a 0→1 clock
+  split by `riseFrac`: ease-OUT rise, then ease-IN dash so it accelerates
+  away. All knobs `VFX.gearDrop`.
+  - Rejected along the way: a generic rarity **diamond** (`-8`, didn't say
+    WHAT dropped), then a static glyph that just rose and faded (`-9`, "not
+    that satisfying"). Don't regress to either.
+  - `renderer.js drawSlotGlyph` is a **vertex-for-vertex canvas port of
+    `ui.js slotGlyph`'s SVG** in the same 100-unit viewBox space; the tile
+    plate mirrors `.gear-tile` in `styles.css` (radius, border, fill, 46%
+    glyph). These are deliberately **parallel copies** because the renderer
+    takes no UI import — **artwork changes must be made in both places**.
+  - Only rarity + slot travel on the effect; the renderer owns
+    `GEAR_RARITY_COLOR` and draws the ring itself, because `renderer.js`
+    already imports from `enemies.js` and resolving color at the drop site
+    would make that circular.
+  - The smile is wired through a **generic** hook: an effect may carry
+    `expireStamp: "<gameField>"` and `projectiles.js updateEffects` stamps
+    `game.time` there when it expires. `coreFaceMood` reads
+    `lastGearIngestTime`. Ranked below a leak (getting hit still wins) but
+    above `worried`.
 - **Not yet eyeballed on a phone** — verified by state assertions only
-  (coins spawn/land/clean up, pulse fires on gain but not spend, flashes
-  carry the right rarity). Counts are deliberately generous; the player
-  asked to tune density later rather than pre-optimize for clutter.
+  (coins spawn/land/clean up, pulse fires on gain but not spend, all four
+  slot glyphs render, 12 drops → 12 ingest stamps → `happy` mood observed).
+  Counts are deliberately generous; the player asked to tune density later
+  rather than pre-optimize for clutter.
 
 ### First-Mastery moment (new, `2026.08.19-5`, two-card in `-6`)
 On the first **Mastery rank-up a player ever sees** mid-battle, the game pauses

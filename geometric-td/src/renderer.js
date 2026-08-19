@@ -640,6 +640,11 @@ export function coreFaceMood(game, time) {
   if (game.phase === "lost") return "crash";
   const k = VFX.face;
   if (game.lastLeakTime != null && time - game.lastLeakTime < k.hitFlashSeconds) return "crash";
+  // Just swallowed a piece of gear — Indy-7 is briefly delighted. Ranked below
+  // a leak (getting hit still wins) but above worried, so the grin reads even
+  // on a battered core; it's transient either way.
+  if (game.lastGearIngestTime != null &&
+      time - game.lastGearIngestTime < VFX.gearDrop.smileSeconds) return "happy";
   if (game.maxCoreHealth && game.coreHealth / game.maxCoreHealth <= k.lowCoreFrac) return "worried";
   return "neutral";
 }
@@ -1012,27 +1017,68 @@ function drawEffects(ctx, game) {
       // in, drifts up, and fades on floatText's rise/fade easing.
       const color = GEAR_RARITY_COLOR[fx.rarity] || GEAR_RARITY_COLOR.common;
       const t = 1 - life;                 // 0 -> 1 over its lifetime
-      const y = fx.y - fx.rise * (1 - (1 - t) * (1 - t));
-      const pop = t < 0.2 ? fx.popScale - (fx.popScale - 1) * (t / 0.2) : 1;
-      // Expanding rarity ring over the first ringFrac of the life, drawn here
-      // rather than pushed as a separate `ring` effect so the drop site never
-      // has to resolve a color (see enemies.js).
+      const topY = fx.y - fx.rise;        // where the lift tops out
+      let x, y, scale, alpha;
+      if (t < fx.riseFrac) {
+        // Phase 1 — lift off the corpse, easing out so it slows at the top.
+        const rt = t / fx.riseFrac;
+        x = fx.x;
+        y = fx.y - fx.rise * (1 - (1 - rt) * (1 - rt));
+        // Pop in over the first popFrac of the rise.
+        scale = rt < fx.popFrac
+          ? fx.popScale - (fx.popScale - 1) * (rt / fx.popFrac)
+          : 1;
+        alpha = Math.min(1, rt / 0.15);   // quick fade-in so it doesn't blink on
+      } else {
+        // Phase 2 — zip into Indy-7, easing IN so it accelerates away, then
+        // shrinks as the core swallows it.
+        const zt = (t - fx.riseFrac) / (1 - fx.riseFrac);
+        const ease = zt * zt;
+        x = fx.x + (fx.tx - fx.x) * ease;
+        y = topY + (fx.ty - topY) * ease;
+        scale = 1 - (1 - fx.arriveScale) * zt;
+        alpha = 1 - zt * zt * zt;         // holds bright, vanishes on arrival
+      }
+      // Expanding rarity ring over the first ringFrac of the life, anchored at
+      // the drop point. Drawn here rather than pushed as a separate `ring`
+      // effect so the drop site never has to resolve a color (see enemies.js).
       if (t < fx.ringFrac) {
         const rt = t / fx.ringFrac;       // 0 -> 1 across the ring's own life
         ctx.globalAlpha = (1 - rt) * (1 - rt);
         ctx.strokeStyle = color;
         ctx.lineWidth = LOOK.lineWidth;
         ctx.beginPath();
-        ctx.arc(fx.x, y, fx.ringRadius * rt, 0, Math.PI * 2);
+        ctx.arc(fx.x, fx.y, fx.ringRadius * rt, 0, Math.PI * 2);
         ctx.stroke();
       }
-      ctx.globalAlpha = life * life;      // hold, then fade quicker at the end
-      drawGlow(ctx, fx.x, y, fx.size * fx.glowMult, color, life * life);
-      drawSlotGlyph(ctx, fx.slot, fx.x, y, fx.size * 2 * pop, color, fx.glyphStroke);
+      const side = fx.tile * scale;
+      ctx.globalAlpha = alpha;
+      drawGlow(ctx, x, y, side * fx.glowMult, color, alpha * 0.9);
+      // The item's own stash tile: rounded plate, rarity border, slot glyph.
+      roundRectPath(ctx, x - side / 2, y - side / 2, side, side, side * fx.cornerFrac);
+      ctx.fillStyle = fx.tileFill;
+      ctx.fill();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = LOOK.lineWidth;
+      ctx.stroke();
+      drawSlotGlyph(ctx, fx.slot, x, y, side * fx.glyphFrac, color, fx.glyphStroke);
     }
 
     ctx.restore();
   }
+}
+
+// Rounded-rectangle path. Written by hand rather than using ctx.roundRect so
+// older iOS Safari (the target platform) is covered.
+function roundRectPath(ctx, x, y, w, h, r) {
+  const rad = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + rad, y);
+  ctx.arcTo(x + w, y, x + w, y + h, rad);
+  ctx.arcTo(x + w, y + h, x, y + h, rad);
+  ctx.arcTo(x, y + h, x, y, rad);
+  ctx.arcTo(x, y, x + w, y, rad);
+  ctx.closePath();
 }
 
 // Gear SLOT glyph, drawn as a canvas path in the same 100x100 coordinate

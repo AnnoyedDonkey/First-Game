@@ -768,18 +768,29 @@ export const VFX = {
   // Credit Juice: gear-drop flash — a small rarity-colored diamond pops at
   // the enemy when a loot item drops, echoing the diamond orbitals gear
   // draws around towers (drawTowerGear) so it reads instantly as "gear".
+  // Gear-drop flash: the dropped item appears as its stash tile (rounded
+  // square + slot glyph in the rarity color), lifts off the dead enemy, then
+  // ZIPS into Indy-7 and is swallowed — after which Indy smiles. The whole
+  // thing is one effect; total on-screen time is riseSeconds + zipSeconds.
   gearDrop: {
-    ttl: 1.1,             // seconds on screen (speed-compensated)
-    riseTiles: 0.7,        // how far it floats up over its life
-    sizeTiles: 0.3,        // glyph HALF-size as a fraction of a tile (the icon
-                           // box is twice this — deliberately smaller than the
-                           // same glyph drawn in the stash)
+    riseSeconds: 0.38,     // slow lift off the corpse before the dash
+    zipSeconds: 0.42,      // the dash into the core (accelerating)
+    riseTiles: 0.45,       // how far it lifts during the rise phase
+    tileTiles: 0.55,       // rounded-square side as a fraction of a game tile
+                           // (deliberately smaller than the stash's own tile)
+    cornerFrac: 0.18,      // corner radius ÷ tile side — matches .gear-tile's
+                           // 9px radius in styles.css
+    glyphFrac: 0.46,       // glyph size ÷ tile side — matches .gear-tile .glyph
+    tileFill: "rgba(255, 255, 255, 0.05)", // faint plate, like .gear-tile.filled
     glyphStroke: 7,        // glyph stroke width in ui.js slotGlyph's 100-unit
-                           // viewBox space; scales with sizeTiles
-    popScale: 1.6,         // scales up from this to 1 in the first ~20% of life
-    ringTtl: 0.45,         // expanding rarity ring behind it
+                           // viewBox space; scales with the tile
+    popScale: 1.7,         // tile pops in from this scale over popFrac
+    popFrac: 0.35,         // fraction of the RISE phase spent popping in
+    arriveScale: 0.45,     // shrinks to this as it is swallowed by the core
+    ringTtl: 0.45,         // expanding rarity ring at the drop point
     ringRadiusTiles: 0.85,
-    glowMult: 2.2,
+    glowMult: 1.6,         // glow radius as a multiple of the tile side
+    smileSeconds: 1.7,     // how long Indy-7 grins after swallowing a piece
   },
 
   // Tower level-up (MASTERY rank-up) celebration. A rank-up is automatic —

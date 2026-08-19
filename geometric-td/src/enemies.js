@@ -303,12 +303,22 @@ export function damageEnemy(game, enemy, sourceTower, amount) {
     // map, so enemies.js needs no import from it (renderer.js already imports
     // enemyPosition from here, and the reverse edge would make that circular).
     // The expanding ring is drawn by the gearFlash branch for the same reason.
+    // The item flies to Indy-7 — the core is the LAST point on the path.
+    const core = game.grid.pathPoints[game.grid.pathPoints.length - 1];
+    const total = gd.riseSeconds + gd.zipSeconds;
     game.effects.push({
-      kind: "gearFlash", rarity: drop.rarity, slot: drop.slot, x: pos.x, y: pos.y,
-      size: ts * gd.sizeTiles, rise: ts * gd.riseTiles,
-      popScale: gd.popScale, glowMult: gd.glowMult, glyphStroke: gd.glyphStroke,
-      ringRadius: ts * gd.ringRadiusTiles, ringFrac: gd.ringTtl / gd.ttl,
-      ttl: gd.ttl * spd, maxTtl: gd.ttl * spd,
+      kind: "gearFlash", rarity: drop.rarity, slot: drop.slot,
+      x: pos.x, y: pos.y, tx: core.x, ty: core.y,
+      tile: ts * gd.tileTiles, rise: ts * gd.riseTiles,
+      riseFrac: gd.riseSeconds / total, // where the rise ends on the 0->1 clock
+      popScale: gd.popScale, popFrac: gd.popFrac, arriveScale: gd.arriveScale,
+      cornerFrac: gd.cornerFrac, glyphFrac: gd.glyphFrac, tileFill: gd.tileFill,
+      glowMult: gd.glowMult, glyphStroke: gd.glyphStroke,
+      ringRadius: ts * gd.ringRadiusTiles, ringFrac: gd.ringTtl / total,
+      // Consumed by updateEffects when this expires: stamps the swallow time on
+      // the game so Indy-7's face can grin about it (renderer coreFaceMood).
+      expireStamp: "lastGearIngestTime",
+      ttl: total * spd, maxTtl: total * spd,
     });
   }
 
