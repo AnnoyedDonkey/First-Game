@@ -20,7 +20,7 @@ en)` looks it up; `lang` save field via `progression.js getLang/setLang`;
 proper nouns** (tower names Laser/Pulse/Slow/Railgun/Rocket, Indy-7,
 Bratwurst-XL, "GEOMETRIC TD").
 
-**Deployed build: `2026.08.19-11`.**
+**Deployed build: `2026.08.19-12`.**
 
 ### Credit Juice (new, `2026.08.19-8`)
 Earning credits used to be silent — the only cue was a number changing. Now
@@ -90,15 +90,21 @@ towers are already past rank 1.
   by `ui.js renderGearShowcase` from the game's own `slotGlyph` + `RARITY_COLOR`
   (change a slot/rarity/stat in the config array and the row follows), into
   `#story-gear-showcase` (styles in `styles.css`, `.gear-showcase-tile`).
-  **Tile sizing is deliberate (`-11`, fixed a phone-reported overflow):** the
-  rarity names run 4–11 chars but the card's content column is only ~278px, so
-  four EQUAL tiles left ~54px of text width and "PRISMATIC"/"SINGULARITY" spilled
-  outside their borders. Tiles are now **content-sized** (`flex: 0 0 auto`, label
-  `white-space: nowrap` at 10px) so RARE donates its slack to the long names, and
-  the row is `flex-wrap: wrap` so a ~320px phone gets two rows instead of clipped
-  text. Measured fitting at 393px (one row) and 320px (two rows). **If a longer
-  rarity name is ever added, re-measure** — the fit has ~34px of slack at 320px
-  card width.
+  **Tile sizing is deliberate (`-11`/`-12`, fixed a phone-reported overflow):**
+  the rarity names run 4–11 chars but the card's content column is only ~278px,
+  so "PRISMATIC"/"SINGULARITY" spilled outside their tile borders at the
+  original 11px. **Tiles must stay EQUAL width** — a content-sized variant was
+  tried in `-11` and the player rejected the ragged widths, so the rarity NAME
+  is what gives way, never the tile:
+  - Label is **8px** (`.gear-tile .tile-label`'s size) with `nowrap`. 9px fit
+    in the browser with only ~2px slack and still spilled on a real iPhone —
+    that margin is inside the font-metric difference between engines. **Don't
+    raise it back** without measuring on a device.
+  - Below **349px viewport** the names are `display:none` — even 8px overflows
+    there. Rarity is still carried by the border/glow color (the game's
+    existing rarity language) and the card's body text names them.
+  - Measured margins inside the tile: 5.3px @393px, 3.3px @350px; names hidden
+    @320px. **If a longer rarity name is ever added, re-measure.**
 
 ### Player telemetry dashboard + L004 ease (2026.08.19-1)
 - **Player Telemetry** section added to `balance-difficulty.html` (the deployed
