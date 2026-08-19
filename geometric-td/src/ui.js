@@ -3442,7 +3442,10 @@ function renderGearShowcase(items) {
       `<div class="gear-showcase-tile ${RARITY_CLASS[it.rarity] || "rc"}" ` +
       `style="--rar:${color}; animation-delay:${60 + i * 90}ms">` +
       slotGlyph(it.slot, color) +
-      `<span class="gear-showcase-rarity" style="color:${color}">${rarityLabel(it.rarity)}</span>` +
+      // No rarity NAME here on purpose: "SINGULARITY" cannot fit an equal-width
+      // tile in this card's ~278px column at a legible size, and the tiles must
+      // stay equal. The rarity-colored border/glow already says it, and the
+      // card's body text names the rarities.
       (it.stat ? `<span class="gear-showcase-stat">${escapeHtml(it.stat)}</span>` : "") +
       `</div>`;
   });

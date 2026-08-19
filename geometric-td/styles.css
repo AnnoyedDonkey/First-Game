@@ -627,18 +627,15 @@ html[data-lang="fr"] #story-lang-toggle .lang-fr {
    rarity (--rar, set inline by ui.js renderGearShowcase from RARITY_COLOR). */
 #story-gear-showcase {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   justify-content: center;
   margin-top: 12px;
 }
 #story-gear-showcase.hidden { display: none; }
 /* All four tiles are the SAME width — the showcase reads as a set, so equal
-   sizing beats fitting the text (tried content-sizing in `-11`; the ragged
-   widths looked wrong). That caps each tile's text at ~56px, so the rarity
-   NAME is what gives way when it doesn't fit: 9px is the largest size that
-   fits SINGULARITY, and below ~350px viewport the names are dropped entirely
-   (see the media query below). Rarity is still carried by the border/glow
-   color, which is the game's existing rarity language. */
+   sizing wins over fitting text (content-sizing was tried in `-11` and the
+   ragged widths were rejected). Nothing in the tile competes for width now
+   that the rarity name is gone. */
 .gear-showcase-tile {
   flex: 1 1 0;
   min-width: 0;
@@ -646,7 +643,7 @@ html[data-lang="fr"] #story-lang-toggle .lang-fr {
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  padding: 10px 3px 8px;
+  padding: 10px 4px 8px;
   border-radius: 8px;
   border: 1px solid var(--rar, var(--neon-cyan));
   background: rgba(5, 6, 15, 0.6);
@@ -655,33 +652,17 @@ html[data-lang="fr"] #story-lang-toggle .lang-fr {
   animation: gearShowcasePop 340ms cubic-bezier(.2, .9, .3, 1.2) both;
 }
 .gear-showcase-tile .glyph { width: 40px; height: 40px; }
-/* 8px is not a style choice — it is what makes the longest name
-   (SINGULARITY, 11 chars) fit an equal-width tile with real margin to spare.
-   9px technically fit, but with only ~2px of slack on the widest card, which
-   is inside the font-metric difference between browsers — it spilled on a
-   real iPhone. 8px matches `.gear-tile .tile-label`, this UI's existing size
-   for a tile caption. nowrap so it can never break into "SINGULARIT/Y". */
-.gear-showcase-rarity {
-  font-size: 8px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  text-shadow: 0 0 6px var(--rar, var(--neon-cyan));
-}
-/* Stat stays a step below the rarity in the hierarchy: same size, but dim and
-   not bold. It KEEPS wrapping — "+FIRE RATE" on one line is wider than its
-   own tile. */
+/* The stat is the tile's ONLY caption. The rarity NAME was removed outright
+   (see ui.js renderGearShowcase): "SINGULARITY" can't fit an equal-width tile
+   in this card's ~278px column at a legible size, and it crowded the tile
+   edges even when it technically fit. The rarity-colored border/glow already
+   carries the meaning. Wraps, because "+FIRE RATE" on one line is wider than
+   its own tile. */
 .gear-showcase-stat {
-  font-size: 9px;
+  font-size: 10px;
   color: var(--text-dim);
   letter-spacing: 0.03em;
   text-align: center;
-}
-/* Below ~350px viewport even 9px overflows an equal tile, so the names are
-   dropped rather than clipped or shrunk to illegibility. The glyph, the
-   rarity-colored border and the stat still carry the tile. */
-@media (max-width: 349px) {
-  .gear-showcase-rarity { display: none; }
 }
 @keyframes gearShowcasePop {
   from { opacity: 0; transform: translateY(8px) scale(0.9); }
