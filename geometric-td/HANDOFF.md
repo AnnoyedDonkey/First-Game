@@ -20,7 +20,24 @@ en)` looks it up; `lang` save field via `progression.js getLang/setLang`;
 proper nouns** (tower names Laser/Pulse/Slow/Railgun/Rocket, Indy-7,
 Bratwurst-XL, "GEOMETRIC TD").
 
-**Deployed build: `2026.08.19-3`.**
+**Deployed build: `2026.08.19-5`.**
+
+### First-Mastery moment (new, `2026.08.19-5`)
+The first time ANY tower crosses into **Mastery rank 1** mid-battle, the game
+pauses and an Indy-7 story card explains the milestone: a **permanent** damage
+boost (grows per rank), the **temporary** golden surge firing now, and that the
+tower can now be **fitted with gear** in the Towers menu (this is the real
+`LOOT.equipGate.minMastery` = 1 gate). One-time, save-gated via
+`shouldShowBeat("firstMastery")`; fires **even with STORY BANTER off** (it
+teaches a mechanic). Trigger: `towers.js updateTowers` sets
+`game.pendingFirstMastery` on the genuine 0→1 crossing (old `_masteryRank===0`),
+consumed in `main.js updateBarks` (before the banter bail). The card runs a
+`NARRATIVE.towerIntro.cast.mastery` tower-demo that **loops the golden level-up
+surge** on the tower that ranked up (`tower-demo.js` featured-tower override +
+`surgeLoop`; `towers.js applyLevelUpSurge` shared with the live rank-up). Copy +
+demo pacing all in `config.js NARRATIVE.firstMastery` / `cast.mastery`. Veterans
+who already own a Mastered tower are pre-marked in
+`progression.backfillNarrativeSeen` so it never fires retroactively.
 
 ### Player telemetry dashboard + L004 ease (2026.08.19-1)
 - **Player Telemetry** section added to `balance-difficulty.html` (the deployed
