@@ -20,7 +20,7 @@ en)` looks it up; `lang` save field via `progression.js getLang/setLang`;
 proper nouns** (tower names Laser/Pulse/Slow/Railgun/Rocket, Indy-7,
 Bratwurst-XL, "GEOMETRIC TD").
 
-**Deployed build: `2026.08.19-10`.**
+**Deployed build: `2026.08.19-11`.**
 
 ### Credit Juice (new, `2026.08.19-8`)
 Earning credits used to be silent — the only cue was a number changing. Now
@@ -90,6 +90,15 @@ towers are already past rank 1.
   by `ui.js renderGearShowcase` from the game's own `slotGlyph` + `RARITY_COLOR`
   (change a slot/rarity/stat in the config array and the row follows), into
   `#story-gear-showcase` (styles in `styles.css`, `.gear-showcase-tile`).
+  **Tile sizing is deliberate (`-11`, fixed a phone-reported overflow):** the
+  rarity names run 4–11 chars but the card's content column is only ~278px, so
+  four EQUAL tiles left ~54px of text width and "PRISMATIC"/"SINGULARITY" spilled
+  outside their borders. Tiles are now **content-sized** (`flex: 0 0 auto`, label
+  `white-space: nowrap` at 10px) so RARE donates its slack to the long names, and
+  the row is `flex-wrap: wrap` so a ~320px phone gets two rows instead of clipped
+  text. Measured fitting at 393px (one row) and 320px (two rows). **If a longer
+  rarity name is ever added, re-measure** — the fit has ~34px of slack at 320px
+  card width.
 
 ### Player telemetry dashboard + L004 ease (2026.08.19-1)
 - **Player Telemetry** section added to `balance-difficulty.html` (the deployed
