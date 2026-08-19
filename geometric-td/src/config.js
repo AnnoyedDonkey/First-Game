@@ -1210,16 +1210,35 @@ export const NARRATIVE = {
   // Shown ONCE ever, the first time ANY tower crosses into Mastery rank 1
   // mid-battle (career XP past the mastery threshold), gated via
   // progression.shouldShowBeat("firstMastery"). Assembled/played in main.js
-  // updateBarks; deliberately fires even when STORY BANTER is OFF because it
-  // teaches a real mechanic (gear unlocks at Mastery). The card runs the
-  // `mastery` tower-demo (a tower leveling up on a loop), featuring the
-  // tower type that just ranked up. {tower} = that tower's display name.
-  // [hl-pink]/[hl-blue] inline markup is colored by ui.js storyCardHtml.
+  // updateBarks as a TWO-CARD sequence; deliberately fires even when STORY
+  // BANTER is OFF because it teaches a real mechanic (gear unlocks at Mastery).
+  // {tower} = the ranked-up tower's display name. [hl-pink]/[hl-blue] inline
+  // markup is colored by ui.js storyCardHtml.
+  // - Card 1 (`surge`): celebration, runs the `mastery` tower-demo (a tower
+  //   leveling up on a loop) featuring the tower that just ranked up.
+  // - Card 2 (`gear`): the gear unlock, with a `showcase` of four gear pieces
+  //   at rising rarities (rendered by ui.js renderGearShowcase from the game's
+  //   own slot glyphs + RARITY_COLOR — change a slot/rarity here and it follows).
   firstMastery: {
     speaker: "indy",
-    mood: "happy",
-    cta: "NICE",
-    text: "Well, well — your {tower} just hit [hl-blue]Mastery[/hl]. All that combat experience finally paid off.\n\nTwo things just happened: it got a [hl-pink]permanent[/hl] damage boost — one it keeps for good, and grows with every Mastery rank — plus a temporary power surge for the rest of this fight. See the gold.\n\nAnd here's the good part: a Mastered tower can be fitted with [hl-blue]gear[/hl]. Pop into the Towers menu between battles and bolt some loot onto it.",
+    surge: {
+      mood: "happy",
+      cta: "GO ON…",
+      text: "Well, well — your {tower} just hit [hl-blue]Mastery[/hl]. All that combat experience finally paid off.\n\nIt's [hl-pink]permanently[/hl] stronger now — a little more with every rank — and riding a power surge for the rest of this fight. Watch it flex.",
+    },
+    gear: {
+      mood: "smug",
+      cta: "ON IT",
+      text: "Here's the good part: a Mastered tower can now wear [hl-blue]gear[/hl]. Four slots — and loot comes in rarities, from a humble drop to a [hl-pink]Singularity[/hl] that'll make it purr.\n\nHit the [hl-blue]Towers[/hl] menu between battles and bolt some on.",
+      // Four sample pieces, one per slot, rarities rising left→right so the
+      // showcase reads as "gear gets cooler". stat = a short flavor label.
+      showcase: [
+        { slot: "optic",     rarity: "enhanced",    stat: "+CRIT" },
+        { slot: "emitter",   rarity: "rare",        stat: "+DAMAGE" },
+        { slot: "capacitor", rarity: "prismatic",   stat: "+FIRE RATE" },
+        { slot: "frame",     rarity: "singularity", stat: "+RANGE" },
+      ],
+    },
   },
   // ---------- Tower placement barks (P4) ----------
   // First time each tower TYPE is placed in a campaign battle, it quips on

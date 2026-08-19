@@ -604,6 +604,49 @@ html[data-lang="fr"] #story-lang-toggle .lang-fr {
   height: auto;
 }
 #story-tower-demo.hidden { display: none; }
+/* First-Mastery gear showcase: a row of sample gear pieces, each tinted to its
+   rarity (--rar, set inline by ui.js renderGearShowcase from RARITY_COLOR). */
+#story-gear-showcase {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 12px;
+}
+#story-gear-showcase.hidden { display: none; }
+.gear-showcase-tile {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 4px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--rar, var(--neon-cyan));
+  background: rgba(5, 6, 15, 0.6);
+  box-shadow: 0 0 10px -3px var(--rar, var(--neon-cyan)),
+              inset 0 0 14px -8px var(--rar, var(--neon-cyan));
+  animation: gearShowcasePop 340ms cubic-bezier(.2, .9, .3, 1.2) both;
+}
+.gear-showcase-tile .glyph { width: 40px; height: 40px; }
+.gear-showcase-rarity {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-shadow: 0 0 6px var(--rar, var(--neon-cyan));
+}
+.gear-showcase-stat {
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.03em;
+}
+@keyframes gearShowcasePop {
+  from { opacity: 0; transform: translateY(8px) scale(0.9); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gear-showcase-tile { animation: none; }
+}
 /* The track they march along — echoes the level path, tinted to the enemy's
    own color (--parade-color, set inline by ui.js renderEnemyParade). */
 #story-enemy-parade::after {

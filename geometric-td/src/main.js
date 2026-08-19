@@ -630,15 +630,25 @@ function updateBarks(game) {
       markBeatSeen("firstMastery");
       const fm = NARRATIVE.firstMastery;
       const towerName = TOWERS[towerType]?.name || "tower";
-      playCards([{
-        id: "firstMastery",
-        speaker: fm.speaker,
-        mood: fm.mood,
-        cta: fm.cta,
-        demo: "mastery",           // runs the leveling-up tower-demo loop
-        demoTowerType: towerType,  // featuring the tower that just ranked up
-        text: fm.text.replace("{tower}", towerName),
-      }]);
+      playCards([
+        {
+          id: "firstMastery1",
+          speaker: fm.speaker,
+          mood: fm.surge.mood,
+          cta: fm.surge.cta,
+          demo: "mastery",           // runs the leveling-up tower-demo loop
+          demoTowerType: towerType,  // featuring the tower that just ranked up
+          text: fm.surge.text.replace("{tower}", towerName),
+        },
+        {
+          id: "firstMastery2",
+          speaker: fm.speaker,
+          mood: fm.gear.mood,
+          cta: fm.gear.cta,
+          gearShowcase: fm.gear.showcase, // four rising-rarity gear pieces
+          text: fm.gear.text.replace("{tower}", towerName),
+        },
+      ]);
       return;
     }
   }

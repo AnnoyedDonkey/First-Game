@@ -164,6 +164,7 @@ const el = {
   storySpeaker: document.getElementById("story-speaker"),
   storyEnemyParade: document.getElementById("story-enemy-parade"),
   storyTowerDemo: document.getElementById("story-tower-demo"),
+  storyGearShowcase: document.getElementById("story-gear-showcase"),
   storySpotlight: document.getElementById("story-spotlight"),
   storyCardText: document.getElementById("story-card-text"),
   storyNameInput: document.getElementById("story-name-input"),
@@ -3385,6 +3386,35 @@ function renderEnemyParade(type) {
   band.classList.remove("hidden");
 }
 
+// First-Mastery gear card: a row of sample gear pieces at rising rarities, so
+// a player meeting the gear system for the first time sees that Mastered towers
+// take cool, varied loot. Built from the game's own slot glyphs + RARITY_COLOR
+// (so it always matches the real Towers menu), tinted per rarity with a small
+// rarity + flavor-stat label. `items` = [{slot, rarity, stat?}] from
+// NARRATIVE.firstMastery.gear.showcase; falsy hides the row.
+function renderGearShowcase(items) {
+  const row = el.storyGearShowcase;
+  if (!row) return;
+  if (!items || !items.length) {
+    row.innerHTML = "";
+    row.classList.add("hidden");
+    return;
+  }
+  let html = "";
+  items.forEach((it, i) => {
+    const color = RARITY_COLOR[it.rarity] || RARITY_COLOR.common;
+    html +=
+      `<div class="gear-showcase-tile ${RARITY_CLASS[it.rarity] || "rc"}" ` +
+      `style="--rar:${color}; animation-delay:${60 + i * 90}ms">` +
+      slotGlyph(it.slot, color) +
+      `<span class="gear-showcase-rarity" style="color:${color}">${rarityLabel(it.rarity)}</span>` +
+      (it.stat ? `<span class="gear-showcase-stat">${escapeHtml(it.stat)}</span>` : "") +
+      `</div>`;
+  });
+  row.innerHTML = html;
+  row.classList.remove("hidden");
+}
+
 // Tower-intro cards run a real sandboxed battle in their canvas. The card
 // owns the animation lifetime: card changes destroy it, while tab hiding only
 // pauses it so returning resumes the same cast instead of resetting the demo.
@@ -3613,6 +3643,7 @@ function renderOnboardingCard() {
     el.storySpotlight?.classList.add("hidden");
     if (el.storyCard) el.storyCard.style.maxHeight = "";
     renderEnemyParade(null);
+    renderGearShowcase(null);
     updateWelcomeBack(); // reflect a name set/changed during this run
     return;
   }
@@ -3630,6 +3661,9 @@ function renderOnboardingCard() {
   // Only enemy-intro cards carry `enemyType`; every other card gets an empty
   // (hidden) parade band and no spotlight, so they look exactly as before.
   renderEnemyParade(card.enemyType || null);
+  // First-Mastery gear card only: a row of rising-rarity gear pieces; empty
+  // (hidden) on every other card.
+  renderGearShowcase(card.gearShowcase || null);
   // `towerType` = a single-tower intro (also drives the stat line); `demo` =
   // a named multi-tower scenario (e.g. the onboarding "intro" battle).
   // `demoTowerType` overrides which tower a named scenario features (the
