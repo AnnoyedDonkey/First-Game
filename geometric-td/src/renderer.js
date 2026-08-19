@@ -312,11 +312,33 @@ export function render(ctx, game, time, uiState = {}) {
   // Additive pass: everything glowing blooms where it overlaps.
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
+  drawSurgeAura(ctx, game);
   drawTowerGear(ctx, game);
   drawProjectiles(ctx, game);
   drawEffects(ctx, game);
   drawParticles(ctx, game);
   ctx.restore();
+}
+
+// Sustained golden aura around a tower for the whole level-up buff window
+// (game.time < tower._surgeUntil). Pulses like a heartbeat and tapers out over
+// the buff's final moments, so the "powered up" state is unmissable and lasts
+// as long as the boost — the fix for a one-frame flash getting lost at x2/x4.
+// Runs in the additive pass (pre-rendered glow sprite, no shadowBlur). Knobs in
+// config.js VFX.levelUp.
+function drawSurgeAura(ctx, game) {
+  const lu = VFX.levelUp;
+  const ts = game.grid.tileSize;
+  const time = game.time;
+  for (const tower of game.towers) {
+    const remain = (tower._surgeUntil || 0) - time;
+    if (remain <= 0) continue;
+    const pulse = 0.5 + 0.5 * Math.sin(time * lu.auraPulseRate); // 0..1 heartbeat
+    let alpha = lu.auraAlpha * (1 + lu.auraPulseDepth * (pulse - 0.5) * 2);
+    if (remain < lu.auraFadeSeconds) alpha *= remain / lu.auraFadeSeconds; // taper out
+    const radius = ts * lu.auraRadiusTiles * (1 + 0.08 * (pulse - 0.5) * 2);
+    drawGlow(ctx, tower.pos.x, tower.pos.y, radius, lu.color, alpha);
+  }
 }
 
 // Orbiting rarity diamonds + aura for towers carrying gear (B4). Runs inside

@@ -42,6 +42,9 @@ export function emitHitSparks(game, x, y, color, count = VFX.hitSparkCount) {
 // shimmer can be tuned independently of combat-hit sparks.
 export function emitLevelUpSplash(game, x, y) {
   const lu = VFX.levelUp;
+  // Sparks fade on the speed-scaled game clock; scale their lifetime up by the
+  // current speed so the splash reads for a constant real-time length at x2/x4.
+  const spd = game.effectiveSpeed || 1;
   for (let i = 0; i < lu.splashSparks; i++) {
     const a = Math.random() * Math.PI * 2;
     const speed = rand(lu.splashSpeed[0], lu.splashSpeed[1]);
@@ -52,8 +55,8 @@ export function emitLevelUpSplash(game, x, y) {
       vy: Math.sin(a) * speed,
       color: i % 3 === 0 ? "#ffffff" : lu.color, // white-hot glints shimmer through the gold
       size: rand(1.6, 3.4),
-      ttl: rand(lu.splashTtl[0], lu.splashTtl[1]),
-      maxTtl: lu.splashTtl[1],
+      ttl: rand(lu.splashTtl[0], lu.splashTtl[1]) * spd,
+      maxTtl: lu.splashTtl[1] * spd,
     });
   }
 }

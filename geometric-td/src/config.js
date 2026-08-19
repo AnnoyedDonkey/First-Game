@@ -736,25 +736,40 @@ export const VFX = {
   // towers.js (recomputeStats applies the multipliers, fire() tints the shot).
   // Runtime-only — nothing here touches the save. One-stop tuning:
   levelUp: {
-    color: "#ffd24a",         // the surge gold — used for rings, splash, text, and shots
-    // --- the power surge that wraps the tower ---
-    ringRadiusTiles: 0.62,    // outer radius the golden halo expands to (× tile)
-    ringTtl: 0.6,             // seconds the surge halo lives before fading
-    innerRingTtl: 0.45,       // a second, tighter ring for a layered "wrap" look
-    innerRingRadiusTiles: 0.4,
+    color: "#ffd24a",         // the surge gold — used for rings, splash, aura, text, and shots
+    // The one-shot flourish (shockwave/rings/splash/text) decays on the SPEED-
+    // SCALED game clock, so at x2/x4 it would flash past in real time. towers.js
+    // triggerLevelUpSurge multiplies these lifetimes by game.effectiveSpeed so
+    // the burst lasts a CONSISTENT real-time length at any speed. The sustained
+    // aura instead tracks the buff window directly (game-time), so it naturally
+    // lasts exactly as long as the boost.
+    // --- opening shockwave: a big ring that expands out to announce the surge ---
+    shockwaveRadiusTiles: 1.25, // outer radius the shockwave blooms to (× tile)
+    shockwaveTtl: 0.55,         // seconds (real-time, speed-compensated)
+    // --- the power surge rings that wrap the tower ---
+    ringRadiusTiles: 0.74,    // outer radius the golden halo expands to (× tile)
+    ringTtl: 0.7,             // seconds the surge halo lives (real-time)
+    innerRingRadiusTiles: 0.46,
+    innerRingTtl: 0.55,       // a second, tighter ring for a layered "wrap" look
     // --- the shimmering splash it dissipates into ---
-    splashSparks: 16,         // golden sparks flung out as the surge breaks apart
-    splashSpeed: [70, 240],   // px/sec range for the splash sparks
-    splashTtl: [0.35, 0.75],  // seconds range before a splash spark fades
+    splashSparks: 34,         // golden sparks flung out as the surge breaks apart
+    splashSpeed: [90, 320],   // px/sec range for the splash sparks
+    splashTtl: [0.4, 0.9],    // seconds range before a splash spark fades (real-time)
+    // --- sustained golden aura while the buff is live (renderer.js drawSurgeAura) ---
+    auraRadiusTiles: 0.7,     // halo radius around a surging tower (× tile)
+    auraAlpha: 0.55,          // base additive alpha of the aura glow
+    auraPulseRate: 7.0,       // radians/sec the aura pulses (heartbeat)
+    auraPulseDepth: 0.45,     // how much the pulse swells the alpha (0-1)
+    auraFadeSeconds: 0.6,     // taper the aura out over the last N game-seconds of the buff
     // --- the floating "LEVEL UP" label ---
     showText: true,           // flip off in one line if it reads as disturbing on phone
     text: "LEVEL UP",
-    textFont: "700 13px system-ui, sans-serif",
-    textRiseTiles: 0.9,       // how far above the tower the text drifts up (× tile)
-    textTtl: 1.1,             // seconds the label lives
-    textStartYTiles: 0.5,     // initial offset above the tower center (× tile)
-    // --- the temporary combat buff (gameplay) ---
-    buffDuration: 4.0,        // seconds the surge boost lasts
+    textFont: "800 17px system-ui, sans-serif",
+    textRiseTiles: 1.3,       // how far above the tower the text drifts up (× tile)
+    textTtl: 1.6,             // seconds the label lives (real-time, speed-compensated)
+    textStartYTiles: 0.55,    // initial offset above the tower center (× tile)
+    // --- the temporary combat buff (gameplay; honest game-time) ---
+    buffDuration: 5.0,        // seconds the surge boost (and its aura + gold shots) last
     buffDamageMult: 1.35,     // damage multiplier while surging
     buffFireRateMult: 1.5,    // fire-rate multiplier while surging (fireInterval /= this)
   },

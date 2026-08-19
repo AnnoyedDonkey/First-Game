@@ -405,22 +405,36 @@ function findRailgunAim(game, tower) {
 function triggerLevelUpSurge(game, tower) {
   const lu = VFX.levelUp;
   const ts = game.grid.tileSize;
+  const x = tower.pos.x, y = tower.pos.y;
+  // These one-shot effects decay on the speed-scaled game clock, so scale their
+  // lifetimes UP by the current speed multiplier to keep a constant real-time
+  // duration at x1/x2/x4 (see VFX.levelUp comment). The sustained aura is drawn
+  // separately in the renderer from the buff window, so it needs no scaling.
+  const spd = game.effectiveSpeed || 1;
+  const ttl = (t) => t * spd;
+
+  // Big shockwave ring that blooms outward to announce the surge.
+  game.effects.push({
+    kind: "burst", x, y, color: lu.color,
+    radius: ts * lu.shockwaveRadiusTiles,
+    ttl: ttl(lu.shockwaveTtl), maxTtl: ttl(lu.shockwaveTtl),
+  });
   // Outer halo, then a tighter inner ring, for a layered "wrap" that blooms
   // outward as it fades (rings expand while their life drains — see drawEffects).
   game.effects.push({
-    kind: "ring", x: tower.pos.x, y: tower.pos.y, color: lu.color,
-    radius: ts * lu.ringRadiusTiles, ttl: lu.ringTtl, maxTtl: lu.ringTtl,
+    kind: "ring", x, y, color: lu.color,
+    radius: ts * lu.ringRadiusTiles, ttl: ttl(lu.ringTtl), maxTtl: ttl(lu.ringTtl),
   });
   game.effects.push({
-    kind: "ring", x: tower.pos.x, y: tower.pos.y, color: lu.color,
-    radius: ts * lu.innerRingRadiusTiles, ttl: lu.innerRingTtl, maxTtl: lu.innerRingTtl,
+    kind: "ring", x, y, color: lu.color,
+    radius: ts * lu.innerRingRadiusTiles, ttl: ttl(lu.innerRingTtl), maxTtl: ttl(lu.innerRingTtl),
   });
-  emitLevelUpSplash(game, tower.pos.x, tower.pos.y);
+  emitLevelUpSplash(game, x, y);
   if (lu.showText) {
     game.effects.push({
       kind: "floatText", text: lu.text, color: lu.color, font: lu.textFont,
-      x: tower.pos.x, y: tower.pos.y - ts * lu.textStartYTiles,
-      rise: ts * lu.textRiseTiles, ttl: lu.textTtl, maxTtl: lu.textTtl,
+      x, y: y - ts * lu.textStartYTiles,
+      rise: ts * lu.textRiseTiles, ttl: ttl(lu.textTtl), maxTtl: ttl(lu.textTtl),
     });
   }
 }

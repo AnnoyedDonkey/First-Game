@@ -685,6 +685,9 @@ function frame(now) {
     // Self-heal: if the canvas was sized while the page was hidden
     // (layout reports 0), fit it again now that we're visible.
     if (canvas.style.width === "0px") fitCanvas();
+    // Current game-time-to-real-time ratio, so speed-scaled one-shot VFX (the
+    // level-up surge) can compensate and last a constant real-time length.
+    game.effectiveSpeed = DEBUG.gameSpeed * speedFactor;
     updateGame(game, dt);
     // Drain any milestone toasts queued by this tick's wave-clear (B5).
     if (game.newMilestoneToasts && game.newMilestoneToasts.length) {
