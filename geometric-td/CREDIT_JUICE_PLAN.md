@@ -263,3 +263,80 @@ styles.css         .credit-gain keyframes (+ reduced-motion override)
 ```
 
 Nothing else. No `save.js`, no `progression.js`, no `version.js`, no git.
+
+---
+
+# As built (2026-08-19, builds `2026.08.19-8` .. `-13`)
+
+All four deliverables shipped. What follows is the record of what actually
+landed and — more usefully — what the plan got wrong.
+
+## Delivery
+
+- **`-8`** — Phases 1–3 as specced: coins, HUD pulse, gear-drop flash.
+- **`-9`** — gear flash redrawn as the item's **slot glyph** (player: the
+  diamond didn't say *what* dropped).
+- **`-10`** — gear flash became an **event**: the item appears as its own
+  stash tile, lifts, then **zips into Indy-7 and is swallowed**; Indy grins
+  after (player: "not that satisfying").
+- **`-11`/`-12`/`-13`** — First-Mastery card's gear showcase: rarity-name
+  overflow reported from a phone, fixed by removing the names (see below).
+
+## Corrections to this plan — read before trusting it
+
+1. **Coin `ttl` must NOT tick while airborne.** Phase 1 as written had coins
+   fading during their arc, and a near-vertical throw could outlive its fade
+   and vanish mid-air (~2% of coins). Airborne time now burns a separate
+   `flight` budget; `ttl`/`maxTtl` are seeded from `restTtl` so `life` is 1
+   for the whole arc. The plan's §1b/§1c are wrong on this point.
+2. **`enemies.js` must not import from `renderer.js`.** The first Phase 3
+   implementation imported `GEAR_RARITY_COLOR` to color the ring — but
+   `renderer.js` already imports `enemyPosition` from `enemies.js`, so that
+   closed a cycle. Only `rarity` + `slot` travel on the effect now, and the
+   renderer draws the ring itself.
+3. **The HUD tracker needs a per-battle reset.** `lastMoney` as a module
+   local persists across battles, so starting a level richer than the last
+   one ended fired a spurious pulse. Fixed by comparing `game` object
+   identity (no new lifecycle hook needed).
+4. **`display:inline-block` on the HUD value was a no-op** — `#hud-money` is
+   a flex container, so the item is blockified. Transforms never affect
+   layout anyway; the declaration was removed.
+
+## Gear showcase: why there are no rarity names
+
+The showcase on the First-Mastery card (`ui.js renderGearShowcase`) shows the
+slot glyph + stat only. The full ladder was tried and rejected:
+
+| Build | Attempt | Outcome |
+|---|---|---|
+| `-10` | 11px names, equal tiles | spilled outside the borders on a phone |
+| `-11` | content-sized tiles | text fit, but ragged widths rejected |
+| `-12` | 8px names, equal tiles | fit, but crowded the tile edges |
+| `-13` | **no names** | shipped |
+
+The card's column is ~278px, so an equal-width tile allows ~56px of text and
+"SINGULARITY" needs 78px at 11px. **Tiles must stay equal width.** Rarity is
+carried by the border/glow color and by the card's body text.
+
+**Measurement lesson:** `-12` measured as fitting in the desktop browser with
+~2px of slack and still overflowed on a real iPhone. Slack smaller than the
+font-metric difference between engines is not a fit. Measure with real margin
+or don't rely on the measurement.
+
+## Verification actually performed
+
+State/DOM assertions only, per the project's no-canvas-capture rule — **none
+of the visuals have been eyeballed on a phone**:
+
+- 121-kill battle: coins spawn on kills, land, settle, and clean up; 400-coin
+  physics run lost zero coins mid-air; boss bursts are visibly larger by count.
+- HUD pulse fires on gain, not on spend, not on the first frame of a battle;
+  resolves to a real `creditGainPulse` animation at 0.42s.
+- 23 forced drops: all four slot glyphs rendered; 12 drops → 12 ingest stamps
+  → `coreFaceMood` observed returning `happy` (and `crash` on leaks, so the
+  priority order holds).
+- Showcase: tiles equal and no child overflowing at 514/393/320px viewports.
+
+Open: **density is deliberately generous** — the player asked to tune after
+seeing it, not to pre-optimize for clutter. Coin counts, the gear-flash
+timing (`riseSeconds`/`zipSeconds`), and `smileSeconds` are the likely dials.

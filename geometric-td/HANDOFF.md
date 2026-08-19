@@ -6,7 +6,7 @@ July **and** August 2026); the original pre-cleanup handoff is preserved in Git
 at commit `2650204`. This file keeps only what you need to start work:
 current state, non-obvious mechanics, rules, tuning locations, and the file map.
 
-## Current state — 2026-08-18
+## Current state — 2026-08-19
 
 **IN PROGRESS — French localization (i18n).** A discreet `EN|FR` language
 toggle (default English) so the player's dad can play in French. Read
@@ -22,7 +22,7 @@ Bratwurst-XL, "GEOMETRIC TD").
 
 **Deployed build: `2026.08.19-13`.**
 
-### Credit Juice (new, `2026.08.19-8`)
+### Credit Juice (new, `2026.08.19-8` .. `-13`)
 Earning credits used to be silent — the only cue was a number changing. Now
 (spec + knob map in **`CREDIT_JUICE_PLAN.md`**; requested by the player's
 daughter after comparing the game to Block Blast):
@@ -625,6 +625,41 @@ BALANCE_LAB_PLAN.md  approved Balance Lab L0-L7 plan
     preview port has its own empty localStorage so the real save is never in
     scope). **Known gap:** World 4's pierce/conduit/spiral force-multipliers are
     unmodeled, so W4 rows read falsely-hard (flagged on the page).
+- **NEXT — the daughter's wishlist (2026-08-19).** The player's daughter tried
+  the game and asked for four things; **Credit Juice is built** (see Current
+  state), the rest are designed-not-built:
+  - **Theme picker / pink theme** — she'd play if it had a pink theme. Ideated,
+    not spec'd. Four palettes were mocked (Bubblegum hot-pink-on-black /
+    Cotton Candy light mode / Sunset Sparkle / Unicorn); **she hasn't picked
+    one yet**. Findings from the survey: the canvas side is easy (`renderer.js`
+    `LOOK` is already a palette layer with per-level overrides), the CSS side
+    is the chore (~150 hardcoded hex/rgba literals in `styles.css` alongside
+    the tokens). Two design questions to settle first: whether a theme
+    *replaces* per-level palettes or merely *tints* them (recommend tint —
+    cheaper, keeps each level's identity), and that enemy/tower colors must
+    NOT move (they carry weak/resist meaning). Follow the `lang` toggle's
+    pattern: `theme` save field + `<html data-theme>` hook.
+  - **Richer circuit-board art** — she wants the board to look more like a real
+    PCB (reference: a dense glowing-trace wallpaper). NOTE: the game **already
+    has** a procedural circuit layer (`renderer.js buildCircuitLayer`, knobs
+    `VFX.circuit`), pre-rendered once per level, so this is enrichment not a
+    build. Missing vs the reference: **bus bundles** (parallel traces turning
+    together — the biggest win), 45° mitred corners, longer runs, two trace
+    weights, comb/edge-connector fingers, IC blocks with pins, ring pads away
+    from the core, and glow blooms at pad ends. Density knob is `traceCount`
+    (26 today). **Undecided:** "Richer" vs "Dense". Keep it procedural — it
+    recolors with the level palette and any future theme for free, which a
+    bitmap wallpaper could not. Watch legibility: the glow blooms are the risk
+    (they can read as tappable objects), not the traces.
+  - **DECIDED AGAINST — haptics / vibration.** She likes Block Blast's tap
+    feedback, but **her phone is an iPhone and iOS Safari does not implement
+    the Vibration API** — `navigator.vibrate` simply does not exist, and
+    installing to the home screen does not change that (same engine). The only
+    workaround is a hidden `<input type="checkbox" switch>` that fires one
+    fixed system tap; fragile and single-sensation, so not worth building on.
+    **Don't re-plan this for iOS.** If Android is ever a target it's an easy
+    win (~1h): a feature-detected `haptics.js` with durations in `config.js`,
+    an ON/OFF toggle, sharing call sites with the sound layer.
 - **DEFERRED — Endless:** retune its ramp after campaign balance stabilizes.
 - **DEFERRED:** save export/import for iOS localStorage eviction; sound;
   additional tower classes (Tesla was the runner-up); pre-battle loadouts;
@@ -642,6 +677,12 @@ BALANCE_LAB_PLAN.md  approved Balance Lab L0-L7 plan
   corner-premium, bunching, targeting efficiency), the level-1 calibration
   anchors, and the full as-built record. Started 2026-08-14; all 3 goals +
   oracle calibration delivered 2026-08-15.
+- `CREDIT_JUICE_PLAN.md` — the coins / HUD-pulse / gear-drop feature: the
+  original phase spec **plus an "As built" record** with the corrections the
+  plan itself got wrong (coin `ttl` must not tick airborne; `enemies.js` must
+  not import `renderer.js`; the HUD tracker needs a per-battle reset) and the
+  full rejected ladder for the gear showcase's rarity labels. Read the As-built
+  section before trusting the phase spec above it.
 - `BALANCE_LAB_USAGE.md` — local editing, testing, restore, and manual Git
   workflow.
 - `WORLD_4_PLAN.md` — World 4 (SINGULARITY) design + original maps/waves
