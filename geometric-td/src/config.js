@@ -771,7 +771,11 @@ export const VFX = {
   gearDrop: {
     ttl: 1.1,             // seconds on screen (speed-compensated)
     riseTiles: 0.7,        // how far it floats up over its life
-    sizeTiles: 0.3,        // diamond half-size as a fraction of a tile
+    sizeTiles: 0.3,        // glyph HALF-size as a fraction of a tile (the icon
+                           // box is twice this — deliberately smaller than the
+                           // same glyph drawn in the stash)
+    glyphStroke: 7,        // glyph stroke width in ui.js slotGlyph's 100-unit
+                           // viewBox space; scales with sizeTiles
     popScale: 1.6,         // scales up from this to 1 in the first ~20% of life
     ringTtl: 0.45,         // expanding rarity ring behind it
     ringRadiusTiles: 0.85,

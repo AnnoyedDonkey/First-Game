@@ -304,9 +304,9 @@ export function damageEnemy(game, enemy, sourceTower, amount) {
     // enemyPosition from here, and the reverse edge would make that circular).
     // The expanding ring is drawn by the gearFlash branch for the same reason.
     game.effects.push({
-      kind: "gearFlash", rarity: drop.rarity, x: pos.x, y: pos.y,
+      kind: "gearFlash", rarity: drop.rarity, slot: drop.slot, x: pos.x, y: pos.y,
       size: ts * gd.sizeTiles, rise: ts * gd.riseTiles,
-      popScale: gd.popScale, glowMult: gd.glowMult,
+      popScale: gd.popScale, glowMult: gd.glowMult, glyphStroke: gd.glyphStroke,
       ringRadius: ts * gd.ringRadiusTiles, ringFrac: gd.ringTtl / gd.ttl,
       ttl: gd.ttl * spd, maxTtl: gd.ttl * spd,
     });

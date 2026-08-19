@@ -1006,15 +1006,14 @@ function drawEffects(ctx, game) {
       ctx.textBaseline = "middle";
       ctx.fillText(fx.text, fx.x, y);
     } else if (fx.kind === "gearFlash") {
-      // Credit Juice: gear-drop flash. A rarity-colored diamond (same shape
-      // drawTowerGear uses for equipped orbitals, so it reads instantly as
-      // "gear") pops in, drifts up, and fades — same rise/fade easing as
-      // floatText above, plus a pop-in scale for the first fifth of its life.
+      // Credit Juice: gear-drop flash. Shows the dropped item's own SLOT
+      // glyph — the same icon the stash draws, just smaller — in its rarity
+      // color, so the player sees WHAT they got, not a generic marker. Pops
+      // in, drifts up, and fades on floatText's rise/fade easing.
       const color = GEAR_RARITY_COLOR[fx.rarity] || GEAR_RARITY_COLOR.common;
       const t = 1 - life;                 // 0 -> 1 over its lifetime
       const y = fx.y - fx.rise * (1 - (1 - t) * (1 - t));
       const pop = t < 0.2 ? fx.popScale - (fx.popScale - 1) * (t / 0.2) : 1;
-      const half = fx.size * pop;
       // Expanding rarity ring over the first ringFrac of the life, drawn here
       // rather than pushed as a separate `ring` effect so the drop site never
       // has to resolve a color (see enemies.js).
@@ -1029,16 +1028,65 @@ function drawEffects(ctx, game) {
       }
       ctx.globalAlpha = life * life;      // hold, then fade quicker at the end
       drawGlow(ctx, fx.x, y, fx.size * fx.glowMult, color, life * life);
-      ctx.save();
-      ctx.translate(fx.x, y);
-      ctx.rotate(Math.PI / 4);
-      ctx.fillStyle = color;
-      ctx.fillRect(-half, -half, half * 2, half * 2);
-      ctx.restore();
+      drawSlotGlyph(ctx, fx.slot, fx.x, y, fx.size * 2 * pop, color, fx.glyphStroke);
     }
 
     ctx.restore();
   }
+}
+
+// Gear SLOT glyph, drawn as a canvas path in the same 100x100 coordinate
+// space `ui.js slotGlyph` uses for its SVG — the shapes are ported vertex for
+// vertex, so the icon that flashes on the board is the same one the stash
+// shows (just smaller). If a slot's artwork changes in ui.js, change it here
+// too; the two are deliberately parallel because the renderer takes no UI
+// import. `size` is the full box side in px; stroke width is in viewBox units
+// and scales with it.
+function drawSlotGlyph(ctx, slot, cx, cy, size, color, strokeWidth) {
+  const k = size / 100;
+  ctx.save();
+  ctx.translate(cx - size / 2, cy - size / 2);
+  ctx.scale(k, k);
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = strokeWidth;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  const poly = (pts, close) => {
+    ctx.beginPath();
+    for (let i = 0; i < pts.length; i += 2) {
+      if (i === 0) ctx.moveTo(pts[i], pts[i + 1]);
+      else ctx.lineTo(pts[i], pts[i + 1]);
+    }
+    if (close) ctx.closePath();
+    ctx.stroke();
+  };
+  const dot = (x, y, r) => {
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  };
+
+  if (slot === "optic") {
+    ctx.beginPath();
+    ctx.arc(50, 50, 26, 0, Math.PI * 2);
+    ctx.stroke();
+    dot(50, 50, 6);
+    poly([50, 10, 50, 24]);
+    poly([50, 76, 50, 90]);
+    poly([10, 50, 24, 50]);
+    poly([76, 50, 90, 50]);
+  } else if (slot === "emitter") {
+    poly([50, 14, 86, 80, 14, 80], true);
+    dot(50, 62, 7);
+  } else if (slot === "capacitor") {
+    poly([56, 10, 30, 54, 50, 54, 42, 90, 72, 42, 52, 42, 62, 10]);
+  } else { // frame
+    poly([50, 10, 85, 30, 85, 70, 50, 90, 15, 70, 15, 30], true);
+    poly([50, 32, 68, 42, 68, 60, 50, 70, 32, 60, 32, 42], true);
+  }
+  ctx.restore();
 }
 
 function drawParticles(ctx, game) {

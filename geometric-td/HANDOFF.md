@@ -20,7 +20,7 @@ en)` looks it up; `lang` save field via `progression.js getLang/setLang`;
 proper nouns** (tower names Laser/Pulse/Slow/Railgun/Rocket, Indy-7,
 Bratwurst-XL, "GEOMETRIC TD").
 
-**Deployed build: `2026.08.19-8`.**
+**Deployed build: `2026.08.19-9`.**
 
 ### Credit Juice (new, `2026.08.19-8`)
 Earning credits used to be silent — the only cue was a number changing. Now
@@ -39,12 +39,17 @@ daughter after comparing the game to Block Blast):
   keyframes in `styles.css`). Spending never pulses, and the tracker resets
   per battle by comparing `game` object identity, so starting a level richer
   than the last one ended doesn't fire. `VFX.creditGain`.
-- **Gear-drop flash** — a rarity-colored diamond (the same shape equipped
-  gear orbits towers as) pops, rises, and fades at the enemy that dropped
-  loot, with an expanding rarity ring. `VFX.gearDrop`. **Only the rarity
-  travels on the effect** — the renderer owns `GEAR_RARITY_COLOR` and draws
-  the ring itself, deliberately, because `renderer.js` already imports from
-  `enemies.js` and resolving the color at the drop site made that circular.
+- **Gear-drop flash** — the dropped item's own **slot glyph** (optic/emitter/
+  capacitor/frame) pops, rises, and fades at the enemy that dropped it, in its
+  rarity color with an expanding rarity ring. `VFX.gearDrop`. Player rejected
+  the first version (a generic rarity diamond) in `-9`: they want to see WHAT
+  dropped. `renderer.js drawSlotGlyph` is a **vertex-for-vertex canvas port of
+  `ui.js slotGlyph`'s SVG**, drawn in the same 100-unit viewBox space — the
+  two are deliberately parallel copies because the renderer takes no UI
+  import, so **artwork changes must be made in both**. Only the rarity + slot
+  travel on the effect: the renderer owns `GEAR_RARITY_COLOR` and draws the
+  ring itself, because `renderer.js` already imports from `enemies.js` and
+  resolving color at the drop site would make that circular.
 - **Not yet eyeballed on a phone** — verified by state assertions only
   (coins spawn/land/clean up, pulse fires on gain but not spend, flashes
   carry the right rarity). Counts are deliberately generous; the player
