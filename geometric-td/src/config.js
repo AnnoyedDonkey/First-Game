@@ -857,6 +857,9 @@ export const VFX = {
     chargeRingTiles: 0.6,     // radius the converging charge ring starts at, shrinks to ~0 (× tile)
     beamFadeSeconds: 0.4,     // how long the released colored ray lingers then vanishes (real-time)
     flashFadeSeconds: 0.18,   // the white-hot inner flash fades faster than the colored ray
+    outerRayFadeFrac: 0.5,    // in a pattern that HAS a center ray (the 3-ray levels), the OUTER
+                              // rays live this fraction as long, so they vanish before the center
+                              // ray. Single-ray and centerless (2-ray / 2-thick) levels ignore it.
     minCooldown: 0.06,        // floor so a very fast rail never gets a zero/negative cooldown
     // --- Ray appearance by BOUGHT (in-battle) level (towers.js fireShot). Purely
     //     cosmetic: every ray in a shot damages the SAME center line — the extra

@@ -675,9 +675,15 @@ function fireShot(game, tower, target, targetPos, damageScale) {
     const startGap = (rg.rayStartOffsetTiles || 0) * game.grid.tileSize;
     const startX = tower.pos.x + dirX * startGap;
     const startY = tower.pos.y + dirY * startGap;
+    // In a pattern with a center ray (the 3-ray levels), the outer rays fade out
+    // before the center ray — a focused core with flanking energy that dissipates.
+    const hasCenter = pattern.some((r) => r[0] === 0);
     for (const [off, tierName] of pattern) {
       const tier = rg.rayTiers[tierName] || rg.rayTiers.thin;
       const ox = perpX * off * spacing, oy = perpY * off * spacing;
+      const fadeMul = (hasCenter && off !== 0) ? (rg.outerRayFadeFrac ?? 1) : 1;
+      const fTtl = flashTtl * fadeMul;
+      const rTtl = rayTtl * fadeMul;
       game.effects.push({
         kind: "beam",
         x1: startX + ox, y1: startY + oy,
@@ -685,7 +691,7 @@ function fireShot(game, tower, target, targetPos, damageScale) {
         color: "#ffffff",
         width: tier.flash,
         fadeWidth: true,
-        ttl: flashTtl, maxTtl: flashTtl,
+        ttl: fTtl, maxTtl: fTtl,
       });
       game.effects.push({
         kind: "beam",
@@ -694,7 +700,7 @@ function fireShot(game, tower, target, targetPos, damageScale) {
         color: shotColor,
         width: tier.ray,
         fadeWidth: true,
-        ttl: rayTtl, maxTtl: rayTtl,
+        ttl: rTtl, maxTtl: rTtl,
       });
     }
     for (let i = 0; i < victims.length; i++) {
