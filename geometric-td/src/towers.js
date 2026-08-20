@@ -10,7 +10,7 @@ import { enemyPosition, damageEnemy, slowEnemy } from "./enemies.js";
 import { spawnPulseOrb, spawnRocket } from "./projectiles.js";
 import {
   getTowerDamageMult, getSlowDurationMult, getSlowPotencyMult, takeRosterUnit, isTowerUnlocked,
-  getTowerLevelCap, getRailBeamLengthMult, getLaserFireRateMult, getPulseBlastRadiusMult,
+  getTowerLevelCap, getRailChargeSpeedMult, getLaserFireRateMult, getPulseBlastRadiusMult,
   getRocketBlastRadiusMult,
 } from "./progression.js";
 import { emitHitSparks, emitLevelUpSplash } from "./particles.js";
@@ -133,10 +133,15 @@ function recomputeStats(tower, grid) {
   if (def.pierceWidth) {
     tower.pierceWidth = def.pierceWidth * grid.tileSize;
   }
-  // Railgun over-penetration (skill: railPen) — the rail's damage corridor
-  // reaches beyond the tower's range ring. Only affects the railgun; the
-  // laser's own pierce uses tower.range directly.
-  tower.beamLengthMult = tower.type === "railgun" ? getRailBeamLengthMult() : 1;
+  // Railgun: the fired ray reaches the WHOLE board (unlimited ray range) — the
+  // trigger ring (tower.range) stays the smaller TARGETING range. The wind-up
+  // charge (config VFX.railgun.chargeSeconds) is shortened by the Capacitor Bank
+  // skill (getRailChargeSpeedMult). Both only affect the railgun.
+  if (tower.type === "railgun") {
+    tower.railReach = (grid.width + grid.height) * grid.tileSize; // >= board diagonal
+    tower.baseChargeSeconds = VFX.railgun.chargeSeconds;
+    tower.chargeSeconds = tower.baseChargeSeconds / getRailChargeSpeedMult();
+  }
   tower.pierce = Math.max(1, (def.basePierce || 1) + gs.pierce);
   tower.projectileSpeedMult = 1 + gs.projSpeed / 100;
   tower.critChance = Math.min(1, gs.critChance / 100);
@@ -353,13 +358,14 @@ function findTarget(game, tower, excluded = null) {
 // along the path. Returns { angle, target } or null.
 //
 // The railgun has TWO ranges: it only TRIGGERS on (and aims the line through)
-// an enemy inside its range ring (tower.range), but the beam it fires REACHES
-// and pierces out to railLength (range x over-penetration). Using the big
-// reach for triggering too would make it fire at enemies past its ring.
+// an enemy inside its range ring (tower.range), but the ray it fires REACHES
+// and pierces across the WHOLE board (tower.railReach). Using the big reach for
+// triggering too would make it fire at enemies past its ring.
 function findRailgunAim(game, tower) {
-  // Over-penetration (railPen skill) lets the rail hit enemies out to
-  // railLength; the range ring itself stays the smaller trigger range.
-  const railLength = tower.range * (tower.beamLengthMult || 1);
+  // The ray reaches the whole board (railReach); the range ring itself stays
+  // the smaller trigger range, so the rail still only FIRES on enemies inside
+  // its targeting ring but then pierces everything lined up behind them.
+  const railLength = tower.railReach || tower.range;
   const reach2 = railLength * railLength;
   const trigger2 = tower.range * tower.range;
   const reachable = []; // any enemy the fired beam could hit (scoring victims)
@@ -483,11 +489,34 @@ export function updateTowers(game, dt) {
     // Railgun aims down the line that pierces the most enemies (placement
     // matters); every other tower shoots the enemy furthest along the path.
     if (tower.type === "railgun") {
+      // Charge-up: wind up a visible energy charge, THEN release the ray. The
+      // wind-up is game-time; on release the cooldown is shortened by the base
+      // wind-up so the cadence (and thus DPS) matches the un-charged fire rate.
+      // The Capacitor Bank skill shortens tower.chargeSeconds below that
+      // baseline — the only real fire-rate gain (see recomputeStats).
+      const baseCharge = tower.baseChargeSeconds || VFX.railgun.chargeSeconds;
+      const chargeDur = tower.chargeSeconds || baseCharge;
+      if (tower._charging) {
+        if (game.time - tower._chargeStart >= chargeDur) {
+          // Release along the COMMITTED angle (snap-free even if the trigger
+          // enemy died mid-charge); live victims are collected at fire time.
+          tower._charging = false;
+          const dir = tower.aimAngle;
+          const tp = {
+            x: tower.pos.x + Math.cos(dir) * tower.range,
+            y: tower.pos.y + Math.sin(dir) * tower.range,
+          };
+          fire(game, tower, tower._chargeTarget, tp);
+          tower.cooldown = Math.max(VFX.railgun.minCooldown, tower.fireInterval - baseCharge);
+        }
+        continue;
+      }
       const aim = findRailgunAim(game, tower);
       if (!aim) continue;
       tower.aimAngle = aim.angle;
-      tower.cooldown = tower.fireInterval;
-      fire(game, tower, aim.target, enemyPosition(aim.target, game.grid));
+      tower._charging = true;
+      tower._chargeStart = game.time;
+      tower._chargeTarget = aim.target;
       continue;
     }
 
@@ -514,8 +543,8 @@ function emitCritVfx(game, tower, x, y) {
   });
 }
 
-// maxLength defaults to the tower's range; the railgun passes a longer
-// reach for over-penetration (skill: railPen). The laser leaves it default.
+// maxLength defaults to the tower's range; the railgun passes its whole-board
+// reach (tower.railReach — unlimited ray range). The laser leaves it default.
 function collectLineVictims(game, tower, angle, halfWidth, maxLength = tower.range) {
   const dirX = Math.cos(angle);
   const dirY = Math.sin(angle);
@@ -616,10 +645,10 @@ function fireShot(game, tower, target, targetPos, damageScale) {
     }
 
   } else if (tower.type === "railgun") {
-    // The rail damages enemies along its corridor up to its pierce limit.
-    // Over-penetration (railPen skill) extends both the visible beam and
-    // the damage cutoff beyond the range ring.
-    const railLength = tower.range * (tower.beamLengthMult || 1);
+    // The rail damages enemies along its corridor up to its pierce limit. The
+    // ray reaches the whole board (railReach) — unlimited ray range — so it
+    // pierces everything lined up behind the trigger enemy.
+    const railLength = tower.railReach || tower.range;
     const dirX = Math.cos(tower.aimAngle);
     const dirY = Math.sin(tower.aimAngle);
     const endX = tower.pos.x + dirX * railLength;
@@ -628,14 +657,20 @@ function fireShot(game, tower, target, targetPos, damageScale) {
     // Collect victims first (kills can spawn splitlings mid-loop).
     const victims = collectLineVictims(game, tower, tower.aimAngle, tower.pierceWidth, railLength);
 
-    // White-hot rail flash + sparks at every victim.
+    // Released ray: a white-hot inner flash + a colored ray that both taper and
+    // vanish gradually (fadeWidth shrinks them as they fade). Lifetimes are
+    // speed-compensated so the vanish reads the same at x1/x2/x4.
+    const spd = game.effectiveSpeed || 1;
+    const flashTtl = VFX.railgun.flashFadeSeconds * spd;
+    const rayTtl = VFX.railgun.beamFadeSeconds * spd;
     game.effects.push({
       kind: "beam",
       x1: tower.pos.x, y1: tower.pos.y,
       x2: endX, y2: endY,
       color: "#ffffff",
       width: 3 + tower.level,
-      ttl: 0.15, maxTtl: 0.15,
+      fadeWidth: true,
+      ttl: flashTtl, maxTtl: flashTtl,
     });
     game.effects.push({
       kind: "beam",
@@ -643,7 +678,8 @@ function fireShot(game, tower, target, targetPos, damageScale) {
       x2: endX, y2: endY,
       color: shotColor,
       width: 6 + tower.level * 2,
-      ttl: 0.1, maxTtl: 0.1,
+      fadeWidth: true,
+      ttl: rayTtl, maxTtl: rayTtl,
     });
     for (let i = 0; i < victims.length; i++) {
       const v = victims[i];

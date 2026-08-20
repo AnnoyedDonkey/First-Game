@@ -847,6 +847,33 @@ function drawTowerShape(ctx, tower, ts, x, y) {
   ctx.stroke();
 }
 
+// Railgun wind-up: a shrinking, brightening ring converges on the barrel tip
+// while a core glow swells there — reading as energy building toward release.
+// Progress p (0->1) tracks tower._chargeStart over tower.chargeSeconds (game-
+// time), so it speeds up with the game clock like everything else. Knobs live
+// in config VFX.railgun.
+function drawRailCharge(ctx, tower, ts, time) {
+  const rg = VFX.railgun;
+  const dur = tower.chargeSeconds || rg.chargeSeconds;
+  const p = Math.min(1, Math.max(0, (time - (tower._chargeStart || time)) / dur));
+  const bx = tower.pos.x + Math.cos(tower.aimAngle) * ts * 0.24;
+  const by = tower.pos.y + Math.sin(tower.aimAngle) * ts * 0.24;
+  ctx.save();
+  // Building core glow at the barrel tip (sprite-based; grows with the charge).
+  ctx.shadowBlur = 0;
+  drawGlow(ctx, bx, by, ts * rg.chargeCoreTiles * (0.3 + 0.7 * p), rg.chargeColor, 0.35 + 0.6 * p);
+  // Converging ring: shrinks inward and brightens as the charge builds.
+  ctx.strokeStyle = rg.chargeColor;
+  ctx.shadowColor = rg.chargeColor;
+  ctx.shadowBlur = 6;
+  ctx.globalAlpha = 0.35 + 0.55 * p;
+  ctx.lineWidth = 1.1 + p * 1.6;
+  ctx.beginPath();
+  ctx.arc(bx, by, ts * rg.chargeRingTiles * (1 - 0.82 * p), 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
 function drawTowers(ctx, game, uiState) {
   const ts = game.grid.tileSize;
   const time = game.time;
@@ -857,6 +884,12 @@ function drawTowers(ctx, game, uiState) {
     ctx.shadowBlur = 8;
     ctx.lineWidth = LOOK.lineWidth;
     drawTowerShape(ctx, tower, ts, tower.pos.x, tower.pos.y);
+
+    // Railgun charge-up: a converging ring + a building core glow at the barrel
+    // that swell as the capacitor spins toward release (see towers.js / VFX.railgun).
+    if (tower.type === "railgun" && tower._charging) {
+      drawRailCharge(ctx, tower, ts, time);
+    }
 
     // Level pips under the tower (one dot per level above 1).
     if (tower.level > 1) {
@@ -977,12 +1010,15 @@ function drawEffects(ctx, game) {
     ctx.strokeStyle = fx.color;
 
     if (fx.kind === "beam") {
-      ctx.lineWidth = fx.width || 2;
+      // fadeWidth beams (the railgun ray) also THIN as they fade, so the ray
+      // vanishes gradually instead of just dimming at constant thickness.
+      const w = (fx.width || 2) * (fx.fadeWidth ? (0.25 + 0.75 * life) : 1);
+      ctx.lineWidth = w;
       ctx.beginPath();
       ctx.moveTo(fx.x1, fx.y1);
       ctx.lineTo(fx.x2, fx.y2);
       ctx.stroke();
-      drawGlow(ctx, fx.x2, fx.y2, 6 + (fx.width || 2) * 2, fx.color, life * 0.8);
+      drawGlow(ctx, fx.x2, fx.y2, 6 + w * 2, fx.color, life * 0.8);
     } else if (fx.kind === "muzzle") {
       drawGlow(ctx, fx.x, fx.y, fx.radius, fx.color, life);
     } else if (fx.kind === "ring" || fx.kind === "burst") {

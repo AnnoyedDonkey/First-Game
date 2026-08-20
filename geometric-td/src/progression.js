@@ -356,8 +356,11 @@ export function getSkillShardFindMult() {
   return 1 + ecoSum("eco_shard");
 }
 
-// Railgun beam-length multiplier (over-penetration): x1.0 up to x2.0.
-export function getRailBeamLengthMult() {
+// Railgun charge-speed multiplier (Capacitor Bank): x1.0 up to ~x2.0. Divides
+// the base charge wind-up (config VFX.railgun.chargeSeconds) in towers.js, so a
+// maxed capacitor roughly halves the wind-up. The `railPen` id/value are legacy
+// (the perk used to stretch beam length before the ray became unlimited).
+export function getRailChargeSpeedMult() {
   return 1 + SKILL_VALUES.railPen * ownedSkillCount("railPen");
 }
 
@@ -525,7 +528,7 @@ export function getSlowDurationMult() {
 }
 
 // The Slow tower's third chain (Slow Potency) feeds slow-effect strength
-// (% speed reduction), same shape as getRailBeamLengthMult above.
+// (% speed reduction), same shape as getRailChargeSpeedMult above.
 export function getSlowPotencyMult() {
   return 1 + SKILL_VALUES.slowPot * ownedSkillCount("slowPot");
 }

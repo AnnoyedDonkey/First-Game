@@ -302,7 +302,7 @@ const SPECIALTY_LABELS = {
   laser:   "+ extra range per level",
   pulse:   "+ bigger explosions per level",
   slow:    "+ faster firing per level",
-  railgun: "+ extra damage per level",
+  railgun: "+ extra range per level",
   rocket:  "+ bigger blasts per level",
 };
 
@@ -840,6 +840,25 @@ export const VFX = {
     buffDamageMult: 1.35,     // damage multiplier while surging
     buffFireRateMult: 1.5,    // fire-rate multiplier while surging (fireInterval /= this)
   },
+
+  // --- Railgun charge-up + fading ray (towers.js updateTowers + fireShot,
+  //     renderer.js drawRailCharge/drawEffects). The rail WINDS UP a visible
+  //     energy charge before releasing its instant ray, then the ray fades out
+  //     gradually instead of snapping off. The charge is game-time (it gates the
+  //     shot); the post-fire cooldown is shortened by `chargeSeconds` so the base
+  //     cadence — and thus DPS — is unchanged. The Capacitor Bank skill shortens
+  //     the charge BELOW this baseline, which is the only real fire-rate gain.
+  //     The released-ray flash/fade lifetimes are speed-compensated
+  //     (× game.effectiveSpeed) so the vanish reads the same at x1/x2/x4. ---
+  railgun: {
+    chargeSeconds: 0.3,       // base wind-up before the ray releases (game-time)
+    chargeColor: "#ffd27a",   // energy tint as the capacitor spins up (warm rail-amber)
+    chargeCoreTiles: 0.2,     // max radius of the building core glow at the barrel (× tile)
+    chargeRingTiles: 0.6,     // radius the converging charge ring starts at, shrinks to ~0 (× tile)
+    beamFadeSeconds: 0.4,     // how long the released colored ray lingers then vanishes (real-time)
+    flashFadeSeconds: 0.18,   // the white-hot inner flash fades faster than the colored ray
+    minCooldown: 0.06,        // floor so a very fast rail never gets a zero/negative cooldown
+  },
 };
 
 // Polygon sides for each enemy shape (renderer + shard explosions).
@@ -903,10 +922,14 @@ export const TOWER_SKILL_LAYOUT = BALANCE.skills.towerLayout;
 // extra perk stat, one increment per box, same shape as the damage/level
 // chains. `idPrefix` names the SKILLS/save-state ids (e.g. "railPen3");
 // `valueKey` reads its per-box step from BALANCE.skills.values below.
-// progression.js exposes one getter per entry (e.g. getRailBeamLengthMult),
+// progression.js exposes one getter per entry (e.g. getRailChargeSpeedMult),
 // applied at its specific use site in towers.js — not every tower needs one.
+// NOTE: the railgun's `railPen` id/valueKey are LEGACY names kept for save,
+// i18n (fr.js skill.railPenN.*), and schema stability. The perk no longer
+// stretches beam length (the ray is now unlimited) — it speeds up the new
+// charge-up wind-up (Capacitor Bank). Owned boxes carry over automatically.
 const TOWER_THIRD_BRANCH = {
-  railgun: { idPrefix: "railPen",     name: "Over-Penetration", desc: "Railgun beam length",  icon: "overpen", valueKey: "railPen" },
+  railgun: { idPrefix: "railPen",     name: "Capacitor Bank",   desc: "Railgun charge speed", icon: "haste",   valueKey: "railPen" },
   slow:    { idPrefix: "slowPot",     name: "Slow Potency",     desc: "Slow Amount",          icon: "potency", valueKey: "slowPot" },
   laser:   { idPrefix: "laserRate",   name: "Rapid Fire",       desc: "Laser fire rate",      icon: "haste",   valueKey: "laserRate" },
   pulse:   { idPrefix: "pulseBlast",  name: "Blast Radius",     desc: "Pulse splash radius",  icon: "pulse",   valueKey: "pulseBlast" },

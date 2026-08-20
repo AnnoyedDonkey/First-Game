@@ -5009,7 +5009,7 @@ export const BALANCE = {
         "splashGrowth": 0.12
       },
       "railgun": {
-        "damageGrowth": 0.1
+        "rangeGrowth": 0.07
       },
       "rocket": {
         "splashGrowth": 0.12
