@@ -867,7 +867,7 @@ export const VFX = {
     rayTiers: {
       thin:   { ray: 3.5, flash: 1.8 },
       medium: { ray: 6,   flash: 3 },
-      thick:  { ray: 10,  flash: 5 },
+      thick:  { ray: 18,  flash: 9 },   // decisively beefier than three mediums combined (L7 must feel > L6)
     },
     raySpacingTiles: 0.15,    // perpendicular gap unit between stacked rays (× tile)
     rayPatternByLevel: [
@@ -878,9 +878,9 @@ export const VFX = {
       [[-1, "thin"], [0, "thin"], [1, "thin"]],        // L5  — three thin rays
       [[-1, "medium"], [0, "medium"], [1, "medium"]],  // L6  — three slightly thicker rays
       [[0, "thick"]],                                  // L7  — one thick ray
-      [[-1, "thin"], [0, "thick"], [1, "thin"]],       // L8  — thick center + a thin ray each side
-      [[-1, "medium"], [0, "thick"], [1, "medium"]],   // L9  — thick center + a slightly thicker ray each side
-      [[-0.9, "thick"], [0.9, "thick"]],               // L10 — two thick rays
+      [[-1.5, "thin"], [0, "thick"], [1.5, "thin"]],     // L8  — thick center + a thin ray each side (widened for the fatter core)
+      [[-1.5, "medium"], [0, "thick"], [1.5, "medium"]], // L9  — thick center + a slightly thicker ray each side
+      [[-1.3, "thick"], [1.3, "thick"]],               // L10 — two thick rays (spread so they read as two, not one bar)
     ],
   },
 };
