@@ -223,8 +223,10 @@ const TOWER_PRESENTATION = {
     // it makes every other tower hit harder, so it earns a slot in a combo.
     // Cheap to level (it's support, not DPS).
   },
-  // Unlocked by clearing Core Siege (level 5). Slow, long-ranged,
-  // devastating — the shot PIERCES every enemy along the beam line.
+  // Unlocked by clearing Core Siege (level 5). Slow, charged, devastating — the
+  // ray PIERCES every enemy along its line, and since the rework (2026.08.19-14+)
+  // that line reaches the WHOLE board once an enemy enters its (modest) targeting
+  // ring. See HANDOFF "Railgun rework" + VFX.railgun.
   railgun: {
     name: "Railgun Tower",
     prefix: "R",           // single-letter gear lock-tag glyph

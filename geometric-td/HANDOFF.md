@@ -20,7 +20,47 @@ en)` looks it up; `lang` save field via `progression.js getLang/setLang`;
 proper nouns** (tower names Laser/Pulse/Slow/Railgun/Rocket, Indy-7,
 Bratwurst-XL, "GEOMETRIC TD").
 
-**Deployed build: `2026.08.19-13`.**
+**Deployed build: `2026.08.19-20`.**
+
+### Railgun rework (`2026.08.19-14` .. `-20`)
+Multi-part Railgun overhaul. **All knobs live in `config.js VFX.railgun`** unless
+noted; DPS-balance data is in `balance-data.*`.
+- **Unlimited ray range.** The fired ray reaches the WHOLE board
+  (`towers.js tower.railReach`, set in `recomputeStats`). The range RING
+  (`tower.range`, base **2.6**, was 3.5) is now ONLY the targeting trigger: the
+  rail fires when an enemy enters that smaller ring, then pierces everything
+  lined up behind it across the map. `findRailgunAim` / `fireShot` /
+  `collectLineVictims` all use `railReach`.
+- **Charge-up + gradual fade.** It winds up a visible energy charge
+  (`renderer.js drawRailCharge` — converging ring + swelling core glow) before
+  releasing, then the ray thins and fades out instead of snapping off
+  (`fadeWidth` flag on the `beam` effect, drawn in `drawEffects`). Both are
+  speed-compensated. The wind-up is a charge→release state machine in
+  `updateTowers`; the post-fire cooldown is shortened by `chargeSeconds`, so the
+  cadence — and DPS — is **unchanged** (DPS-neutral). Capacitor Bank (below) is
+  the only real fire-rate gain.
+- **Over-Penetration skill → Capacitor Bank.** The old beam-length skill is
+  moot (ray is unlimited), so it became a **charge-speed** perk
+  (`progression.js getRailChargeSpeedMult`). Its internal id AND value key stay
+  **`railPen`** for save + `fr.js` (`skill.railPenN.*`) + schema stability — only
+  the display name/desc/icon and the getter changed. Owned boxes carry over with
+  no migration.
+- **Cosmetic per-level ray progression** (`rayPatternByLevel`, keyed to the
+  BOUGHT in-battle level): L1 one thin ray … L7 one thick … L10 two thick (full
+  table + `rayTiers` widths in the config). Extra rays are parallel energy beams
+  offset perpendicular to the aim — **damage is unchanged** (all victims are
+  collected once on the CENTER line). Rays start `rayStartOffsetTiles` in front
+  of the tower triangle (radius 0.22); in 3-ray levels the OUTER rays fade before
+  the center (`outerRayFadeFrac`).
+- **Scaling nerf.** The Railgun's per-level SPECIALTY used to be raw
+  `damageGrowth 0.1` — the ONLY pure-damage specialty (every other tower's is
+  utility) — which ballooned it to **2.10× pulse** single-target DPS at max. Its
+  specialty is now **empty** (`balance-data towerUpgrades.specialties.railgun {}`),
+  flattening it to a constant **~0.89× pulse** at every level AND mastery rank —
+  Pulse-adjacent; its 4× pierce + unlimited range are its identity. Base damage
+  (48) unchanged. The "specialty" slot now reads as the cosmetic ray upgrade
+  (`SPECIALTY_LABELS.railgun`, `ui.js SPECIALTY_TEXT`; the gear sheet drops the
+  `(+N%)` for a 0-pct cosmetic specialty).
 
 ### Credit Juice (new, `2026.08.19-8` .. `-13`)
 Earning credits used to be silent — the only cue was a number changing. Now
@@ -325,7 +365,10 @@ raised to ^≤9, never ^49); the SPECIALTY growth uses career `maxUnlockedLevel`
 mastery (★) is a banked-XP rank. A fully-maxed tower is **~2,300 (un-geared) to
 ~7,000 (geared) DPS** — NOT the "billions" an earlier miscalc suggested. So the
 progression curve is fine; "World 4 is too easy for a maxed roster" is ordinary
-over-tuning + geometry (pierce on a funnel). **Perf ceiling:** ~300–400
+over-tuning + geometry (pierce on a funnel). **One real per-tower exception, since
+fixed (`2026.08.19-14`):** the Railgun's specialty was raw damage growth, which
+did compound its scaling — now neutralized (see "Railgun rework" above). **Perf
+ceiling:** ~300–400
 concurrent enemies is the playable mobile target (desktop handles ~800 at
 ~13ms; iPhone is ~5× slower). Raising HP via `healthMult` costs nothing
 (same counts); raising enemy *count* is the perf lever.
@@ -490,7 +533,9 @@ BALANCE_LAB_PLAN.md  approved Balance Lab L0-L7 plan
 - Damage counters use `ENEMIES[type].damageMult` keyed by tower damage type.
   Resists/weaknesses have visible feedback and are a primary combo-design tool.
 - Railgun unlocks after L5; Rocket unlocks after L10. Railgun rewards lane
-  placement; Rocket has global range and expensive scaling.
+  placement — its ray now pierces the WHOLE board once an enemy enters its
+  (smaller) targeting ring (see "Railgun rework"); Rocket has global range and
+  expensive scaling.
 - Late-world bounty multipliers are an economy-pressure tool. Prefer them or
   encounter composition before adding uninteresting boss-health sponges.
 - Endless begins after authored waves and uses deterministic generation.
