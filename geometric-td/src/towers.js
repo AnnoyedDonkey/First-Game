@@ -657,30 +657,42 @@ function fireShot(game, tower, target, targetPos, damageScale) {
     // Collect victims first (kills can spawn splitlings mid-loop).
     const victims = collectLineVictims(game, tower, tower.aimAngle, tower.pierceWidth, railLength);
 
-    // Released ray: a white-hot inner flash + a colored ray that both taper and
-    // vanish gradually (fadeWidth shrinks them as they fade). Lifetimes are
-    // speed-compensated so the vanish reads the same at x1/x2/x4.
+    // Released ray(s): a white-hot inner flash + a colored ray that both taper
+    // and vanish gradually (fadeWidth shrinks them as they fade). Lifetimes are
+    // speed-compensated so the vanish reads the same at x1/x2/x4. The BOUGHT
+    // level picks a cosmetic ray pattern (VFX.railgun.rayPatternByLevel) — the
+    // extra rays are parallel energy beams offset perpendicular to the aim, for
+    // a "more powerful" look; damage is unchanged (all victims are on the center
+    // line collected above).
     const spd = game.effectiveSpeed || 1;
     const flashTtl = VFX.railgun.flashFadeSeconds * spd;
     const rayTtl = VFX.railgun.beamFadeSeconds * spd;
-    game.effects.push({
-      kind: "beam",
-      x1: tower.pos.x, y1: tower.pos.y,
-      x2: endX, y2: endY,
-      color: "#ffffff",
-      width: 3 + tower.level,
-      fadeWidth: true,
-      ttl: flashTtl, maxTtl: flashTtl,
-    });
-    game.effects.push({
-      kind: "beam",
-      x1: tower.pos.x, y1: tower.pos.y,
-      x2: endX, y2: endY,
-      color: shotColor,
-      width: 6 + tower.level * 2,
-      fadeWidth: true,
-      ttl: rayTtl, maxTtl: rayTtl,
-    });
+    const rg = VFX.railgun;
+    const pattern = rg.rayPatternByLevel[Math.min(Math.max(tower.level, 1), rg.rayPatternByLevel.length) - 1];
+    const spacing = rg.raySpacingTiles * game.grid.tileSize;
+    const perpX = -dirY, perpY = dirX; // unit perpendicular to the aim direction
+    for (const [off, tierName] of pattern) {
+      const tier = rg.rayTiers[tierName] || rg.rayTiers.thin;
+      const ox = perpX * off * spacing, oy = perpY * off * spacing;
+      game.effects.push({
+        kind: "beam",
+        x1: tower.pos.x + ox, y1: tower.pos.y + oy,
+        x2: endX + ox, y2: endY + oy,
+        color: "#ffffff",
+        width: tier.flash,
+        fadeWidth: true,
+        ttl: flashTtl, maxTtl: flashTtl,
+      });
+      game.effects.push({
+        kind: "beam",
+        x1: tower.pos.x + ox, y1: tower.pos.y + oy,
+        x2: endX + ox, y2: endY + oy,
+        color: shotColor,
+        width: tier.ray,
+        fadeWidth: true,
+        ttl: rayTtl, maxTtl: rayTtl,
+      });
+    }
     for (let i = 0; i < victims.length; i++) {
       const v = victims[i];
       emitHitSparks(game, v.pos.x, v.pos.y, shotColor, 6);

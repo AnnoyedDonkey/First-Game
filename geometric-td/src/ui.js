@@ -1137,7 +1137,7 @@ const SPECIALTY_TEXT = {
   laser: "Specialty: extra RANGE for every level ever reached",
   pulse: "Specialty: bigger EXPLOSIONS for every level ever reached",
   slow: "Specialty: FASTER FIRING for every level ever reached",
-  railgun: "Specialty: extra DAMAGE for every level ever reached",
+  railgun: "Specialty: MORE RAYS the higher its level (cosmetic)",
   rocket: "Specialty: BIGGER BLASTS for every level ever reached",
 };
 
@@ -1773,7 +1773,10 @@ function openTowerStatSheet(towerName) {
     `<span class="src">${t("gear.mastery", "MASTERY")} &#9733;${stats.masteryRank}</span>+${stats.masteryPct}% ${t("gear.damageWord", "damage")}</div>` +
     (stats.specialtyLabel
       ? `<div class="gear-bonus-line" style="border-color:${def.color}"><span class="src">${t("gear.specialty", "SPECIALTY")}</span>` +
-        `${escapeHtml(t(`tower.${rec.type}.specialtyPerk`, stats.specialtyLabel))} (+${stats.specialtyPct}%)</div>`
+        `${escapeHtml(t(`tower.${rec.type}.specialtyPerk`, stats.specialtyLabel))}` +
+        // Cosmetic specialties (no stat growth, e.g. the railgun's ray upgrade)
+        // report specialtyPct 0 — show just the label, no "(+N%)".
+        `${stats.specialtyPct > 0 ? ` (+${stats.specialtyPct}%)` : ""}</div>`
       : "") +
     (bonuses ? `<div class="gear-picker-label" style="margin-top:12px">${t("gear.gearBonuses", "GEAR BONUSES")}</div>${bonuses}` : "") +
     `<div class="gear-sheet-actions" style="margin-top:12px"><button class="gear-sheet-btn" id="sheet-close">${t("ui.close", "CLOSE")}</button></div>`;

@@ -5008,9 +5008,7 @@ export const BALANCE = {
       "pulse": {
         "splashGrowth": 0.12
       },
-      "railgun": {
-        "rangeGrowth": 0.07
-      },
+      "railgun": {},
       "rocket": {
         "splashGrowth": 0.12
       },
@@ -5066,7 +5064,7 @@ export const BALANCE = {
       "baseDamage": 48,
       "baseFireRate": 3,
       "basePierce": 4,
-      "baseRange": 3.5,
+      "baseRange": 2.6,
       "damageType": "rail",
       "pierceWidth": 0.18,
       "upgradeCostMult": 1.3

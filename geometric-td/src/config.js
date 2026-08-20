@@ -302,7 +302,7 @@ const SPECIALTY_LABELS = {
   laser:   "+ extra range per level",
   pulse:   "+ bigger explosions per level",
   slow:    "+ faster firing per level",
-  railgun: "+ extra range per level",
+  railgun: "+ more rays as it levels up",
   rocket:  "+ bigger blasts per level",
 };
 
@@ -858,6 +858,30 @@ export const VFX = {
     beamFadeSeconds: 0.4,     // how long the released colored ray lingers then vanishes (real-time)
     flashFadeSeconds: 0.18,   // the white-hot inner flash fades faster than the colored ray
     minCooldown: 0.06,        // floor so a very fast rail never gets a zero/negative cooldown
+    // --- Ray appearance by BOUGHT (in-battle) level (towers.js fireShot). Purely
+    //     cosmetic: every ray in a shot damages the SAME center line — the extra
+    //     rays are parallel energy beams for a "more powerful" look, NOT extra
+    //     hits. Each ray is [perpendicular offset (× raySpacingTiles), tier]. The
+    //     tier sets the colored-ray + white-flash widths. Pattern index = level-1
+    //     (clamped 1..10). ---
+    rayTiers: {
+      thin:   { ray: 3.5, flash: 1.8 },
+      medium: { ray: 6,   flash: 3 },
+      thick:  { ray: 10,  flash: 5 },
+    },
+    raySpacingTiles: 0.15,    // perpendicular gap unit between stacked rays (× tile)
+    rayPatternByLevel: [
+      [[0, "thin"]],                                   // L1  — one thin ray
+      [[0, "medium"]],                                 // L2  — one slightly thicker ray
+      [[-0.5, "thin"], [0.5, "thin"]],                 // L3  — two thin rays
+      [[-0.5, "medium"], [0.5, "medium"]],             // L4  — two slightly thicker rays
+      [[-1, "thin"], [0, "thin"], [1, "thin"]],        // L5  — three thin rays
+      [[-1, "medium"], [0, "medium"], [1, "medium"]],  // L6  — three slightly thicker rays
+      [[0, "thick"]],                                  // L7  — one thick ray
+      [[-1, "thin"], [0, "thick"], [1, "thin"]],       // L8  — thick center + a thin ray each side
+      [[-1, "medium"], [0, "thick"], [1, "medium"]],   // L9  — thick center + a slightly thicker ray each side
+      [[-0.9, "thick"], [0.9, "thick"]],               // L10 — two thick rays
+    ],
   },
 };
 
