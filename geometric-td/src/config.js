@@ -873,13 +873,13 @@ export const VFX = {
     rayPatternByLevel: [
       [[0, "thin"]],                                   // L1  — one thin ray
       [[0, "medium"]],                                 // L2  — one slightly thicker ray
-      [[-0.5, "thin"], [0.5, "thin"]],                 // L3  — two thin rays
-      [[-0.5, "medium"], [0.5, "medium"]],             // L4  — two slightly thicker rays
-      [[-1, "thin"], [0, "thin"], [1, "thin"]],        // L5  — three thin rays
-      [[-1, "medium"], [0, "medium"], [1, "medium"]],  // L6  — three slightly thicker rays
+      [[-0.4, "thin"], [0.4, "thin"]],                 // L3  — two thin rays
+      [[-0.45, "medium"], [0.45, "medium"]],           // L4  — two slightly thicker rays
+      [[-0.6, "thin"], [0, "thin"], [0.6, "thin"]],        // L5  — three thin rays (tight bundle)
+      [[-0.7, "medium"], [0, "medium"], [0.7, "medium"]],  // L6  — three slightly thicker rays (tight bundle)
       [[0, "thick"]],                                  // L7  — one thick ray
-      [[-1.1, "thin"], [0, "thick"], [1.1, "thin"]],     // L8  — thick center + a thin ray each side
-      [[-1.1, "medium"], [0, "thick"], [1.1, "medium"]], // L9  — thick center + a slightly thicker ray each side
+      [[-0.9, "thin"], [0, "thick"], [0.9, "thin"]],     // L8  — thick center + a thin ray each side
+      [[-1.0, "medium"], [0, "thick"], [1.0, "medium"]], // L9  — thick center + a slightly thicker ray each side
       [[-0.8, "thick"], [0.8, "thick"]],               // L10 — two thick rays (snug — just a thin seam between them)
     ],
   },
