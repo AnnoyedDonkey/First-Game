@@ -671,12 +671,16 @@ function fireShot(game, tower, target, targetPos, damageScale) {
     const pattern = rg.rayPatternByLevel[Math.min(Math.max(tower.level, 1), rg.rayPatternByLevel.length) - 1];
     const spacing = rg.raySpacingTiles * game.grid.tileSize;
     const perpX = -dirY, perpY = dirX; // unit perpendicular to the aim direction
+    // Start the visible ray just in front of the tower triangle (not through it).
+    const startGap = (rg.rayStartOffsetTiles || 0) * game.grid.tileSize;
+    const startX = tower.pos.x + dirX * startGap;
+    const startY = tower.pos.y + dirY * startGap;
     for (const [off, tierName] of pattern) {
       const tier = rg.rayTiers[tierName] || rg.rayTiers.thin;
       const ox = perpX * off * spacing, oy = perpY * off * spacing;
       game.effects.push({
         kind: "beam",
-        x1: tower.pos.x + ox, y1: tower.pos.y + oy,
+        x1: startX + ox, y1: startY + oy,
         x2: endX + ox, y2: endY + oy,
         color: "#ffffff",
         width: tier.flash,
@@ -685,7 +689,7 @@ function fireShot(game, tower, target, targetPos, damageScale) {
       });
       game.effects.push({
         kind: "beam",
-        x1: tower.pos.x + ox, y1: tower.pos.y + oy,
+        x1: startX + ox, y1: startY + oy,
         x2: endX + ox, y2: endY + oy,
         color: shotColor,
         width: tier.ray,

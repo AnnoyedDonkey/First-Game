@@ -870,6 +870,9 @@ export const VFX = {
       thick:  { ray: 12,  flash: 6 },   // beefier than three mediums combined (L7 must feel > L6)
     },
     raySpacingTiles: 0.15,    // perpendicular gap unit between stacked rays (× tile)
+    rayStartOffsetTiles: 0.3, // push the ray's visible START this far forward along the aim
+                              // so it emerges just in FRONT of the tower triangle (radius 0.22),
+                              // not through it. Damage still collects from the tower center.
     rayPatternByLevel: [
       [[0, "thin"]],                                   // L1  — one thin ray
       [[0, "medium"]],                                 // L2  — one slightly thicker ray
