@@ -1603,6 +1603,31 @@ export const LEADERBOARD = {
   maxNickLength: 16,   // nickname is trimmed to this many chars
 };
 
+// Phase 0 co-op connection spike. Signaling reuses the leaderboard's
+// Supabase URL/key; these are only the knobs needed to establish a peer.
+// Co-op multiplayer (net.js). Phase 0 = the connection spike only: room
+// codes, WebRTC setup, and the Supabase-brokered handshake. Design and the
+// full phase list live in COOP_MULTIPLAYER_PLAN.md. Signaling reuses the
+// SAME Supabase project as LEADERBOARD/FEEDBACK (url + anonKey above) — the
+// credentials are deliberately not duplicated here.
+export const COOP = {
+  // STUN only (no TURN yet). Same-network pairs connect on host candidates
+  // alone; STUN adds most cross-network cases. The ~15% behind symmetric NAT
+  // need TURN — that's Phase 5 (see the plan), not this.
+  iceServers: [
+    { urls: "stun:stun.cloudflare.com:3478" },
+    { urls: "stun:stun.l.google.com:19302" },
+  ],
+  table: "coop_sessions", // table name created by SUPABASE_SETUP.md
+  roomCodeLength: 6,      // digits in a join code
+  // Ambiguous glyphs (I/O/0/1) are excluded — codes get read aloud and typed
+  // on a phone. 32^6 ≈ 1.1e9 combinations, so collisions are a non-issue.
+  roomCodeAlphabet: "ABCDEFGHJKLMNPQRSTUVWXYZ23456789",
+  signalingPollMs: 1500,  // how often the host polls for a guest's answer
+  connectTimeoutMs: 45000, // overall budget: ICE + signaling + channel open
+  sessionTtlMs: 10 * 60 * 1000, // a guest rejects signaling rows older than this
+};
+
 // Run feedback + balance telemetry (feedback.js). Every battle end sends
 // an anonymous telemetry row (towers/levels/gear, skills, kills, leaks,
 // waves, duration) to the `feedback` table in the SAME Supabase project as

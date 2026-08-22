@@ -188,3 +188,127 @@ Rows land in **Table Editor → feedback** (delete test rows there).
 - **Idle eviction:** Supabase pauses a free project after ~1 week of zero
   activity; the first request after that wakes it (a few seconds). Normal play
   keeps it warm.
+
+## Co-op connection spike table — one time, ~2 min
+
+Phase 0 co-op signaling needs a third table in the SAME project. The spike
+uses only `code`, `offer`, `answer`, and the timestamps; the other lobby fields
+ship in the schema now so a live table will not need disruptive columns added
+later. There is deliberately no player-entered session-name column.
+
+Left sidebar → **SQL Editor** → **New query** → paste ALL of this → **Run**:
+
+```sql
+-- One row per co-op room. Phase 0 stores a complete WebRTC offer/answer;
+-- later phases will populate the lobby metadata already carried here.
+create table if not exists public.coop_sessions (
+  code        text primary key
+              check (code ~ '^[A-Z0-9]{4,12}$'),
+  codename    text
+              check (codename is null or char_length(codename) between 1 and 64),
+  listed      boolean not null default false,
+  host_nick   text
+              check (host_nick is null or char_length(host_nick) between 1 and 16),
+  level_id    text
+              check (level_id is null or char_length(level_id) between 1 and 64),
+  wave        integer not null default 0 check (wave >= 0),
+  players     integer not null default 1 check (players between 1 and 4),
+  max_players integer not null default 2 check (max_players between 2 and 4),
+  free_tiles  integer not null default 0 check (free_tiles >= 0),
+  offer       jsonb not null,
+  answer      jsonb,
+  last_seen   timestamptz not null default now(),
+  created_at  timestamptz not null default now(),
+  check (players <= max_players)
+);
+
+-- Supports stale-row filtering without scanning the whole session table.
+create index if not exists coop_sessions_last_seen_idx
+  on public.coop_sessions (last_seen desc);
+
+alter table public.coop_sessions enable row level security;
+
+-- Friendly signaling, not authentication: the public anon key may read rooms.
+create policy "public read"
+  on public.coop_sessions for select
+  using (true);
+
+-- A host may publish a room and its complete ICE-gathered offer.
+create policy "public insert"
+  on public.coop_sessions for insert
+  with check (
+    code ~ '^[A-Z0-9]{4,12}$'
+    and players between 1 and 4
+    and max_players between 2 and 4
+    and players <= max_players
+  );
+
+-- A guest may write the answer; later the host may refresh lobby metadata.
+create policy "public update"
+  on public.coop_sessions for update
+  using (true)
+  with check (
+    code ~ '^[A-Z0-9]{4,12}$'
+    and players between 1 and 4
+    and max_players between 2 and 4
+    and players <= max_players
+  );
+```
+
+No new project URL or key is needed: `src/net.js` reuses
+`LEADERBOARD.url` / `LEADERBOARD.anonKey`. The Phase 0 client rejects rows
+older than `COOP.sessionTtlMs`; it does not delete rows. This is the same
+friendly, anon-key posture as `scores` and `feedback`, not a cheat-proof or
+authenticated session service.
+
+### Co-op session cleanup (applied 2026-08-22)
+
+Nothing in the co-op client deletes signaling rows — it only *filters* stale
+ones. Without a sweep, every session ever hosted would accumulate forever, and
+the Phase 3 lobby browser queries this table constantly. Two mechanisms, both
+live:
+
+```sql
+create extension if not exists pg_cron;
+
+create or replace function public.prune_coop_sessions()
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  removed integer;
+begin
+  delete from public.coop_sessions
+   where last_seen < now() - interval '30 minutes';
+  get diagnostics removed = row_count;
+  return removed;
+end;
+$$;
+
+-- Server-side sweep every 15 minutes, whether or not anyone is playing.
+select cron.schedule(
+  'prune-coop-sessions',
+  '*/15 * * * *',
+  $$select public.prune_coop_sessions();$$
+);
+
+-- Clients may ALSO sweep, but only rows that are already dead.
+create policy "public delete stale"
+  on public.coop_sessions for delete
+  using (last_seen < now() - interval '30 minutes');
+```
+
+**Why the delete policy is scoped to stale rows:** there is no auth here, so a
+`using (true)` delete policy would let anyone holding the public anon key wipe
+every live session in the lobby. Restricting deletes to rows already older than
+the sweep threshold means a client can help with cleanup but can never kill a
+session someone is playing.
+
+**Why 30 minutes:** the host heartbeat is ~10s and the lobby hides rows unseen
+for ~30s, so a row untouched for 30 minutes is unambiguously garbage — an
+abandoned host, a crashed tab, or a handshake that never completed.
+
+Verified on apply: a row stamped 40 minutes old was deleted and a fresh row was
+kept; the `prune-coop-sessions` job is registered and active.

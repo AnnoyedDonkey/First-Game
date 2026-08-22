@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="dark" />
+  <title>Geometric TD — Co-op Connection Spike</title>
+  <style>
+    :root { color-scheme: dark; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: #080b12; color: #e8fbff; }
+    main { width: min(100% - 32px, 520px); margin: 0 auto; padding: 48px 0; }
+    h1 { margin: 0 0 8px; color: #4defff; font-size: clamp(24px, 7vw, 36px); }
+    .muted { color: #91a4ad; line-height: 1.5; }
+    section { margin-top: 24px; padding: 20px; border: 1px solid #27434c; border-radius: 10px; background: #0d141e; }
+    h2 { margin: 0 0 14px; font-size: 15px; letter-spacing: .12em; color: #ff3fd4; }
+    .row { display: flex; gap: 10px; min-width: 0; }
+    input, button { min-height: 44px; border: 1px solid #3d6874; border-radius: 6px; font: inherit; }
+    input { min-width: 0; flex: 1; padding: 0 12px; background: #070b10; color: #fff; text-transform: uppercase; letter-spacing: .14em; }
+    button { padding: 0 16px; background: #102b34; color: #dffcff; cursor: pointer; }
+    button:disabled { cursor: not-allowed; opacity: .45; }
+    output { display: block; }
+    #room-code { min-height: 1.3em; margin-top: 14px; color: #ffe66d; font-size: 30px; letter-spacing: .18em; }
+    #connection-state, #round-trip { color: #75ffb0; font-size: 20px; }
+    #detail { min-height: 1.5em; overflow-wrap: anywhere; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Co-op Connection Spike</h1>
+    <p class="muted">Disposable WebRTC/Supabase test page. It is not part of the player menu and touches no gameplay.</p>
+
+    <section>
+      <h2>Host</h2>
+      <button id="host-button" type="button">HOST</button>
+      <output id="room-code" aria-live="polite">—</output>
+    </section>
+
+    <section>
+      <h2>Join</h2>
+      <div class="row">
+        <input id="join-code" type="text" inputmode="text" autocapitalize="characters" autocomplete="off" spellcheck="false" aria-label="Room code" />
+        <button id="join-button" type="button">JOIN</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Connection</h2>
+      <output id="connection-state" aria-live="polite">idle</output>
+      <p id="detail" class="muted" aria-live="polite"></p>
+      <div class="row">
+        <button id="ping-button" type="button" disabled>PING CMD</button>
+        <button id="close-button" type="button" disabled>CLOSE</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Ping-pong round trip</h2>
+      <output id="round-trip" aria-live="polite">—</output>
+    </section>
+  </main>
+
+  <script type="module">
+    import { COOP } from "./src/config.js";
+    import {
+      closeSession,
+      hostSession,
+      joinSession,
+      onConnectionState,
+      onMessage,
+      sendMessage,
+    } from "./src/net.js";
+
+    const hostButton = document.querySelector("#host-button");
+    const joinButton = document.querySelector("#join-button");
+    const joinCode = document.querySelector("#join-code");
+    const roomCode = document.querySelector("#room-code");
+    const connectionState = document.querySelector("#connection-state");
+    const detail = document.querySelector("#detail");
+    const pingButton = document.querySelector("#ping-button");
+    const closeButton = document.querySelector("#close-button");
+    const roundTrip = document.querySelector("#round-trip");
+
+    joinCode.maxLength = COOP.roomCodeLength;
+    joinCode.placeholder = `${COOP.roomCodeLength}-character code`;
+
+    let pingSequence = 0;
+    const pendingPings = new Map();
+
+    hostButton.addEventListener("click", async () => {
+      resetReadouts();
+      try {
+        const pending = hostSession();
+        roomCode.textContent = pending.code;
+        await pending;
+      } catch (error) {
+        detail.textContent = error.message;
+      }
+    });
+
+    joinButton.addEventListener("click", async () => {
+      resetReadouts();
+      try {
+        await joinSession(joinCode.value);
+      } catch (error) {
+        detail.textContent = error.message;
+      }
+    });
+
+    joinCode.addEventListener("input", () => {
+      joinCode.value = joinCode.value.toUpperCase();
+    });
+    joinCode.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") joinButton.click();
+    });
+
+    pingButton.addEventListener("click", sendPing);
+    closeButton.addEventListener("click", () => closeSession());
+
+    onConnectionState((event) => {
+      const connected = event.state === "connected";
+      connectionState.textContent = event.state;
+      hostButton.disabled = !["idle", "failed", "closed"].includes(event.state);
+      joinButton.disabled = hostButton.disabled;
+      joinCode.disabled = hostButton.disabled;
+      pingButton.disabled = !connected;
+      closeButton.disabled = ["idle", "failed", "closed"].includes(event.state);
+      if (event.error) detail.textContent = event.error;
+      if (connected && event.previous !== "connected") sendPing();
+    });
+
+    onMessage(({ channel, data }) => {
+      if (channel !== "cmd" || typeof data !== "string") return;
+      let message;
+      try {
+        message = JSON.parse(data);
+      } catch {
+        return;
+      }
+
+      if (message.type === "ping") {
+        sendMessage("cmd", { type: "pong", id: message.id });
+        return;
+      }
+      if (message.type !== "pong" || !pendingPings.has(message.id)) return;
+
+      const elapsed = performance.now() - pendingPings.get(message.id);
+      pendingPings.delete(message.id);
+      roundTrip.textContent = `${elapsed.toFixed(1)} ms`;
+    });
+
+    function sendPing() {
+      const id = `${Date.now()}-${++pingSequence}`;
+      pendingPings.set(id, performance.now());
+      roundTrip.textContent = "measuring…";
+      try {
+        sendMessage("cmd", { type: "ping", id });
+      } catch (error) {
+        pendingPings.delete(id);
+        detail.textContent = error.message;
+      }
+    }
+
+    function resetReadouts() {
+      pendingPings.clear();
+      roundTrip.textContent = "—";
+      detail.textContent = "";
+    }
+  </script>
+</body>
+</html>

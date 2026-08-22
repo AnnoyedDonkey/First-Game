@@ -705,6 +705,23 @@ BALANCE_LAB_PLAN.md  approved Balance Lab L0-L7 plan
     **Don't re-plan this for iOS.** If Android is ever a target it's an easy
     win (~1h): a feature-detected `haptics.js` with durations in `config.js`,
     an ON/OFF toggle, sharing call sites with the sound layer.
+- **NEXT — Co-op multiplayer (own mode):** full phased plan in
+  **`COOP_MULTIPLAYER_PLAN.md`** (designed 2026-08-22 over four ideation
+  rounds, **build not started**). Two players (schema/protocol designed for 4)
+  on one board via a CO-OP button in `#menu-actions` → session browser →
+  host picks Public/Private + a **cleared** level, played in **Endless**.
+  Host starts alone, guest **drops in at any wave**. Separate wallets with
+  FULL bounty to each; anyone upgrades any tower, only the owner sells.
+  **Host-authoritative** sim over a WebRTC DataChannel; the existing Supabase
+  project carries the lobby + signaling (new `coop_sessions` table). Phase 0
+  is a throwaway connection spike — iOS Safari WebRTC is the big unknown.
+  Three things a future session must not undo: co-op must **never** write
+  `endlessBest` or the solo Endless board (permanent pollution of a live
+  shared board); **skills are locked at join** (the one-shot join payload
+  goes stale otherwise); and co-op has **no speed control or pause** (that is
+  what removes the clock-divergence problem). Endless-only is deliberate — it
+  deletes the co-op balance problem entirely, since the endless ramp *is* the
+  difficulty scaling.
 - **DEFERRED — Endless:** retune its ramp after campaign balance stabilizes.
 - **DEFERRED:** save export/import for iOS localStorage eviction; sound;
   additional tower classes (Tesla was the runner-up); pre-battle loadouts;
@@ -735,6 +752,13 @@ BALANCE_LAB_PLAN.md  approved Balance Lab L0-L7 plan
 - `I18N_PLAN.md` — French localization plan + living tracker: the i18n
   architecture (Phase 0, built), the translation rules, and the per-phase
   breakdown (A–E) for delegated agents. **Read this first for i18n work.**
+- `COOP_MULTIPLAYER_PLAN.md` — **read this first for any co-op work.** Two-
+  player (designed for up to 4) Endless co-op as its own mode: the locked
+  decisions across four ideation rounds, the host-authoritative architecture,
+  Phases 0–5 (connection spike → ownership/wallets → netcode+drop-in → lobby
+  + co-op HUD → progression exchange → Cloudflare TURN), the still-open
+  questions in §12, and the parked identity features in §13. Designed
+  2026-08-22, build not started.
 - `GAME_BRIEF.md` — original feature specification.
 - `PWA_HOMESCREEN_PLAN.md` — phased plan to make the game an installable,
   offline-capable home-screen app (iOS + Android) with an in-game install
