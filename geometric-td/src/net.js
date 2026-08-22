@@ -159,6 +159,9 @@ function snapshotDiagnostics(s) {
     signaling: s.pc ? s.pc.signalingState : null,
     peer: s.pc ? s.pc.connectionState : null,
     localCandidates: s.localCandidates || 0,
+    candidateTypes: s.candidateTypes || null,
+    iceErrors: s.iceErrors || [],
+    iceHistory: s.iceHistory || [],
     connectedAt: s.connectedAt || null,
     connectedSeconds: s.connectedAt
       ? Math.round((Date.now() - s.connectedAt) / 1000)
@@ -227,8 +230,43 @@ function setupPeerConnection(session) {
   // produced anything (blocked/odd network); a healthy count with a stalled
   // gathering state means Safari simply never said "complete" — two very
   // different problems that look identical from the outside.
+  //
+  // The TYPE breakdown is what actually explains an ICE failure:
+  //   host  — only reachable on the same LAN, and if it is mDNS-obfuscated
+  //           (a .local name) the remote peer has to resolve it, which iOS
+  //           Safari does not do reliably for a REMOTE peer's candidate.
+  //   srflx — the public address from STUN. Between two peers behind the SAME
+  //           router this only works if the router does NAT hairpinning, and
+  //           plenty of home routers do not.
+  //   relay — a TURN relay. Always works, and is the only fix when the other
+  //           two cannot reach each other. Zero relay candidates means there
+  //           is no fallback path at all.
+  session.candidateTypes = { host: 0, srflx: 0, relay: 0, mdns: 0, other: 0 };
   pc.onicecandidate = (event) => {
-    if (event.candidate) session.localCandidates += 1;
+    const c = event.candidate;
+    if (!c) return;
+    session.localCandidates += 1;
+    const type = c.type || (c.candidate.match(/ typ (\w+)/) || [])[1] || "other";
+    if (type in session.candidateTypes) session.candidateTypes[type] += 1;
+    else session.candidateTypes.other += 1;
+    // A host candidate whose address is a .local name must be resolved over
+    // mDNS by the peer — the exact step that tends to fail on iOS.
+    if (type === "host" && /\.local/i.test(c.address || c.candidate)) {
+      session.candidateTypes.mdns += 1;
+    }
+  };
+
+  // Surfaces STUN/TURN server problems, which are otherwise completely silent.
+  pc.onicecandidateerror = (event) => {
+    session.iceErrors = session.iceErrors || [];
+    if (session.iceErrors.length < 5) {
+      session.iceErrors.push(`${event.errorCode} ${event.errorText || ""}`.trim());
+    }
+  };
+
+  pc.oniceconnectionstatechange = () => {
+    session.iceHistory = session.iceHistory || [];
+    session.iceHistory.push(pc.iceConnectionState);
   };
 
   pc.onconnectionstatechange = () => {

@@ -109,7 +109,13 @@
         `ice gath:  ${d.iceGathering ?? "—"}\n` +
         `ice conn:  ${d.iceConnection ?? "—"}\n` +
         `signaling: ${d.signaling ?? "—"}\n` +
-        `candidates:${d.localCandidates ?? 0}\n` +
+        `candidates:${d.localCandidates ?? 0}` +
+        (d.candidateTypes
+          ? ` (host ${d.candidateTypes.host}${d.candidateTypes.mdns ? `/${d.candidateTypes.mdns} mDNS` : ""}` +
+            `, srflx ${d.candidateTypes.srflx}, relay ${d.candidateTypes.relay})`
+          : "") + "\n" +
+        `ice hist:  ${(d.iceHistory || []).join(" > ") || "—"}\n` +
+        (d.iceErrors && d.iceErrors.length ? `ice errs:  ${d.iceErrors.join(" | ")}\n` : "") +
         `connected: ${d.connectedSeconds != null ? d.connectedSeconds + "s" : "—"}\n` +
         `cmd chan:  ${d.channels?.cmd ?? "—"}\n` +
         `state chan:${d.channels?.state ?? "—"}` +
