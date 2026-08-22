@@ -130,6 +130,37 @@ export function closeSession(reason = "Session closed") {
   currentSession = null;
 }
 
+// Live view of the connection internals, for the spike page. Phase 0's whole
+// job is diagnosis, and a phone that only says "it didn't work" costs a whole
+// test cycle — this makes the failing STEP visible on the device itself.
+export function getDiagnostics() {
+  const s = currentSession;
+  if (!s) return { state: connectionState, role: null, code: null };
+  return {
+    state: connectionState,
+    role: s.role,
+    code: s.code,
+    step: s.step || null,
+    iceGathering: s.pc ? s.pc.iceGatheringState : null,
+    iceConnection: s.pc ? s.pc.iceConnectionState : null,
+    signaling: s.pc ? s.pc.signalingState : null,
+    peer: s.pc ? s.pc.connectionState : null,
+    localCandidates: s.localCandidates || 0,
+    channels: {
+      cmd: s.channels.cmd ? s.channels.cmd.readyState : null,
+      state: s.channels.state ? s.channels.state.readyState : null,
+    },
+  };
+}
+
+// Records the named step so a stalled attempt names where it stopped. This
+// deliberately does NOT go through transition() — the connection state machine
+// has its own legal transitions, and a diagnostic breadcrumb is not one of
+// them. The spike page polls getDiagnostics() instead.
+function step(session, name) {
+  session.step = name;
+}
+
 function startSession(role, code, runner) {
   validateConfig();
   if (currentSession) closeSession("Replaced by a new connection attempt");
@@ -173,6 +204,15 @@ function startSession(role, code, runner) {
 function setupPeerConnection(session) {
   const pc = new RTCPeerConnection({ iceServers: COOP.iceServers });
   session.pc = pc;
+  session.localCandidates = 0;
+
+  // Diagnostic only. A stalled attempt reporting 0 candidates means ICE never
+  // produced anything (blocked/odd network); a healthy count with a stalled
+  // gathering state means Safari simply never said "complete" — two very
+  // different problems that look identical from the outside.
+  pc.onicecandidate = (event) => {
+    if (event.candidate) session.localCandidates += 1;
+  };
 
   pc.onconnectionstatechange = () => {
     if (session !== currentSession) return;
@@ -259,16 +299,21 @@ function markConnectedIfReady(session) {
 }
 
 async function runHost(session) {
+  step(session, "creating-offer");
   const offer = await session.pc.createOffer();
   await session.pc.setLocalDescription(offer);
+  step(session, "gathering-ice");
   await waitForIceGathering(session.pc, session.abortController.signal);
+  step(session, "publishing-offer");
   await insertOffer(session);
+  step(session, "polling-for-answer");
   transition(session, CONNECTION_STATES.WAITING_FOR_PEER);
 
   while (session === currentSession && !session.abortController.signal.aborted) {
     const row = await readSessionRow(session.code, "answer");
     if (!row) throw new Error("Signaling session disappeared");
     if (row.answer) {
+      step(session, "applying-answer");
       await session.pc.setRemoteDescription(parseDescription(row.answer));
       transition(session, CONNECTION_STATES.CONNECTING);
       return;
@@ -278,6 +323,7 @@ async function runHost(session) {
 }
 
 async function runGuest(session) {
+  step(session, "reading-room");
   const row = await readSessionRow(
     session.code,
     "offer,created_at,last_seen"
@@ -286,11 +332,16 @@ async function runGuest(session) {
   if (!isFreshSession(row)) throw new Error("Room code has expired");
   if (!row.offer) throw new Error("Host offer is not ready");
 
+  step(session, "applying-offer");
   await session.pc.setRemoteDescription(parseDescription(row.offer));
+  step(session, "creating-answer");
   const answer = await session.pc.createAnswer();
   await session.pc.setLocalDescription(answer);
+  step(session, "gathering-ice");
   await waitForIceGathering(session.pc, session.abortController.signal);
+  step(session, "publishing-answer");
   await writeAnswer(session);
+  step(session, "awaiting-peer");
   transition(session, CONNECTION_STATES.CONNECTING);
 }
 
@@ -367,10 +418,24 @@ async function requireOk(response, message) {
   throw new Error(`${message} (HTTP ${response.status})${detail ? `: ${detail}` : ""}`);
 }
 
+// Wait for ICE gathering, but NEVER wait forever.
+//
+// Safari in particular can leave `iceGatheringState` short of "complete"
+// indefinitely, and the original version of this function waited on that state
+// alone. The result was silent and total: a guest would gather perfectly good
+// candidates, never observe "complete", never publish its answer, and sit
+// until the overall connect timeout — leaving a host row with an offer and no
+// answer, which is exactly what the first two-device test produced.
+//
+// Candidates arrive fastest-first (host, then srflx), so whatever we have
+// after `COOP.iceGatheringTimeoutMs` is nearly always the full set. Shipping a
+// slightly-short candidate list beats not connecting at all.
 function waitForIceGathering(pc, signal) {
   if (pc.iceGatheringState === "complete") return Promise.resolve();
   return new Promise((resolve, reject) => {
+    let timer = null;
     const finish = () => {
+      if (timer !== null) clearTimeout(timer);
       pc.removeEventListener("icegatheringstatechange", onStateChange);
       signal.removeEventListener("abort", onAbort);
     };
@@ -385,8 +450,14 @@ function waitForIceGathering(pc, signal) {
     };
     pc.addEventListener("icegatheringstatechange", onStateChange);
     signal.addEventListener("abort", onAbort, { once: true });
-    if (signal.aborted) onAbort();
-    else onStateChange();
+    if (signal.aborted) { onAbort(); return; }
+    // The fallback that makes this safe on Safari. Resolve, don't reject:
+    // partial candidates still connect on a LAN.
+    timer = setTimeout(() => {
+      finish();
+      resolve();
+    }, COOP.iceGatheringTimeoutMs);
+    onStateChange();
   });
 }
 

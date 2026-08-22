@@ -1624,6 +1624,11 @@ export const COOP = {
   // on a phone. 32^6 ≈ 1.1e9 combinations, so collisions are a non-issue.
   roomCodeAlphabet: "ABCDEFGHJKLMNPQRSTUVWXYZ23456789",
   signalingPollMs: 1500,  // how often the host polls for a guest's answer
+  // Cap on waiting for ICE gathering to report "complete". Safari can stall
+  // short of it forever; when that happens we publish the candidates gathered
+  // so far rather than hanging. Candidates arrive fastest-first, so this is
+  // usually the whole set anyway. Raise it if remote peers fail to connect.
+  iceGatheringTimeoutMs: 3000,
   connectTimeoutMs: 45000, // overall budget: ICE + signaling + channel open
   sessionTtlMs: 10 * 60 * 1000, // a guest rejects signaling rows older than this
 };

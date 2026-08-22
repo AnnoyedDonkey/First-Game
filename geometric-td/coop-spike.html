@@ -58,18 +58,45 @@
       <h2>Ping-pong round trip</h2>
       <output id="round-trip" aria-live="polite">—</output>
     </section>
+
+    <!-- Phase 0 is a diagnosis exercise: a phone that only says "it didn't
+         work" costs a whole test cycle. This names the failing step. -->
+    <section>
+      <h2>Diagnostics</h2>
+      <pre id="diagnostics" class="muted">—</pre>
+    </section>
   </main>
 
   <script type="module">
     import { COOP } from "./src/config.js";
     import {
       closeSession,
+      getDiagnostics,
       hostSession,
       joinSession,
       onConnectionState,
       onMessage,
       sendMessage,
     } from "./src/net.js";
+
+    // Poll rather than subscribe: these are peer-connection internals, not
+    // connection-state transitions, and they change without any state change
+    // (which is exactly the stall we are hunting).
+    const diagnosticsBox = document.querySelector("#diagnostics");
+    setInterval(() => {
+      const d = getDiagnostics();
+      diagnosticsBox.textContent =
+        `step:      ${d.step ?? "—"}\n` +
+        `state:     ${d.state}\n` +
+        `role:      ${d.role ?? "—"}\n` +
+        `peer:      ${d.peer ?? "—"}\n` +
+        `ice gath:  ${d.iceGathering ?? "—"}\n` +
+        `ice conn:  ${d.iceConnection ?? "—"}\n` +
+        `signaling: ${d.signaling ?? "—"}\n` +
+        `candidates:${d.localCandidates ?? 0}\n` +
+        `cmd chan:  ${d.channels?.cmd ?? "—"}\n` +
+        `state chan:${d.channels?.state ?? "—"}`;
+    }, 500);
 
     const hostButton = document.querySelector("#host-button");
     const joinButton = document.querySelector("#join-button");
