@@ -133,9 +133,22 @@ export function closeSession(reason = "Session closed") {
 // Live view of the connection internals, for the spike page. Phase 0's whole
 // job is diagnosis, and a phone that only says "it didn't work" costs a whole
 // test cycle — this makes the failing STEP visible on the device itself.
+// Last known internals, captured BEFORE a session is torn down. Without this,
+// getDiagnostics() goes blank at exactly the moment it matters: failSession()
+// nulls currentSession, so a dropped connection reported nothing about WHY.
+let lastDiagnostics = null;
+
 export function getDiagnostics() {
   const s = currentSession;
-  if (!s) return { state: connectionState, role: null, code: null };
+  if (!s) {
+    return lastDiagnostics
+      ? { ...lastDiagnostics, state: connectionState, stale: true }
+      : { state: connectionState, role: null, code: null };
+  }
+  return snapshotDiagnostics(s);
+}
+
+function snapshotDiagnostics(s) {
   return {
     state: connectionState,
     role: s.role,
@@ -146,6 +159,10 @@ export function getDiagnostics() {
     signaling: s.pc ? s.pc.signalingState : null,
     peer: s.pc ? s.pc.connectionState : null,
     localCandidates: s.localCandidates || 0,
+    connectedAt: s.connectedAt || null,
+    connectedSeconds: s.connectedAt
+      ? Math.round((Date.now() - s.connectedAt) / 1000)
+      : null,
     channels: {
       cmd: s.channels.cmd ? s.channels.cmd.readyState : null,
       state: s.channels.state ? s.channels.state.readyState : null,
@@ -288,7 +305,9 @@ function markConnectedIfReady(session) {
   if (!bothOpen) return;
 
   if (connectionState !== CONNECTION_STATES.CONNECTED) {
+    session.connectedAt = Date.now();
     transition(session, CONNECTION_STATES.CONNECTED);
+    startKeepalive(session);
   }
   if (!session.settled) {
     session.settled = true;
@@ -296,6 +315,24 @@ function markConnectedIfReady(session) {
     session.timeoutId = null;
     session.resolve({ role: session.role, code: session.code });
   }
+}
+
+// A silent connection can have its NAT mapping reclaimed mid-session. The real
+// game will push snapshots constantly and never go quiet, but the spike page
+// sits idle between manual pings — which is exactly the condition that makes a
+// connection "work, then die a minute later". Cheap insurance either way.
+function startKeepalive(session) {
+  if (session.keepaliveId) return;
+  session.keepaliveId = setInterval(() => {
+    if (session !== currentSession) return;
+    if (session.channels.cmd?.readyState !== "open") return;
+    try {
+      session.channels.cmd.send(JSON.stringify({ type: "keepalive" }));
+    } catch {
+      // A send failure here is not itself fatal; the connection-state
+      // handler owns deciding the session is done.
+    }
+  }, COOP.keepaliveMs);
 }
 
 async function runHost(session) {
@@ -562,8 +599,15 @@ function failSession(session, error) {
 }
 
 function cleanupSession(session) {
+  // Freeze the internals before we tear them down — this snapshot is the only
+  // record of why a live connection dropped.
+  lastDiagnostics = snapshotDiagnostics(session);
   clearTimeout(session.timeoutId);
   session.timeoutId = null;
+  if (session.keepaliveId) {
+    clearInterval(session.keepaliveId);
+    session.keepaliveId = null;
+  }
   session.abortController.abort();
 
   for (const channel of Object.values(session.channels)) {

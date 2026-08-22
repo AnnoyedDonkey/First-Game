@@ -1630,6 +1630,11 @@ export const COOP = {
   // usually the whole set anyway. Raise it if remote peers fail to connect.
   iceGatheringTimeoutMs: 3000,
   connectTimeoutMs: 45000, // overall budget: ICE + signaling + channel open
+  // Heartbeat on the `cmd` channel so an idle connection cannot have its NAT
+  // mapping reclaimed. Common NAT UDP timeouts start around 30s, so stay well
+  // under that. The live game sends snapshots constantly and never goes quiet;
+  // this matters for lulls (and for the spike page, which is idle by nature).
+  keepaliveMs: 10000,
   sessionTtlMs: 10 * 60 * 1000, // a guest rejects signaling rows older than this
 };
 

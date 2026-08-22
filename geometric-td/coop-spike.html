@@ -65,6 +65,14 @@
       <h2>Diagnostics</h2>
       <pre id="diagnostics" class="muted">—</pre>
     </section>
+
+    <!-- The timeline is the point. A connection that works and then dies a
+         minute later is only diagnosable if you can see how long it lasted
+         and what state it passed through on the way down. -->
+    <section>
+      <h2>Event log</h2>
+      <pre id="event-log" class="muted">—</pre>
+    </section>
   </main>
 
   <script type="module">
@@ -102,8 +110,10 @@
         `ice conn:  ${d.iceConnection ?? "—"}\n` +
         `signaling: ${d.signaling ?? "—"}\n` +
         `candidates:${d.localCandidates ?? 0}\n` +
+        `connected: ${d.connectedSeconds != null ? d.connectedSeconds + "s" : "—"}\n` +
         `cmd chan:  ${d.channels?.cmd ?? "—"}\n` +
-        `state chan:${d.channels?.state ?? "—"}`;
+        `state chan:${d.channels?.state ?? "—"}` +
+        (d.stale ? "\n\n(session ended — values are the last known)" : "");
     }, 500);
 
     const hostButton = document.querySelector("#host-button");
@@ -152,15 +162,31 @@
     pingButton.addEventListener("click", sendPing);
     closeButton.addEventListener("click", () => closeSession());
 
+    const eventLogBox = document.querySelector("#event-log");
+    const pageOpenedAt = Date.now();
+    const eventLog = [];
+    function logEvent(text) {
+      const t = ((Date.now() - pageOpenedAt) / 1000).toFixed(1).padStart(6, " ");
+      eventLog.push(`${t}s  ${text}`);
+      eventLogBox.textContent = eventLog.join("\n");
+    }
+
     onConnectionState((event) => {
       const connected = event.state === "connected";
       connectionState.textContent = event.state;
-      hostButton.disabled = !["idle", "failed", "closed"].includes(event.state);
-      joinButton.disabled = hostButton.disabled;
-      joinCode.disabled = hostButton.disabled;
+      // "disconnected" belongs in the re-enable list: without it a dropped
+      // session leaves every button dead and the only way to retry is a
+      // page reload.
+      const idle = ["idle", "failed", "closed", "disconnected"].includes(event.state);
+      hostButton.disabled = !idle;
+      joinButton.disabled = !idle;
+      joinCode.disabled = !idle;
       pingButton.disabled = !connected;
       closeButton.disabled = ["idle", "failed", "closed"].includes(event.state);
       if (event.error) detail.textContent = event.error;
+      logEvent(
+        `${event.previous} -> ${event.state}` + (event.error ? `  ERROR: ${event.error}` : "")
+      );
       if (connected && event.previous !== "connected") sendPing();
     });
 
