@@ -114,6 +114,7 @@
           ? ` (host ${d.candidateTypes.host}${d.candidateTypes.mdns ? `/${d.candidateTypes.mdns} mDNS` : ""}` +
             `, srflx ${d.candidateTypes.srflx}, relay ${d.candidateTypes.relay})`
           : "") + "\n" +
+        `turn:      ${d.turnStatus ?? "—"}\n` +
         `ice hist:  ${(d.iceHistory || []).join(" > ") || "—"}\n` +
         (d.iceErrors && d.iceErrors.length ? `ice errs:  ${d.iceErrors.join(" | ")}\n` : "") +
         `connected: ${d.connectedSeconds != null ? d.connectedSeconds + "s" : "—"}\n` +

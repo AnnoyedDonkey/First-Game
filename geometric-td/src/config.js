@@ -1618,6 +1618,13 @@ export const COOP = {
     { urls: "stun:stun.cloudflare.com:3478" },
     { urls: "stun:stun.l.google.com:19302" },
   ],
+  // TURN relay (Phase 5, pulled forward after a device test failed ICE with
+  // only host+srflx candidates). Path on the SAME Supabase project; the edge
+  // function mints SHORT-LIVED Cloudflare TURN credentials, because a static
+  // GitHub Pages site has nowhere to keep a long-lived secret. Set to null to
+  // disable and go back to STUN-only — a TURN failure is never fatal, it just
+  // removes the relay fallback.
+  turnEndpoint: "/functions/v1/turn-credentials",
   table: "coop_sessions", // table name created by SUPABASE_SETUP.md
   roomCodeLength: 6,      // digits in a join code
   // Ambiguous glyphs (I/O/0/1) are excluded — codes get read aloud and typed

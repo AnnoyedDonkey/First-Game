@@ -133,9 +133,10 @@ export function closeSession(reason = "Session closed") {
 // Live view of the connection internals, for the spike page. Phase 0's whole
 // job is diagnosis, and a phone that only says "it didn't work" costs a whole
 // test cycle — this makes the failing STEP visible on the device itself.
-// Last known internals, captured BEFORE a session is torn down. Without this,
-// getDiagnostics() goes blank at exactly the moment it matters: failSession()
-// nulls currentSession, so a dropped connection reported nothing about WHY.
+//
+// `lastDiagnostics` is captured BEFORE a session is torn down, because
+// failSession() nulls currentSession — without it, a dropped connection
+// reported nothing about why, at exactly the moment it mattered.
 let lastDiagnostics = null;
 
 export function getDiagnostics() {
@@ -162,6 +163,7 @@ function snapshotDiagnostics(s) {
     candidateTypes: s.candidateTypes || null,
     iceErrors: s.iceErrors || [],
     iceHistory: s.iceHistory || [],
+    turnStatus: s.turnStatus || null,
     connectedAt: s.connectedAt || null,
     connectedSeconds: s.connectedAt
       ? Math.round((Date.now() - s.connectedAt) / 1000)
@@ -210,19 +212,69 @@ function startSession(role, code, runner) {
     failSession(session, new Error("Connection attempt timed out"));
   }, COOP.connectTimeoutMs);
 
-  try {
+  // Async because the ICE server list may be fetched (TURN credentials are
+  // minted per session and cannot be baked into a static site). The room code
+  // is already minted above, so hostSession() can still expose it immediately.
+  (async () => {
     assertRuntimeAvailable();
-    setupPeerConnection(session);
-    runner(session).catch((error) => failSession(session, error));
-  } catch (error) {
-    failSession(session, error);
-  }
+    const iceServers = await resolveIceServers(session);
+    setupPeerConnection(session, iceServers);
+    await runner(session);
+  })().catch((error) => failSession(session, error));
 
   return connected;
 }
 
-function setupPeerConnection(session) {
-  const pc = new RTCPeerConnection({ iceServers: COOP.iceServers });
+// TURN credentials are short-lived, so they are cached only for their own TTL.
+let cachedIce = null; // { servers, expiresAt }
+
+// Builds the ICE server list: always the static STUN entries, plus TURN relay
+// servers minted on demand when COOP.turnEndpoint is configured.
+//
+// A TURN failure is NEVER fatal here. Without a relay, same-LAN and most
+// cross-network pairs still connect on host/srflx candidates; falling back to
+// STUN-only preserves every case that already worked, and the reason is
+// recorded so the spike page can show it.
+async function resolveIceServers(session) {
+  const base = [...COOP.iceServers];
+  if (!COOP.turnEndpoint) {
+    session.turnStatus = "disabled";
+    return base;
+  }
+  if (cachedIce && cachedIce.expiresAt > Date.now()) {
+    session.turnStatus = "cached";
+    return [...base, ...cachedIce.servers];
+  }
+  try {
+    const url = `${LEADERBOARD.url.replace(/\/+$/, "")}${COOP.turnEndpoint}`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: authHeaders(),
+      signal: session.abortController.signal,
+    });
+    const body = await response.json().catch(() => null);
+    if (!response.ok) {
+      session.turnStatus = `error ${response.status} ${body?.error || ""}`.trim();
+      return base;
+    }
+    const servers = Array.isArray(body?.iceServers) ? body.iceServers : [];
+    if (!servers.length) {
+      session.turnStatus = "empty";
+      return base;
+    }
+    // Refresh a little before expiry rather than exactly at it.
+    const ttlMs = Math.max(60, (body.ttl || 3600) - 60) * 1000;
+    cachedIce = { servers, expiresAt: Date.now() + ttlMs };
+    session.turnStatus = "ok";
+    return [...base, ...servers];
+  } catch (error) {
+    session.turnStatus = `failed: ${String(error).slice(0, 60)}`;
+    return base;
+  }
+}
+
+function setupPeerConnection(session, iceServers) {
+  const pc = new RTCPeerConnection({ iceServers: iceServers || COOP.iceServers });
   session.pc = pc;
   session.localCandidates = 0;
 
