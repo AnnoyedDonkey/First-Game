@@ -1625,6 +1625,26 @@ export const COOP = {
     earningsShare: 0.6, // retroactive share of the host's bounty earnings
     maxGrant: 5000,     // credits; hard ceiling for a very late join
   },
+  // Phase 3 public/private session browser. Supabase's slower 30-minute cron
+  // cleanup is only storage hygiene; these short windows define live UI.
+  heartbeatSeconds: 10,
+  staleSeconds: 30,
+  browserPollSeconds: 5,
+  browserSessionLimit: 30,
+  maxPlayers: 2,
+  codenameMaxLength: 64,
+  hostNickMaxLength: 16,
+  levelIdMaxLength: 64,
+  codenames: {
+    adjectives: [
+      "CRIMSON", "AZURE", "NEON", "SOLAR", "LUNAR", "VIOLET",
+      "QUANTUM", "ELECTRIC", "FROZEN", "GOLDEN", "CORAL", "PHANTOM",
+    ],
+    nouns: [
+      "LATTICE", "CASCADE", "CIRCUIT", "VECTOR", "PRISM", "NEXUS",
+      "GRID", "BEACON", "RELAY", "MATRIX", "ORBIT", "SIGNAL",
+    ],
+  },
   // Phase 1 ownership presentation. Player presence reuses these same colors
   // in Phase 3b, so board ownership and the co-op HUD stay one visual language.
   ownership: {

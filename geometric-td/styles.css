@@ -2446,6 +2446,223 @@ html[data-lang="fr"] #story-lang-toggle .lang-fr {
   color: var(--neon-red);
 }
 
+/* ---------- Co-op lobby ---------- */
+
+#coop-overlay {
+  position: fixed;
+  max-width: 560px;
+  margin-inline: auto;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: calc(14px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom));
+  background: rgb(5, 6, 15);
+  z-index: 40;
+}
+
+#coop-overlay.hidden { display: none; }
+
+#coop-header {
+  width: 100%;
+  max-width: 420px;
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) 48px;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+#coop-header > div { grid-column: 2; min-width: 0; text-align: center; }
+#coop-header h1 {
+  overflow: hidden;
+  color: var(--neon-cyan);
+  font-size: 22px;
+  letter-spacing: 3px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  text-shadow: 0 0 16px rgba(53, 224, 255, 0.6);
+  white-space: nowrap;
+}
+#coop-header p {
+  margin-top: 4px;
+  color: var(--text-dim);
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  line-height: 1.35;
+}
+
+#coop-back {
+  grid-column: 1;
+  grid-row: 1;
+  width: 44px;
+  min-height: 44px;
+  padding: 0;
+  color: var(--neon-cyan);
+  border: 1px solid var(--panel-border);
+  border-radius: 50%;
+  background: var(--panel);
+  font: 30px/1 monospace;
+  cursor: pointer;
+}
+
+#coop-content {
+  width: 100%;
+  max-width: 420px;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+#coop-session-list,
+.coop-choice-list,
+.coop-level-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.coop-session-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  background: var(--panel);
+}
+
+.coop-session-copy {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+.coop-session-copy strong {
+  overflow: hidden;
+  color: var(--neon-cyan);
+  font-size: 14px;
+  letter-spacing: 1.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.coop-session-copy span {
+  overflow: hidden;
+  color: var(--text-dim);
+  font-size: 10px;
+  letter-spacing: .7px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.coop-session-join { flex: 0 0 auto; min-width: 76px; }
+
+.coop-choice {
+  width: 100%;
+  min-height: 64px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  padding: 10px 14px;
+  color: var(--neon-cyan);
+  border: 1px solid var(--neon-cyan);
+  border-radius: 8px;
+  background: var(--panel);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.coop-choice strong { font-size: 14px; letter-spacing: 1.5px; }
+.coop-choice span { color: var(--text-dim); font-size: 10px; letter-spacing: 1px; }
+.coop-choice:active, #coop-back:active { background: var(--panel-border); }
+
+#coop-code-input {
+  width: 100%;
+  min-height: 56px;
+  padding: 8px 12px;
+  color: var(--neon-cyan);
+  border: 1px solid var(--neon-cyan);
+  border-radius: 8px;
+  outline: none;
+  background: var(--panel);
+  font-family: inherit;
+  font-size: 22px;
+  letter-spacing: 7px;
+  text-align: center;
+  text-transform: uppercase;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.coop-room-code {
+  margin: 18vh 0 16px;
+  padding: 18px 12px;
+  color: var(--neon-yellow);
+  border: 1px solid var(--neon-yellow);
+  border-radius: 10px;
+  background: var(--panel);
+  font-size: clamp(26px, 10vw, 40px);
+  letter-spacing: 8px;
+  text-align: center;
+  text-shadow: 0 0 14px rgba(255, 226, 74, 0.6);
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.coop-empty {
+  padding: 24px 14px;
+  color: var(--text-dim);
+  border: 1px dashed var(--panel-border);
+  border-radius: 8px;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  line-height: 1.6;
+  text-align: center;
+}
+
+#coop-status {
+  min-height: 18px;
+  flex: 0 0 auto;
+  color: var(--text-dim);
+  font-size: 10px;
+  letter-spacing: 1px;
+  line-height: 1.4;
+  text-align: center;
+}
+#coop-status.error { color: var(--neon-red); }
+#coop-status.success { color: var(--neon-green); }
+
+#coop-actions {
+  width: 100%;
+  max-width: 420px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  flex: 0 0 auto;
+}
+#coop-actions:empty { display: none; }
+#coop-actions .big-button { min-width: 0; width: 100%; }
+
+.coop-connecting-pulse {
+  width: 64px;
+  height: 64px;
+  margin: 20vh auto 0;
+  border: 2px solid var(--neon-cyan);
+  border-radius: 50%;
+  animation: coopPulse 1.2s ease-out infinite;
+}
+@keyframes coopPulse {
+  from { opacity: .9; transform: scale(.45); }
+  to { opacity: 0; transform: scale(1.25); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .coop-connecting-pulse { animation: none; opacity: .65; }
+}
+
 /* ---------- Leaderboard overlay ---------- */
 /* Gold theme (matches Endless mode's yellow), same z-order as the skill
    tree / tower guide so it sits above the level-select overlay. */

@@ -28,7 +28,7 @@ import {
   showBark, updateStoryOverlay, levelNameFor, milestoneLabelFor,
   initCoopDebugControls,
 } from "./ui.js";
-import { submitScore, isEnabled as lbEnabled } from "./leaderboard.js";
+import { getNickname, submitScore, isEnabled as lbEnabled } from "./leaderboard.js";
 import {
   submitRun, submitRating, isEnabled as feedbackEnabled,
 } from "./feedback.js";
@@ -39,6 +39,7 @@ import * as tutorial from "./tutorial.js";
 import { startOnboarding, playCards, isOnboardingActive } from "./onboarding.js";
 import { t, tf } from "./i18n.js";
 import * as coop from "./coop.js";
+import { initLobbyMenu } from "./lobby.js";
 
 const TILE_SIZE = 64; // internal render resolution per tile
 
@@ -53,17 +54,6 @@ const ctx = canvas.getContext("2d");
 let game = null;
 let overlayShown = false;
 let barkState = null; // in-battle bark driver state (P3-revival), reset per startLevel
-
-// Temporary Phase 2a console bridge until the lobby owns session startup.
-// Both tabs first open the same battle, then:
-//   const pending = window.coop.host(); pending.code
-//   await window.coop.join("ABC123")
-window.coop = {
-  host: () => coop.startHost(game),
-  join: (code) => coop.startGuest(game, code),
-  role: () => coop.getRole(),
-  state: () => coop.getState(),
-};
 
 function refreshDeployedGear(towerName) {
   if (!game) return;
@@ -333,6 +323,11 @@ function goToMainMenu() {
   showLevelSelect(LEVELS, getProgress().completedLevels, startLevel);
 }
 
+function leaveCoopSession() {
+  coop.stopSession();
+  goToMainMenu();
+}
+
 // One of the config roast pools, picked at random for the results title —
 // picks an INDEX so the pick can be keyed (fr.js roast.<bucket>.<i>) rather
 // than translating the raw English string (which would break the mapping).
@@ -470,9 +465,32 @@ let exitConfirming = false;
 
 onExitButtonTap(() => {
   if (!game || overlayShown || exitConfirming) return;
-  // Phase 3 owns co-op leave/end-session UX. Until then, never run the solo
-  // forfeit path, which writes campaign/Endless progression.
-  if (coop.isActive(game)) return;
+  if (coop.isActive(game)) {
+    exitConfirming = true;
+    showOverlay({
+      title: t("coop.leave.title", "LEAVE CO-OP?"),
+      subtitle: t(
+        "coop.leave.subtitle",
+        "The session connection will close and this battle will end."
+      ),
+      type: "loss",
+      buttons: [
+        {
+          text: t("coop.leave.action", "LEAVE SESSION"),
+          onTap: () => {
+            exitConfirming = false;
+            leaveCoopSession();
+          },
+        },
+        {
+          text: t("ui.cancel", "CANCEL"),
+          onTap: () => { exitConfirming = false; hideOverlay(); },
+          secondary: true,
+        },
+      ],
+    });
+    return;
+  }
   exitConfirming = true;
   showOverlay({
     title: t("result.forfeitTitle", "FORFEIT BATTLE?"),
@@ -792,6 +810,28 @@ function frame(now) {
 
   requestAnimationFrame(frame);
 }
+
+initLobbyMenu({
+  levels: LEVELS,
+  levelName: levelNameFor,
+  getCompletedIds: () => getProgress().completedLevels,
+  getHostNick: getNickname,
+  onHost(level, options) {
+    // Match the campaign's existing Endless gate even if this callback is
+    // invoked outside the rendered picker.
+    if (!getProgress().completedLevels.includes(level.id)) {
+      throw new Error("Only cleared levels can host co-op");
+    }
+    startLevel(level, true);
+    return coop.startHost(game, options);
+  },
+  onJoin(level, code) {
+    startLevel(level, true);
+    return coop.startGuest(game, code);
+  },
+  onCancel: leaveCoopSession,
+  onSessionFailure: leaveCoopSession,
+});
 
 // Boot into the mission list; the loop starts once a level is picked.
 showLevelSelect(LEVELS, getProgress().completedLevels, startLevel);

@@ -9,9 +9,12 @@ import {
   COOP, ENEMIES, TOWERS, TOWER_UPGRADES,
 } from "./config.js";
 import {
-  CONNECTION_STATES, getConnectionState, hostSession, joinSession,
+  closeSession, CONNECTION_STATES, getConnectionState, hostSession, joinSession,
   onConnectionState, onMessage, sendMessage,
 } from "./net.js";
+import {
+  codenameForCode, countFreeTiles, heartbeatHostSession, publishHostSession,
+} from "./lobby.js";
 import {
   applyLevelUpSurge, createTower, placeTower, refreshTowerStats, sellTower,
   tryUpgradeTower, xpThresholdFor,
@@ -40,11 +43,25 @@ let hostEvents = [];
 let guestEvents = [];
 let hostShots = [];
 let guestShots = [];
+let hostLobby = null;
 
-export function startHost(game) {
+export function startHost(game, { listed = false, hostNick = null } = {}) {
   requireStartableGame(game);
   const pending = hostSession();
   activate(game, ROLES.HOST);
+  hostLobby = {
+    code: pending.code,
+    codename: codenameForCode(pending.code),
+    listed: !!listed,
+    hostNick,
+    published: false,
+    writePending: false,
+    lastWriteAt: -Infinity,
+  };
+  Object.defineProperty(pending, "codename", {
+    value: hostLobby.codename,
+    enumerable: true,
+  });
   return pending;
 }
 
@@ -75,6 +92,11 @@ export function getState() {
   return getConnectionState();
 }
 
+export function stopSession(reason = "Co-op session closed") {
+  closeSession(reason);
+  deactivate();
+}
+
 // Local solo/host actions and remote guest actions all reach the same real
 // tower functions here. A guest only transmits; `{pending:true}` explicitly
 // tells main.js not to run success/failure presentation against stale state.
@@ -100,7 +122,9 @@ export function sendIntent(game, intent) {
 // Called after the authoritative simulation tick. Scheduling from real time
 // avoids snapshot bursts when game time is frozen or a browser frame is late.
 export function updateHost(game, now) {
-  if (!isHost(game) || getConnectionState() !== CONNECTION_STATES.CONNECTED) return;
+  if (!isHost(game)) return;
+  updateHostLobby(game, now);
+  if (getConnectionState() !== CONNECTION_STATES.CONNECTED) return;
   if (!guestJoined) acceptGuest(game, now);
   flushHostEvents();
   flushHostShots();
@@ -184,6 +208,7 @@ function activate(game, role) {
   guestEvents = [];
   hostShots = [];
   guestShots = [];
+  hostLobby = null;
   preparePlayers(game, role);
   if (role === ROLES.HOST) {
     game.coopEventSink = (event) => {
@@ -205,6 +230,72 @@ function activate(game, role) {
     game.particles = [];
     game.spawnQueue = [];
   }
+}
+
+function deactivate() {
+  if (activeGame) {
+    delete activeGame.coopEventSink;
+    delete activeGame.coop;
+  }
+  activeGame = null;
+  activeRole = null;
+  latestSnapshot = null;
+  hostLobby = null;
+  hostEvents = [];
+  guestEvents = [];
+  hostShots = [];
+  guestShots = [];
+}
+
+function updateHostLobby(game, now, force = false) {
+  if (!hostLobby) return;
+  if (hostLobby.writePending) {
+    if (force) hostLobby.forceWrite = true;
+    return;
+  }
+  const state = getConnectionState();
+  const rowExists = state === CONNECTION_STATES.WAITING_FOR_PEER ||
+    state === CONNECTION_STATES.CONNECTING ||
+    state === CONNECTION_STATES.CONNECTED;
+  if (!rowExists) return;
+
+  const intervalMs = COOP.heartbeatSeconds * 1000;
+  if (!force && now < hostLobby.lastWriteAt + intervalMs) return;
+  const lobby = hostLobby;
+  const metadata = {
+    wave: game.waveIndex + 1,
+    players: game.ownerIds.length,
+    freeTiles: countFreeTiles(game),
+  };
+  const write = lobby.published
+    ? heartbeatHostSession(lobby.code, metadata)
+    : publishHostSession(lobby.code, {
+        ...metadata,
+        codename: lobby.codename,
+        listed: lobby.listed,
+        hostNick: lobby.hostNick,
+        levelId: game.level.id,
+        maxPlayers: COOP.maxPlayers,
+      });
+
+  lobby.writePending = true;
+  lobby.lastWriteAt = now;
+  write.then(() => {
+    if (hostLobby !== lobby) return;
+    lobby.published = true;
+  }).catch((error) => {
+    // Signaling and play remain independent from this best-effort directory
+    // write. The heartbeat schedule retries without hammering Supabase.
+    console.warn("Co-op lobby update failed:", error);
+  }).finally(() => {
+    if (hostLobby === lobby) {
+      lobby.writePending = false;
+      if (lobby.forceWrite) {
+        lobby.forceWrite = false;
+        lobby.lastWriteAt = -Infinity;
+      }
+    }
+  });
 }
 
 // Phase 4 will replace the remote placeholder with the joining player's real
@@ -376,6 +467,7 @@ function acceptGuest(game, now) {
   game.totalEarned[OWNER_IDS.guest] = 0;
   game.coopDropInGrant = grant;
   guestJoined = true;
+  updateHostLobby(game, now, true);
 
   try {
     sendMessage("cmd", {
@@ -426,8 +518,21 @@ function buildSnapshot(game, sequence) {
 }
 
 onConnectionState(({ state }) => {
+  if (state === CONNECTION_STATES.WAITING_FOR_PEER && isHost()) {
+    updateHostLobby(activeGame, performance.now(), true);
+  }
   if (state === CONNECTION_STATES.CONNECTED && isHost() && !guestJoined) {
     acceptGuest(activeGame, performance.now());
+  }
+  if (
+    isHost() && (
+      state === CONNECTION_STATES.FAILED ||
+      state === CONNECTION_STATES.CLOSED
+    )
+  ) {
+    // Do not refresh a dead room. Its last successful heartbeat will cross
+    // the browser's stale cutoff and disappear without requiring DELETE RLS.
+    hostLobby = null;
   }
 });
 

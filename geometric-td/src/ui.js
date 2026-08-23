@@ -5,7 +5,7 @@
 import {
   TOWERS, ENEMIES, SKILLS, SKILL_VALUES, TOWER_UPGRADES, LOOT,
   SKILL_BRANCH_COLORS, SKILL_TREE_VIEWBOX, FEEDBACK, TUTORIAL, NARRATIVE,
-  SHAPE_SIDES, VFX,
+  SHAPE_SIDES, VFX, COOP,
 } from "./config.js";
 import {
   onTutorialChange, isTutorialActive, currentStep as currentTutorialStep,
@@ -53,6 +53,7 @@ import { ENEMY_LOOK } from "./renderer.js";
 import {
   createTowerDemo, stepTowerDemo, renderTowerDemo, destroyTowerDemo,
 } from "./tower-demo.js";
+import { isLobbyEnabled, openLobbyMenu } from "./lobby.js";
 
 // ---- i18n display-name helpers (Phase B) ----
 // World/level/enemy identity data stays English at the source (levels.js /
@@ -1024,6 +1025,19 @@ function appendGlobalMenuButtons() {
     topRow.appendChild(lbBtn);
   }
   el.menuActions.appendChild(topRow);
+
+  if (isLobbyEnabled()) {
+    const coopRow = document.createElement("div");
+    coopRow.className = "menu-actions-row";
+    const coopBtn = document.createElement("button");
+    coopBtn.className = "level-button skill-entry coop-entry";
+    coopBtn.innerHTML =
+      `<span>${t("menu.coop", "CO-OP")}</span>` +
+      `<span class="level-done">${tf("coop.playerCap", "{max}P", { max: COOP.maxPlayers })}</span>`;
+    coopBtn.addEventListener("click", () => openLobbyMenu());
+    coopRow.appendChild(coopBtn);
+    el.menuActions.appendChild(coopRow);
+  }
 
   // REPLAY INTRO (P1): re-runs the narrative onboarding sequence on demand.
   // The name step prefills with the current name — leaving it unchanged

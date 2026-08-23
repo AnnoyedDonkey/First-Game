@@ -208,9 +208,15 @@ function startSession(role, code, runner) {
   currentSession = session;
   transition(session, CONNECTION_STATES.SIGNALING);
 
-  session.timeoutId = setTimeout(() => {
-    failSession(session, new Error("Connection attempt timed out"));
-  }, COOP.connectTimeoutMs);
+  // Budget for ESTABLISHING a connection — not for waiting on a peer.
+  //
+  // A host publishes its offer and then plays solo until someone joins, which
+  // may be many minutes (drop-in at any wave is a locked design decision). If
+  // this timer stayed armed through WAITING_FOR_PEER it would kill a perfectly
+  // healthy hosted session after COOP.connectTimeoutMs and drop the player
+  // back to the lobby. `transition()` disarms it on entering that state and
+  // re-arms it once a guest's answer moves us to CONNECTING.
+  armConnectTimeout(session);
 
   // Async because the ICE server list may be fetched (TURN credentials are
   // minted per session and cannot be baked into a static site). The room code
@@ -745,12 +751,31 @@ function cleanupSession(session) {
   }
 }
 
+function armConnectTimeout(session) {
+  clearTimeout(session.timeoutId);
+  session.timeoutId = setTimeout(() => {
+    failSession(session, new Error("Connection attempt timed out"));
+  }, COOP.connectTimeoutMs);
+}
+
+function disarmConnectTimeout(session) {
+  clearTimeout(session.timeoutId);
+  session.timeoutId = null;
+}
+
 function transition(session, nextState, detail = {}) {
   const previous = connectionState;
   if (!ALLOWED_TRANSITIONS[previous]?.includes(nextState)) {
     throw new Error(`Invalid connection-state transition: ${previous} -> ${nextState}`);
   }
   connectionState = nextState;
+
+  // A host may wait indefinitely for a guest; the connect budget only covers
+  // actually establishing the link. See armConnectTimeout().
+  if (nextState === CONNECTION_STATES.WAITING_FOR_PEER) disarmConnectTimeout(session);
+  else if (nextState === CONNECTION_STATES.CONNECTING && !session.settled) {
+    armConnectTimeout(session);
+  }
   lastStateEvent = {
     state: nextState,
     previous,

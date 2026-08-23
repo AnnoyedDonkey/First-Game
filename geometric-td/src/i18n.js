@@ -97,7 +97,14 @@ export function applyStaticI18n(root = document) {
     elm.getAttribute("data-i18n-attr").split(",").forEach((pair) => {
       const [attr, key] = pair.split(":").map((s) => s && s.trim());
       if (!attr || !key) return;
-      const cacheKey = "i18nAttr_" + attr;
+      // dataset keys are DOMStringMap names: no hyphens allowed. Attributes
+      // like `aria-label` must be camelised or the assignment below throws a
+      // SyntaxError, which aborts the whole i18n pass (and, with it, whatever
+      // UI was mid-build). Every attribute used before the co-op lobby was a
+      // single word — `title`, `placeholder` — so this went unnoticed.
+      const cacheKey =
+        "i18nAttr" + attr.replace(/(^|[^a-z0-9])([a-z0-9])/gi,
+          (_, __, c) => c.toUpperCase());
       if (elm.dataset[cacheKey] == null) elm.dataset[cacheKey] = elm.getAttribute(attr) || "";
       elm.setAttribute(attr, t(key, elm.dataset[cacheKey]));
     });
