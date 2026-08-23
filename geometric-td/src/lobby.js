@@ -221,6 +221,7 @@ let visibleSessions = [];
 let browserPollId = null;
 let browserRequest = 0;
 let browserFetchPending = false;
+let browserLoaded = false;
 let codeRequest = 0;
 let activeAttempt = null;
 
@@ -269,6 +270,7 @@ function renderBrowser(messageKey = null) {
   ui.actions.querySelector(".coop-join-code").onclick = renderJoinCode;
   ui.actions.querySelector(".coop-host-game").onclick = renderVisibility;
   visibleSessions = [];
+  browserLoaded = false;
   renderSessionRows();
   setStatus(
     messageKey ? t(messageKey, "CONNECTION FAILED — TRY AGAIN") :
@@ -288,12 +290,14 @@ async function refreshBrowser() {
     const sessions = await fetchPublicSessions();
     if (request !== browserRequest || currentView !== "browser") return;
     visibleSessions = sessions;
+    browserLoaded = true;
     renderSessionRows();
     setStatus(sessions.length ? "" : t("coop.browser.empty", "NO LIVE PUBLIC SESSIONS"));
   } catch (error) {
     if (request !== browserRequest || currentView !== "browser") return;
     console.warn("Co-op browser refresh failed:", error);
     visibleSessions = [];
+    browserLoaded = true;
     renderSessionRows();
     setStatus(t("coop.browser.unavailable", "SESSION BROWSER UNAVAILABLE"), "error");
   } finally {
@@ -304,6 +308,16 @@ async function refreshBrowser() {
 function renderSessionRows() {
   const list = ui.content.querySelector("#coop-session-list");
   if (!list) return;
+  // Empty content area reads as broken; fill the middle with a message. During
+  // the very first scan (before any fetch resolves) say so; after that, say the
+  // list is genuinely empty and point at HOST GAME.
+  if (!visibleSessions.length) {
+    const msg = browserLoaded
+      ? t("coop.browser.emptyBig", "No live sessions right now.<br>Tap HOST GAME to start one.")
+      : t("coop.browser.loadingBig", "Scanning for live sessions…");
+    list.innerHTML = `<div class="coop-empty coop-empty-center">${msg}</div>`;
+    return;
+  }
   list.innerHTML = visibleSessions.map((session) => {
     const level = menuOptions.levels.find((item) => item.id === session.levelId);
     const levelName = level ? menuOptions.levelName(level) : session.levelId;

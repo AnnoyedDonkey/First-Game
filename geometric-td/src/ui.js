@@ -1130,19 +1130,6 @@ function appendGlobalMenuButtons() {
   }
   el.menuActions.appendChild(topRow);
 
-  if (isLobbyEnabled()) {
-    const coopRow = document.createElement("div");
-    coopRow.className = "menu-actions-row";
-    const coopBtn = document.createElement("button");
-    coopBtn.className = "level-button skill-entry coop-entry";
-    coopBtn.innerHTML =
-      `<span>${t("menu.coop", "CO-OP")}</span>` +
-      `<span class="level-done">${tf("coop.playerCap", "{max}P", { max: COOP.maxPlayers })}</span>`;
-    coopBtn.addEventListener("click", () => openLobbyMenu());
-    coopRow.appendChild(coopBtn);
-    el.menuActions.appendChild(coopRow);
-  }
-
   // REPLAY INTRO (P1): re-runs the narrative onboarding sequence on demand.
   // The name step prefills with the current name — leaving it unchanged
   // keeps it, changing it updates the save; startOnboarding()/
@@ -1179,6 +1166,18 @@ function appendGlobalMenuButtons() {
   renderBanter();
   banterBtn.addEventListener("click", () => { setBarksEnabled(!getBarksEnabled()); renderBanter(); });
   introRow.appendChild(banterBtn);
+
+  // CO-OP shares this row so it lines up under the top row's columns instead
+  // of claiming a wide row of its own.
+  if (isLobbyEnabled()) {
+    const coopBtn = document.createElement("button");
+    coopBtn.className = "level-button skill-entry coop-entry";
+    coopBtn.innerHTML =
+      `<span>${t("menu.coop", "CO-OP")}</span>` +
+      `<span class="level-done">${tf("coop.playerCap", "{max}P", { max: COOP.maxPlayers })}</span>`;
+    coopBtn.addEventListener("click", () => openLobbyMenu());
+    introRow.appendChild(coopBtn);
+  }
 
   el.menuActions.appendChild(introRow);
 

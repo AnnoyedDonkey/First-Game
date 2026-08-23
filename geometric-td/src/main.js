@@ -36,7 +36,7 @@ import { GEAR_SLOTS } from "./equipment.js";
 import { initUpdateCheck } from "./update.js";
 import * as loot from "./loot.js";
 import * as tutorial from "./tutorial.js";
-import { startOnboarding, playCards, isOnboardingActive } from "./onboarding.js";
+import { startOnboarding, playCards, isOnboardingActive, setCardsSuppressed } from "./onboarding.js";
 import { t, tf } from "./i18n.js";
 import * as coop from "./coop.js";
 import { initLobbyMenu } from "./lobby.js";
@@ -343,6 +343,7 @@ function goToMainMenu() {
 
 function leaveCoopSession() {
   coop.stopSession();
+  setCardsSuppressed(false); // restore normal narrative cards for solo play
   speedControls.setLocked(false);
   setCoopHudMode(false);
   exitConfirming = false;
@@ -866,6 +867,7 @@ initLobbyMenu({
     if (!getProgress().completedLevels.includes(level.id)) {
       throw new Error("Only cleared levels can host co-op");
     }
+    setCardsSuppressed(true); // no tutorial/onboarding/story cards in co-op
     startLevel(level, true);
     const pending = coop.startHost(game, options);
     speedControls.setLocked(true);
@@ -873,6 +875,7 @@ initLobbyMenu({
     return pending;
   },
   onJoin(level, code) {
+    setCardsSuppressed(true); // no tutorial/onboarding/story cards in co-op
     startLevel(level, true);
     const pending = coop.startGuest(game, code);
     speedControls.setLocked(true);

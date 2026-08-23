@@ -56,7 +56,19 @@ export function totalCards() {
 // calling `onDone` (if given) once the player taps through the last card or
 // hits SKIP. Used by the intro (below) and by per-level story beats /
 // ▶ STORY replay (main.js / ui.js openLevelSheet).
+// Co-op sessions suppress every card sequence. Co-op runs in Endless (which
+// already skips the tutorial, per-level beats, and enemy intros), but a
+// first-load onboarding can still be mid-flow when a fresh player joins — and
+// on a guest a card freezes the local clock while the host keeps simulating.
+// main.js raises this while a co-op battle is active and lowers it on exit.
+let suppressed = false;
+export function setCardsSuppressed(on) {
+  suppressed = !!on;
+  if (suppressed && active) finish();
+}
+
 export function playCards(list, doneCallback) {
+  if (suppressed) return;
   if (!list || !list.length) return;
   cards = list;
   onDone = doneCallback || null;

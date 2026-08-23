@@ -2555,6 +2555,10 @@ html[data-lang="fr"] #story-lang-toggle .lang-fr {
   flex: 1 1 auto;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  /* Column layout so the session list can grow and vertically centre its
+     empty/scanning message in the full panel height. */
+  display: flex;
+  flex-direction: column;
 }
 
 #coop-session-list,
@@ -2664,6 +2668,18 @@ html[data-lang="fr"] #story-lang-toggle .lang-fr {
   letter-spacing: 1.5px;
   line-height: 1.6;
   text-align: center;
+}
+
+/* The session browser's empty/scanning state: fill the panel and sit the
+   message in the vertical middle so the co-op screen never looks barren. */
+#coop-session-list:has(.coop-empty-center) {
+  flex: 1 1 auto;
+  min-height: 220px;
+}
+.coop-empty-center {
+  margin: auto;
+  max-width: 300px;
+  font-size: 13px;
 }
 
 #coop-status {
