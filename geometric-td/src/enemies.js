@@ -272,13 +272,25 @@ export function damageEnemy(game, enemy, sourceTower, amount) {
   // syncing to the wallet instead.
   const levelNumber = game.level && game.level.id ? Number(game.level.id.slice(-3)) || 1 : 1;
   const levelMult = 1 + LOOT.shards.perLevelMult * (levelNumber - 1);
-  game.shardsEarned +=
+  const shards =
     LOOT.shards.perKillBase * (enemy.def.shardTier ?? 1) * levelMult *
     (sourceTower ? sourceTower.shardFindMult || 1 : 1) *
     getSkillShardFindMult();
+  if (game.coop && game.shardsEarned && typeof game.shardsEarned === "object") {
+    const ownerId = sourceTower.ownerId;
+    game.shardsEarned[ownerId] = (game.shardsEarned[ownerId] || 0) + shards;
+  } else {
+    // Preserve the single-player scalar and its round-once banking path.
+    game.shardsEarned += shards;
+  }
 
   const drop = rollKillDrop(enemy, game.level, game.waveIndex);
-  if (drop) game.lootDrops.push(drop);
+  if (drop) {
+    // Runtime-only attribution. Solo items stay byte-identical because the
+    // owner field exists only while a real co-op session is active.
+    if (game.coop) drop.ownerId = sourceTower.ownerId;
+    game.lootDrops.push(drop);
+  }
 
   const pos = enemyPosition(enemy, game.grid);
   const ts = game.grid.tileSize;

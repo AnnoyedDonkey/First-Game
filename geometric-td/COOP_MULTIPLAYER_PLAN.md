@@ -927,6 +927,37 @@ board — locked, §2 round 3).
 
 ---
 
+### Phase 4 — AS BUILT (2026-08-22)
+
+Built and verified in-browser. `bankCoopRun(payload, {trustedLocalTowers})` in
+`progression.js` is the single banking path: the host calls it with its own
+towers/loot/shards (`trustedLocalTowers: true`, may create records), the guest
+calls it with the host's `sessionEnd` payload (untrusted, update-only).
+
+**Verified safety properties** (the point of this phase):
+- **Solo byte-identical:** `shardsEarned` stays a scalar, loot drops carry no
+  `ownerId`, `recordBattleEnd`/`recordRunLoot`/`syncRoster` unchanged, a full
+  battle banks with no errors. `game.js` and `save.js` untouched; no save-schema
+  change.
+- **Only the safe subset is written:** a valid payload advanced roster
+  xp/kills/maxLevel and shards while `completedLevels`, `endlessBest`, `wins`,
+  and `skillPoints` stayed untouched.
+- **Hostile input is rejected, not written:** a network payload that rolls back
+  career totals is refused; an unknown tower name is dropped (no phantom record
+  created); NaN xp, a non-array `towers`, and negative shards are each rejected
+  with a reason and no throw, roster intact.
+- Telemetry is suppressed during co-op (`feedback.js submitRun`/`submitRating`
+  bail on `game.coop`), so co-op never pollutes the solo balance dashboard.
+
+**Known v1 limitations (deliberate):** banking happens only at the authoritative
+`won`/`lost`; a voluntary guest leave or host termination mid-run has no
+graceful result exchange, so a partial run is not banked. Co-op banks
+attributed kill-drops only — no solo guaranteed end-drop, no Endless
+milestones. One out-of-scope file was touched (`feedback.js`) for the telemetry
+guard, which was necessary and flagged.
+
+---
+
 ## 11. Phase 5 — TURN relay — ✅ DONE (2026-08-22, pulled forward)
 
 **Built, deployed, and verified on real devices.** Pulled forward from "last

@@ -437,8 +437,8 @@ function runTelemetry(g, outcome) {
 // difficulty strip; endless runs send telemetry only (a rating against
 // procedurally-extended waves wouldn't say anything about the level).
 function feedbackStrip(g) {
-  if (!feedbackEnabled() || g.endless) return null;
-  return { onRate: (rating, note) => submitRating(rating, note) };
+  if (!feedbackEnabled() || g.endless || g.coop) return null;
+  return { onRate: (rating, note) => submitRating(rating, note, g) };
 }
 
 // Endless reward-track milestones newly crossed this run (progression.js
@@ -533,7 +533,7 @@ onExitButtonTap(() => {
           forfeitBattle(game);
           game.phase = "lost";
           overlayShown = true;
-          submitRun(runTelemetry(game, "forfeit")); // best-effort, never blocks
+          submitRun(runTelemetry(game, "forfeit"), game); // best-effort, never blocks
           const level = game.level;
           const endless = game.endless;
           const items = allPlacements(game);
@@ -569,7 +569,7 @@ function checkEndState() {
   if (game.phase !== "won" && game.phase !== "lost") return;
 
   overlayShown = true;
-  submitRun(runTelemetry(game, game.phase)); // best-effort, never blocks
+  submitRun(runTelemetry(game, game.phase), game); // best-effort, never blocks
   const level = game.level;
   const items = allPlacements(game);
   const stashFull = items.some((p) => p.dest === "pending");
@@ -830,8 +830,8 @@ function frame(now) {
     updateUpgradePanel(game, uiState.selectedTower);
     updateTutorialOverlay(game); // T4: reposition the spotlight ring, if active
     updateStoryOverlay(game);    // enemy-intro card: track its cutout over the live enemies
-    // Phase 2b adds the co-op battle-end/reward handshake. The solo result
-    // path submits telemetry/leaderboard data and expects solo reward fields.
+    // coop.js owns the co-op terminal banking/result handshake. The solo
+    // result path submits telemetry/leaderboard data and expects solo fields.
     if (!coop.isActive(game)) checkEndState();
   }
 

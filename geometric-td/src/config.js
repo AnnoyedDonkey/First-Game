@@ -1653,6 +1653,15 @@ export const COOP = {
     pipGapPx: 5,
     localOutlinePx: 2,
   },
+  // Phase 4 save-boundary limits. These cap one-shot roster/result payloads
+  // before any network-supplied value can reach progression.js.
+  progressionExchange: {
+    maxRosterRecords: 1000,
+    maxBattleTowers: 400,
+    maxLootDrops: 10000,
+    maxNameLength: 64,
+    maxItemIdLength: 128,
+  },
   // Phase 1 ownership presentation. Player presence reuses these same colors
   // in Phase 3b, so board ownership and the co-op HUD stay one visual language.
   ownership: {

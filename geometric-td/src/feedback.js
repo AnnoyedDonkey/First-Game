@@ -70,7 +70,13 @@ async function push(row) {
 // Insert this battle's telemetry row. `telemetry` supplies the game
 // facts (level_id, mode, outcome, waves, details…) — built in main.js
 // so this module stays free of game-state imports.
-export async function submitRun(telemetry) {
+export async function submitRun(telemetry, game = null) {
+  if (game?.coop) {
+    // A co-op-specific row/schema is a later pass. Never let a prior solo row
+    // remain rateable after suppressing this run.
+    currentRow = null;
+    return false;
+  }
   if (!isEnabled()) return false;
   currentRow = {
     run_id: mintRunId(),
@@ -84,7 +90,11 @@ export async function submitRun(telemetry) {
 // Attach the player's difficulty rating (and optional note) to the run
 // just submitted. Re-taps / note sends simply upsert again, so the row
 // always holds their latest answer.
-export async function submitRating(rating, note) {
+export async function submitRating(rating, note, game = null) {
+  if (game?.coop) {
+    currentRow = null;
+    return false;
+  }
   if (!isEnabled() || !currentRow) return false;
   currentRow = {
     ...currentRow,

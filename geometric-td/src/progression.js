@@ -9,7 +9,7 @@
 // ============================================================
 
 import {
-  endlessTrackFor, LOOT, SKILLS, SKILL_VALUES, SKILL_TIERS, TOWER_UPGRADES, TOWERS,
+  COOP, endlessTrackFor, LOOT, SKILLS, SKILL_VALUES, SKILL_TIERS, TOWER_UPGRADES, TOWERS,
   TOWER_SKILL_SPEC, TOWER_SKILL_LAYOUT, ECONOMY_SKILL_SPEC, ECONOMY_LAYOUT, ECONOMY,
   GAME_SPEED_SKILL, LEADERBOARD, NARRATIVE,
 } from "./config.js";
@@ -18,7 +18,7 @@ import { loadSave, writeSave, clearSave } from "./save.js";
 import { setActiveLang, t } from "./i18n.js";
 import { dropIlvl, generateGuaranteedDrop, generateItem, RARITIES } from "./loot.js";
 import {
-  canEquipItem, emptyGear, masteryRankFor, normalizeGear,
+  canEquipItem, emptyGear, GEAR_SLOTS, masteryRankFor, normalizeGear,
 } from "./equipment.js";
 
 let state = loadSave();
@@ -550,6 +550,193 @@ export function getRocketBlastRadiusMult() {
 
 // ---------- Roster ----------
 
+const MAX_CAREER_LEVEL = TOWER_UPGRADES.maxLevel + TOWER_SKILL_LAYOUT.levelSteps;
+
+function plainRecord(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+}
+
+function exactKeys(record, keys) {
+  if (!plainRecord(record)) return false;
+  const actual = Object.keys(record);
+  return actual.length === keys.length && keys.every((key) => Object.hasOwn(record, key));
+}
+
+function safeWhole(value, min, max = Number.MAX_SAFE_INTEGER) {
+  return Number.isSafeInteger(value) && value >= min && value <= max;
+}
+
+function validCoopItem(item) {
+  const fields = [
+    "id", "slot", "rarity", "towerType", "ilvl", "reqLevel",
+    "reqMastery", "affixes", "unique",
+  ];
+  if (!exactKeys(item, fields) ||
+      typeof item.id !== "string" || item.id.length < 1 ||
+      item.id.trim() !== item.id ||
+      item.id.length > COOP.progressionExchange.maxItemIdLength ||
+      !GEAR_SLOTS.includes(item.slot) || !RARITIES.includes(item.rarity) ||
+      (item.towerType !== null && !Object.hasOwn(TOWERS, item.towerType)) ||
+      !safeWhole(item.ilvl, 1, LOOT.gen.ilvlMax) ||
+      !safeWhole(item.reqLevel, 0, LOOT.gen.reqLevelMax) ||
+      !safeWhole(item.reqMastery, 0, TOWER_UPGRADES.mastery.maxRanks) ||
+      !Array.isArray(item.affixes)) return false;
+
+  const expectedLevel = item.rarity === "common" || item.rarity === "enhanced"
+    ? Math.max(1, Math.min(
+        LOOT.gen.reqLevelMax,
+        1 + Math.floor((item.ilvl / LOOT.gen.ilvlMax) * LOOT.gen.reqLevelMax)
+      ))
+    : 0;
+  if (item.reqLevel !== expectedLevel ||
+      item.reqMastery !== LOOT.gen.reqMastery[item.rarity]) return false;
+
+  const affixCount = LOOT.gen.affixCounts[item.rarity];
+  const minAffixes = Array.isArray(affixCount) ? affixCount[0] : affixCount;
+  const maxAffixes = Array.isArray(affixCount) ? affixCount[1] : affixCount;
+  if (item.affixes.length < minAffixes || item.affixes.length > maxAffixes) return false;
+
+  const seenStats = new Set();
+  for (const affix of item.affixes) {
+    if (!exactKeys(affix, ["stat", "value"]) || typeof affix.stat !== "string" ||
+        !Number.isSafeInteger(affix.value) || seenStats.has(affix.stat)) return false;
+    const def = LOOT.gen.slots[item.slot].find((candidate) => candidate.stat === affix.stat);
+    const allowed = def && (def.types === "universal" ||
+      (item.towerType !== null && def.types.includes(item.towerType)));
+    if (!allowed) return false;
+    const [lo, hi] = def.ranges[item.rarity];
+    const upper = Math.round(hi * (item.towerType === null ? 1 : LOOT.gen.restrictedRollBonus));
+    if (affix.value < lo || affix.value > upper) return false;
+    seenStats.add(affix.stat);
+  }
+
+  const minor = LOOT.gen.uniques.minor.find((unique) => unique.id === item.unique);
+  const named = LOOT.gen.uniques.named.find((unique) => unique.id === item.unique);
+  if (item.rarity === "prismatic") return !!minor;
+  if (item.rarity === "singularity") {
+    return !!named && named.slot === item.slot &&
+      (named.towerType ?? null) === item.towerType;
+  }
+  return item.unique === null;
+}
+
+export function validateCoopGear(gear) {
+  if (!exactKeys(gear, GEAR_SLOTS)) return false;
+  return GEAR_SLOTS.every((slot) =>
+    gear[slot] === null || (validCoopItem(gear[slot]) && gear[slot].slot === slot)
+  );
+}
+
+export function validateCoopTowerRecord(record, includeType = false) {
+  const fields = includeType
+    ? ["name", "type", "maxLevel", "xp", "kills", "gear"]
+    : ["name", "maxLevel", "xp", "kills", "gear"];
+  return exactKeys(record, fields) &&
+    typeof record.name === "string" && record.name.length >= 1 &&
+    record.name.trim() === record.name &&
+    record.name.length <= COOP.progressionExchange.maxNameLength &&
+    (!includeType || Object.hasOwn(TOWERS, record.type)) &&
+    safeWhole(record.maxLevel, 1, MAX_CAREER_LEVEL) &&
+    safeWhole(record.xp, 0) && safeWhole(record.kills, 0) &&
+    validateCoopGear(record.gear);
+}
+
+export function validateCoopLootItem(item) {
+  return validCoopItem(item);
+}
+
+function savedItemIds() {
+  const ids = new Set();
+  const add = (item) => { if (item && typeof item.id === "string") ids.add(item.id); };
+  for (const rec of state.roster) {
+    const gear = normalizeGear(rec.gear);
+    for (const slot of GEAR_SLOTS) add(gear[slot]);
+  }
+  for (const item of state.stash || []) add(item);
+  for (const item of state.pendingLoot || []) add(item);
+  for (const item of state.store?.stock || []) add(item);
+  return ids;
+}
+
+// Co-op deliberately banks only roster combat progress, attributed kill loot,
+// and attributed Shards. Network callers cannot create roster records; the
+// trusted-local option exists solely for the host's own freshly fielded towers.
+export function bankCoopRun(payload, { trustedLocalTowers = false } = {}) {
+  if (!exactKeys(payload, ["towers", "loot", "shards"]) ||
+      !Array.isArray(payload.towers) ||
+      payload.towers.length > COOP.progressionExchange.maxBattleTowers ||
+      !Array.isArray(payload.loot) ||
+      payload.loot.length > COOP.progressionExchange.maxLootDrops ||
+      !safeWhole(payload.shards, 0)) {
+    return { ok: false, reason: "shape" };
+  }
+
+  const names = new Set();
+  for (const tower of payload.towers) {
+    if (!validateCoopTowerRecord(tower, trustedLocalTowers) || names.has(tower.name)) {
+      return { ok: false, reason: "tower" };
+    }
+    names.add(tower.name);
+  }
+
+  const occupiedItemIds = savedItemIds();
+  const lootIds = new Set();
+  for (const item of payload.loot) {
+    if (!validateCoopLootItem(item) || lootIds.has(item.id) || occupiedItemIds.has(item.id)) {
+      return { ok: false, reason: "loot" };
+    }
+    lootIds.add(item.id);
+  }
+  if (!Number.isSafeInteger(state.shards + payload.shards)) {
+    return { ok: false, reason: "shards" };
+  }
+
+  const updates = [];
+  for (const tower of payload.towers) {
+    let rec = state.roster.find((candidate) => candidate.name === tower.name);
+    if (!rec) {
+      if (!trustedLocalTowers) continue;
+      rec = null;
+    } else {
+      if (trustedLocalTowers && rec.type !== tower.type) {
+        return { ok: false, reason: "towerType" };
+      }
+      // A returned network record may advance career totals, never roll them back.
+      if (!trustedLocalTowers &&
+          (tower.maxLevel < rec.maxLevel || tower.xp < rec.xp || tower.kills < rec.kills)) {
+        return { ok: false, reason: "towerRollback" };
+      }
+    }
+    updates.push({ rec, tower });
+  }
+
+  for (const update of updates) {
+    let { rec } = update;
+    const { tower } = update;
+    if (!rec) {
+      rec = {
+        name: tower.name, type: tower.type, maxLevel: 1, xp: 0, kills: 0,
+        gear: structuredClone(tower.gear),
+      };
+      state.roster.push(rec);
+    }
+    rec.maxLevel = Math.max(rec.maxLevel, tower.maxLevel);
+    rec.xp = tower.xp;
+    rec.kills = tower.kills;
+  }
+  state.shards += payload.shards;
+  const lootResult = bankCoopLoot(payload.loot);
+  writeSave(state);
+  return {
+    ok: true,
+    lootResult,
+    updatedTowers: updates.length,
+    droppedTowers: payload.towers.length - updates.length,
+  };
+}
+
 // Best not-yet-deployed roster unit of a type (veterans first).
 export function takeRosterUnit(type, deployedNames, roster = state.roster) {
   const candidates = roster.filter(
@@ -969,6 +1156,17 @@ function bankEarnedItem(item) {
     return { item, dest: "junked", value };
   }
   return { item, dest: addToStashOrPending(item) };
+}
+
+function bankCoopLoot(drops) {
+  state.pendingLoot ||= [];
+  const placements = drops.map((item) => bankEarnedItem(item));
+  return {
+    count: drops.length,
+    placements,
+    pending: state.pendingLoot.length,
+    stashFree: stashSlotsFree(),
+  };
 }
 
 export function recordRunLoot(game) {

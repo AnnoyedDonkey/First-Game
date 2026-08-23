@@ -6,7 +6,8 @@
 // ============================================================
 
 import {
-  COOP, ENEMIES, TOWERS, TOWER_UPGRADES,
+  COOP, ECONOMY, ECONOMY_LAYOUT, ECONOMY_SKILL_SPEC, ENEMIES, TOWERS,
+  TOWER_UPGRADES,
 } from "./config.js";
 import {
   closeSession, CONNECTION_STATES, getConnectionState, hostSession, joinSession,
@@ -24,6 +25,10 @@ import {
   emitCoins, emitDeathShards, emitHitSparks, updateParticles,
 } from "./particles.js";
 import { updateEffects, updateProjectiles } from "./projectiles.js";
+import {
+  bankCoopRun, getInterestCap, getInterestRate, getMoneyMult, getProgress,
+  validateCoopLootItem, validateCoopTowerRecord,
+} from "./progression.js";
 
 const ROLES = Object.freeze({ HOST: "host", GUEST: "guest" });
 const OWNER_IDS = Object.freeze({ host: "coop-host", guest: "coop-guest" });
@@ -46,6 +51,11 @@ let guestEvents = [];
 let hostShots = [];
 let guestShots = [];
 let hostLobby = null;
+let guestProfileSent = false;
+let guestProfileApplied = false;
+let hostRunBanked = false;
+let hostResultSent = false;
+let guestRunBanked = false;
 
 export function startHost(game, { listed = false, hostNick = null } = {}) {
   requireStartableGame(game);
@@ -125,11 +135,16 @@ export function sendIntent(game, intent) {
 // avoids snapshot bursts when game time is frozen or a browser frame is late.
 export function updateHost(game, now) {
   if (!isHost(game)) return;
+  if (game.phase === "won" || game.phase === "lost") bankHostRun(game);
   updateHostLobby(game, now);
   if (getConnectionState() !== CONNECTION_STATES.CONNECTED) return;
   if (!guestJoined) acceptGuest(game, now);
   flushHostEvents();
   flushHostShots();
+  if (game.phase === "won" || game.phase === "lost") {
+    sendGuestResult(game, now);
+    return;
+  }
   const intervalMs = 1000 / COOP.snapshotHz;
   if (now < lastSnapshotSentAt + intervalMs) return;
 
@@ -140,7 +155,9 @@ export function updateHost(game, now) {
 // time behind a small buffer, and every enemy advances from its own observed
 // authoritative speed until another snapshot corrects it.
 export function updateGuest(game, now) {
-  if (!isGuest(game) || !latestSnapshot) return;
+  if (!isGuest(game)) return;
+  sendGuestProfile(game);
+  if (!latestSnapshot) return;
 
   const elapsedSinceSnapshot = Math.max(0, now - latestSnapshot.receivedAt) / 1000;
   const bufferedElapsed = latestSnapshot.clockAdvancing
@@ -216,6 +233,11 @@ function activate(game, role) {
   hostShots = [];
   guestShots = [];
   hostLobby = null;
+  guestProfileSent = false;
+  guestProfileApplied = false;
+  hostRunBanked = false;
+  hostResultSent = false;
+  guestRunBanked = false;
   preparePlayers(game, role);
   if (role === ROLES.HOST) {
     game.coopEventSink = (event) => {
@@ -257,6 +279,11 @@ function deactivate() {
   guestEvents = [];
   hostShots = [];
   guestShots = [];
+  guestProfileSent = false;
+  guestProfileApplied = false;
+  hostRunBanked = false;
+  hostResultSent = false;
+  guestRunBanked = false;
 }
 
 function updateHostLobby(game, now, force = false) {
@@ -310,9 +337,9 @@ function updateHostLobby(game, now, force = false) {
   });
 }
 
-// Phase 4 will replace the remote placeholder with the joining player's real
-// roster/economy payload. For core sync, deterministic ids let both tabs apply
-// the Phase 1 owner/wallet rules without sending identity data every snapshot.
+// Deterministic ids let both tabs apply the ownership/wallet rules without
+// sending identity data every snapshot. The remote placeholder is replaced by
+// the guest's one-shot roster/economy profile after the cmd channel opens.
 function preparePlayers(game, role) {
   const localOwnerId = role === ROLES.HOST ? OWNER_IDS.host : OWNER_IDS.guest;
   const remoteOwnerId = role === ROLES.HOST ? OWNER_IDS.guest : OWNER_IDS.host;
@@ -320,6 +347,9 @@ function preparePlayers(game, role) {
   const oldPlayer = game.players?.[oldLocalId] || {};
   const oldWallet = game.wallets?.[oldLocalId] ?? game.level.startingMoney;
   const oldEarned = game.totalEarned?.[oldLocalId] || 0;
+  const oldShards = typeof game.shardsEarned === "number"
+    ? game.shardsEarned
+    : game.shardsEarned?.[oldLocalId] || 0;
 
   const players = {};
   for (let i = 0; i < OWNER_ORDER.length; i++) {
@@ -350,6 +380,9 @@ function preparePlayers(game, role) {
   game.totalEarned = role === ROLES.HOST
     ? { [OWNER_IDS.host]: oldEarned }
     : { [OWNER_IDS.host]: 0, [OWNER_IDS.guest]: oldEarned };
+  game.shardsEarned = role === ROLES.HOST
+    ? { [OWNER_IDS.host]: oldShards, [OWNER_IDS.guest]: 0 }
+    : { [OWNER_IDS.host]: 0, [OWNER_IDS.guest]: oldShards };
   game.localPlayerId = localOwnerId;
   game.actingPlayerId = localOwnerId;
   game.progressionOwnerId = localOwnerId;
@@ -358,6 +391,82 @@ function preparePlayers(game, role) {
     // still carry the single-player id, so adopt them into the local identity.
     if (!OWNER_ORDER.includes(tower.ownerId)) tower.ownerId = localOwnerId;
   }
+}
+
+function exactRecord(record, keys) {
+  if (!record || typeof record !== "object" || Array.isArray(record)) return false;
+  const actual = Object.keys(record);
+  return actual.length === keys.length && keys.every((key) => Object.hasOwn(record, key));
+}
+
+function guestProfileMessage() {
+  const roster = getProgress().roster.map((record) => ({
+    name: record.name,
+    type: record.type,
+    maxLevel: record.maxLevel,
+    xp: record.xp,
+    kills: record.kills,
+    gear: structuredClone(record.gear),
+  }));
+  return {
+    type: "guestProfile",
+    ownerId: OWNER_IDS.guest,
+    roster,
+    economy: {
+      moneyMult: getMoneyMult(),
+      interestRate: getInterestRate(),
+      interestCap: getInterestCap(),
+    },
+  };
+}
+
+function sendGuestProfile(game) {
+  if (!isGuest(game) || guestProfileSent ||
+      getConnectionState() !== CONNECTION_STATES.CONNECTED) return;
+  const message = guestProfileMessage();
+  if (!validGuestProfile(message)) {
+    game.coopJoinError = "Local co-op roster data is invalid.";
+    return;
+  }
+  try {
+    sendMessage("cmd", message);
+    guestProfileSent = true;
+  } catch {
+    // updateGuest retries until one send succeeds or the connection closes.
+  }
+}
+
+function validGuestProfile(message) {
+  if (!exactRecord(message, ["type", "ownerId", "roster", "economy"]) ||
+      message.type !== "guestProfile" || message.ownerId !== OWNER_IDS.guest ||
+      !Array.isArray(message.roster) ||
+      message.roster.length > COOP.progressionExchange.maxRosterRecords ||
+      !exactRecord(message.economy, ["moneyMult", "interestRate", "interestCap"])) {
+    return false;
+  }
+  const names = new Set();
+  for (const record of message.roster) {
+    if (!validateCoopTowerRecord(record, true) || names.has(record.name)) return false;
+    names.add(record.name);
+  }
+
+  const moneyMax = 1 +
+    ECONOMY_SKILL_SPEC.eco_money.step * ECONOMY_LAYOUT.steps;
+  const interestRateMax =
+    ECONOMY_SKILL_SPEC.eco_intrate.step * ECONOMY_LAYOUT.steps;
+  const interestCapMax = (ECONOMY.interest?.baseCap || 0) +
+    ECONOMY_SKILL_SPEC.eco_intcap.step * ECONOMY_LAYOUT.steps;
+  const { moneyMult, interestRate, interestCap } = message.economy;
+  return Number.isFinite(moneyMult) && moneyMult >= 1 && moneyMult <= moneyMax &&
+    Number.isFinite(interestRate) && interestRate >= 0 && interestRate <= interestRateMax &&
+    Number.isFinite(interestCap) && interestCap >= 0 && interestCap <= interestCapMax;
+}
+
+function applyGuestProfile(game, message) {
+  if (!game || guestProfileApplied || !validGuestProfile(message)) return;
+  game.players[OWNER_IDS.guest].roster = structuredClone(message.roster);
+  game.players[OWNER_IDS.guest].economy = { ...message.economy };
+  guestProfileApplied = true;
 }
 
 function applyIntent(game, intent, ownerId) {
@@ -499,6 +608,127 @@ function acceptGuest(game, now) {
   sendSnapshot(game, now);
 }
 
+function towerProgress(tower, includeType = false) {
+  const record = {
+    name: tower.name,
+    maxLevel: Math.max(tower.maxUnlockedLevel || 1, tower.level || 1),
+    xp: tower.xp,
+    kills: tower.kills,
+    gear: structuredClone(tower.gear),
+  };
+  return includeType ? { name: record.name, type: tower.type, ...record } : record;
+}
+
+function lootForOwner(game, ownerId) {
+  return game.lootDrops
+    .filter((item) => item.ownerId === ownerId)
+    .map((drop) => {
+      const { ownerId: _ownerId, ...item } = drop;
+      return structuredClone(item);
+    });
+}
+
+function roundedShardsFor(game, ownerId) {
+  const value = game.shardsEarned?.[ownerId] || 0;
+  return Math.round(value);
+}
+
+function bankHostRun(game) {
+  if (hostRunBanked) return;
+  const result = bankCoopRun({
+    towers: game.towers
+      .filter((tower) => tower.ownerId === OWNER_IDS.host)
+      .map((tower) => towerProgress(tower, true)),
+    loot: lootForOwner(game, OWNER_IDS.host),
+    shards: roundedShardsFor(game, OWNER_IDS.host),
+  }, { trustedLocalTowers: true });
+  if (!result.ok) {
+    game.coopBankError = result.reason;
+    return;
+  }
+  hostRunBanked = true;
+  game.lootResult = result.lootResult;
+  game.coopResult = {
+    waveReached: game.waveIndex + 1,
+    lootResult: result.lootResult,
+  };
+}
+
+function guestResultMessage(game) {
+  return {
+    type: "sessionEnd",
+    ownerId: OWNER_IDS.guest,
+    towers: game.towers
+      .filter((tower) => tower.ownerId === OWNER_IDS.guest)
+      .map((tower) => towerProgress(tower)),
+    loot: lootForOwner(game, OWNER_IDS.guest),
+    shards: roundedShardsFor(game, OWNER_IDS.guest),
+    waveReached: game.waveIndex + 1,
+  };
+}
+
+function sendGuestResult(game, now) {
+  if (hostResultSent || !guestJoined) return;
+  const message = guestResultMessage(game);
+  if (!validSessionEnd(message)) {
+    game.coopBankError = "sessionEnd";
+    return;
+  }
+  try {
+    sendMessage("cmd", message);
+    hostResultSent = true;
+    // The reliable result and terminal snapshot use separate channels; send
+    // both immediately and let each channel preserve its own contract.
+    sendSnapshot(game, now);
+  } catch {
+    // updateHost retries while the channel still reports CONNECTED.
+  }
+}
+
+function validSessionEnd(message) {
+  if (!exactRecord(message, [
+    "type", "ownerId", "towers", "loot", "shards", "waveReached",
+  ]) || message.type !== "sessionEnd" || message.ownerId !== OWNER_IDS.guest ||
+      !Array.isArray(message.towers) ||
+      message.towers.length > COOP.progressionExchange.maxBattleTowers ||
+      !Array.isArray(message.loot) ||
+      message.loot.length > COOP.progressionExchange.maxLootDrops ||
+      !Number.isSafeInteger(message.shards) || message.shards < 0 ||
+      !Number.isSafeInteger(message.waveReached) || message.waveReached < 1) {
+    return false;
+  }
+  const names = new Set();
+  for (const tower of message.towers) {
+    if (!validateCoopTowerRecord(tower) || names.has(tower.name)) return false;
+    names.add(tower.name);
+  }
+  const itemIds = new Set();
+  for (const item of message.loot) {
+    if (!validateCoopLootItem(item) || itemIds.has(item.id)) return false;
+    itemIds.add(item.id);
+  }
+  return true;
+}
+
+function applySessionEnd(game, message) {
+  if (!game || guestRunBanked || !validSessionEnd(message)) return;
+  const result = bankCoopRun({
+    towers: message.towers,
+    loot: message.loot,
+    shards: message.shards,
+  });
+  if (!result.ok) {
+    game.coopBankError = result.reason;
+    return;
+  }
+  guestRunBanked = true;
+  game.lootResult = result.lootResult;
+  game.coopResult = {
+    waveReached: message.waveReached,
+    lootResult: result.lootResult,
+  };
+}
+
 function buildSnapshot(game, sequence) {
   return {
     seq: sequence,
@@ -538,7 +768,10 @@ onConnectionState(({ state }) => {
   }
   if (state === CONNECTION_STATES.CONNECTED && isActive()) {
     sessionConnected = true;
-    if (isGuest()) activeGame.ownerIds = [...OWNER_ORDER];
+    if (isGuest()) {
+      activeGame.ownerIds = [...OWNER_ORDER];
+      sendGuestProfile(activeGame);
+    }
     if (isHost() && !guestJoined) {
       acceptGuest(activeGame, performance.now());
     } else if (isHost() && !guestPresent) {
@@ -596,8 +829,12 @@ onMessage(({ channel, data }) => {
   if (channel === "cmd") {
     if (isHost() && message?.op) {
       applyIntent(activeGame, message, OWNER_IDS.guest);
+    } else if (isHost() && message?.type === "guestProfile") {
+      applyGuestProfile(activeGame, message);
     } else if (isGuest() && message?.type === "join") {
       applyJoinAssignment(activeGame, message);
+    } else if (isGuest() && message?.type === "sessionEnd") {
+      applySessionEnd(activeGame, message);
     } else if (isGuest() && message?.type === "events" && Array.isArray(message.events)) {
       for (const event of message.events) {
         if (validCosmeticEvent(event)) guestEvents.push(event);
