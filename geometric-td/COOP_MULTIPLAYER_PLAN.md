@@ -584,9 +584,8 @@ Emit from the host, replay on the guest using the **existing** emitters
 - `kill` → `particles.js emitCoins(game, x, y, count, speedMult, tileSize)`
   and `emitDeathShards(game, x, y, def, tileSize, power)`. `def` is
   `ENEMIES[type]` locally.
-- `towerFired` → the shot visuals; keep this one cheap, it is the highest
-  frequency event by far. Consider whether it is worth sending at all versus
-  the guest inferring it — **measure before assuming**.
+- `towerFired` → **REQUIRED. See the measurement below — an earlier pass
+  skipped this and the result was unacceptable.**
 - `levelUp` → `towers.js applyLevelUpSurge(game, tower)` on the mirrored tower.
 - `gearDrop` → the effect built in `enemies.js` around
   `expireStamp: "lastGearIngestTime"` (`config.js VFX.gearDrop`).
@@ -595,6 +594,33 @@ Emit from the host, replay on the guest using the **existing** emitters
 **The HUD credit pulse may already work** — `ui.js updateHUD` diffs
 `game.money`, and the guest's wallet arrives in every snapshot. **Check before
 building anything for it.**
+
+#### 2b-3 — shot visuals are NOT optional (corrected 2026-08-22)
+
+The first 2b pass skipped `towerFired` on bandwidth grounds. The result was a
+guest watching **inert towers** while enemies took damage from nothing and
+exploded. In a tower defense game the firing *is* the spectacle; this is not an
+acceptable experience and the reasoning does not survive measurement.
+
+**Measured on L001, 8 lasers, 30 seconds of real battle:** 184 beam + 184
+muzzle effects = **6.1 shots/sec total, 0.77 per tower per second.** (Well
+under the 2.86/sec theoretical rate — towers idle whenever nothing is in
+range.) At ~30 bytes per event that is **~185 bytes/sec**. Snapshots already
+cost ~40KB/s. A late-game board of 20 fast towers still lands under 2KB/s.
+
+**The real hazard was the channel, not the volume.** High-frequency traffic on
+the **reliable, ordered `cmd`** channel can head-of-line-block intents. So:
+
+- **Send shot visuals on the LOSSY `state` channel.** A dropped shot event
+  costs exactly one missing muzzle flash and blocks nothing.
+- **Forward the effect payloads themselves** (`beam`, `muzzle`, `ray`) rather
+  than re-deriving visuals guest-side. They are plain data the renderer already
+  understands, so pushing them into the guest's `game.effects` reproduces every
+  tower's look exactly — including the Railgun's ray tiers — with no duplicated
+  art logic.
+- **Projectiles (Pulse orbs, Rockets) carry damage.** A guest-spawned
+  projectile must be marked cosmetic so `projectiles.js` skips `damageEnemy`;
+  otherwise the guest kills locally and fights its own snapshots.
 
 #### 2b-2 — drop-in join
 
