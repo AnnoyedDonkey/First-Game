@@ -353,11 +353,34 @@ device-to-device traffic outright), **the Windows firewall network profile**
 set to Public (blocks inbound), or **mDNS resolution failing** on one or both
 sides.
 
-**Cheap discriminator before any more code:** serve the game from the PC
-(`./serve.ps1`) and try to load `http://<PC-LAN-IP>:8420` on the phone. If the
-page loads, the devices *can* reach each other and the problem is specific to
-mDNS/ICE. If it does not load, the network itself is blocking them and no
-amount of WebRTC work will help — only a relay.
+**Chased to ground 2026-08-22 — the answer is: use a relay.** The full trail,
+so nobody repeats it:
+
+- `serve.ps1` binds `http://localhost:$Port/` **only** (serve.ps1:507), so it
+  cannot be used for a phone-to-PC reachability test without admin rights.
+  Ping was used instead.
+- **Ping PC → phone succeeded**, ruling out AP/client isolation.
+- Firefox's mDNS obfuscation was disabled
+  (`about:config` → `media.peerconnection.ice.obfuscate_host_addresses` =
+  false), and the PC then published its **real LAN IP** (`192.168.68.61`),
+  verified in the stored SDP. The phone therefore had a real, routable address
+  to send to — **and it still failed**.
+- Final reports: the phone gave up at 32.6s (`checking > failed`); the PC was
+  **still in `checking`** at 58.4s when the connect timeout fired, having sent
+  connectivity checks for 44 seconds and received nothing.
+- Only one candidate pair was ever viable (phone → the PC's LAN IP), and
+  traffic in that direction never arrived. The successful ping was PC → phone,
+  the **opposite** direction — unsolicited **inbound** to an application is
+  what Windows Firewall blocks by default.
+
+**Conclusion: direct P2P failed for two INDEPENDENT reasons on one ordinary
+home network** — iCloud Private Relay on iOS, and inbound blocking on the LAN.
+Neither is fixable in this codebase, and the desktop workarounds used to get
+this far (an `about:config` flag, a firewall rule) have **no equivalent on a
+phone**. A relay is not a fallback for stubborn networks; it is the transport.
+
+**Do not spend more time making direct P2P work.** Wire TURN, then revisit
+whether a direct path is worth attempting as an optimisation.
 
 ### Phase 0 follow-up — row cleanup: DONE (2026-08-22)
 
