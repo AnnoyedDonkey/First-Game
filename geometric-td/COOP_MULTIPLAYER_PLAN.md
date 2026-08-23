@@ -280,6 +280,51 @@ nothing about Safari's WebRTC or about STUN traversal, which is the actual
 risk this phase exists to retire. Timeout and stale-row handling are also
 still unexercised.
 
+### ⚠️ Phase 0 finding — iCloud Private Relay breaks peer-to-peer (2026-08-22)
+
+**The single most important thing learned in this phase, and it shapes the
+feature — not just the spike.**
+
+A two-device test (iPhone hosting, PC joining) reached `connecting` and then
+failed ICE. Reading the published SDP out of `coop_sessions` showed why:
+
+```
+phone srflx:  146.75.244.0   (Fastly)
+phone srflx:  104.28.55.250  (Cloudflare)
+pc    srflx:  96.250.89.177  (the real home IP)
+```
+
+The phone reported **two different public IPs from two different STUN
+servers**, belonging to **Fastly and Cloudflare** rather than the ISP. That is
+the signature of **iCloud Private Relay**, which egresses through exactly those
+providers. Consequences:
+
+- Those `srflx` candidates are **proxy addresses that accept no inbound UDP**.
+- A **different mapping per destination** is symmetric-NAT behaviour — the one
+  case STUN fundamentally cannot solve.
+- The only other candidate was an mDNS `.local` host address, and with traffic
+  leaving via the relay the peers no longer look co-located.
+
+Both candidate paths were dead before connectivity checks began.
+
+**Per-device fix:** Settings → Wi-Fi → ⓘ on the network → turn off *Limit IP
+Address Tracking* (per-network), or the global Private Relay toggle.
+
+**Why this matters beyond the spike:** the player base is **iPhone**, and
+Private Relay is on by default for iCloud+ subscribers. **We cannot ask every
+player to disable it.** So TURN is not the "~15% of stubborn NATs" nice-to-have
+this plan originally assumed (§2, round 2) — for iOS users with Private Relay,
+a relay is the **only** path that works. Phase 5 is effectively mandatory for
+the real feature, not optional.
+
+**Also confirmed in the same test:** iOS Safari **never** reports
+`iceGatheringState === "complete"` — the diagnostics showed `ice gath:
+gathering` even after the session failed. The `COOP.iceGatheringTimeoutMs`
+fallback is what makes signaling work at all on iOS; without it the guest hangs
+forever. Do not remove it. The published offer was verified complete (3
+candidates including both srflx), so publishing early did **not** truncate the
+candidate list.
+
 ### Phase 0 follow-up — row cleanup: DONE (2026-08-22)
 
 The client only *filters* stale rows, so without a sweep every session ever
