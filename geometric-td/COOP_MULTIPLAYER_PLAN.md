@@ -958,6 +958,54 @@ guard, which was necessary and flagged.
 
 ---
 
+## 10a. Phase 6 — post-playtest polish (punch list, 2026-08-22)
+
+From the first real two-device session. Root causes traced; none fixed yet.
+Ordered cheapest-first.
+
+1. **Late-join grant has decimals (e.g. 740.5).** `coop.js:584` computes
+   `grant = min(maxGrant, earningsShare × hostTotalEarned)` and adds it to
+   `startingMoney` **without rounding**. Fix: `Math.floor` the grant. One line.
+2. **Guest's Next Wave button does nothing.** Wave control is host-authoritative,
+   but the guest's button is live and silently no-ops — frustrating. Fix:
+   disable/hide the wave button for `isGuest`. UI only.
+3. **Guest can't deselect a build selection (tap empty tile / no-build zone).**
+   In `main.js onTap`, when a type is armed the guest sends a `place` intent and
+   `return`s on `result.pending` **before** any deselect path — so tapping to
+   cancel never clears `uiState.selectedType`. Fix: let the guest clear its own
+   selection locally (selection is client-side; only the *place* needs the host).
+4. **Guest can't place a tower the HOST hasn't unlocked (e.g. Railgun).**
+   `towers.js:296 isTowerUnlocked(type)` runs on the host against the HOST's
+   save, so the guest is limited to the host's unlocks. This is the §12
+   "shared or separate unlocks?" question, currently answered by accident.
+   Fix: send the guest's unlocked-type set in the join payload and honour it for
+   guest-owned placements. Small design call + implementation.
+5. **Guest can't select a tower to upgrade.** Least certain root cause. Likely
+   the mirrored tower objects are rebuilt each 10Hz snapshot so a held
+   `uiState.selectedTower` reference churns, or the 3b "HOST CHECK" disabled
+   panel reads as "can't." Needs a live repro to confirm which. Selection is a
+   local action and should work for the guest; the upgrade *intent* already does.
+6. **A guest who leaves can't rejoin — "session full".** `coop.js` sets
+   `guestJoined = true` on accept (`:592`) and only clears it on full session
+   teardown (`:228`). A guest leaving mid-session never frees the slot, so the
+   heartbeat keeps advertising `players: 2` and `acceptGuest` is gated off
+   (`:582`). Fix: detect the guest DataChannel close on the host, set
+   `guestJoined = false`, drop the guest from `ownerIds`, and let the slot
+   reopen. This is the deferred guest-disconnect half of §8 (host-drop is
+   handled; guest-drop isn't).
+
+**Sluggishness on the joiner — by design, tunable.** The guest never simulates;
+it renders authoritative snapshots at `COOP.snapshotHz` (10Hz) and deliberately
+runs `COOP.interpDelayMs` (100ms) behind so it always has two snapshots to
+interpolate between. So guest motion is 10Hz-derived + 100ms-delayed versus the
+host's native 60fps sim — that gap is the "less fluid" feel. Levers, in order of
+effect-per-cost: raise `snapshotHz` (more bandwidth, still cheap — snapshots are
+~4KB), lower `interpDelayMs` (crisper, but less cushion against jitter/loss), or
+improve guest-side extrapolation between snapshots (most work, best result).
+Worth tuning against the real relay, not loopback.
+
+---
+
 ## 11. Phase 5 — TURN relay — ✅ DONE (2026-08-22, pulled forward)
 
 **Built, deployed, and verified on real devices.** Pulled forward from "last
