@@ -16,6 +16,29 @@
 
 import { APP_VERSION } from "./version.js";
 
+// CSS cache-buster (stopgap until the PWA service worker lands). GitHub Pages
+// serves styles.css with `max-age=600` and no filename hash, so a CSS-only
+// change plus a version bump can leave a plain browser refresh on the OLD
+// stylesheet while the JS updated — the fix silently doesn't apply. (The in-app
+// TAP TO RELOAD busts it, but a manual Safari refresh may not.) Stamping the
+// build onto the href makes the URL change every deploy, so the browser can't
+// serve a stale cached copy. Runs on import (before the app boots). The static
+// `<link>` in index.html still paints first, so there is no unstyled flash; the
+// browser keeps the current stylesheet applied until the versioned one loads,
+// and on same-version loads that versioned copy is already cached (no reflow).
+(function stampStylesheetVersion() {
+  try {
+    for (const link of document.querySelectorAll('link[rel="stylesheet"][href]')) {
+      const href = link.getAttribute("href");
+      // Only same-origin project CSS, and never double-stamp.
+      if (!href || /^(https?:)?\/\//.test(href) || href.includes("?")) continue;
+      link.setAttribute("href", `${href}?v=${APP_VERSION}`);
+    }
+  } catch {
+    // Best-effort: a missing DOM or blocked attribute change must never stop boot.
+  }
+})();
+
 let banner = null;
 let lastCheck = 0;
 const MIN_INTERVAL = 20000; // don't re-check more than once per 20s

@@ -20,7 +20,42 @@ en)` looks it up; `lang` save field via `progression.js getLang/setLang`;
 proper nouns** (tower names Laser/Pulse/Slow/Railgun/Rocket, Indy-7,
 Bratwurst-XL, "GEOMETRIC TD").
 
-**Deployed build: `2026.08.23-5`.**
+**Deployed build: `2026.08.23-11`.**
+
+### Tower tray icons + firing preview (`2026.08.23-6` .. `-11`)
+The bottom-HUD tower tray shows a **live micro-sim per tower** (its real shape +
+price) instead of the old name+price chips, freeing room for future towers.
+- **Real firing, not a lookalike.** `src/tray-icon.js` builds a one-tower sim
+  (modeled on `tower-demo.js`) driving the real `updateTowers`/projectiles/
+  effects/particles, rendered by a new **bare mode** in `renderer.js render()`
+  (`uiState.bare` — draws only the tower + additive shot layers on a transparent,
+  caller-cleared/cropped surface). An invisible, pinned, huge-HP dummy target one
+  tile "up" makes the tower fire real shots that leave the cropped frame and hit
+  nothing on the board (no coins/gear/loot). All knobs in `config.js VFX.trayIcon`
+  (tile/view size, grid, aim target, dt clamp).
+- **Only the SELECTED tower animates** (one rAF loop total, in `ui.js`); others
+  paint a single idle frame. Loop stops when the upgrade panel covers the tray,
+  the tab hides, or under reduced-motion (static fallback).
+- **Icon size matches the on-screen in-game tower** (`tilePx 46`, `viewTiles 1.0`).
+- **States (all `styles.css`):** selected = a colored box (border+glow+fill) reappears
+  around the armed tower (a permanently-reserved transparent border keeps the layout
+  from shifting). Unaffordable = the icon greys to a UNIFORM light grey
+  (`brightness(0) invert()` flattens any hue to one grey) — this ALWAYS wins, even
+  when the unaffordable tower is the armed one. Locked keeps its dim + unlock label.
+- **Tap-to-deselect:** tower buttons use a `.disabled` **class**, NOT the DOM
+  `disabled` attribute, so a tap on an unbuyable tower still fires — `main.js`'s
+  select handler treats it as "never mind" and cancels the current selection.
+- **`#action-bar` has a fixed `min-height`** so swapping the (taller) tray for the
+  (shorter) upgrade panel no longer jumps the board.
+
+### CSS cache-buster (`2026.08.23-11`)
+`update.js` now stamps `styles.css?v=APP_VERSION` onto the stylesheet `<link>` on
+import, so a **CSS-only** change plus a version bump can't leave a manual browser
+refresh stranded on the old stylesheet (GitHub Pages `max-age=600`, no filename
+hash). The static `<link>` still paints first (no unstyled flash); the browser
+keeps the current sheet until the versioned one loads, and same-version loads hit
+cache. The in-app TAP TO RELOAD (`hardReload`) already busted CSS; this covers the
+manual-refresh path too. A service worker (PWA plan) remains the durable fix.
 
 ### Settings + adaptive performance (`2026.08.23-4`)
 
@@ -528,6 +563,7 @@ src/milestones.js   campaign challenge evaluation
 src/tutorial.js     first-play tutorial state machine
 src/onboarding.js   first-load story-intro state machine (P1)
 src/tower-demo.js   isolated micro-battles for tower-intro / onboarding cards
+src/tray-icon.js    live per-tower micro-sim behind each bottom-HUD tower icon (real firing)
 src/ui.js           player DOM UI and overlays
 src/feedback.js     Supabase run telemetry and difficulty rating
 src/leaderboard.js  Supabase Endless board
@@ -783,7 +819,11 @@ BALANCE_LAB_PLAN.md  approved Balance Lab L0-L7 plan
   shipped `2026.08.22-21`:** `update.js` tap-to-reload now re-fetches every
   loaded module with `cache:"reload"` before reloading, so the update nudge no
   longer loops on GitHub Pages' `max-age=600` (was stranding Firefox on the
-  old build). A service worker would still be the durable fix.
+  old build). A service worker would still be the durable fix. **Extended
+  `2026.08.23-11`:** `update.js` also stamps `styles.css?v=APP_VERSION` on the
+  `<link>` at import, so a CSS-only change plus a version bump can't leave a
+  manual browser refresh on the stale stylesheet (the module re-fetch already
+  covered JS; the `<link>` was the remaining gap).
 
 ## Related documents
 
