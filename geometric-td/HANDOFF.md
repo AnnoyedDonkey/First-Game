@@ -705,14 +705,27 @@ BALANCE_LAB_PLAN.md  approved Balance Lab L0-L7 plan
     **Don't re-plan this for iOS.** If Android is ever a target it's an easy
     win (~1h): a feature-detected `haptics.js` with durations in `config.js`,
     an ON/OFF toggle, sharing call sites with the sound layer.
-- **CO-OP MULTIPLAYER — v1 BUILD COMPLETE (2026-08-22):** full phased record in
-  **`COOP_MULTIPLAYER_PLAN.md`**. **All phases (0,1,2a,2b,2b-3,3,3b,4,5) are
-  shipped and verified locally.** Real two-player iPhone↔PC Endless co-op runs
-  over the TURN relay. **The one thing left is live two-device timing/feel** —
-  every multi-tab test drove the loops by hand because automation tabs suspend
-  rAF. Next real work is a human two-device play session, then any polish it
-  surfaces. Deliberate v1 limits: no mid-run-leave banking, no lobby
-  kick/terminate, 2-player UI (schema ready for 4), no co-op leaderboard.
+- **CO-OP MULTIPLAYER — v1 SHIPPED + two playtest rounds (2026-08-22):** full
+  phased record in **`COOP_MULTIPLAYER_PLAN.md`**. **Phases 0–7 all shipped and
+  verified locally**, plus post-playtest fixes from real two-device sessions.
+  Real two-player iPhone↔PC Endless co-op runs over the TURN relay.
+  Phase list: 0 transport, 1 ownership+wallets, 2a host-authoritative sync,
+  2b cosmetic events+drop-in, 2b-3 shot visuals, 3 lobby, 3b co-op HUD,
+  4 progression exchange, 5 TURN, 6 post-playtest bug batch, 7 smoother guest
+  motion (capped extrapolation / eased correction / adaptive interp buffer for
+  poor connections). **Playtest fixes since:** guest tower parity (upgrade
+  chevron, gear orbitals, button glow), co-op end-screen when the core falls
+  (was stalling), and a general update-nudge reload fix (see below).
+  Live files: `src/net.js` (transport), `src/coop.js` (game protocol),
+  `src/lobby.js` (session directory), `COOP` in `config.js`, `coop-spike.html`
+  (unlinked Phase-0 test page), the `coop_sessions` Supabase table +
+  `turn-credentials` edge function.
+  **Still wants a fresh live two-device session** to shake out the next layer
+  — every multi-tab test here drove the loops by hand (automation tabs suspend
+  rAF), and each of the two playtest rounds so far surfaced real "works in
+  isolation, breaks in a live session" bugs. Deliberate v1 limits: no
+  mid-run-leave banking, no lobby kick/terminate, 2-player UI (schema ready
+  for 4), no co-op leaderboard.
   Two players (schema/protocol designed for 4) on one board via a CO-OP button
   in `#menu-actions` → session browser → host picks Public/Private + a
   **cleared** level, played in **Endless**. Host starts alone, guest **drops
@@ -724,8 +737,7 @@ BALANCE_LAB_PLAN.md  approved Balance Lab L0-L7 plan
   **The relay is the transport, not a fallback** — direct P2P was chased to
   ground and fails on an ordinary home network for two independent reasons
   (iCloud Private Relay on iOS, inbound blocking on the LAN). Don't spend time
-  re-attempting direct P2P. Live files: `src/net.js`, `COOP` in `config.js`,
-  the unlinked `coop-spike.html` test page.
+  re-attempting direct P2P.
   Three things a future session must not undo: co-op must **never** write
   `endlessBest` or the solo Endless board (permanent pollution of a live
   shared board); **skills are locked at join** (the one-shot join payload
@@ -738,7 +750,11 @@ BALANCE_LAB_PLAN.md  approved Balance Lab L0-L7 plan
   additional tower classes (Tesla was the runner-up); pre-battle loadouts;
   a durable cache-buster (`?v=APP_VERSION` on module imports) to end the
   stale-module-after-deploy confusion on iOS. (Cache-buster + eviction are
-  largely addressed by the PWA plan above once built.)
+  largely addressed by the PWA plan above once built.) **Partial mitigation
+  shipped `2026.08.22-21`:** `update.js` tap-to-reload now re-fetches every
+  loaded module with `cache:"reload"` before reloading, so the update nudge no
+  longer loops on GitHub Pages' `max-age=600` (was stranding Firefox on the
+  old build). A service worker would still be the durable fix.
 
 ## Related documents
 

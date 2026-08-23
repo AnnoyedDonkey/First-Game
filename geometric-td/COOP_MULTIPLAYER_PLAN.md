@@ -1101,6 +1101,58 @@ clock is `latestSnapshot.time + (elapsedSinceSnapshot − interpDelayMs)`.
   absorb jitter. Enemy deaths still land exactly where the host says.
 - Host and solo runs unchanged.
 
+### Phase 7 — AS BUILT (`2026.08.22-18`)
+All three defects fixed in `coop.js`, guest-only. Knob defaults in `config.js
+COOP`: `maxExtrapolationMs: 250`, `correctionEaseMs: 200`, `interpDelayMinMs:
+50`, `interpDelayMaxMs: 250` (`interpDelayMs: 100` kept as the start value).
+- Extrapolation capped at `maxExtrapolationMs`; past it the enemy holds.
+- Corrections ease via a decaying offset: rendered = authoritative +
+  capturedError × (1 − progress), progress hitting 1 at the deadline, so it
+  converges without overshoot; an in-flight correction keeps its deadline.
+- Adaptive delay from an EWMA of snapshot inter-arrival jitter, clamped
+  [min,max], eased toward the target and grown no faster than real time so it
+  never jumps `renderTime`.
+- Deaths stay authoritative (enemy list rebuilt from snapshots).
+- Verified: solo byte-identical, `updateGuest` no-ops in solo, clean console.
+  **NOT verified:** live jitter feel / correction smoothness under real loss —
+  wants the two-device test.
+
+---
+
+## 10c. Post-playtest fixes — round 2 (2026-08-22)
+
+From the second real two-device session (all shipped and verified as far as
+loopback allows; the live moment still wants eyes).
+
+- **Guest tower parity (`-19`).** The guest's mirrored towers showed no
+  upgrade chevron, no gear orbital diamonds, and no upgrade-button glow, and
+  the DPS line read a confusing "HOST VERIFIES XP". Cause: the tower snapshot
+  omitted gear and eligibility. Fix: the per-tower snapshot now carries `up`
+  (host `isUpgradeEligible`) and `gear` (rarity per slot only). The guest
+  stores these as `_coopUpgradeReady` / `_coopGearRarities`, kept OFF
+  `tower.gear` so guest stat math is untouched; `renderer.js` draws the
+  chevron from `_coopUpgradeReady` (solo/host still use `isUpgradeEligible`)
+  and the orbitals from `_coopGearRarities`; `ui.js` glows the button and drops
+  the "HOST VERIFIES" text.
+- **End the session when the core falls (`-20`).** Co-op battles STALLED at
+  game-over: `frame()` ran solo `checkEndState` only when co-op was inactive,
+  and the sole co-op end path fired only on a disconnect. New
+  `main.js checkCoopEndState()` fires for both roles on the terminal
+  `won`/`lost`, shows an Endless-style "reached wave N" result with the loot
+  recap, and a MAIN MENU button wired to `leaveCoopSession` (stops the session,
+  not the solo `goToMainMenu` that would dangle the peer). A disconnect still
+  takes its own path.
+- **Update-nudge reload loop (`-21`, general — not co-op-specific).** Firefox
+  got stuck on "update available — tap to reload": GitHub Pages'
+  `Cache-Control: max-age=600` meant a plain `location.reload()` re-ran cached
+  modules, so `APP_VERSION` never changed and the banner relooped (Safari
+  revalidated, so it escaped). `update.js` now re-fetches every loaded
+  same-origin module with `cache:"reload"` (enumerated via the Performance API)
+  before reloading, refreshing the HTTP cache so the reload boots fresh. See
+  HANDOFF's DEFERRED cache-buster note; a service worker (PWA plan) is the
+  durable fix. **A currently-stuck client needs one manual hard-refresh** to
+  reach the build that contains this.
+
 ---
 
 ## 11. Phase 5 — TURN relay — ✅ DONE (2026-08-22, pulled forward)
