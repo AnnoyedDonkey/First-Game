@@ -766,6 +766,38 @@ code so they are stable, from word lists in `COOP.codenames`.
 
 ## 9a. Phase 3b — The co-op HUD
 
+### Implementation contract (surveyed 2026-08-22)
+
+**Current `#hud` markup** (`index.html:101`): `#hud-money` → `#hud-wave` →
+`#hud-core` → `#skills-button` → `#speed-controls` (which contains
+`#speed-slow`, `#speed-pause`, `#speed-fast`, and **`#exit-button`**).
+
+**Note the exit button lives INSIDE `#speed-controls`.** Hiding that container
+wholesale in co-op would remove the only way out of a battle. Exit must
+survive.
+
+**Already true, do not rebuild:** `game.money` is an accessor onto the LOCAL
+player's wallet (Phase 1), so CREDITS already shows own-wallet-only with no
+work. `ui.js updateHUD` already resets its credit-pulse baseline when the
+owner changes.
+
+**`#coop-debug-bar`** (`index.html:128`) is Phase 1's `DEBUG.coopLocal` actor
+switch. It is debug-only and deliberately shows BOTH wallets. Leave it alone —
+it is not the presence indicator, and it never appears for real players.
+
+**Owner colours already exist** as `COOP.ownership.colors`, and `renderer.js`
+already tints each tower with its owner's colour. **The presence pips must use
+the same colours** so "whose tower is that" and "who is here" are one concept.
+
+**Player identity** is on `game.players[id]` → `{id, label, color, economy,
+roster}`, with `game.ownerIds` as the ordered list. Owner ids are
+`"coop-host"` / `"coop-guest"`.
+
+**A known defect to fix here** (found in 2a): mirrored towers carry no XP, so a
+guest's upgrade panel can offer an upgrade the host then rejects. Either send
+enough tower state to gate it, or disable the control on a guest with a
+reason. The host stays authoritative either way — this is a UI honesty fix.
+
 The battle HUD is `#hud` in `index.html:101`: **CREDITS | WAVE | CORE |
 SKILLS(button) | speed-controls(slow, pause, fast, exit)**. In co-op it becomes
 **CREDITS | WAVE | CORE | presence | exit** — identical for every player.
