@@ -3327,12 +3327,20 @@ html[data-lang="fr"] .settings-help { letter-spacing: .2px; }
   box-shadow: none;
   cursor: default;
 }
+/* Unaffordable ALWAYS wins over selected: if the armed tower can no longer be
+   afforded (you just spent on one), it greys out like any other unbuyable tower
+   — no leftover colored selection box or glow. Higher specificity than the two
+   .selected rules above, so it overrides both the box and the icon drop-shadow. */
+.tower-button.disabled.selected {
+  border-color: transparent;
+  background: none;
+  box-shadow: none;
+}
 /* Unaffordable (unlocked) tower: render its icon a UNIFORM light grey — regardless
    of the tower's hue — so it reads as "can't build this yet". brightness(0) flattens
    every color to black (keeping the shape's alpha), then invert() lifts it to one
-   grey. A selected tower is never greyed (it always shows its real hue). Locked
-   towers keep their own dim + unlock label instead. */
-.tower-button.disabled:not(.locked):not(.selected) .tower-button-icon {
+   grey. Locked towers keep their own dim + unlock label instead. */
+.tower-button.disabled:not(.locked) .tower-button-icon {
   filter: brightness(0) invert(0.72);
 }
 .tower-button.locked .tower-button-icon { opacity: 0.5; }
