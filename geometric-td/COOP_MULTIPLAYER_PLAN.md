@@ -561,11 +561,60 @@ a smoothing buffer (`COOP.interpDelayMs`, start ~100).
 (coins / credit pulse / gear-drop / level-up surge on the guest), the lobby, or
 any `version.js` bump.
 
-### Phase 2b — event fan-out + drop-in (after 2a lands)
+### Phase 2b — event fan-out + drop-in  ← implementation contract
 
-Cosmetic parity via `cmd` events (`towerFired`, `kill`, `waveStart`,
-`gearDrop`) so the guest runs its own Credit Juice VFX; then drop-in join with
-the `COOP.dropIn.earningsShare` grant computed from `game.totalEarned` (§3).
+Two separable pieces. Land cosmetic parity first; drop-in second.
+
+**What 2a already gives you** (verify before trusting): `src/coop.js` with
+`startHost`/`startGuest`/`isActive`/`isHost`/`isGuest`/`sendIntent`/
+`updateHost`/`updateGuest`; snapshots on `state` at `COOP.snapshotHz` carrying
+`{seq,time,phase,waveIndex,coreHealth,wallets,totalEarned,enemies,towers}`;
+intents on `cmd`; `game.coop` present during a session; a guest that never
+calls `updateGame`. Owner ids are `"coop-host"` / `"coop-guest"`.
+
+#### 2b-1 — cosmetic event fan-out
+
+The guest currently renders a correct but **silent** battle: no coins, no death
+shards, no hit sparks, no level-up surge. All of that is local VFX the guest
+can generate itself from small `cmd` events — **none of it should be
+synchronised frame-by-frame.**
+
+Emit from the host, replay on the guest using the **existing** emitters
+(do not write new particle code):
+- `kill` → `particles.js emitCoins(game, x, y, count, speedMult, tileSize)`
+  and `emitDeathShards(game, x, y, def, tileSize, power)`. `def` is
+  `ENEMIES[type]` locally.
+- `towerFired` → the shot visuals; keep this one cheap, it is the highest
+  frequency event by far. Consider whether it is worth sending at all versus
+  the guest inferring it — **measure before assuming**.
+- `levelUp` → `towers.js applyLevelUpSurge(game, tower)` on the mirrored tower.
+- `gearDrop` → the effect built in `enemies.js` around
+  `expireStamp: "lastGearIngestTime"` (`config.js VFX.gearDrop`).
+- `waveStart` → whatever the HUD/bark layer needs.
+
+**The HUD credit pulse may already work** — `ui.js updateHUD` diffs
+`game.money`, and the guest's wallet arrives in every snapshot. **Check before
+building anything for it.**
+
+#### 2b-2 — drop-in join
+
+A guest may join **mid-battle**, at any wave (locked decision, §2 round 2).
+
+- The host accepts a joiner while `phase` is `wave`/`countdown`/`ready`,
+  assigns the owner id, and sends a full snapshot so the guest starts from
+  authoritative state.
+- **The joiner's grant** (§3): `grant = COOP.dropIn.earningsShare ×
+  hostTotalEarned`, capped by `COOP.dropIn.maxGrant`. **New knobs.** Use
+  `game.totalEarned[hostId]`, **not** the host's current wallet balance — that
+  is the whole point of the field (a hoarding host must not pay out more than
+  one who invested well).
+  `earningsShare: 1.0` means "full retroactive credit"; start at **0.6**.
+- The guest must be able to build immediately: it needs the level, the grid,
+  and its wallet before the first snapshot is rendered.
+
+**Out of scope for 2b:** the lobby/session browser (Phase 3), the co-op HUD
+and presence pips (Phase 3b), roster/progression exchange (Phase 4). Room
+codes are still exchanged by hand via `window.coop`.
 
 ### Original Phase 2 detail (applies across 2a + 2b)
 
