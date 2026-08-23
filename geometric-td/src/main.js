@@ -350,6 +350,32 @@ function leaveCoopSession() {
   goToMainMenu();
 }
 
+// Co-op battle reached its natural end (the core fell — Endless has no win).
+// Without this the world just stalls behind a frozen board: solo's
+// checkEndState is skipped for co-op, and showRemoteCoopEnd only covers a
+// disconnect. Fires for BOTH roles once they observe the terminal phase; the
+// host has banked via bankHostRun and the guest via the sessionEnd payload, so
+// game.coopResult/lootResult are populated by the time this runs.
+function checkCoopEndState() {
+  if (overlayShown || game.coopEndReason) return; // a disconnect ends it its own way
+  if (game.phase !== "won" && game.phase !== "lost") return;
+  overlayShown = true;
+  exitConfirming = true; // freeze the frozen board behind the overlay
+  const waveReached = game.coopResult?.waveReached ?? (game.waveIndex + 1);
+  const items = allPlacements(game);
+  const stashFull = items.some((p) => p.dest === "pending");
+  showOverlay({
+    title: pickRoast("endless"),
+    subtitle: tf("coop.result.subtitle", "CO-OP — reached wave {w}", { w: waveReached }),
+    type: "loss",
+    // A dedicated MAIN MENU that STOPS the session (leaveCoopSession), not the
+    // solo goToMainMenu — otherwise the peer connection would dangle.
+    buttons: [{ text: t("menu.mainMenu", "MAIN MENU"), onTap: leaveCoopSession, fullWidth: true }],
+    items,
+    note: stashOverflowNote(items),
+  });
+}
+
 function showRemoteCoopEnd() {
   if (!game?.coopEndReason || overlayShown) return;
   exitConfirming = true;
@@ -849,8 +875,10 @@ function frame(now) {
     updateTutorialOverlay(game); // T4: reposition the spotlight ring, if active
     updateStoryOverlay(game);    // enemy-intro card: track its cutout over the live enemies
     // coop.js owns the co-op terminal banking/result handshake. The solo
-    // result path submits telemetry/leaderboard data and expects solo fields.
-    if (!coop.isActive(game)) checkEndState();
+    // result path submits telemetry/leaderboard data and expects solo fields,
+    // so co-op uses its own end screen instead.
+    if (coop.isActive(game)) checkCoopEndState();
+    else checkEndState();
   }
 
   requestAnimationFrame(frame);
