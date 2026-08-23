@@ -1034,6 +1034,75 @@ Worth tuning against the real relay, not loopback.
 
 ---
 
+## 10b. Phase 7 — smoother guest motion for distant / poor connections
+
+**Goal:** make the joiner's view fluid on a high-latency, jittery link — the
+far-apart-players case — WITHOUT raising bandwidth or shrinking the jitter
+cushion (both of which make a bad connection worse). Chosen lever: **better
+extrapolation + an adaptive interpolation buffer.** Decided with the player
+2026-08-22.
+
+**Why this game is ideal for it:** enemies are 1-D on a deterministic path at a
+known speed, so predicting motion from last-known-position + velocity is almost
+always exactly right — unlike a 2-D game where players change direction. The
+snapshot then only trims a tiny drift.
+
+### What already exists (verify — `coop.js updateGuest`, ~line 180)
+The guest already both **interpolates** (between two snapshots while
+`renderTime <= snapshotTime`) and **extrapolates** (beyond the latest snapshot:
+`distance = snapshotDistance + speed × (renderTime − snapshotTime)`). It even
+derives an **observed speed** per enemy on each snapshot
+(`applyEnemySnapshots`, ~line 1116: `(state.distance − oldSnapshotDistance)/dt`)
+so field-tile/slow speed changes are reflected, not just base speed. The render
+clock is `latestSnapshot.time + (elapsedSinceSnapshot − interpDelayMs)`.
+
+### The three real defects on a poor link
+1. **Unbounded extrapolation.** On a lost/late-packet gap the guest extrapolates
+   arbitrarily far ahead, so when a snapshot finally lands the enemy **snaps
+   back** — the rubber-band. Fix: cap extrapolation at `COOP.maxExtrapolationMs`;
+   beyond it, hold the last extrapolated position (coast, then freeze) rather
+   than run off.
+2. **Hard correction snap.** When a snapshot arrives and the extrapolated
+   position was wrong, `enemy.distance` is set straight to the new interpolated
+   value — a visible jump. Fix: **ease** each enemy from its current
+   (extrapolated) distance to the authoritative track over
+   `COOP.correctionEaseMs`, instead of hard-assigning. This is the single
+   biggest smoothness win on a jittery connection.
+3. **Fixed interpolation delay.** `COOP.interpDelayMs` (100) is one size for
+   all. A LAN game is needlessly 100ms behind; a distant game with >100ms
+   jitter stalls because the buffer is too small. Fix: make it **adaptive** —
+   measure snapshot inter-arrival jitter (e.g. an EWMA of the deviation from
+   the expected `1000/snapshotHz` interval) and size the delay between
+   `COOP.interpDelayMinMs` and `COOP.interpDelayMaxMs`. Small when steady,
+   larger when jittery. Change the delay **gradually** so it doesn't itself
+   cause a time jump.
+
+### Constraints specific to this phase
+- **Deaths stay authoritative.** An extrapolated enemy must never sail past
+  where the host killed it: the snapshot enemy list is the authority (it
+  already removes dead enemies — keep that; do not let extrapolation resurrect
+  or advance a removed enemy).
+- **Guest-only.** All of this lives in the guest render path. The host sim and
+  solo play must be byte-identical — none of these knobs or code run when
+  `!isGuest(game)`.
+- **Do NOT modify `net.js`** and do NOT change `snapshotHz` — the whole point
+  is to smooth WITHOUT more packets.
+- New knobs in `config.js COOP`: `maxExtrapolationMs`, `correctionEaseMs`,
+  `interpDelayMinMs`, `interpDelayMaxMs` (keep `interpDelayMs` as the starting/
+  default value or the min). All tunable; nothing hardcoded in logic.
+- Respect the existing snapshot/`_coop*` field model; extend it, don't replace
+  it.
+
+### Definition of done
+- On a clean/low-latency link: behaves at least as well as today (near-zero
+  correction, small buffer).
+- On a simulated jittery/lossy link: no rubber-band snap-backs (corrections
+  ease in), no run-away extrapolation (capped), and the buffer visibly grows to
+  absorb jitter. Enemy deaths still land exactly where the host says.
+- Host and solo runs unchanged.
+
+---
+
 ## 11. Phase 5 — TURN relay — ✅ DONE (2026-08-22, pulled forward)
 
 **Built, deployed, and verified on real devices.** Pulled forward from "last
