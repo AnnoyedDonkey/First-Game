@@ -50,6 +50,7 @@ window.loot = loot;
 
 const canvas = document.getElementById("game-canvas");
 const ctx = canvas.getContext("2d");
+const gameArea = document.getElementById("game-area");
 
 let game = null;
 let overlayShown = false;
@@ -177,16 +178,23 @@ function startLevel(level, endless = false) {
 // Size the canvas element to the largest rectangle that fits the
 // game area without distorting the grid.
 function fitCanvas() {
-  const area = document.getElementById("game-area");
+  if (!canvas.width || !canvas.height || !gameArea.clientWidth || !gameArea.clientHeight) return;
   const scale = Math.min(
-    area.clientWidth / canvas.width,
-    area.clientHeight / canvas.height
+    gameArea.clientWidth / canvas.width,
+    gameArea.clientHeight / canvas.height
   );
   canvas.style.width = `${canvas.width * scale}px`;
   canvas.style.height = `${canvas.height * scale}px`;
 }
 
 window.addEventListener("resize", fitCanvas);
+// Co-op enters battle differently from the campaign picker: startLevel sizes
+// the canvas before lobby.js reveals the HUD and action bar. That flex-layout
+// change does not fire window.resize, so the old inline dimensions could be
+// clamped on one axis and visually squash the joiner's board. Observing the
+// actual available rectangle keeps every transition and device aspect-correct.
+const canvasAreaObserver = new ResizeObserver(fitCanvas);
+canvasAreaObserver.observe(gameArea);
 
 onWaveButtonTap(() => {
   if (!game) return;

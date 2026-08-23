@@ -718,7 +718,8 @@ BALANCE_LAB_PLAN.md  approved Balance Lab L0-L7 plan
   (was stalling), a general update-nudge reload fix (see below), per-owner
   same-name roster deployment, an 83%-smaller compact snapshot protocol
   (`COOP.protocolVersion: 2`; full record in the co-op plan §10d), and shared
-  identical loot for both players with a result-ordering guard (§10e).
+  identical loot for both players with a result-ordering guard (§10e), and
+  aspect-safe canvas refitting across co-op chrome transitions (§10f).
   Live files: `src/net.js` (transport), `src/coop.js` (game protocol),
   `src/lobby.js` (session directory), `COOP` in `config.js`, `coop-spike.html`
   (unlinked Phase-0 test page), the `coop_sessions` Supabase table +

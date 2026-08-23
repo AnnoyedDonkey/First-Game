@@ -1215,6 +1215,33 @@ in place. Both arrival orders now bank rewards before the overlay reads them.
 
 ---
 
+## 10f. Guest canvas aspect correction (2026-08-23)
+
+The joining player's board could look vertically squeezed even though the host
+looked correct; swapping host roles moved the distortion to the new guest. No
+device dimensions travel over the network — both peers create the same fixed
+internal canvas from the level grid and `TILE_SIZE`.
+
+The distortion came from local layout ordering. Unlike the campaign picker,
+the co-op lobby called `startLevel` (and therefore `fitCanvas`) while the HUD and
+action bar were still hidden, then revealed that battle chrome afterward. The
+flex layout reduced `#game-area` without firing `window.resize`, leaving stale
+inline canvas dimensions for CSS to constrain on one axis.
+
+`main.js` now observes the actual `#game-area` content rectangle with
+`ResizeObserver` and reruns the existing aspect-preserving `fitCanvas` whenever
+that rectangle changes. The normal window-resize listener remains. This is
+local presentation only: snapshots, internal grid coordinates, input mapping,
+host authority, and simulation are unchanged.
+
+Browser-verified at representative 402×874 and 440×956 phone viewports, plus a
+deliberately constrained 402×650 viewport where height becomes the limiting
+axis: rendered/internal canvas ratios matched exactly (zero measured ratio
+error), the canvas stayed inside `#game-area`, and the console remained clean.
+A live two-device host/guest role swap is still the final human check.
+
+---
+
 ## 11. Phase 5 — TURN relay — ✅ DONE (2026-08-22, pulled forward)
 
 **Built, deployed, and verified on real devices.** Pulled forward from "last
