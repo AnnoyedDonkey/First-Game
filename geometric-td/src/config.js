@@ -647,8 +647,10 @@ export const VFX = {
   // aimed at an invisible pinned target one tile "up", so the shots leave the
   // cropped frame and hit nothing on the real board. All cosmetic; tune here.
   trayIcon: {
-    tilePx: 26,            // sim tile size in CSS px (drives tower + shot scale)
-    viewTiles: 1.5,        // how many tiles the square icon crops to (tower centered)
+    tilePx: 46,            // sim tile size in CSS px — matches the on-screen
+                           // in-game tile so the tower glyph is the same size
+    viewTiles: 1.0,        // crop to ~one tile so the tower fills the icon like
+                           // it fills its tile in battle (tower centered)
     gridWidth: 3,          // sim board width in tiles (tower centered at 1,1)
     gridHeight: 3,         // sim board height in tiles
     towerTile: { x: 1, y: 1 }, // where the tower sits (kept centered by the crop)

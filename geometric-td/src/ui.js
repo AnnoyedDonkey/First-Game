@@ -460,8 +460,10 @@ function trayDpr() {
 function prepareTrayCanvas(canvas) {
   const viewPx = trayIconViewPx();
   const dpr = trayDpr();
+  // Natural display size = viewPx; CSS (height:auto, max-width) lets it shrink
+  // square when the tray is narrow. The backing store stays dpr-crisp.
   canvas.style.width = `${viewPx}px`;
-  canvas.style.height = `${viewPx}px`;
+  canvas.style.height = "";
   canvas.width = Math.round(viewPx * dpr);
   canvas.height = Math.round(viewPx * dpr);
   return canvas.getContext("2d");

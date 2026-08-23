@@ -3271,52 +3271,50 @@ html[data-lang="fr"] .settings-help { letter-spacing: .2px; }
   cursor: pointer;
 }
 
-/* GeoDefense-style tray: compact rounded chips */
+/* Tray: bare tower icons (no chip/rectangle) + price. The tower glyph is the
+   button — no border, background, or box. */
 .tower-button {
   flex: 1 1 0;
-  min-width: 0; /* equal-width compact chips; shrink to make room for the wave button */
+  min-width: 0; /* equal-width; shrink to make room for the wave button */
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 2px;
-  padding: 4px 6px;
+  padding: 2px 2px;
   min-height: 46px;
-  border-radius: 12px;
+  border: none;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
   color: var(--tower-color, var(--neon-cyan));
-  border-color: var(--tower-color, var(--neon-cyan));
-  box-shadow: inset 0 0 8px rgba(53, 224, 255, 0.06);
 }
 
 /* The live tower micro-sim canvas (src/tray-icon.js draws the real shape +
-   firing here). Its intrinsic size is set per-device in JS; cap it so a narrow
-   tray with many towers stays tidy. */
+   firing here). Its natural size is set per-device in JS; height:auto keeps it
+   square, max-width lets it shrink when a narrow tray has many towers. */
 .tower-button-icon {
-  width: auto;
   height: auto;
   max-width: 100%;
+  display: block;
   flex: 0 0 auto;
   pointer-events: none;
 }
 .tower-button-cost { font-size: 10px; opacity: 0.75; line-height: 1; }
 
-/* Selected = highlight ring + the firing animation. We do NOT fill the
-   background with the tower color: the canvas draws the tower in that same
-   color and would vanish against it. */
-.tower-button.selected {
-  border-width: 2px;
-  box-shadow: 0 0 12px var(--tower-color, var(--neon-cyan)),
-              inset 0 0 10px rgba(255, 255, 255, 0.08);
+/* Selected = the firing animation + a glow on the icon itself (no box). */
+.tower-button.selected .tower-button-icon {
+  filter: drop-shadow(0 0 5px var(--tower-color, var(--neon-cyan)));
+  transform: scale(1.06);
 }
 
 .tower-button:disabled {
   color: var(--text-dim);
-  border-color: var(--panel-border);
+  background: none;
   box-shadow: none;
-  background: var(--bg);
   cursor: default;
 }
-/* Dim the icon too when a tower is unaffordable, so the chip reads as inert. */
+/* Dim the icon too when a tower is unaffordable, so it reads as inert. */
 .tower-button:disabled .tower-button-icon { opacity: 0.5; }
 
 .tower-button.locked { opacity: 0.55; }
@@ -3443,6 +3441,6 @@ html[data-lang="fr"] .settings-help { letter-spacing: .2px; }
 }
 
 .big-button:not(:disabled):active,
-.tower-button:not(:disabled):active {
-  background: var(--panel-border);
+.tower-button:not(:disabled):active .tower-button-icon {
+  transform: scale(0.92);
 }
