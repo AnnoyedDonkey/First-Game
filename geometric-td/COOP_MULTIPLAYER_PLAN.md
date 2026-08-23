@@ -857,12 +857,12 @@ board — locked, §2 round 3).
   earnings are exactly what must travel back to the guest.
 - `recordRunLoot(game)` (`progression.js:974`) consumes `game.lootDrops`.
 
-**Two attribution gaps to close:**
-1. **Loot + shards are not per-owner.** At the drop site (`enemies.js:281`,
-   `sourceTower` is in scope) attach `sourceTower.ownerId` to the drop, and
-   accumulate `shardsEarned` per owner (mirror the per-wallet bounty pattern at
-   `enemies.js:250`, `game.totalEarned`). Without this the host cannot tell
-   which drops/shards belong to the guest.
+**Reward ownership requirements:**
+1. **Loot is shared; Shards are per-owner.** Every rolled kill-drop goes to both
+   players. Accumulate `shardsEarned` per owner (mirror the per-wallet bounty
+   pattern at `enemies.js:250`, `game.totalEarned`) so each player banks the
+   Shards earned by their towers. Loot briefly used killing-tower attribution
+   in the first Phase 4 build; §10e supersedes that behavior.
 2. **The guest's roster is empty on the host.** `coop.js preparePlayers`
    currently sets `roster: []` for the remote owner (a deliberate Phase 1
    placeholder, `coop.js:334`). Phase 4 fills it from the join payload so
@@ -951,9 +951,9 @@ calls it with the host's `sessionEnd` payload (untrusted, update-only).
 
 **Known v1 limitations (deliberate):** banking happens only at the authoritative
 `won`/`lost`; a voluntary guest leave or host termination mid-run has no
-graceful result exchange, so a partial run is not banked. Co-op banks
-attributed kill-drops only — no solo guaranteed end-drop, no Endless
-milestones. One out-of-scope file was touched (`feedback.js`) for the telemetry
+graceful result exchange, so a partial run is not banked. Co-op banks shared
+kill-drops only — no solo guaranteed end-drop, no Endless milestones. One
+out-of-scope file was touched (`feedback.js`) for the telemetry
 guard, which was necessary and flagged.
 
 ---
@@ -1194,6 +1194,24 @@ snapshot-before-catalog ordering, flags/health/distance, guest wallet, duplicate
 selection, solo placement/combat smoke test, and clean browser console. Still
 wants a real two-device slow-link feel test; payload reduction is measured, but
 human-perceived relay smoothness cannot be certified from a local loop.
+
+---
+
+## 10e. Shared loot + terminal result ordering (2026-08-23)
+
+Co-op kill-drop loot is one shared roll: **both players bank and see the exact
+same items**, regardless of which owner's tower landed the killing blow. The
+host banks the complete `game.lootDrops` list locally and sends that same list
+in the guest's reliable `sessionEnd` payload. Loot carries no player owner;
+tower XP remains contribution-based and Shards retain their existing per-owner
+accounting.
+
+The guest result overlay also waits for `game.coopResult`. Terminal snapshots
+travel on the lossy `state` channel while `sessionEnd` travels on reliable
+`cmd`, so delivery between those channels is not ordered. Previously a terminal
+snapshot could open an empty result overlay before the loot payload arrived;
+the later save write succeeded invisibly because the overlay was already fixed
+in place. Both arrival orders now bank rewards before the overlay reads them.
 
 ---
 

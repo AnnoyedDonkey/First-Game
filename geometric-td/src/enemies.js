@@ -285,12 +285,7 @@ export function damageEnemy(game, enemy, sourceTower, amount) {
   }
 
   const drop = rollKillDrop(enemy, game.level, game.waveIndex);
-  if (drop) {
-    // Runtime-only attribution. Solo items stay byte-identical because the
-    // owner field exists only while a real co-op session is active.
-    if (game.coop) drop.ownerId = sourceTower.ownerId;
-    game.lootDrops.push(drop);
-  }
+  if (drop) game.lootDrops.push(drop);
 
   const pos = enemyPosition(enemy, game.grid);
   const ts = game.grid.tileSize;

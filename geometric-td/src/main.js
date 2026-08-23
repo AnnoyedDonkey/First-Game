@@ -353,12 +353,14 @@ function leaveCoopSession() {
 // Co-op battle reached its natural end (the core fell — Endless has no win).
 // Without this the world just stalls behind a frozen board: solo's
 // checkEndState is skipped for co-op, and showRemoteCoopEnd only covers a
-// disconnect. Fires for BOTH roles once they observe the terminal phase; the
-// host has banked via bankHostRun and the guest via the sessionEnd payload, so
-// game.coopResult/lootResult are populated by the time this runs.
+// disconnect. Fires for BOTH roles once they observe the terminal phase. The
+// terminal snapshot and reliable sessionEnd payload travel on separate
+// channels, so a guest must wait for sessionEnd to bank rewards before the
+// overlay reads them.
 function checkCoopEndState() {
   if (overlayShown || game.coopEndReason) return; // a disconnect ends it its own way
   if (game.phase !== "won" && game.phase !== "lost") return;
+  if (coop.isGuest(game) && !game.coopResult) return;
   overlayShown = true;
   exitConfirming = true; // freeze the frozen board behind the overlay
   const waveReached = game.coopResult?.waveReached ?? (game.waveIndex + 1);

@@ -708,13 +708,10 @@ function towerProgress(tower, includeType = false) {
   return includeType ? { name: record.name, type: tower.type, ...record } : record;
 }
 
-function lootForOwner(game, ownerId) {
-  return game.lootDrops
-    .filter((item) => item.ownerId === ownerId)
-    .map((drop) => {
-      const { ownerId: _ownerId, ...item } = drop;
-      return structuredClone(item);
-    });
+// Co-op loot is a shared roll: both local saves receive the exact same items,
+// regardless of whose tower landed the killing blow.
+function sharedLoot(game) {
+  return structuredClone(game.lootDrops);
 }
 
 function roundedShardsFor(game, ownerId) {
@@ -728,7 +725,7 @@ function bankHostRun(game) {
     towers: game.towers
       .filter((tower) => tower.ownerId === OWNER_IDS.host)
       .map((tower) => towerProgress(tower, true)),
-    loot: lootForOwner(game, OWNER_IDS.host),
+    loot: sharedLoot(game),
     shards: roundedShardsFor(game, OWNER_IDS.host),
   }, { trustedLocalTowers: true });
   if (!result.ok) {
@@ -750,7 +747,7 @@ function guestResultMessage(game) {
     towers: game.towers
       .filter((tower) => tower.ownerId === OWNER_IDS.guest)
       .map((tower) => towerProgress(tower)),
-    loot: lootForOwner(game, OWNER_IDS.guest),
+    loot: sharedLoot(game),
     shards: roundedShardsFor(game, OWNER_IDS.guest),
     waveReached: game.waveIndex + 1,
   };
