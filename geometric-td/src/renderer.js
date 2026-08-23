@@ -4,7 +4,7 @@
 
 import { enemyPosition } from "./enemies.js";
 import { isUpgradeEligible } from "./towers.js";
-import { SHAPE_SIDES, VFX, ENEMIES } from "./config.js";
+import { COOP, SHAPE_SIDES, VFX, ENEMIES } from "./config.js";
 import { GEAR_SLOTS } from "./equipment.js";
 
 // Rarity accent colors for in-battle gear orbitals (B4). Mirrors the
@@ -884,6 +884,24 @@ function drawTowers(ctx, game, uiState) {
     ctx.shadowBlur = 8;
     ctx.lineWidth = LOOK.lineWidth;
     drawTowerShape(ctx, tower, ts, tower.pos.x, tower.pos.y);
+
+    // Phase 1 owner badge: the tower keeps its type color (combat meaning),
+    // while a thin outer ring carries the player's co-op identity color.
+    const owner = game.players?.[tower.ownerId];
+    if (game.ownerIds?.length > 1 && owner) {
+      const ownership = COOP.ownership;
+      ctx.globalAlpha = ownership.ringAlpha;
+      ctx.strokeStyle = owner.color;
+      ctx.shadowColor = owner.color;
+      ctx.lineWidth = ownership.ringLineWidth;
+      ctx.beginPath();
+      ctx.arc(
+        tower.pos.x, tower.pos.y,
+        ts * ownership.ringRadiusTiles, 0, Math.PI * 2
+      );
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
 
     // Railgun charge-up: a converging ring + a building core glow at the barrel
     // that swell as the capacitor spins toward release (see towers.js / VFX.railgun).

@@ -5,7 +5,7 @@
 // that is inside their range ("first" targeting).
 // ============================================================
 
-import { TOWERS, TOWER_UPGRADES, LOOT, VFX } from "./config.js";
+import { DEFAULT_OWNER_ID, TOWERS, TOWER_UPGRADES, LOOT, VFX } from "./config.js";
 import { enemyPosition, damageEnemy, slowEnemy } from "./enemies.js";
 import { spawnPulseOrb, spawnRocket } from "./projectiles.js";
 import {
@@ -40,13 +40,16 @@ export function seedRosterCounters(roster) {
 
 // rosterRecord (optional): deploy this persistent unit instead of a
 // brand-new tower — it keeps its name, XP, kills, and unlocked level.
-export function createTower(type, tileX, tileY, grid, rosterRecord = null) {
+export function createTower(
+  type, tileX, tileY, grid, rosterRecord = null, ownerId = DEFAULT_OWNER_ID
+) {
   const def = TOWERS[type];
   if (!def) throw new Error(`Unknown tower type: ${type}`);
 
   const tower = {
     id: nextTowerId++,
     name: rosterRecord ? rosterRecord.name : nextRosterName(def),
+    ownerId,
     type,
     def,
     tileX,
@@ -261,12 +264,12 @@ export function isUpgradeEligible(tower) {
 }
 
 // Try to buy the upgrade. Returns true if it went through.
-export function tryUpgradeTower(game, tower) {
+export function tryUpgradeTower(game, tower, ownerId = game.localPlayerId) {
   if (!isUpgradeEligible(tower)) return false;
   const cost = upgradeCostFor(tower);
-  if (game.money < cost) return false;
+  if (game.wallets[ownerId] == null || game.wallets[ownerId] < cost) return false;
 
-  game.money -= cost;
+  game.wallets[ownerId] -= cost;
   tower.level += 1;
   tower.invested += cost;
   recomputeStats(tower, game.grid);
@@ -288,18 +291,20 @@ export function towerAt(game, tileX, tileY) {
 }
 
 // Try to place a tower. Returns { ok, reason }.
-export function placeTower(game, type, tileX, tileY) {
+export function placeTower(game, type, tileX, tileY, ownerId = game.localPlayerId) {
   const def = TOWERS[type];
   if (!isTowerUnlocked(type)) return { ok: false, reason: "locked" };
   if (!game.grid.isBuildable(tileX, tileY)) return { ok: false, reason: "blocked" };
   if (towerAt(game, tileX, tileY)) return { ok: false, reason: "occupied" };
-  if (game.money < def.baseCost) return { ok: false, reason: "money" };
+  if (game.wallets[ownerId] == null || game.wallets[ownerId] < def.baseCost) {
+    return { ok: false, reason: "money" };
+  }
 
-  game.money -= def.baseCost;
+  game.wallets[ownerId] -= def.baseCost;
   // Deploy your best available roster veteran of this type, if any.
   const deployedNames = new Set(game.towers.map((t) => t.name));
-  const veteran = takeRosterUnit(type, deployedNames);
-  const tower = createTower(type, tileX, tileY, game.grid, veteran);
+  const veteran = takeRosterUnit(type, deployedNames, game.players?.[ownerId]?.roster);
+  const tower = createTower(type, tileX, tileY, game.grid, veteran, ownerId);
   game.towers.push(tower);
   (game.typesUsed ||= new Set()).add(type); // B5: survives sells, unlike scanning game.towers
 
@@ -323,9 +328,12 @@ export function sellValueOf(tower) {
   return Math.floor(tower.invested / 2);
 }
 
-export function sellTower(game, tower) {
+export function sellTower(game, tower, ownerId = game.localPlayerId) {
+  if (tower.ownerId !== ownerId || game.wallets[ownerId] == null) {
+    return { ok: false, reason: "owner" };
+  }
   const refund = sellValueOf(tower);
-  game.money += refund;
+  game.wallets[ownerId] += refund;
   game.towers = game.towers.filter((t) => t !== tower);
   game.effects.push({
     kind: "ring",
@@ -336,7 +344,7 @@ export function sellTower(game, tower) {
     ttl: 0.35,
     maxTtl: 0.35,
   });
-  return refund;
+  return { ok: true, refund };
 }
 
 function findTarget(game, tower, excluded = null) {

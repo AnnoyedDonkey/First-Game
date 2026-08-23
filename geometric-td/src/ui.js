@@ -131,6 +131,8 @@ const el = {
   storeSheetOverlay: document.getElementById("store-sheet-overlay"),
   storeSheet: document.getElementById("store-sheet"),
   money: document.getElementById("money-value"),
+  coopDebugBar: document.getElementById("coop-debug-bar"),
+  coopDebugSwitch: document.getElementById("coop-debug-switch"),
   wave: document.getElementById("wave-value"),
   core: document.getElementById("core-value"),
   waveButton: document.getElementById("wave-button"),
@@ -224,6 +226,7 @@ function setText(node, key, value) {
 // starts null so loading into a battle's first HUD update doesn't either.
 let lastMoney = null;
 let lastMoneyGame = null; // identity of the battle lastMoney belongs to
+let lastMoneyOwner = null;
 let creditPulseTimer = null;
 let lastCreditPulseAt = -Infinity;
 
@@ -249,13 +252,34 @@ export function updateHUD(game) {
   // Each battle gets a fresh baseline: startLevel builds a new game object, so
   // comparing identity resets the tracker without needing a lifecycle hook.
   // Without this, starting a level richer than the last one ended would pulse.
-  if (game !== lastMoneyGame) {
+  if (game !== lastMoneyGame || game.localPlayerId !== lastMoneyOwner) {
     lastMoneyGame = game;
+    lastMoneyOwner = game.localPlayerId;
     lastMoney = null;
   }
   if (lastMoney !== null && game.money > lastMoney) triggerCreditPulse();
   lastMoney = game.money;
   setText(el.money, "money", String(game.money));
+
+  // Optional-chained and explicitly hidden again: without the else branch the
+  // bar survived from a coopLocal battle into the next normal one, and a
+  // synthetic game object without ownerIds (tower demos) would throw here.
+  if (game.ownerIds?.length > 1) {
+    el.coopDebugBar.classList.remove("hidden");
+    const actor = game.players[game.actingPlayerId]?.label || game.actingPlayerId;
+    const wallets = game.ownerIds.map((ownerId) => {
+      const label = game.players[ownerId]?.label || ownerId;
+      return `${label} $${game.wallets[ownerId]}`;
+    }).join(" / ");
+    setText(
+      el.coopDebugSwitch,
+      "coopDebugSwitch",
+      `${t("coop.debugActing", "ACTING")} ${actor} - ${wallets}`
+    );
+    el.coopDebugSwitch.title = t("coop.debugSwitch", "Tap to switch acting player");
+  } else {
+    el.coopDebugBar.classList.add("hidden");
+  }
 
   const waveNum = game.waveIndex + 1;
   const waveText = game.endless
@@ -405,7 +429,19 @@ export function updateUpgradePanel(game, tower) {
 
   setText(el.upgradeBtnLabel, "upBtnLabel", label);
   setText(el.upgradeBtnSub, "upBtnSub", sub);
-  setText(el.sellBtnSub, "sellBtnSub", `$${sellValueOf(tower)}`);
+  const canSell = tower.ownerId === (game.actingPlayerId || game.localPlayerId);
+  setText(
+    el.sellBtnSub,
+    "sellBtnSub",
+    canSell ? `$${sellValueOf(tower)}` : t("coop.ownerOnly", "OWNER ONLY")
+  );
+  el.sellButton.title = canSell
+    ? ""
+    : t("coop.sellOwnerReason", "Only the owner can sell this tower.");
+  if (last.sellBtnDisabled !== !canSell) {
+    last.sellBtnDisabled = !canSell;
+    el.sellButton.disabled = !canSell;
+  }
   if (last.upBtnDisabled !== disabled) {
     last.upBtnDisabled = disabled;
     el.upgradeButton.disabled = disabled;
@@ -423,6 +459,10 @@ export function onUpgradeButtonTap(handler) {
 
 export function onSellButtonTap(handler) {
   el.sellButton.addEventListener("click", handler);
+}
+
+export function initCoopDebugControls(onSwitch) {
+  el.coopDebugSwitch.addEventListener("click", onSwitch);
 }
 
 // ---------- Level select ----------
@@ -457,6 +497,7 @@ function updateWelcomeBack() {
 export function showLevelSelect(levels, completedIds, onPick) {
   el.actionBar.classList.add("hidden"); // no tower tray on the menu
   el.hud.classList.add("hidden");       // top HUD is in-battle only
+  el.coopDebugBar.classList.add("hidden");
   closeLevelSheet();
   updateWelcomeBack();
   menuCtx = {

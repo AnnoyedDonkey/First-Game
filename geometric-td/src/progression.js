@@ -551,8 +551,8 @@ export function getRocketBlastRadiusMult() {
 // ---------- Roster ----------
 
 // Best not-yet-deployed roster unit of a type (veterans first).
-export function takeRosterUnit(type, deployedNames) {
-  const candidates = state.roster.filter(
+export function takeRosterUnit(type, deployedNames, roster = state.roster) {
+  const candidates = roster.filter(
     (r) => r.type === type && !deployedNames.has(r.name)
   );
   candidates.sort((a, b) => b.maxLevel - a.maxLevel || b.xp - a.xp);
@@ -565,6 +565,9 @@ export function takeRosterUnit(type, deployedNames) {
 // are banked into the wallet.
 function syncRoster(game) {
   for (const t of game.towers) {
+    // Phase 1's fake second player must never leak its runtime-only roster into
+    // the real local save. Phase 4 will return remote progression to its owner.
+    if (t.ownerId && t.ownerId !== (game.progressionOwnerId || game.localPlayerId)) continue;
     let rec = state.roster.find((r) => r.name === t.name);
     if (!rec) {
       rec = {

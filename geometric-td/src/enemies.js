@@ -9,6 +9,10 @@ import { emitHitSparks, emitDeathShards, emitCoins } from "./particles.js";
 
 let nextEnemyId = 1;
 
+function moneyMultFor(game, ownerId) {
+  return game.players?.[ownerId]?.economy?.moneyMult ?? getMoneyMult();
+}
+
 // mods lets a wave group scale this specific enemy:
 // { healthMult, speedMult, bountyMult, xpMult }
 export function createEnemy(type, mods = {}) {
@@ -243,12 +247,17 @@ export function damageEnemy(game, enemy, sourceTower, amount) {
   enemy.alive = false;
   game.kills = (game.kills || 0) + 1; // B5 milestone tracking
   const isBoss = enemy.type === "boss";
-  const earned = Math.round(
-    enemy.bounty * ECONOMY.moneyPerKillMultiplier * getMoneyMult() *
-    (sourceTower ? sourceTower.bountyMult || 1 : 1) *
-    (game.level && game.level.bountyMult != null ? game.level.bountyMult : 1)
-  );
-  game.money += earned;
+  for (const ownerId of Object.keys(game.wallets)) {
+    // Full bounty goes to every wallet. Keep the multiplication order from
+    // single-player so its rounding stays identical when only one owner exists.
+    const earned = Math.round(
+      enemy.bounty * ECONOMY.moneyPerKillMultiplier * moneyMultFor(game, ownerId) *
+      (sourceTower ? sourceTower.bountyMult || 1 : 1) *
+      (game.level && game.level.bountyMult != null ? game.level.bountyMult : 1)
+    );
+    game.wallets[ownerId] += earned;
+    game.totalEarned[ownerId] = (game.totalEarned[ownerId] || 0) + earned;
+  }
 
   // The base XP pool is split without inflation; equipped XP Gain then
   // multiplies each recipient's awarded share.

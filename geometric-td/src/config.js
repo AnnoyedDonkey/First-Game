@@ -21,7 +21,13 @@ import { BALANCE } from "./balance-data.js";
 // ---------- Debug / testing ----------
 export const DEBUG = {
   gameSpeed: 1,        // 2 = everything runs twice as fast (handy for testing)
+  coopLocal: false,    // fake a second local player for Phase 1 wallet/owner testing
 };
+
+// Single-player towers and wallets use this owner id. Co-op sessions replace
+// it with the ids assigned by the host; keeping the fallback shared prevents
+// callers such as the Balance Lab and tower demos from needing co-op setup.
+export const DEFAULT_OWNER_ID = "local";
 
 // ---------- Enemies ----------
 // speed is in TILES per second (so it works on any map/tile size).
@@ -1611,6 +1617,14 @@ export const LEADERBOARD = {
 // SAME Supabase project as LEADERBOARD/FEEDBACK (url + anonKey above) — the
 // credentials are deliberately not duplicated here.
 export const COOP = {
+  // Phase 1 ownership presentation. Player presence reuses these same colors
+  // in Phase 3b, so board ownership and the co-op HUD stay one visual language.
+  ownership: {
+    colors: ["#35e0ff", "#ff3fd4", "#ffe24a", "#4affa1"],
+    ringRadiusTiles: 0.28,
+    ringLineWidth: 2,
+    ringAlpha: 0.9,
+  },
   // STUN only (no TURN yet). Same-network pairs connect on host candidates
   // alone; STUN adds most cross-network cases. The ~15% behind symmetric NAT
   // need TURN — that's Phase 5 (see the plan), not this.

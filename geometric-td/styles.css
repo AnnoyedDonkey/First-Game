@@ -67,6 +67,28 @@ html, body {
    meaningful during a battle — hidden on the home screen and in menus. */
 #hud.hidden { display: none; }
 
+#coop-debug-bar {
+  flex: 0 0 auto;
+  padding: 3px 8px;
+  text-align: center;
+  background: var(--bg);
+  border-bottom: 1px dashed var(--neon-magenta);
+}
+
+#coop-debug-bar.hidden { display: none; }
+
+#coop-debug-switch {
+  width: 100%;
+  min-width: 0;
+  padding: 4px 8px;
+  color: var(--neon-magenta);
+  border: 1px solid var(--neon-magenta);
+  background: transparent;
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+
 .hud-item {
   display: flex;
   flex-direction: column;

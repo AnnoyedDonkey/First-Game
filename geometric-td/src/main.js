@@ -27,6 +27,7 @@ import {
   initSpeedControls, onExitButtonTap, openLeaderboard,
   openGearPanel, showMilestoneToast, updateTutorialOverlay, maybeShowTileInfo,
   showBark, updateStoryOverlay, levelNameFor, milestoneLabelFor,
+  initCoopDebugControls,
 } from "./ui.js";
 import { submitScore, isEnabled as lbEnabled } from "./leaderboard.js";
 import {
@@ -201,6 +202,19 @@ const uiState = {
   hoverOccupied: false,
 };
 
+if (DEBUG.coopLocal) {
+  initCoopDebugControls(() => {
+    if (!game || game.ownerIds.length < 2) return;
+    const current = game.ownerIds.indexOf(game.actingPlayerId);
+    const next = game.ownerIds[(current + 1) % game.ownerIds.length];
+    // In the one-tab harness, switching actors also switches which simulated
+    // player is "local", so the game.money alias and affordability UI follow
+    // the player whose taps are being exercised.
+    game.actingPlayerId = next;
+    game.localPlayerId = next;
+  });
+}
+
 initTowerButtons((type) => {
   // Tapping the same button again disarms it.
   uiState.selectedType = uiState.selectedType === type ? null : type;
@@ -211,13 +225,15 @@ initTowerButtons((type) => {
 });
 
 onUpgradeButtonTap(() => {
-  if (uiState.selectedTower) tryUpgradeTower(game, uiState.selectedTower);
+  if (uiState.selectedTower) {
+    tryUpgradeTower(game, uiState.selectedTower, game.actingPlayerId);
+  }
 });
 
 onSellButtonTap(() => {
   if (!uiState.selectedTower) return;
-  sellTower(game, uiState.selectedTower);
-  uiState.selectedTower = null; // panel closes, tower tray returns
+  const result = sellTower(game, uiState.selectedTower, game.actingPlayerId);
+  if (result.ok) uiState.selectedTower = null; // panel closes, tower tray returns
 });
 
 // Roster names continue from the saved roster (no Laser-01 collisions).
@@ -244,7 +260,9 @@ bindCanvasInput(canvas, {
     const y = Math.floor(p.y / ts);
 
     if (uiState.selectedType) {
-      const result = placeTower(game, uiState.selectedType, x, y);
+      const result = placeTower(
+        game, uiState.selectedType, x, y, game.actingPlayerId
+      );
       // T4: a real successful placement gates the tutorial's "tap an open
       // tile to build" step — any valid tile counts, not just the
       // illustrative one the spotlight ring points at.

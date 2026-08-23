@@ -874,4 +874,10 @@ export const FR = {
   "stash.paused": "EN PAUSE",
   "stash.pause": "PAUSE",
   "stash.resume": "REPRENDRE",
+
+  // Co-op Phase 1 — ownership + local two-player debug harness
+  "coop.debugActing": "JOUEUR ACTIF",
+  "coop.debugSwitch": "Touchez pour changer de joueur actif",
+  "coop.ownerOnly": "PROPRIÉTAIRE",
+  "coop.sellOwnerReason": "Seul le propriétaire peut vendre cette tour.",
 };

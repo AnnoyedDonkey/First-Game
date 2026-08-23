@@ -8,7 +8,9 @@
 //   "won" / "lost"
 // ============================================================
 
-import { WAVE_DEFAULTS, endlessTrackFor } from "./config.js";
+import {
+  COOP, DEBUG, DEFAULT_OWNER_ID, VFX, WAVE_DEFAULTS, endlessTrackFor,
+} from "./config.js";
 import { updateMilestoneResults } from "./milestones.js";
 import { createGridModel } from "./grid.js";
 import { createEnemy, updateEnemies } from "./enemies.js";
@@ -16,15 +18,41 @@ import { updateTowers } from "./towers.js";
 import { updateProjectiles, updateEffects } from "./projectiles.js";
 import {
   getCoreBonus, recordBattleEnd, recordEndlessResult,
-  getInterestRate, getInterestCap,
+  getInterestRate, getInterestCap, getMoneyMult,
 } from "./progression.js";
 import { updateParticles } from "./particles.js";
 import { createSpringGrid } from "./springgrid.js";
-import { VFX } from "./config.js";
 import { generateEndlessWave } from "./endless.js";
 
 export function createGame(level, tileSize, endless = false) {
   const grid = createGridModel(level, tileSize);
+  const ownerIds = DEBUG.coopLocal
+    ? [DEFAULT_OWNER_ID, "debug-guest"]
+    : [DEFAULT_OWNER_ID];
+  const players = {};
+  const wallets = {};
+  const totalEarned = {};
+  for (let i = 0; i < ownerIds.length; i++) {
+    const ownerId = ownerIds[i];
+    players[ownerId] = {
+      id: ownerId,
+      label: `P${i + 1}`,
+      color: COOP.ownership.colors[i % COOP.ownership.colors.length],
+      // The real local owner keeps live progression getters; the fake guest
+      // snapshots its own values at battle start. Phase 4 replaces a remote
+      // player's snapshot with its resolved join-payload numbers.
+      economy: ownerId === DEFAULT_OWNER_ID ? {} : {
+        moneyMult: getMoneyMult(),
+        interestRate: getInterestRate(),
+        interestCap: getInterestCap(),
+      },
+      // The fake guest starts with no veterans. An absent roster means the
+      // real local save, preserving the existing single-player deployment.
+      ...(ownerId === DEFAULT_OWNER_ID ? {} : { roster: [] }),
+    };
+    wallets[ownerId] = level.startingMoney;
+    totalEarned[ownerId] = 0;
+  }
 
   const game = {
     level,
@@ -32,7 +60,17 @@ export function createGame(level, tileSize, endless = false) {
     time: 0,                       // total game time in seconds
     phase: "ready",
     endless,                       // true = waves never stop (see endless.js)
-    money: level.startingMoney,
+    ownerIds,
+    players,
+    wallets,
+    totalEarned,
+    localPlayerId: DEFAULT_OWNER_ID,
+    actingPlayerId: DEFAULT_OWNER_ID,
+    progressionOwnerId: DEFAULT_OWNER_ID,
+    // Compatibility alias: the many existing readers keep using game.money,
+    // while all authoritative mutations below write the explicit owner wallet.
+    get money() { return this.wallets[this.localPlayerId]; },
+    set money(value) { this.wallets[this.localPlayerId] = value; },
     shardsEarned: 0,                // Shards ◆ banked this battle; synced to the save at battle end
     lootDrops: [],                   // unclaimed items found during this battle
     kills: 0,                        // enemies killed this run (milestone tracking, B5)
@@ -189,12 +227,24 @@ export function updateGame(game, dt) {
 // `game.lastInterest` is left for the HUD / B5 milestone toast to read.
 function applyWaveInterest(game) {
   game.lastInterest = 0;
-  const rate = getInterestRate();
-  if (rate <= 0) return;
-  const gain = Math.min(Math.floor(game.money * rate), getInterestCap());
-  if (gain <= 0) return;
-  game.money += gain;
-  game.lastInterest = gain;
+  game.lastInterestByOwner = {};
+  let paidAny = false;
+  for (const ownerId of Object.keys(game.wallets)) {
+    const economy = game.players?.[ownerId]?.economy;
+    const rate = economy?.interestRate ?? getInterestRate();
+    const gain = rate > 0
+      ? Math.min(
+          Math.floor(game.wallets[ownerId] * rate),
+          economy?.interestCap ?? getInterestCap()
+        )
+      : 0;
+    game.lastInterestByOwner[ownerId] = gain;
+    if (gain <= 0) continue;
+    game.wallets[ownerId] += gain;
+    paidAny = true;
+  }
+  game.lastInterest = game.lastInterestByOwner[game.localPlayerId] || 0;
+  if (!paidAny) return;
   const core = game.grid.pathPoints[game.grid.pathPoints.length - 1];
   game.effects.push({
     kind: "ring", x: core.x, y: core.y, color: "#ffe24a",

@@ -6,7 +6,7 @@
 // Every presentation knob and cast choice lives in NARRATIVE.towerIntro.
 // ============================================================
 
-import { ENEMIES, NARRATIVE } from "./config.js";
+import { DEFAULT_OWNER_ID, ENEMIES, NARRATIVE } from "./config.js";
 import { createGridModel } from "./grid.js";
 import { createTower, updateTowers, applyLevelUpSurge } from "./towers.js";
 import { createEnemy, updateEnemies } from "./enemies.js";
@@ -106,7 +106,12 @@ export function createTowerDemo(demoKey, options = {}) {
       knobs.tilePx
     ),
     kills: 0,
-    money: 0,
+    ownerIds: [DEFAULT_OWNER_ID],
+    wallets: { [DEFAULT_OWNER_ID]: 0 },
+    totalEarned: { [DEFAULT_OWNER_ID]: 0 },
+    localPlayerId: DEFAULT_OWNER_ID,
+    get money() { return this.wallets[this.localPlayerId]; },
+    set money(value) { this.wallets[this.localPlayerId] = value; },
     shardsEarned: 0,
     lootDrops: [],
     waveIndex: 0,
