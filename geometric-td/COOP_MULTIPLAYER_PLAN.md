@@ -958,10 +958,38 @@ guard, which was necessary and flagged.
 
 ---
 
-## 10a. Phase 6 — post-playtest polish (punch list, 2026-08-22)
+## 10a. Phase 6 — post-playtest polish — ✅ DONE (2026-08-22)
 
-From the first real two-device session. Root causes traced; none fixed yet.
-Ordered cheapest-first.
+All six fixed and verified as far as loopback allows (the full live two-tab
+leave→rejoin still wants a real-device check). As built:
+1. **Grant floored** — `coop.js acceptGuest` wraps the drop-in grant in
+   `Math.floor`. Verified.
+2. **Guest Next Wave disabled** — `ui.js`, guest-only. Verified by read.
+3. **Guest deselect** — `main.js onTap` clears the guest's own armed selection
+   on a cancel tap instead of returning early. Verified by read.
+4. **Guest fields own unlocks** — the join payload carries
+   `unlockedTowerTypes` (validated: array of known `TOWERS` keys, no dups);
+   `placeTower(…, unlockedTowerTypes)` checks that set for a guest, else falls
+   back to the save. **Runtime-verified:** railgun placed with the set present
+   (failed only on cost, not `locked`); `locked` without it; a type absent from
+   the set stays `locked`.
+5. **Guest upgrade re-enabled** — reversed the 3b "HOST CHECK" disable, which
+   contradicted the "anyone may upgrade any tower" rule. Guest sends the
+   upgrade intent; host authorizes with the cost it puts in the snapshot. Sell
+   stays owner-gated ("OWNER ONLY"). Verified by read.
+6. **Leave/rejoin** — on definitive guest loss the host resets
+   `guestJoined`/`guestPresent`/`guestProfileApplied`/`hostResultSent`, clears
+   guest roster/unlocks/economy, drops `ownerIds` to host-only, refreshes the
+   lobby, and **re-arms the signaling handshake** via new
+   `net.js rearmHostSession()` — same room code + lobby row, fresh peer
+   connection, replacement offer PATCHed with `answer: null`, polling resumed.
+   First-join `runHost`/`insertOffer` left byte-identical. **Runtime-verified:**
+   the replacement-offer PATCH (offer replaced, answer nulled) is accepted by
+   Supabase RLS (204). A closed DataChannel or failed peer is now definitive
+   (triggers re-arm); a transient WebRTC `disconnected` still recovers.
+   **Not verified:** the full live two-device leave→rejoin timing.
+
+Original punch list (root causes) preserved below for reference.
 
 1. **Late-join grant has decimals (e.g. 740.5).** `coop.js:584` computes
    `grant = min(maxGrant, earningsShare × hostTotalEarned)` and adds it to

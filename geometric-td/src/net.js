@@ -77,6 +77,26 @@ export function hostSession() {
   return pending;
 }
 
+// A completed offer/answer pair belongs to one RTCPeerConnection. Once that
+// peer is definitively gone, keep the room code and lobby row but publish a
+// fresh offer for the next guest. The initial runHost/insertOffer path stays
+// untouched so first join retains its verified behavior.
+export function rearmHostSession() {
+  const source = currentSession || lastStateEvent;
+  if (source?.role !== "host" || !source.code) {
+    throw new Error("Only a host session can re-arm its guest slot");
+  }
+  if (
+    connectionState !== CONNECTION_STATES.DISCONNECTED &&
+    connectionState !== CONNECTION_STATES.FAILED
+  ) {
+    throw new Error("Host guest slot is not disconnected");
+  }
+  const pending = startSession("host", source.code, runRearmedHost);
+  Object.defineProperty(pending, "code", { value: source.code, enumerable: true });
+  return pending;
+}
+
 // Resolves with { role, code } once both data channels are open.
 export function joinSession(code) {
   const normalized = normalizeRoomCode(code);
@@ -338,7 +358,9 @@ function setupPeerConnection(session, iceServers) {
         connectionState === CONNECTION_STATES.CONNECTING ||
         connectionState === CONNECTION_STATES.CONNECTED
       ) {
-        transition(session, CONNECTION_STATES.DISCONNECTED);
+        // WebRTC may recover this state without renegotiation. Gameplay keeps
+        // the slot occupied until a channel closes or the peer actually fails.
+        transition(session, CONNECTION_STATES.DISCONNECTED, { permanent: false });
       }
     } else if (pc.connectionState === "failed") {
       failSession(session, new Error("WebRTC peer connection failed"));
@@ -382,11 +404,10 @@ function attachDataChannel(session, channel) {
   };
   channel.onclose = () => {
     if (session !== currentSession) return;
-    if (!session.settled) {
-      failSession(session, new Error(`Data channel "${channel.label}" closed`));
-    } else if (connectionState === CONNECTION_STATES.CONNECTED) {
-      transition(session, CONNECTION_STATES.DISCONNECTED);
-    }
+    // A closed channel cannot recover, including when the peer connection
+    // first passed through WebRTC's transient "disconnected" state. Marking
+    // the session failed tears down the spent peer and lets a host re-arm it.
+    failSession(session, new Error(`Data channel "${channel.label}" closed`));
   };
   channel.onerror = () => {
     if (!session.settled) {
@@ -457,6 +478,30 @@ async function runHost(session) {
   }
 }
 
+async function runRearmedHost(session) {
+  step(session, "creating-offer");
+  const offer = await session.pc.createOffer();
+  await session.pc.setLocalDescription(offer);
+  step(session, "gathering-ice");
+  await waitForIceGathering(session.pc, session.abortController.signal, session);
+  step(session, "publishing-offer");
+  await writeReplacementOffer(session);
+  step(session, "polling-for-answer");
+  transition(session, CONNECTION_STATES.WAITING_FOR_PEER);
+
+  while (session === currentSession && !session.abortController.signal.aborted) {
+    const row = await readSessionRow(session.code, "answer");
+    if (!row) throw new Error("Signaling session disappeared");
+    if (row.answer) {
+      step(session, "applying-answer");
+      await session.pc.setRemoteDescription(parseDescription(row.answer));
+      transition(session, CONNECTION_STATES.CONNECTING);
+      return;
+    }
+    await delay(COOP.signalingPollMs, session.abortController.signal);
+  }
+}
+
 async function runGuest(session) {
   step(session, "reading-room");
   const row = await readSessionRow(
@@ -510,6 +555,23 @@ async function writeAnswer(session) {
     signal: session.abortController.signal,
   });
   await requireOk(response, "Could not publish guest answer");
+}
+
+async function writeReplacementOffer(session) {
+  const response = await fetch(sessionRowUrl(session.code), {
+    method: "PATCH",
+    headers: {
+      ...authHeaders(),
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify({
+      offer: session.pc.localDescription.toJSON(),
+      answer: null,
+      last_seen: new Date().toISOString(),
+    }),
+    signal: session.abortController.signal,
+  });
+  await requireOk(response, "Could not re-arm host offer");
 }
 
 async function readSessionRow(code, select) {

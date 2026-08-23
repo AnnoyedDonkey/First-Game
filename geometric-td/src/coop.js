@@ -11,14 +11,14 @@ import {
 } from "./config.js";
 import {
   closeSession, CONNECTION_STATES, getConnectionState, hostSession, joinSession,
-  onConnectionState, onMessage, sendMessage,
+  onConnectionState, onMessage, rearmHostSession, sendMessage,
 } from "./net.js";
 import {
   codenameForCode, countFreeTiles, heartbeatHostSession, publishHostSession,
 } from "./lobby.js";
 import {
   applyLevelUpSurge, createTower, placeTower, refreshTowerStats, sellTower,
-  tryUpgradeTower, xpThresholdFor,
+  tryUpgradeTower, upgradeCostFor,
 } from "./towers.js";
 import { emitGearDropEffect } from "./enemies.js";
 import {
@@ -27,7 +27,7 @@ import {
 import { updateEffects, updateProjectiles } from "./projectiles.js";
 import {
   bankCoopRun, getInterestCap, getInterestRate, getMoneyMult, getProgress,
-  validateCoopLootItem, validateCoopTowerRecord,
+  isTowerUnlocked, validateCoopLootItem, validateCoopTowerRecord,
 } from "./progression.js";
 
 const ROLES = Object.freeze({ HOST: "host", GUEST: "guest" });
@@ -56,6 +56,7 @@ let guestProfileApplied = false;
 let hostRunBanked = false;
 let hostResultSent = false;
 let guestRunBanked = false;
+let hostRearmScheduled = false;
 
 export function startHost(game, { listed = false, hostNick = null } = {}) {
   requireStartableGame(game);
@@ -238,6 +239,7 @@ function activate(game, role) {
   hostRunBanked = false;
   hostResultSent = false;
   guestRunBanked = false;
+  hostRearmScheduled = false;
   preparePlayers(game, role);
   if (role === ROLES.HOST) {
     game.coopEventSink = (event) => {
@@ -284,6 +286,7 @@ function deactivate() {
   hostRunBanked = false;
   hostResultSent = false;
   guestRunBanked = false;
+  hostRearmScheduled = false;
 }
 
 function updateHostLobby(game, now, force = false) {
@@ -363,7 +366,7 @@ function preparePlayers(game, role) {
       economy: isLocal ? (oldPlayer.economy || {}) : {},
       // An explicit empty remote roster prevents the host from accidentally
       // deploying veterans from its own save on behalf of the guest.
-      ...(ownerId === remoteOwnerId ? { roster: [] } : {}),
+      ...(ownerId === remoteOwnerId ? { roster: [], unlockedTowerTypes: [] } : {}),
     };
   }
 
@@ -412,6 +415,7 @@ function guestProfileMessage() {
     type: "guestProfile",
     ownerId: OWNER_IDS.guest,
     roster,
+    unlockedTowerTypes: Object.keys(TOWERS).filter(isTowerUnlocked),
     economy: {
       moneyMult: getMoneyMult(),
       interestRate: getInterestRate(),
@@ -437,10 +441,14 @@ function sendGuestProfile(game) {
 }
 
 function validGuestProfile(message) {
-  if (!exactRecord(message, ["type", "ownerId", "roster", "economy"]) ||
+  if (!exactRecord(message, [
+    "type", "ownerId", "roster", "unlockedTowerTypes", "economy",
+  ]) ||
       message.type !== "guestProfile" || message.ownerId !== OWNER_IDS.guest ||
       !Array.isArray(message.roster) ||
       message.roster.length > COOP.progressionExchange.maxRosterRecords ||
+      !Array.isArray(message.unlockedTowerTypes) ||
+      message.unlockedTowerTypes.length > Object.keys(TOWERS).length ||
       !exactRecord(message.economy, ["moneyMult", "interestRate", "interestCap"])) {
     return false;
   }
@@ -448,6 +456,13 @@ function validGuestProfile(message) {
   for (const record of message.roster) {
     if (!validateCoopTowerRecord(record, true) || names.has(record.name)) return false;
     names.add(record.name);
+  }
+  const unlockedTypes = new Set();
+  for (const type of message.unlockedTowerTypes) {
+    if (typeof type !== "string" || !Object.hasOwn(TOWERS, type) || unlockedTypes.has(type)) {
+      return false;
+    }
+    unlockedTypes.add(type);
   }
 
   const moneyMax = 1 +
@@ -465,6 +480,7 @@ function validGuestProfile(message) {
 function applyGuestProfile(game, message) {
   if (!game || guestProfileApplied || !validGuestProfile(message)) return;
   game.players[OWNER_IDS.guest].roster = structuredClone(message.roster);
+  game.players[OWNER_IDS.guest].unlockedTowerTypes = [...message.unlockedTowerTypes];
   game.players[OWNER_IDS.guest].economy = { ...message.economy };
   guestProfileApplied = true;
 }
@@ -477,7 +493,16 @@ function applyIntent(game, intent, ownerId) {
           !Number.isInteger(intent.tileX) || !Number.isInteger(intent.tileY)) {
         return { ok: false, reason: "intent" };
       }
-      return placeTower(game, intent.towerType, intent.tileX, intent.tileY, ownerId);
+      return placeTower(
+        game,
+        intent.towerType,
+        intent.tileX,
+        intent.tileY,
+        ownerId,
+        ownerId === OWNER_IDS.guest
+          ? game.players?.[ownerId]?.unlockedTowerTypes
+          : null
+      );
     case "upgrade": {
       const tower = towerById(game, intent.towerId);
       return tower ? tryUpgradeTower(game, tower, ownerId) : false;
@@ -581,10 +606,10 @@ function sendSnapshot(game, now) {
 function acceptGuest(game, now) {
   if (!isHost(game) || guestJoined || !JOINABLE_PHASES.has(game.phase)) return;
   const hostTotalEarned = game.totalEarned[OWNER_IDS.host] || 0;
-  const grant = Math.min(
+  const grant = Math.floor(Math.min(
     COOP.dropIn.maxGrant,
     COOP.dropIn.earningsShare * hostTotalEarned
-  );
+  ));
   game.ownerIds = [...OWNER_ORDER];
   game.wallets[OWNER_IDS.guest] = game.level.startingMoney + grant;
   game.totalEarned[OWNER_IDS.guest] = 0;
@@ -758,6 +783,7 @@ function buildSnapshot(game, sequence) {
       tileY: tower.tileY,
       level: tower.level,
       ownerId: tower.ownerId,
+      upgradeCost: upgradeCostFor(tower),
     })),
   };
 }
@@ -781,15 +807,9 @@ onConnectionState(({ state }) => {
       sendSnapshot(activeGame, performance.now());
     }
   }
-  if (
-    isHost() && guestPresent && (
-      state === CONNECTION_STATES.DISCONNECTED ||
-      state === CONNECTION_STATES.FAILED ||
-      state === CONNECTION_STATES.CLOSED
-    )
-  ) {
-    guestPresent = false;
-    activeGame.ownerIds = [OWNER_IDS.host];
+  if (isHost() && guestPresent && state === CONNECTION_STATES.FAILED) {
+    releaseGuestSlot(activeGame);
+    scheduleHostRearm(activeGame);
   }
   if (
     isGuest() && sessionConnected && (
@@ -804,7 +824,7 @@ onConnectionState(({ state }) => {
     activeGame.coopEndReason ||= "host-left";
   }
   if (
-    isHost() && (
+    isHost() && !hostRearmScheduled && (
       state === CONNECTION_STATES.FAILED ||
       state === CONNECTION_STATES.CLOSED
     )
@@ -814,6 +834,44 @@ onConnectionState(({ state }) => {
     hostLobby = null;
   }
 });
+
+function releaseGuestSlot(game) {
+  guestJoined = false;
+  guestPresent = false;
+  guestProfileApplied = false;
+  hostResultSent = false;
+  hostEvents = [];
+  hostShots = [];
+  game.ownerIds = [OWNER_IDS.host];
+  game.players[OWNER_IDS.guest].roster = [];
+  game.players[OWNER_IDS.guest].unlockedTowerTypes = [];
+  game.players[OWNER_IDS.guest].economy = {};
+  updateHostLobby(game, performance.now(), true);
+}
+
+function scheduleHostRearm(game) {
+  if (hostRearmScheduled || !hostLobby || !JOINABLE_PHASES.has(game.phase)) return;
+  hostRearmScheduled = true;
+  queueMicrotask(() => {
+    if (!isHost(game) || !hostLobby) {
+      hostRearmScheduled = false;
+      return;
+    }
+    try {
+      const pending = rearmHostSession();
+      // Keep the guard raised through startSession's synchronous CLOSED ->
+      // SIGNALING transition so the lobby metadata survives replacing the
+      // spent peer connection.
+      hostRearmScheduled = false;
+      pending.catch((error) => {
+        console.warn("Could not re-arm co-op guest slot:", error);
+      });
+    } catch (error) {
+      hostRearmScheduled = false;
+      console.warn("Could not re-arm co-op guest slot:", error);
+    }
+  });
+}
 
 onMessage(({ channel, data }) => {
   // net.js deliberately exposes the DataChannel payload unchanged. Its game
@@ -1000,7 +1058,10 @@ function validSnapshot(snapshot) {
   ) && snapshot.towers.every((tower) =>
     Number.isInteger(tower?.id) && !!TOWERS[tower.type] &&
     Number.isInteger(tower.tileX) && Number.isInteger(tower.tileY) &&
-    Number.isInteger(tower.level) && tower.level >= 1 && OWNER_ORDER.includes(tower.ownerId)
+    Number.isInteger(tower.level) && tower.level >= 1 &&
+    (tower.upgradeCost === null ||
+      (Number.isSafeInteger(tower.upgradeCost) && tower.upgradeCost >= 0)) &&
+    OWNER_ORDER.includes(tower.ownerId)
   );
 }
 
@@ -1121,13 +1182,11 @@ function applyTowerSnapshots(game, snapshots) {
       tower.invested = investedAtLevel(tower.def, state.level);
       refreshNeeded = true;
     }
-    // The locked snapshot shape omits XP/unlocked-level data, while the
-    // unchanged panel suppresses its callback unless the mirror looks eligible.
-    // Keep that UI intent path open; the host's real tower remains the authority
-    // and rejects an upgrade that is not actually XP-ready.
-    tower.maxUnlockedLevel = xpThresholdFor(tower) === null
-      ? state.level
-      : state.level + 1;
+    // The snapshot omits XP/unlocked-level data. Do not invent eligibility on
+    // the guest mirror; its panel sends the intent and the host validates the
+    // real tower's XP and unlocked level.
+    tower.maxUnlockedLevel = state.level;
+    tower._coopUpgradeCost = state.upgradeCost;
     tower.ownerId = state.ownerId;
     mirrored.push(tower);
   }

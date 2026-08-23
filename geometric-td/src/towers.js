@@ -291,9 +291,14 @@ export function towerAt(game, tileX, tileY) {
 }
 
 // Try to place a tower. Returns { ok, reason }.
-export function placeTower(game, type, tileX, tileY, ownerId = game.localPlayerId) {
+export function placeTower(
+  game, type, tileX, tileY, ownerId = game.localPlayerId, unlockedTowerTypes = null
+) {
   const def = TOWERS[type];
-  if (!isTowerUnlocked(type)) return { ok: false, reason: "locked" };
+  const unlocked = Array.isArray(unlockedTowerTypes)
+    ? unlockedTowerTypes.includes(type)
+    : isTowerUnlocked(type);
+  if (!unlocked) return { ok: false, reason: "locked" };
   if (!game.grid.isBuildable(tileX, tileY)) return { ok: false, reason: "blocked" };
   if (towerAt(game, tileX, tileY)) return { ok: false, reason: "occupied" };
   if (game.wallets[ownerId] == null || game.wallets[ownerId] < def.baseCost) {

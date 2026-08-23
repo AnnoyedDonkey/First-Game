@@ -411,6 +411,10 @@ function updateWaveButton(game) {
       disabled = true;
   }
 
+  // Only the authoritative host may advance waves. Keep the guest control
+  // visibly inert instead of accepting a tap that the protocol ignores.
+  if (game.coopRole === "guest") disabled = true;
+
   setText(el.waveBtnLabel, "waveBtnLabel", label);
   setText(el.waveBtnSub, "waveBtnSub", sub);
   if (last.waveButtonDisabled !== disabled) {
@@ -469,10 +473,12 @@ export function updateUpgradePanel(game, tower) {
   }
   if (!tower) return;
 
-  const threshold = xpThresholdFor(tower);
-  const cost = upgradeCostFor(tower);
-  const eligible = isUpgradeEligible(tower);
   const guestMirror = game.coopRole === "guest";
+  const cost = guestMirror ? tower._coopUpgradeCost : upgradeCostFor(tower);
+  const threshold = guestMirror
+    ? (cost === null ? null : 0)
+    : xpThresholdFor(tower);
+  const eligible = !guestMirror && isUpgradeEligible(tower);
 
   const rank = masteryRankFor(tower.xp);
   const dps = tower.damage / tower.fireInterval;
@@ -513,8 +519,8 @@ export function updateUpgradePanel(game, tower) {
     disabled = true;
   } else if (guestMirror) {
     label = t("ui.upgrade", "UPGRADE");
-    sub = t("coop.upgrade.hostOnly", "HOST CHECK");
-    disabled = true;
+    sub = `$${cost}`;
+    disabled = game.money < cost;
   } else if (!eligible) {
     label = t("ui.need", "NEED");
     sub = t("ui.xp", "XP");
@@ -527,12 +533,7 @@ export function updateUpgradePanel(game, tower) {
 
   setText(el.upgradeBtnLabel, "upBtnLabel", label);
   setText(el.upgradeBtnSub, "upBtnSub", sub);
-  el.upgradeButton.title = guestMirror && threshold !== null
-    ? t(
-        "coop.upgrade.guestReason",
-        "This guest mirror does not receive tower XP, so upgrades must be made by the host."
-      )
-    : "";
+  el.upgradeButton.title = "";
   const canSell = tower.ownerId === (game.actingPlayerId || game.localPlayerId);
   setText(
     el.sellBtnSub,
@@ -550,7 +551,7 @@ export function updateUpgradePanel(game, tower) {
     last.upBtnDisabled = disabled;
     el.upgradeButton.disabled = disabled;
   }
-  const glow = eligible && !disabled;
+  const glow = !guestMirror && eligible && !disabled;
   if (last.upBtnGlow !== glow) {
     last.upBtnGlow = glow;
     el.upgradeButton.classList.toggle("eligible", glow);

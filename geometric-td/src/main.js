@@ -263,6 +263,23 @@ bindCanvasInput(canvas, {
     const y = Math.floor(p.y / ts);
 
     if (uiState.selectedType) {
+      if (coop.isGuest(game)) {
+        const tappedTower = towerAt(game, x, y);
+        const canStartPlacement =
+          isTowerUnlocked(uiState.selectedType) &&
+          game.grid.isBuildable(x, y) &&
+          !tappedTower &&
+          game.money >= uiState.selectedDef.baseCost;
+        if (!canStartPlacement) {
+          // Selection is local UI state. A guest only needs the host for a
+          // real placement; an invalid tap remains the same "never mind"
+          // gesture as solo/host and may select the tower it landed on.
+          uiState.selectedType = null;
+          uiState.selectedDef = null;
+          uiState.selectedTower = tappedTower;
+          return;
+        }
+      }
       const result = coop.sendIntent(game, {
         op: "place", towerType: uiState.selectedType, tileX: x, tileY: y,
       });
