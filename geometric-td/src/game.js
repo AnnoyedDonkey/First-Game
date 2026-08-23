@@ -185,12 +185,12 @@ export function updateGame(game, dt) {
   if (game.coreHealth <= 0) {
     game.coreHealth = 0;
     game.phase = "lost";
-    if (game.endless) {
+    if (game.endless && !game.coop) {
       // No "win" in endless — just how far you got. Stashed on the game
       // object so main.js's end-of-battle overlay can read it without
       // calling this (save-writing) function a second time.
       game.endlessResult = recordEndlessResult(game);
-    } else {
+    } else if (!game.coop) {
       recordBattleEnd(game, false); // towers keep their XP even in defeat
     }
     return;
@@ -206,7 +206,7 @@ export function updateGame(game, dt) {
     queueMilestoneToasts(game);
     if (!game.endless && game.waveIndex >= game.totalWaves) {
       game.phase = "won";
-      recordBattleEnd(game, true); // roster + 1 skill point, saved
+      if (!game.coop) recordBattleEnd(game, true); // roster + 1 skill point, saved
     } else if (game.autoStartNextWave) {
       game.phase = "countdown";
       game.countdown = game.timeBetweenWaves;

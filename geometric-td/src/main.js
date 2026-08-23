@@ -6,8 +6,7 @@ import { DEBUG, TOWERS, RESULT_ROASTS, NARRATIVE } from "./config.js";
 import { LEVELS } from "./levels.js";
 import { createGame, updateGame, startNextWave } from "./game.js";
 import {
-  placeTower, towerAt, tryUpgradeTower, sellTower,
-  seedRosterCounters, refreshTowerStats,
+  towerAt, seedRosterCounters, refreshTowerStats,
 } from "./towers.js";
 import {
   getProgress, getSkillPoints, shouldShowTowerGuide, markTowerGuideSeen,
@@ -39,6 +38,7 @@ import * as loot from "./loot.js";
 import * as tutorial from "./tutorial.js";
 import { startOnboarding, playCards, isOnboardingActive } from "./onboarding.js";
 import { t, tf } from "./i18n.js";
+import * as coop from "./coop.js";
 
 const TILE_SIZE = 64; // internal render resolution per tile
 
@@ -53,6 +53,17 @@ const ctx = canvas.getContext("2d");
 let game = null;
 let overlayShown = false;
 let barkState = null; // in-battle bark driver state (P3-revival), reset per startLevel
+
+// Temporary Phase 2a console bridge until the lobby owns session startup.
+// Both tabs first open the same battle, then:
+//   const pending = window.coop.host(); pending.code
+//   await window.coop.join("ABC123")
+window.coop = {
+  host: () => coop.startHost(game),
+  join: (code) => coop.startGuest(game, code),
+  role: () => coop.getRole(),
+  state: () => coop.getState(),
+};
 
 function refreshDeployedGear(towerName) {
   if (!game) return;
@@ -188,6 +199,7 @@ window.addEventListener("resize", fitCanvas);
 
 onWaveButtonTap(() => {
   if (!game) return;
+  if (coop.isGuest(game)) return;
   tutorial.notifyWaveStart(); // T4: real START WAVE tap gates/ends the tutorial
   startNextWave(game);
 });
@@ -226,13 +238,13 @@ initTowerButtons((type) => {
 
 onUpgradeButtonTap(() => {
   if (uiState.selectedTower) {
-    tryUpgradeTower(game, uiState.selectedTower, game.actingPlayerId);
+    coop.sendIntent(game, { op: "upgrade", towerId: uiState.selectedTower.id });
   }
 });
 
 onSellButtonTap(() => {
   if (!uiState.selectedTower) return;
-  const result = sellTower(game, uiState.selectedTower, game.actingPlayerId);
+  const result = coop.sendIntent(game, { op: "sell", towerId: uiState.selectedTower.id });
   if (result.ok) uiState.selectedTower = null; // panel closes, tower tray returns
 });
 
@@ -260,9 +272,12 @@ bindCanvasInput(canvas, {
     const y = Math.floor(p.y / ts);
 
     if (uiState.selectedType) {
-      const result = placeTower(
-        game, uiState.selectedType, x, y, game.actingPlayerId
-      );
+      const result = coop.sendIntent(game, {
+        op: "place", towerType: uiState.selectedType, tileX: x, tileY: y,
+      });
+      // The guest waits for the next authoritative snapshot. In particular,
+      // do not run the normal placement success/failure VFX against stale data.
+      if (result.pending) return;
       // T4: a real successful placement gates the tutorial's "tap an open
       // tile to build" step — any valid tile counts, not just the
       // illustrative one the spotlight ring points at.
@@ -455,6 +470,9 @@ let exitConfirming = false;
 
 onExitButtonTap(() => {
   if (!game || overlayShown || exitConfirming) return;
+  // Phase 3 owns co-op leave/end-session UX. Until then, never run the solo
+  // forfeit path, which writes campaign/Endless progression.
+  if (coop.isActive(game)) return;
   exitConfirming = true;
   showOverlay({
     title: t("result.forfeitTitle", "FORFEIT BATTLE?"),
@@ -742,7 +760,18 @@ function frame(now) {
     // Current game-time-to-real-time ratio, so speed-scaled one-shot VFX (the
     // level-up surge) can compensate and last a constant real-time length.
     game.effectiveSpeed = DEBUG.gameSpeed * speedFactor;
-    updateGame(game, dt);
+    if (coop.isGuest(game)) {
+      coop.updateGuest(game, now);
+      // Snapshot reconciliation preserves live tower objects by id, but a sold
+      // tower disappears. Clear that stale panel selection when its echo lands.
+      if (uiState.selectedTower &&
+          !game.towers.some((tower) => tower.id === uiState.selectedTower.id)) {
+        uiState.selectedTower = null;
+      }
+    } else {
+      updateGame(game, dt);
+      if (coop.isHost(game)) coop.updateHost(game, now);
+    }
     // Drain any milestone toasts queued by this tick's wave-clear (B5).
     if (game.newMilestoneToasts && game.newMilestoneToasts.length) {
       while (game.newMilestoneToasts.length) showMilestoneToast(game.newMilestoneToasts.shift());
@@ -756,7 +785,9 @@ function frame(now) {
     updateUpgradePanel(game, uiState.selectedTower);
     updateTutorialOverlay(game); // T4: reposition the spotlight ring, if active
     updateStoryOverlay(game);    // enemy-intro card: track its cutout over the live enemies
-    checkEndState();
+    // Phase 2b adds the co-op battle-end/reward handshake. The solo result
+    // path submits telemetry/leaderboard data and expects solo reward fields.
+    if (!coop.isActive(game)) checkEndState();
   }
 
   requestAnimationFrame(frame);

@@ -1617,6 +1617,10 @@ export const LEADERBOARD = {
 // SAME Supabase project as LEADERBOARD/FEEDBACK (url + anonKey above) — the
 // credentials are deliberately not duplicated here.
 export const COOP = {
+  // Phase 2a host-authoritative state sync. Snapshots ride the lossy channel;
+  // guests render slightly behind the newest host clock to absorb jitter.
+  snapshotHz: 10,
+  interpDelayMs: 100,
   // Phase 1 ownership presentation. Player presence reuses these same colors
   // in Phase 3b, so board ownership and the co-op HUD stay one visual language.
   ownership: {
