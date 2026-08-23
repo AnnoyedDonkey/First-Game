@@ -2,10 +2,10 @@
 
 Two players, one board, building together against endless waves.
 
-**Status: DESIGN ONLY — build not started, not approved.** Written 2026-08-22,
-revised through four ideation rounds the same day (mode/lobby, mechanics,
-HUD). Read `HANDOFF.md` first. This file is the single source for co-op
-work; each phase is written to be cold-read by a delegated agent.
+**Status: V1 SHIPPED — phases 0–7 plus post-playtest fixes complete.** Written
+2026-08-22 and maintained as the design plus as-built record. Read
+`HANDOFF.md` first. This file is the single source for co-op work; each phase
+is written to be cold-read by a delegated agent.
 
 ⚠️ **Section 12 (Open questions) is deliberately unresolved.** Do not pick
 answers for it unilaterally.
@@ -1152,6 +1152,48 @@ loopback allows; the live moment still wants eyes).
   HANDOFF's DEFERRED cache-buster note; a service worker (PWA plan) is the
   durable fix. **A currently-stuck client needs one manual hard-refresh** to
   reach the build that contains this.
+
+---
+
+## 10d. Compact snapshot protocol + owner-scoped rosters (2026-08-23)
+
+Two related live-play issues were fixed together: the guest could see the
+wrong roster unit when both players owned a same-named tower (for example two
+different `Laser-01`s), and the descriptive 10Hz JSON snapshots were much
+larger than the original plan estimated.
+
+- **Roster occupancy is per owner.** `towers.js placeTower` now excludes only
+  names already deployed by the acting owner. The host and guest may both
+  deploy their own `Laser-01`, retaining their independent XP/Mastery.
+- **Breaking wire schema: `COOP.protocolVersion: 2`.** Peers reject a mismatched
+  protocol with a refresh instruction instead of interpreting different tuple
+  layouts.
+- **Recurring snapshots are positional arrays.** Repeated object keys, owner
+  strings, enemy/tower type strings, and boolean sub-objects were replaced by
+  fixed tuple indexes, numeric enum codes, and bit flags.
+- **Guest-only values only.** The guest receives its own wallet; the host
+  wallet and both `totalEarned` values were removed because no guest path reads
+  them. Host authority and the drop-in grant still use the full host state.
+- **Presentation-safe fixed-point values.** Game time is integer milliseconds,
+  enemy distance is integer thousandths of a canvas pixel, and enemy health is
+  a 16-bit ratio. The guest never simulates damage; it needs the health ratio
+  only for the renderer's arc.
+- **Static tower catalog on reliable `cmd`.** Tower type/tile/owner/name/gear
+  rarity no longer repeat at 10Hz. A complete, compact catalog is sent on join,
+  reconnect, and placement. The recurring tower tuple carries only id,
+  in-battle level, upgrade cost/readiness, and Mastery rank. Cross-channel
+  ordering is safe: an unknown tower waits for its reliable descriptor, and
+  the latest stored tower state is applied as soon as the catalog arrives.
+- **Measured representative payload** (370 enemies + 20 towers, current JSON
+  serializer): **52,283 → 8,721 bytes per snapshot (83.3% smaller)**. The full
+  20-tower identity catalog was 521 bytes and is not part of the 10Hz stream.
+
+Verified in the real modules: compact encode/validate/decode round trip,
+snapshot-before-catalog ordering, flags/health/distance, guest wallet, duplicate
+`Laser-01` identities at Mastery 20 vs 1, subsequent per-owner `Laser-02`
+selection, solo placement/combat smoke test, and clean browser console. Still
+wants a real two-device slow-link feel test; payload reduction is measured, but
+human-perceived relay smoothness cannot be certified from a local loop.
 
 ---
 

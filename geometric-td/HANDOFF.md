@@ -715,7 +715,9 @@ BALANCE_LAB_PLAN.md  approved Balance Lab L0-L7 plan
   motion (capped extrapolation / eased correction / adaptive interp buffer for
   poor connections). **Playtest fixes since:** guest tower parity (upgrade
   chevron, gear orbitals, button glow), co-op end-screen when the core falls
-  (was stalling), and a general update-nudge reload fix (see below).
+  (was stalling), a general update-nudge reload fix (see below), per-owner
+  same-name roster deployment, and an 83%-smaller compact snapshot protocol
+  (`COOP.protocolVersion: 2`; full record in the co-op plan §10d).
   Live files: `src/net.js` (transport), `src/coop.js` (game protocol),
   `src/lobby.js` (session directory), `COOP` in `config.js`, `coop-spike.html`
   (unlinked Phase-0 test page), the `coop_sessions` Supabase table +

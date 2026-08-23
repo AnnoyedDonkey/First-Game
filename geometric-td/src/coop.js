@@ -20,7 +20,7 @@ import {
   applyLevelUpSurge, createTower, isUpgradeEligible, placeTower,
   refreshTowerStats, sellTower, tryUpgradeTower, upgradeCostFor,
 } from "./towers.js";
-import { GEAR_SLOTS } from "./equipment.js";
+import { GEAR_SLOTS, masteryRankFor } from "./equipment.js";
 import { emitGearDropEffect } from "./enemies.js";
 import {
   emitCoins, emitDeathShards, emitHitSparks, updateParticles,
@@ -34,10 +34,48 @@ import {
 const ROLES = Object.freeze({ HOST: "host", GUEST: "guest" });
 const OWNER_IDS = Object.freeze({ host: "coop-host", guest: "coop-guest" });
 const OWNER_ORDER = Object.freeze([OWNER_IDS.host, OWNER_IDS.guest]);
-const PHASES = new Set(["ready", "wave", "countdown", "won", "lost"]);
+const OWNER_CODE = new Map(OWNER_ORDER.map((ownerId, index) => [ownerId, index]));
+const PHASE_ORDER = Object.freeze(["ready", "wave", "countdown", "won", "lost"]);
+const PHASE_CODE = new Map(PHASE_ORDER.map((phase, index) => [phase, index]));
 const JOINABLE_PHASES = new Set(["ready", "wave", "countdown"]);
 const SHOT_EFFECT_KINDS = new Set(["beam", "muzzle", "ring", "burst"]);
 const SHOT_PROJECTILE_KINDS = new Set(["orb", "rocket"]);
+
+// The hot 10Hz path uses positional arrays: JSON field names repeated once per
+// enemy were most of the old payload. These indexes are the wire contract for
+// COOP.protocolVersion; descriptive names stay here in code, not on the wire.
+const SNAP = Object.freeze({
+  VERSION: 0, SEQ: 1, LEVEL_ID: 2, TIME_MS: 3, PHASE: 4, WAVE: 5,
+  CORE: 6, GUEST_WALLET: 7, ENEMIES: 8, TOWERS: 9, LENGTH: 10,
+});
+const ENEMY_STATE = Object.freeze({
+  ID: 0, TYPE: 1, DISTANCE: 2, HEALTH: 3, FLAGS: 4, LENGTH: 5,
+});
+const TOWER_STATE = Object.freeze({
+  ID: 0, LEVEL: 1, UPGRADE_COST: 2, FLAGS: 3, MASTERY: 4, LENGTH: 5,
+});
+const TOWER_DESC = Object.freeze({
+  ID: 0, TYPE: 1, TILE_X: 2, TILE_Y: 3, OWNER: 4, NAME: 5, GEAR: 6,
+  LENGTH: 7,
+});
+const ENEMY_FLAG = Object.freeze({ SLOW: 1, VULN: 2, HIT_FLASH: 4 });
+const TOWER_FLAG = Object.freeze({ UPGRADE_READY: 1 });
+const ENEMY_TYPE_ORDER = Object.freeze(Object.keys(ENEMIES));
+const ENEMY_TYPE_CODE = new Map(
+  ENEMY_TYPE_ORDER.map((type, index) => [type, index])
+);
+const TOWER_TYPE_ORDER = Object.freeze(Object.keys(TOWERS));
+const TOWER_TYPE_CODE = new Map(
+  TOWER_TYPE_ORDER.map((type, index) => [type, index])
+);
+const GEAR_RARITY_ORDER = Object.freeze([
+  null, "common", "enhanced", "rare", "prismatic", "singularity",
+]);
+const GEAR_RARITY_CODE = new Map(
+  GEAR_RARITY_ORDER.map((rarity, index) => [rarity, index])
+);
+const GEAR_BITS_PER_SLOT = 3;
+const GEAR_PACK_LIMIT = 2 ** (GEAR_BITS_PER_SLOT * GEAR_SLOTS.length);
 
 let activeGame = null;
 let activeRole = null;
@@ -63,6 +101,9 @@ let hostRunBanked = false;
 let hostResultSent = false;
 let guestRunBanked = false;
 let hostRearmScheduled = false;
+let hostTowerCatalogDirty = false;
+let guestTowerCatalog = new Map();
+let latestTowerStates = [];
 
 export function startHost(game, { listed = false, hostNick = null } = {}) {
   requireStartableGame(game);
@@ -123,7 +164,11 @@ export function sendIntent(game, intent) {
   if (!isActive(game)) {
     return applyIntent(game, intent, game.actingPlayerId || game.localPlayerId);
   }
-  if (isHost(game)) return applyIntent(game, intent, OWNER_IDS.host);
+  if (isHost(game)) {
+    const result = applyIntent(game, intent, OWNER_IDS.host);
+    if (intent?.op === "place" && result?.ok) hostTowerCatalogDirty = true;
+    return result;
+  }
 
   let sent = false;
   if (getConnectionState() === CONNECTION_STATES.CONNECTED) {
@@ -146,6 +191,7 @@ export function updateHost(game, now) {
   updateHostLobby(game, now);
   if (getConnectionState() !== CONNECTION_STATES.CONNECTED) return;
   if (!guestJoined) acceptGuest(game, now);
+  flushHostTowerCatalog(game);
   flushHostEvents();
   flushHostShots();
   if (game.phase === "won" || game.phase === "lost") {
@@ -246,6 +292,9 @@ function activate(game, role) {
   hostResultSent = false;
   guestRunBanked = false;
   hostRearmScheduled = false;
+  hostTowerCatalogDirty = role === ROLES.HOST;
+  guestTowerCatalog = new Map();
+  latestTowerStates = [];
   preparePlayers(game, role);
   if (role === ROLES.HOST) {
     game.coopEventSink = (event) => {
@@ -294,6 +343,9 @@ function deactivate() {
   hostResultSent = false;
   guestRunBanked = false;
   hostRearmScheduled = false;
+  hostTowerCatalogDirty = false;
+  guestTowerCatalog = new Map();
+  latestTowerStates = [];
 }
 
 function updateHostLobby(game, now, force = false) {
@@ -420,6 +472,7 @@ function guestProfileMessage() {
   }));
   return {
     type: "guestProfile",
+    protocol: COOP.protocolVersion,
     ownerId: OWNER_IDS.guest,
     roster,
     unlockedTowerTypes: Object.keys(TOWERS).filter(isTowerUnlocked),
@@ -449,9 +502,10 @@ function sendGuestProfile(game) {
 
 function validGuestProfile(message) {
   if (!exactRecord(message, [
-    "type", "ownerId", "roster", "unlockedTowerTypes", "economy",
+    "type", "protocol", "ownerId", "roster", "unlockedTowerTypes", "economy",
   ]) ||
-      message.type !== "guestProfile" || message.ownerId !== OWNER_IDS.guest ||
+      message.type !== "guestProfile" || message.protocol !== COOP.protocolVersion ||
+      message.ownerId !== OWNER_IDS.guest ||
       !Array.isArray(message.roster) ||
       message.roster.length > COOP.progressionExchange.maxRosterRecords ||
       !Array.isArray(message.unlockedTowerTypes) ||
@@ -628,6 +682,7 @@ function acceptGuest(game, now) {
   try {
     sendMessage("cmd", {
       type: "join",
+      protocol: COOP.protocolVersion,
       ownerId: OWNER_IDS.guest,
       levelId: game.level.id,
       wallet: game.wallets[OWNER_IDS.guest],
@@ -637,6 +692,8 @@ function acceptGuest(game, now) {
     // The immediate full snapshot below carries the same wallet. If this
     // assignment message is lost to a closing channel, state remains safe.
   }
+  hostTowerCatalogDirty = true;
+  flushHostTowerCatalog(game);
   sendSnapshot(game, now);
 }
 
@@ -761,44 +818,132 @@ function applySessionEnd(game, message) {
   };
 }
 
+function packGearRarities(tower) {
+  let packed = 0;
+  for (let index = 0; index < GEAR_SLOTS.length; index++) {
+    const rarity = tower.gear?.[GEAR_SLOTS[index]]?.rarity || null;
+    const code = GEAR_RARITY_CODE.get(rarity) ?? 0;
+    packed |= code << (index * GEAR_BITS_PER_SLOT);
+  }
+  return packed;
+}
+
+function unpackGearRarities(packed) {
+  return GEAR_SLOTS.map((_, index) => {
+    const mask = (1 << GEAR_BITS_PER_SLOT) - 1;
+    return GEAR_RARITY_ORDER[(packed >> (index * GEAR_BITS_PER_SLOT)) & mask] || null;
+  });
+}
+
+function validGearPack(packed) {
+  if (!Number.isSafeInteger(packed) || packed < 0 || packed >= GEAR_PACK_LIMIT) {
+    return false;
+  }
+  const mask = (1 << GEAR_BITS_PER_SLOT) - 1;
+  for (let index = 0; index < GEAR_SLOTS.length; index++) {
+    const code = (packed >> (index * GEAR_BITS_PER_SLOT)) & mask;
+    if (code >= GEAR_RARITY_ORDER.length) return false;
+  }
+  return true;
+}
+
+// Tower identity is static and therefore belongs on the reliable channel,
+// not repeated ten times a second. Sending the complete catalog on a change
+// also makes a drop-in/reconnect self-contained without per-tower ACK state.
+function buildTowerCatalog(game) {
+  return [COOP.protocolVersion, game.towers.map((tower) => [
+    tower.id,
+    TOWER_TYPE_CODE.get(tower.type),
+    tower.tileX,
+    tower.tileY,
+    OWNER_CODE.get(tower.ownerId),
+    tower.name,
+    packGearRarities(tower),
+  ])];
+}
+
+function flushHostTowerCatalog(game) {
+  if (!hostTowerCatalogDirty || !isHost(game) ||
+      getConnectionState() !== CONNECTION_STATES.CONNECTED) return;
+  try {
+    sendMessage("cmd", buildTowerCatalog(game));
+    hostTowerCatalogDirty = false;
+  } catch {
+    // Keep it dirty and retry. A guest never invents an identity for an
+    // unknown tower; it waits for this reliable catalog instead.
+  }
+}
+
 function buildSnapshot(game, sequence) {
-  return {
-    seq: sequence,
-    levelId: game.level.id,
-    time: game.time,
-    phase: game.phase,
-    waveIndex: game.waveIndex,
-    coreHealth: game.coreHealth,
-    wallets: { ...game.wallets },
-    totalEarned: { ...game.totalEarned },
-    enemies: game.enemies.filter((enemy) => enemy.alive).map((enemy) => ({
-      id: enemy.id,
-      type: enemy.type,
-      distance: enemy.distance,
-      health: enemy.health,
-      maxHealth: enemy.maxHealth,
-      flags: {
-        slow: game.time < enemy.slowUntil,
-        vuln: game.time < enemy.vulnUntil || game.time < (enemy.gearVulnUntil || 0),
-        hitFlash: enemy.hitFlash > 0,
-      },
-    })),
-    towers: game.towers.map((tower) => ({
-      id: tower.id,
-      type: tower.type,
-      tileX: tower.tileX,
-      tileY: tower.tileY,
-      level: tower.level,
-      ownerId: tower.ownerId,
-      upgradeCost: upgradeCostFor(tower),
-      // Guest-visible cosmetics: whether the host's real tower is XP-ready to
-      // upgrade (drives the guest's chevron + button highlight), and the gear
-      // rarity per slot (drives the orbital diamonds). Rarities only — the
-      // guest never needs the item stats, the host owns damage.
-      up: isUpgradeEligible(tower),
-      gear: GEAR_SLOTS.map((slot) => tower.gear?.[slot]?.rarity || null),
-    })),
+  const enemyFlags = (enemy) =>
+    (game.time < enemy.slowUntil ? ENEMY_FLAG.SLOW : 0) |
+    (game.time < enemy.vulnUntil || game.time < (enemy.gearVulnUntil || 0)
+      ? ENEMY_FLAG.VULN : 0) |
+    (enemy.hitFlash > 0 ? ENEMY_FLAG.HIT_FLASH : 0);
+  const encodedHealth = (enemy) => {
+    if (!(enemy.maxHealth > 0) || !(enemy.health > 0)) return 0;
+    const ratio = Math.min(1, enemy.health / enemy.maxHealth);
+    return Math.max(1, Math.round(ratio * COOP.snapshotHealthScale));
   };
+
+  return [
+    COOP.protocolVersion,
+    sequence,
+    game.level.id,
+    Math.round(game.time * 1000),
+    PHASE_CODE.get(game.phase),
+    game.waveIndex,
+    game.coreHealth,
+    game.wallets[OWNER_IDS.guest],
+    game.enemies.filter((enemy) => enemy.alive).map((enemy) => [
+      enemy.id,
+      ENEMY_TYPE_CODE.get(enemy.type),
+      Math.round(enemy.distance * COOP.snapshotDistanceScale),
+      encodedHealth(enemy),
+      enemyFlags(enemy),
+    ]),
+    game.towers.map((tower) => {
+      const upgradeCost = upgradeCostFor(tower);
+      return [
+        tower.id,
+        tower.level,
+        upgradeCost === null ? -1 : upgradeCost,
+        isUpgradeEligible(tower) ? TOWER_FLAG.UPGRADE_READY : 0,
+        masteryRankFor(tower.xp),
+      ];
+    }),
+  ];
+}
+
+function validTowerCatalog(message) {
+  if (!Array.isArray(message) || message.length !== 2 ||
+      message[0] !== COOP.protocolVersion || !Array.isArray(message[1]) ||
+      message[1].length > COOP.progressionExchange.maxBattleTowers) return false;
+  const ids = new Set();
+  return message[1].every((desc) => {
+    if (!Array.isArray(desc) || desc.length !== TOWER_DESC.LENGTH ||
+        !Number.isInteger(desc[TOWER_DESC.ID]) || ids.has(desc[TOWER_DESC.ID]) ||
+        !Number.isInteger(desc[TOWER_DESC.TYPE]) ||
+        !TOWER_TYPE_ORDER[desc[TOWER_DESC.TYPE]] ||
+        !Number.isInteger(desc[TOWER_DESC.TILE_X]) ||
+        !Number.isInteger(desc[TOWER_DESC.TILE_Y]) ||
+        !Number.isInteger(desc[TOWER_DESC.OWNER]) ||
+        !OWNER_ORDER[desc[TOWER_DESC.OWNER]] ||
+        typeof desc[TOWER_DESC.NAME] !== "string" ||
+        desc[TOWER_DESC.NAME].length < 1 ||
+        desc[TOWER_DESC.NAME].length > COOP.progressionExchange.maxNameLength ||
+        !validGearPack(desc[TOWER_DESC.GEAR])) return false;
+    ids.add(desc[TOWER_DESC.ID]);
+    return true;
+  });
+}
+
+function applyTowerCatalog(game, message) {
+  if (!game || !validTowerCatalog(message)) return;
+  guestTowerCatalog = new Map(
+    message[1].map((desc) => [desc[TOWER_DESC.ID], desc])
+  );
+  if (latestTowerStates.length) applyTowerSnapshots(game, latestTowerStates);
 }
 
 onConnectionState(({ state }) => {
@@ -817,6 +962,8 @@ onConnectionState(({ state }) => {
       guestPresent = true;
       activeGame.ownerIds = [...OWNER_ORDER];
       updateHostLobby(activeGame, performance.now(), true);
+      hostTowerCatalogDirty = true;
+      flushHostTowerCatalog(activeGame);
       sendSnapshot(activeGame, performance.now());
     }
   }
@@ -898,8 +1045,11 @@ onMessage(({ channel, data }) => {
   }
 
   if (channel === "cmd") {
-    if (isHost() && message?.op) {
-      applyIntent(activeGame, message, OWNER_IDS.guest);
+    if (isGuest() && Array.isArray(message)) {
+      applyTowerCatalog(activeGame, message);
+    } else if (isHost() && message?.op) {
+      const result = applyIntent(activeGame, message, OWNER_IDS.guest);
+      if (message.op === "place" && result?.ok) hostTowerCatalogDirty = true;
     } else if (isHost() && message?.type === "guestProfile") {
       applyGuestProfile(activeGame, message);
     } else if (isGuest() && message?.type === "join") {
@@ -917,19 +1067,29 @@ onMessage(({ channel, data }) => {
         if (validShot(shot)) guestShots.push(shot);
       }
     } else if (validSnapshot(message)) {
-      if (latestSnapshot && message.seq <= latestSnapshot.seq) return;
-      if (message.levelId !== activeGame.level.id) {
+      if (latestSnapshot && message[SNAP.SEQ] <= latestSnapshot.seq) return;
+      if (message[SNAP.LEVEL_ID] !== activeGame.level.id) {
         activeGame.coopJoinError =
-          `Host is playing ${message.levelId}; open that level before joining.`;
+          `Host is playing ${message[SNAP.LEVEL_ID]}; open that level before joining.`;
         return;
       }
       applySnapshot(activeGame, message, performance.now());
+    } else if (
+      (Array.isArray(message) && message[SNAP.VERSION] !== COOP.protocolVersion) ||
+      (!Array.isArray(message) && Number.isInteger(message?.seq))
+    ) {
+      activeGame.coopJoinError = "Co-op versions do not match. Refresh both devices.";
     }
   }
 });
 
 function applyJoinAssignment(game, message) {
-  if (!game || message.ownerId !== OWNER_IDS.guest ||
+  if (!game) return;
+  if (message.protocol !== COOP.protocolVersion) {
+    game.coopJoinError = "Co-op versions do not match. Refresh both devices.";
+    return;
+  }
+  if (message.ownerId !== OWNER_IDS.guest ||
       typeof message.levelId !== "string" ||
       !Number.isFinite(message.wallet) || !Number.isFinite(message.grant)) return;
   if (message.levelId !== game.level.id) {
@@ -1056,72 +1216,78 @@ function replayGuestShots(game) {
 }
 
 function validSnapshot(snapshot) {
-  if (!snapshot || typeof snapshot !== "object" ||
-      !Number.isInteger(snapshot.seq) || typeof snapshot.levelId !== "string" ||
-      !Number.isFinite(snapshot.time) ||
-      !PHASES.has(snapshot.phase) || !Number.isInteger(snapshot.waveIndex) ||
-      !Number.isFinite(snapshot.coreHealth) ||
-      !validOwnerNumbers(snapshot.wallets) || !validOwnerNumbers(snapshot.totalEarned) ||
-      !Array.isArray(snapshot.enemies) || !Array.isArray(snapshot.towers)) return false;
+  if (!Array.isArray(snapshot) || snapshot.length !== SNAP.LENGTH ||
+      snapshot[SNAP.VERSION] !== COOP.protocolVersion ||
+      !Number.isSafeInteger(snapshot[SNAP.SEQ]) || snapshot[SNAP.SEQ] < 0 ||
+      typeof snapshot[SNAP.LEVEL_ID] !== "string" ||
+      !Number.isSafeInteger(snapshot[SNAP.TIME_MS]) || snapshot[SNAP.TIME_MS] < 0 ||
+      !Number.isInteger(snapshot[SNAP.PHASE]) || !PHASE_ORDER[snapshot[SNAP.PHASE]] ||
+      !Number.isInteger(snapshot[SNAP.WAVE]) || snapshot[SNAP.WAVE] < 0 ||
+      !Number.isFinite(snapshot[SNAP.CORE]) ||
+      !Number.isFinite(snapshot[SNAP.GUEST_WALLET]) ||
+      !Array.isArray(snapshot[SNAP.ENEMIES]) ||
+      !Array.isArray(snapshot[SNAP.TOWERS])) return false;
 
-  return snapshot.enemies.every((enemy) =>
-    Number.isInteger(enemy?.id) && !!ENEMIES[enemy.type] &&
-    Number.isFinite(enemy.distance) && Number.isFinite(enemy.health) &&
-    Number.isFinite(enemy.maxHealth) && enemy.flags && typeof enemy.flags === "object"
-  ) && snapshot.towers.every((tower) =>
-    Number.isInteger(tower?.id) && !!TOWERS[tower.type] &&
-    Number.isInteger(tower.tileX) && Number.isInteger(tower.tileY) &&
-    Number.isInteger(tower.level) && tower.level >= 1 &&
-    (tower.upgradeCost === null ||
-      (Number.isSafeInteger(tower.upgradeCost) && tower.upgradeCost >= 0)) &&
-    OWNER_ORDER.includes(tower.ownerId)
+  return snapshot[SNAP.ENEMIES].every((enemy) =>
+    Array.isArray(enemy) && enemy.length === ENEMY_STATE.LENGTH &&
+    Number.isInteger(enemy[ENEMY_STATE.ID]) && enemy[ENEMY_STATE.ID] > 0 &&
+    Number.isInteger(enemy[ENEMY_STATE.TYPE]) &&
+    !!ENEMY_TYPE_ORDER[enemy[ENEMY_STATE.TYPE]] &&
+    Number.isSafeInteger(enemy[ENEMY_STATE.DISTANCE]) &&
+    enemy[ENEMY_STATE.DISTANCE] >= 0 &&
+    Number.isInteger(enemy[ENEMY_STATE.HEALTH]) &&
+    enemy[ENEMY_STATE.HEALTH] >= 0 &&
+    enemy[ENEMY_STATE.HEALTH] <= COOP.snapshotHealthScale &&
+    Number.isInteger(enemy[ENEMY_STATE.FLAGS]) &&
+    enemy[ENEMY_STATE.FLAGS] >= 0 && enemy[ENEMY_STATE.FLAGS] < 8
+  ) && snapshot[SNAP.TOWERS].every((tower) =>
+    Array.isArray(tower) && tower.length === TOWER_STATE.LENGTH &&
+    Number.isInteger(tower[TOWER_STATE.ID]) && tower[TOWER_STATE.ID] > 0 &&
+    Number.isInteger(tower[TOWER_STATE.LEVEL]) && tower[TOWER_STATE.LEVEL] >= 1 &&
+    Number.isSafeInteger(tower[TOWER_STATE.UPGRADE_COST]) &&
+    tower[TOWER_STATE.UPGRADE_COST] >= -1 &&
+    Number.isInteger(tower[TOWER_STATE.FLAGS]) &&
+    (tower[TOWER_STATE.FLAGS] & ~TOWER_FLAG.UPGRADE_READY) === 0 &&
+    Number.isInteger(tower[TOWER_STATE.MASTERY]) &&
+    tower[TOWER_STATE.MASTERY] >= 0 &&
+    tower[TOWER_STATE.MASTERY] <= TOWER_UPGRADES.mastery.maxRanks
   );
-}
-
-function validOwnerNumbers(record) {
-  return !!record && typeof record === "object" &&
-    OWNER_ORDER.every((ownerId) => Number.isFinite(record[ownerId]));
 }
 
 function applySnapshot(game, snapshot, receivedAt) {
+  const snapshotTime = snapshot[SNAP.TIME_MS] / 1000;
+  const phase = PHASE_ORDER[snapshot[SNAP.PHASE]];
   const clockAdvancing = latestSnapshot
-    ? snapshot.time > latestSnapshot.time
-    : snapshot.phase !== "won" && snapshot.phase !== "lost";
+    ? snapshotTime > latestSnapshot.time
+    : phase !== "won" && phase !== "lost";
   noteGuestSnapshotArrival(receivedAt);
   const renderTimeAtReceipt = Math.max(
     0,
-    snapshot.time - (clockAdvancing ? guestInterpDelayMs / 1000 : 0)
+    snapshotTime - (clockAdvancing ? guestInterpDelayMs / 1000 : 0)
   );
   const oldPhase = game.phase;
-  game.phase = snapshot.phase;
-  game.waveIndex = snapshot.waveIndex;
-  game.coreHealth = snapshot.coreHealth;
-  game.wallets = copyOwnerNumbers(snapshot.wallets);
-  game.totalEarned = copyOwnerNumbers(snapshot.totalEarned);
-  if (snapshot.phase === "countdown" && oldPhase !== "countdown") {
+  game.phase = phase;
+  game.waveIndex = snapshot[SNAP.WAVE];
+  game.coreHealth = snapshot[SNAP.CORE];
+  game.wallets[OWNER_IDS.guest] = snapshot[SNAP.GUEST_WALLET];
+  if (phase === "countdown" && oldPhase !== "countdown") {
     game.countdown = game.timeBetweenWaves;
   }
 
   applyEnemySnapshots(
     game,
-    snapshot.enemies,
-    snapshot.time,
+    snapshot[SNAP.ENEMIES],
+    snapshotTime,
     renderTimeAtReceipt,
     receivedAt
   );
-  applyTowerSnapshots(game, snapshot.towers);
+  latestTowerStates = snapshot[SNAP.TOWERS];
+  applyTowerSnapshots(game, latestTowerStates);
   latestSnapshot = {
-    seq: snapshot.seq,
-    time: snapshot.time,
+    seq: snapshot[SNAP.SEQ],
+    time: snapshotTime,
     receivedAt,
     clockAdvancing,
-  };
-}
-
-function copyOwnerNumbers(record) {
-  return {
-    [OWNER_IDS.host]: record[OWNER_IDS.host],
-    [OWNER_IDS.guest]: record[OWNER_IDS.guest],
   };
 }
 
@@ -1135,9 +1301,12 @@ function applyEnemySnapshots(
   const existing = new Map(game.enemies.map((enemy) => [enemy.id, enemy]));
   const mirrored = [];
   for (const state of snapshots) {
-    let enemy = existing.get(state.id);
-    const canCorrect = !!enemy && enemy.type === state.type;
-    if (!canCorrect) enemy = createMirroredEnemy(state, game.grid);
+    const id = state[ENEMY_STATE.ID];
+    const type = ENEMY_TYPE_ORDER[state[ENEMY_STATE.TYPE]];
+    const distance = state[ENEMY_STATE.DISTANCE] / COOP.snapshotDistanceScale;
+    let enemy = existing.get(id);
+    const canCorrect = !!enemy && enemy.type === type;
+    if (!canCorrect) enemy = createMirroredEnemy(id, type, distance, game.grid);
     const visibleDistance = enemy.distance;
 
     const oldSnapshotTime = enemy._coopSnapshotTime;
@@ -1145,14 +1314,14 @@ function applyEnemySnapshots(
     if (oldSnapshotTime != null && snapshotTime > oldSnapshotTime) {
       enemy._coopPreviousTime = oldSnapshotTime;
       enemy._coopPreviousDistance = oldSnapshotDistance;
-      const observedSpeed = (state.distance - oldSnapshotDistance) /
+      const observedSpeed = (distance - oldSnapshotDistance) /
         ((snapshotTime - oldSnapshotTime) * game.grid.tileSize);
       if (Number.isFinite(observedSpeed) && observedSpeed >= 0) {
         enemy.speedTilesPerSec = observedSpeed;
       }
     }
     enemy._coopSnapshotTime = snapshotTime;
-    enemy._coopSnapshotDistance = state.distance;
+    enemy._coopSnapshotDistance = distance;
     if (canCorrect) {
       const authoritativeDistance = guestEnemyDistanceAt(
         enemy,
@@ -1172,31 +1341,32 @@ function applyEnemySnapshots(
       enemy._coopCorrectionStartedAt = receivedAt;
       enemy._coopCorrectionEndsAt = receivedAt;
     }
-    enemy.health = state.health;
-    enemy.maxHealth = state.maxHealth;
-    enemy.slowUntil = state.flags.slow ? Infinity : 0;
-    enemy.vulnUntil = state.flags.vuln ? Infinity : 0;
-    enemy.hitFlash = !!state.flags.hitFlash;
+    enemy.health = state[ENEMY_STATE.HEALTH];
+    enemy.maxHealth = COOP.snapshotHealthScale;
+    const flags = state[ENEMY_STATE.FLAGS];
+    enemy.slowUntil = flags & ENEMY_FLAG.SLOW ? Infinity : 0;
+    enemy.vulnUntil = flags & ENEMY_FLAG.VULN ? Infinity : 0;
+    enemy.hitFlash = !!(flags & ENEMY_FLAG.HIT_FLASH);
     enemy.alive = true;
     mirrored.push(enemy);
   }
   game.enemies = mirrored;
 }
 
-function createMirroredEnemy(state, grid) {
-  const def = ENEMIES[state.type];
+function createMirroredEnemy(id, type, distance, grid) {
+  const def = ENEMIES[type];
   return {
-    id: state.id,
-    type: state.type,
+    id,
+    type,
     def,
     mods: {},
-    health: state.health,
-    maxHealth: state.maxHealth,
+    health: COOP.snapshotHealthScale,
+    maxHealth: COOP.snapshotHealthScale,
     speedTilesPerSec: def.speed,
     bounty: def.bounty,
     xp: def.xp,
     coreDamage: def.coreDamage,
-    distance: Math.max(0, Math.min(grid.totalPathLength, state.distance)),
+    distance: Math.max(0, Math.min(grid.totalPathLength, distance)),
     slowUntil: 0,
     slowFactor: 1,
     vulnUntil: 0,
@@ -1205,9 +1375,9 @@ function createMirroredEnemy(state, grid) {
     healPulse: 0,
     alive: true,
     _coopPreviousTime: null,
-    _coopPreviousDistance: state.distance,
+    _coopPreviousDistance: distance,
     _coopSnapshotTime: null,
-    _coopSnapshotDistance: state.distance,
+    _coopSnapshotDistance: distance,
     _coopCorrectionOffset: 0,
     _coopCorrectionStartedAt: 0,
     _coopCorrectionEndsAt: 0,
@@ -1291,34 +1461,47 @@ function applyTowerSnapshots(game, snapshots) {
   const mirrored = [];
   let refreshNeeded = false;
   for (const state of snapshots) {
-    let tower = existing.get(state.id);
-    if (!tower || tower.type !== state.type) {
-      tower = createTower(state.type, state.tileX, state.tileY, game.grid, null, state.ownerId);
-      tower.id = state.id;
+    const id = state[TOWER_STATE.ID];
+    const desc = guestTowerCatalog.get(id);
+    // cmd/state ordering is intentionally independent. A new tower waits for
+    // its reliable descriptor instead of inventing a wrong roster identity.
+    if (!desc) continue;
+    const type = TOWER_TYPE_ORDER[desc[TOWER_DESC.TYPE]];
+    const ownerId = OWNER_ORDER[desc[TOWER_DESC.OWNER]];
+    const tileX = desc[TOWER_DESC.TILE_X];
+    const tileY = desc[TOWER_DESC.TILE_Y];
+    let tower = existing.get(id);
+    if (!tower || tower.type !== type) {
+      const mirrorRecord = {
+        name: desc[TOWER_DESC.NAME], maxLevel: 1, xp: 0, kills: 0, gear: null,
+      };
+      tower = createTower(type, tileX, tileY, game.grid, mirrorRecord, ownerId);
+      tower.id = id;
       refreshNeeded = true;
     }
-    if (tower.tileX !== state.tileX || tower.tileY !== state.tileY) {
-      tower.tileX = state.tileX;
-      tower.tileY = state.tileY;
-      tower.pos = game.grid.tileCenter(state.tileX, state.tileY);
+    tower.name = desc[TOWER_DESC.NAME];
+    if (tower.tileX !== tileX || tower.tileY !== tileY) {
+      tower.tileX = tileX;
+      tower.tileY = tileY;
+      tower.pos = game.grid.tileCenter(tileX, tileY);
       refreshNeeded = true;
     }
-    if (tower.level !== state.level) {
-      tower.level = state.level;
-      tower.invested = investedAtLevel(tower.def, state.level);
+    const level = state[TOWER_STATE.LEVEL];
+    if (tower.level !== level) {
+      tower.level = level;
+      tower.invested = investedAtLevel(tower.def, level);
       refreshNeeded = true;
     }
-    // The snapshot omits XP/unlocked-level data. Do not invent eligibility on
-    // the guest mirror; its panel sends the intent and the host validates the
-    // real tower's XP and unlocked level.
-    tower.maxUnlockedLevel = state.level;
-    tower._coopUpgradeCost = state.upgradeCost;
-    // Host-authoritative upgrade readiness + gear rarities for the guest's
-    // chevron, button highlight, and orbital diamonds. Kept off tower.gear so
-    // the guest's stat math is untouched (host owns real damage).
-    tower._coopUpgradeReady = !!state.up;
-    tower._coopGearRarities = Array.isArray(state.gear) ? state.gear : null;
-    tower.ownerId = state.ownerId;
+    // The guest needs only display/intent gates; host XP and gear stats never
+    // enter its combat math. Identity/gear rarity are static catalog data,
+    // while the rank and upgrade state remain in the live snapshot.
+    tower.maxUnlockedLevel = level;
+    const upgradeCost = state[TOWER_STATE.UPGRADE_COST];
+    tower._coopUpgradeCost = upgradeCost < 0 ? null : upgradeCost;
+    tower._coopUpgradeReady = !!(state[TOWER_STATE.FLAGS] & TOWER_FLAG.UPGRADE_READY);
+    tower._coopMasteryRank = state[TOWER_STATE.MASTERY];
+    tower._coopGearRarities = unpackGearRarities(desc[TOWER_DESC.GEAR]);
+    tower.ownerId = ownerId;
     mirrored.push(tower);
   }
   game.towers = mirrored;

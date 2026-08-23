@@ -482,7 +482,9 @@ export function updateUpgradePanel(game, tower) {
   // upgrade-ready. Solo/host use the real check.
   const eligible = guestMirror ? !!tower._coopUpgradeReady : isUpgradeEligible(tower);
 
-  const rank = masteryRankFor(tower.xp);
+  const rank = guestMirror
+    ? (tower._coopMasteryRank ?? masteryRankFor(tower.xp))
+    : masteryRankFor(tower.xp);
   const dps = tower.damage / tower.fireInterval;
   const dpsText = `${dps >= 100 ? Math.round(dps) : dps.toFixed(1)} DPS`;
   setText(el.upName, "upName", tower.name + (rank > 0 ? ` ★${rank}` : ""));

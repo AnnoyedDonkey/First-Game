@@ -1619,7 +1619,10 @@ export const LEADERBOARD = {
 export const COOP = {
   // Phase 2a host-authoritative state sync. Snapshots ride the lossy channel;
   // guests render slightly behind the newest host clock to absorb jitter.
+  protocolVersion: 2,          // breaking wire-schema version; both peers must match
   snapshotHz: 10,
+  snapshotDistanceScale: 1000, // integer thousandths of a canvas pixel on the wire
+  snapshotHealthScale: 65535,  // health-bar ratio; guest never simulates enemy damage
   interpDelayMs: 100,          // starting buffer before arrival jitter is known
   maxExtrapolationMs: 250,     // coast this long past the newest state, then hold
   correctionEaseMs: 200,       // converge prediction error without a hard snap

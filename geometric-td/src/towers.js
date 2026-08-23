@@ -307,7 +307,11 @@ export function placeTower(
 
   game.wallets[ownerId] -= def.baseCost;
   // Deploy your best available roster veteran of this type, if any.
-  const deployedNames = new Set(game.towers.map((t) => t.name));
+  // Roster names are unique per player, not across the shared board: both
+  // players may own a different Laser-01 with different career progress.
+  const deployedNames = new Set(
+    game.towers.filter((t) => t.ownerId === ownerId).map((t) => t.name)
+  );
   const veteran = takeRosterUnit(type, deployedNames, game.players?.[ownerId]?.roster);
   const tower = createTower(type, tileX, tileY, game.grid, veteran, ownerId);
   game.towers.push(tower);
