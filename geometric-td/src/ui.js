@@ -5,7 +5,7 @@
 import {
   TOWERS, ENEMIES, SKILLS, SKILL_VALUES, TOWER_UPGRADES, LOOT,
   SKILL_BRANCH_COLORS, SKILL_TREE_VIEWBOX, FEEDBACK, TUTORIAL, NARRATIVE,
-  SHAPE_SIDES, VFX, COOP,
+  SHAPE_SIDES, VFX, COOP, DEBUG,
 } from "./config.js";
 import {
   onTutorialChange, isTutorialActive, currentStep as currentTutorialStep,
@@ -92,6 +92,8 @@ const el = {
   sellBtnSub: document.getElementById("sell-btn-sub"),
   skillsButton: document.getElementById("skills-button"),
   skillPoints: document.getElementById("skill-points-value"),
+  coopPresence: document.getElementById("coop-presence"),
+  coopPresencePips: document.getElementById("coop-presence-pips"),
   skillOverlay: document.getElementById("skill-overlay"),
   skillPointsLine: document.getElementById("skill-points-line"),
   skillList: document.getElementById("skill-list"),
@@ -229,6 +231,8 @@ let lastMoney = null;
 let lastMoneyGame = null; // identity of the battle lastMoney belongs to
 let lastMoneyOwner = null;
 let creditPulseTimer = null;
+let lastPresenceGame = null;
+let lastPresenceIds = [];
 let lastCreditPulseAt = -Infinity;
 
 function triggerCreditPulse() {
@@ -249,7 +253,91 @@ function triggerCreditPulse() {
   }, cg.hudPulseMs);
 }
 
+export function setCoopHudMode(coopActive) {
+  coopActive = !!coopActive;
+  const changed = last.coopHudActive !== coopActive;
+  if (changed) {
+    last.coopHudActive = coopActive;
+    el.hud.classList.toggle("coop-active", coopActive);
+    el.skillsButton.disabled = coopActive;
+  }
+  if (!coopActive && changed) {
+    lastPresenceGame = null;
+    lastPresenceIds = [];
+    el.coopPresencePips.replaceChildren();
+  }
+}
+
+function updateCoopPresence(game) {
+  const coopActive = game.coop === true;
+  setCoopHudMode(coopActive);
+  if (!coopActive) return;
+
+  const allOwnerIds = game.ownerIds || [];
+  const visibleCount = Math.min(allOwnerIds.length, COOP.presence.maxPips);
+  const firstRender = lastPresenceGame !== game;
+  let idsChanged = firstRender || visibleCount !== lastPresenceIds.length;
+  for (let index = 0; !idsChanged && index < visibleCount; index++) {
+    idsChanged = allOwnerIds[index] !== lastPresenceIds[index];
+  }
+  if (!idsChanged) return;
+
+  const ownerIds = allOwnerIds.slice(0, visibleCount);
+  if (!firstRender) {
+    for (const ownerId of lastPresenceIds) {
+      if (ownerIds.includes(ownerId)) continue;
+      const player = game.players?.[ownerId] || {};
+      showBark(
+        { name: player.label || ownerId, color: player.color || COOP.ownership.colors[0] },
+        t("coop.presence.left", "LEFT THE SESSION")
+      );
+    }
+    for (const ownerId of ownerIds) {
+      if (lastPresenceIds.includes(ownerId)) continue;
+      const player = game.players?.[ownerId] || {};
+      showBark(
+        { name: player.label || ownerId, color: player.color || COOP.ownership.colors[0] },
+        t("coop.presence.joined", "JOINED THE SESSION")
+      );
+    }
+  }
+  lastPresenceGame = game;
+  lastPresenceIds = ownerIds;
+
+  el.coopPresence.style.setProperty("--coop-pip-size", `${COOP.presence.pipSizePx}px`);
+  el.coopPresence.style.setProperty("--coop-pip-gap", `${COOP.presence.pipGapPx}px`);
+  el.coopPresence.style.setProperty(
+    "--coop-local-outline", `${COOP.presence.localOutlinePx}px`
+  );
+  el.coopPresencePips.replaceChildren();
+  const fragment = document.createDocumentFragment();
+  for (let index = 0; index < ownerIds.length; index++) {
+    const ownerId = ownerIds[index];
+    const player = game.players?.[ownerId] || {};
+    const isHost = ownerId === game.coopHostId;
+    const isLocal = ownerId === game.localPlayerId;
+    const label = player.label || ownerId;
+    const pip = document.createElement("span");
+    pip.className = "coop-presence-pip";
+    pip.classList.toggle("local", isLocal);
+    pip.classList.toggle("host", isHost);
+    pip.style.setProperty(
+      "--owner-color", player.color || COOP.ownership.colors[index % COOP.ownership.colors.length]
+    );
+    pip.textContent = isHost ? t("coop.presence.hostMark", "H") : "";
+    pip.title = [
+      label,
+      isHost ? t("coop.presence.host", "HOST") : "",
+      isLocal ? t("coop.presence.you", "YOU") : "",
+    ].filter(Boolean).join(" · ");
+    pip.setAttribute("aria-label", pip.title);
+    fragment.appendChild(pip);
+  }
+  el.coopPresencePips.appendChild(fragment);
+}
+
 export function updateHUD(game) {
+  if (game.coop === true || last.coopHudActive) updateCoopPresence(game);
   // Each battle gets a fresh baseline: startLevel builds a new game object, so
   // comparing identity resets the tracker without needing a lifecycle hook.
   // Without this, starting a level richer than the last one ended would pulse.
@@ -265,7 +353,7 @@ export function updateHUD(game) {
   // Optional-chained and explicitly hidden again: without the else branch the
   // bar survived from a coopLocal battle into the next normal one, and a
   // synthetic game object without ownerIds (tower demos) would throw here.
-  if (game.ownerIds?.length > 1) {
+  if (DEBUG.coopLocal && game.ownerIds?.length > 1) {
     el.coopDebugBar.classList.remove("hidden");
     const actor = game.players[game.actingPlayerId]?.label || game.actingPlayerId;
     const wallets = game.ownerIds.map((ownerId) => {
@@ -384,6 +472,7 @@ export function updateUpgradePanel(game, tower) {
   const threshold = xpThresholdFor(tower);
   const cost = upgradeCostFor(tower);
   const eligible = isUpgradeEligible(tower);
+  const guestMirror = game.coopRole === "guest";
 
   const rank = masteryRankFor(tower.xp);
   const dps = tower.damage / tower.fireInterval;
@@ -391,14 +480,18 @@ export function updateUpgradePanel(game, tower) {
   setText(el.upName, "upName", tower.name + (rank > 0 ? ` ★${rank}` : ""));
   // Veterans show their unlocked potential, e.g. "LV 1/3".
   const lvAbbr = t("ui.lv", "LV");
-  const lvText = tower.maxUnlockedLevel > tower.level
-    ? `${lvAbbr} ${tower.level}/${tower.maxUnlockedLevel}`
-    : `${lvAbbr} ${tower.level}`;
+  const lvText = guestMirror
+    ? `${lvAbbr} ${tower.level}`
+    : (tower.maxUnlockedLevel > tower.level
+        ? `${lvAbbr} ${tower.level}/${tower.maxUnlockedLevel}`
+        : `${lvAbbr} ${tower.level}`);
   setText(el.upLevel, "upLevel", lvText);
   // Past level 5, the XP line tracks mastery progress instead.
   let xpText;
   const xpReadyText = t("ui.xpReady", "XP READY");
-  if (threshold !== null && tower.xp < threshold) {
+  if (guestMirror) {
+    xpText = t("coop.upgrade.hostVerified", "HOST VERIFIES XP");
+  } else if (threshold !== null && tower.xp < threshold) {
     xpText = `XP ${tower.xp}/${threshold}`;
   } else if (threshold !== null) {
     // Eligible (or a veteran re-leveling): no confusing 99999/100.
@@ -418,6 +511,10 @@ export function updateUpgradePanel(game, tower) {
     label = t("ui.max", "MAX");
     sub = t("ui.level", "LEVEL");
     disabled = true;
+  } else if (guestMirror) {
+    label = t("ui.upgrade", "UPGRADE");
+    sub = t("coop.upgrade.hostOnly", "HOST CHECK");
+    disabled = true;
   } else if (!eligible) {
     label = t("ui.need", "NEED");
     sub = t("ui.xp", "XP");
@@ -430,6 +527,12 @@ export function updateUpgradePanel(game, tower) {
 
   setText(el.upgradeBtnLabel, "upBtnLabel", label);
   setText(el.upgradeBtnSub, "upBtnSub", sub);
+  el.upgradeButton.title = guestMirror && threshold !== null
+    ? t(
+        "coop.upgrade.guestReason",
+        "This guest mirror does not receive tower XP, so upgrades must be made by the host."
+      )
+    : "";
   const canSell = tower.ownerId === (game.actingPlayerId || game.localPlayerId);
   setText(
     el.sellBtnSub,
@@ -1105,7 +1208,13 @@ el.worldNext.addEventListener("click", () => navigateWorld(1));
 // When the language changes (via the menu LANGUE entry), rebuild the
 // (generated) menu so its labels re-translate. Static [data-i18n] markup is
 // handled by i18n itself.
-onLangChange(() => { if (menuCtx) renderWorld(); updateWelcomeBack(); });
+onLangChange(() => {
+  if (menuCtx) renderWorld();
+  updateWelcomeBack();
+  // Rebuild translated pip titles/host mark on the next HUD update without
+  // treating the same players as a fresh join.
+  lastPresenceGame = null;
+});
 
 // Horizontal swipe on the overlay pages between worlds. Kept distinct
 // from the level list's vertical scroll: only a clearly-horizontal drag
@@ -1149,6 +1258,7 @@ export function initSpeedControls(onChange, getFastSpeeds) {
   const fast = document.getElementById("speed-fast");
   let factor = 1;
   let paused = false;
+  let locked = false;
 
   function apply() {
     slow.classList.toggle("active", factor < 1 && !paused);
@@ -1164,11 +1274,13 @@ export function initSpeedControls(onChange, getFastSpeeds) {
 
   // Each arrow steps further in its direction; one more tap wraps to 1x.
   slow.addEventListener("click", () => {
+    if (locked) return;
     factor = factor === 0.5 ? 0.25 : factor === 0.25 ? 1 : 0.5;
     paused = false;
     apply();
   });
   fast.addEventListener("click", () => {
+    if (locked) return;
     const all = (getFastSpeeds && getFastSpeeds()) || [2, 4];
     const list = all.filter((s) => s > 1).sort((a, b) => a - b);
     const idx = list.indexOf(factor);
@@ -1178,9 +1290,24 @@ export function initSpeedControls(onChange, getFastSpeeds) {
     apply();
   });
   pause.addEventListener("click", () => {
+    if (locked) return;
     paused = !paused;
     apply();
   });
+
+  return {
+    setLocked(nextLocked) {
+      locked = !!nextLocked;
+      slow.disabled = locked;
+      pause.disabled = locked;
+      fast.disabled = locked;
+      if (locked) {
+        factor = 1;
+        paused = false;
+        apply();
+      }
+    },
+  };
 }
 
 // ---------- Tower guide overlay ----------

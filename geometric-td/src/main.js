@@ -26,7 +26,7 @@ import {
   initSpeedControls, onExitButtonTap, openLeaderboard,
   openGearPanel, showMilestoneToast, updateTutorialOverlay, maybeShowTileInfo,
   showBark, updateStoryOverlay, levelNameFor, milestoneLabelFor,
-  initCoopDebugControls,
+  initCoopDebugControls, setCoopHudMode,
 } from "./ui.js";
 import { getNickname, submitScore, isEnabled as lbEnabled } from "./leaderboard.js";
 import {
@@ -88,6 +88,7 @@ window.gear = {
 };
 
 function startLevel(level, endless = false) {
+  setCoopHudMode(false);
   game = createGame(level, TILE_SIZE, endless);
   overlayShown = false;
   // Per-battle bark driver state: the boss-banter guard, plus when each
@@ -249,7 +250,7 @@ initSkillTree(() => {
 // Player speed control: 0.5x / pause / 2x (multiplies the game clock).
 let speedFactor = 1;
 let gamePaused = false;
-initSpeedControls((factor, paused) => {
+const speedControls = initSpeedControls((factor, paused) => {
   speedFactor = factor;
   gamePaused = paused;
 }, getUnlockedSpeeds);
@@ -325,7 +326,28 @@ function goToMainMenu() {
 
 function leaveCoopSession() {
   coop.stopSession();
+  speedControls.setLocked(false);
+  setCoopHudMode(false);
+  exitConfirming = false;
   goToMainMenu();
+}
+
+function showRemoteCoopEnd() {
+  if (!game?.coopEndReason || overlayShown) return;
+  exitConfirming = true;
+  overlayShown = true;
+  showOverlay({
+    title: t("coop.ended.title", "HOST LEFT"),
+    subtitle: t(
+      "coop.ended.subtitle",
+      "The host ended the session. This co-op battle is over."
+    ),
+    type: "loss",
+    buttons: [{
+      text: t("menu.mainMenu", "MAIN MENU"),
+      onTap: leaveCoopSession,
+    }],
+  });
 }
 
 // One of the config roast pools, picked at random for the results title —
@@ -465,18 +487,22 @@ let exitConfirming = false;
 
 onExitButtonTap(() => {
   if (!game || overlayShown || exitConfirming) return;
-  if (coop.isActive(game)) {
+  if (coop.isGuest(game)) {
+    leaveCoopSession();
+    return;
+  }
+  if (coop.isHost(game)) {
     exitConfirming = true;
     showOverlay({
-      title: t("coop.leave.title", "LEAVE CO-OP?"),
+      title: t("coop.end.title", "END CO-OP?"),
       subtitle: t(
-        "coop.leave.subtitle",
-        "The session connection will close and this battle will end."
+        "coop.end.subtitle",
+        "This ends the session for every player."
       ),
       type: "loss",
       buttons: [
         {
-          text: t("coop.leave.action", "LEAVE SESSION"),
+          text: t("coop.end.action", "END SESSION"),
           onTap: () => {
             exitConfirming = false;
             leaveCoopSession();
@@ -779,7 +805,8 @@ function frame(now) {
     // level-up surge) can compensate and last a constant real-time length.
     game.effectiveSpeed = DEBUG.gameSpeed * speedFactor;
     if (coop.isGuest(game)) {
-      coop.updateGuest(game, now);
+      if (!game.coopEndReason) coop.updateGuest(game, now);
+      showRemoteCoopEnd();
       // Snapshot reconciliation preserves live tower objects by id, but a sold
       // tower disappears. Clear that stale panel selection when its echo lands.
       if (uiState.selectedTower &&
@@ -823,11 +850,17 @@ initLobbyMenu({
       throw new Error("Only cleared levels can host co-op");
     }
     startLevel(level, true);
-    return coop.startHost(game, options);
+    const pending = coop.startHost(game, options);
+    speedControls.setLocked(true);
+    setCoopHudMode(true);
+    return pending;
   },
   onJoin(level, code) {
     startLevel(level, true);
-    return coop.startGuest(game, code);
+    const pending = coop.startGuest(game, code);
+    speedControls.setLocked(true);
+    setCoopHudMode(true);
+    return pending;
   },
   onCancel: leaveCoopSession,
   onSessionFailure: leaveCoopSession,

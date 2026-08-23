@@ -143,6 +143,48 @@ button.hud-item {
 
 #skills-button .hud-value { color: var(--neon-magenta); text-shadow: 0 0 8px rgba(255, 63, 212, 0.5); }
 
+/* Real co-op HUD: the account-wide skill button and the three local clock
+   controls leave, but #speed-controls itself stays because it owns EXIT. */
+#coop-presence {
+  display: none;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+}
+#coop-presence-pips {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--coop-pip-gap);
+  min-width: 0;
+}
+.coop-presence-pip {
+  width: var(--coop-pip-size);
+  height: var(--coop-pip-size);
+  flex: 0 0 var(--coop-pip-size);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--owner-color);
+  border-radius: 50%;
+  background: var(--owner-color);
+  color: var(--bg);
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1;
+}
+.coop-presence-pip.local {
+  box-shadow:
+    0 0 0 var(--coop-local-outline) #fff,
+    0 0 8px var(--owner-color);
+}
+#hud.coop-active #skills-button,
+#hud.coop-active #speed-slow,
+#hud.coop-active #speed-pause,
+#hud.coop-active #speed-fast { display: none; }
+#hud.coop-active #coop-presence { display: flex; }
+#hud.coop-active .exit-btn { margin-left: 0; }
+
 /* ---------- Speed controls ---------- */
 
 #speed-controls {

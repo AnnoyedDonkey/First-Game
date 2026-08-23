@@ -39,6 +39,8 @@ let snapshotSequence = 0;
 let lastSnapshotSentAt = -Infinity;
 let latestSnapshot = null;
 let guestJoined = false;
+let guestPresent = false;
+let sessionConnected = false;
 let hostEvents = [];
 let guestEvents = [];
 let hostShots = [];
@@ -200,10 +202,15 @@ function activate(game, role) {
   activeGame = game;
   activeRole = role;
   game.coop = true;
+  game.coopRole = role;
+  game.coopHostId = OWNER_IDS.host;
+  delete game.coopEndReason;
   snapshotSequence = 0;
   lastSnapshotSentAt = -Infinity;
   latestSnapshot = null;
   guestJoined = false;
+  guestPresent = false;
+  sessionConnected = false;
   hostEvents = [];
   guestEvents = [];
   hostShots = [];
@@ -236,10 +243,15 @@ function deactivate() {
   if (activeGame) {
     delete activeGame.coopEventSink;
     delete activeGame.coop;
+    delete activeGame.coopRole;
+    delete activeGame.coopHostId;
+    delete activeGame.coopEndReason;
   }
   activeGame = null;
   activeRole = null;
   latestSnapshot = null;
+  guestPresent = false;
+  sessionConnected = false;
   hostLobby = null;
   hostEvents = [];
   guestEvents = [];
@@ -325,7 +337,9 @@ function preparePlayers(game, role) {
     };
   }
 
-  game.ownerIds = role === ROLES.HOST ? [OWNER_IDS.host] : [...OWNER_ORDER];
+  // Presence starts local-only on both sides. The CONNECTED transition adds
+  // the peer, so neither HUD claims somebody is present during signaling.
+  game.ownerIds = [localOwnerId];
   game.players = players;
   game.wallets = role === ROLES.HOST
     ? { [OWNER_IDS.host]: oldWallet }
@@ -467,6 +481,7 @@ function acceptGuest(game, now) {
   game.totalEarned[OWNER_IDS.guest] = 0;
   game.coopDropInGrant = grant;
   guestJoined = true;
+  guestPresent = true;
   updateHostLobby(game, now, true);
 
   try {
@@ -521,8 +536,39 @@ onConnectionState(({ state }) => {
   if (state === CONNECTION_STATES.WAITING_FOR_PEER && isHost()) {
     updateHostLobby(activeGame, performance.now(), true);
   }
-  if (state === CONNECTION_STATES.CONNECTED && isHost() && !guestJoined) {
-    acceptGuest(activeGame, performance.now());
+  if (state === CONNECTION_STATES.CONNECTED && isActive()) {
+    sessionConnected = true;
+    if (isGuest()) activeGame.ownerIds = [...OWNER_ORDER];
+    if (isHost() && !guestJoined) {
+      acceptGuest(activeGame, performance.now());
+    } else if (isHost() && !guestPresent) {
+      guestPresent = true;
+      activeGame.ownerIds = [...OWNER_ORDER];
+      updateHostLobby(activeGame, performance.now(), true);
+      sendSnapshot(activeGame, performance.now());
+    }
+  }
+  if (
+    isHost() && guestPresent && (
+      state === CONNECTION_STATES.DISCONNECTED ||
+      state === CONNECTION_STATES.FAILED ||
+      state === CONNECTION_STATES.CLOSED
+    )
+  ) {
+    guestPresent = false;
+    activeGame.ownerIds = [OWNER_IDS.host];
+  }
+  if (
+    isGuest() && sessionConnected && (
+      state === CONNECTION_STATES.DISCONNECTED ||
+      state === CONNECTION_STATES.FAILED ||
+      state === CONNECTION_STATES.CLOSED
+    )
+  ) {
+    // For a guest, the only peer is the authority. Losing it ends the battle;
+    // main.js turns this into a clean, localized exit instead of a frozen war.
+    activeGame.ownerIds = [OWNER_IDS.guest];
+    activeGame.coopEndReason ||= "host-left";
   }
   if (
     isHost() && (

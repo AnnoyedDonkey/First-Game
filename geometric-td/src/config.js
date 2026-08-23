@@ -1645,6 +1645,14 @@ export const COOP = {
       "GRID", "BEACON", "RELAY", "MATRIX", "ORBIT", "SIGNAL",
     ],
   },
+  // Phase 3b HUD presence. Four fit now even though the shipped session cap
+  // is two, so raising maxPlayers later does not require another HUD layout.
+  presence: {
+    maxPips: 4,
+    pipSizePx: 18,
+    pipGapPx: 5,
+    localOutlinePx: 2,
+  },
   // Phase 1 ownership presentation. Player presence reuses these same colors
   // in Phase 3b, so board ownership and the co-op HUD stay one visual language.
   ownership: {
