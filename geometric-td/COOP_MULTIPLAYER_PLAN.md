@@ -504,6 +504,71 @@ tracks both, and the sell gate holds.
 
 ## 8. Phase 2 — Netcode + drop-in
 
+**SPLIT INTO 2a AND 2b (2026-08-22).** Phase 2 as originally written bundles
+core state sync, cosmetic event fan-out, and drop-in join. That is too much for
+one delegated pass — and 2a has a clean, independently verifiable milestone
+("two tabs show the same battle"), so it is worth landing on its own.
+
+### Phase 2a — host-authoritative core sync  ← DO THIS ONE FIRST
+
+**Milestone: two browser tabs, one hosting and one joining, show the same
+battle.** No cosmetic parity, no drop-in — those are 2b.
+
+**What Phase 1 already gives you** (verify before trusting): `game.ownerIds`,
+`game.players[id]` (`{id, label, color, economy, roster}`), `game.wallets[id]`,
+`game.totalEarned[id]`, `game.localPlayerId`, `game.actingPlayerId`,
+`game.progressionOwnerId`, `tower.ownerId`, and `game.money` as an accessor
+onto the local wallet. Placement/upgrade/sell all already take an acting
+`ownerId`.
+
+**What Phase 0 already gives you** (`src/net.js`, do not modify):
+`hostSession()` (returns a promise with `.code`), `joinSession(code)`,
+`onMessage(cb)` → `cb({channel, data, event})` where **`data` is a JSON
+STRING**, `sendMessage(channel, obj)`, `onConnectionState(cb)`,
+`getConnectionState()`, `closeSession()`, `CONNECTION_STATES`. Channels are
+`"cmd"` (reliable, ordered) and `"state"` (unordered, lossy).
+
+**New file `src/coop.js`** owns the game-layer protocol. `net.js` stays pure
+transport — do not put game concepts in it.
+
+**Enemies are the whole trick.** An enemy is 1-D: `enemy.distance` plus
+`grid.positionOnPath()` is its position, and enemies already carry a stable
+`enemy.id` (`enemies.js createEnemy`). The renderer reads `def` — which the
+guest rebuilds locally from `ENEMIES[type]` — so **only these cross the wire**:
+`{id, type, distance, health, maxHealth, flags}` (flags = slow/vuln/hitFlash as
+needed for tinting). The guest reconstructs enemy-shaped objects the existing
+renderer can draw **unchanged**.
+
+**Snapshot** (on `state`, at `COOP.snapshotHz`, start 10): `time`, `phase`,
+`waveIndex`, `coreHealth`, `wallets`, `totalEarned`, the enemy array above, and
+towers as `{id, type, tileX, tileY, level, ownerId}`. **Projectiles, particles
+and effects never cross the wire.**
+
+**Intents** (on `cmd`): `{op:"place"|"upgrade"|"sell", ...}`. The guest sends
+and **applies nothing locally** — it waits for the host's next snapshot. The
+host funnels local AND remote intents into the real
+`placeTower`/`tryUpgradeTower`/`sellTower` with the correct acting `ownerId`.
+
+**Guest render loop:** in `main.js frame()`, a guest must **skip `updateGame`
+entirely** and instead run a `coop.js` interpolation step that advances each
+mirrored enemy's `distance` by its own speed between snapshots. Everything
+downstream (`render`, `updateHUD`, the panels) stays as-is.
+
+**Clock:** snapshots carry the host's `game.time`; the guest slaves to it with
+a smoothing buffer (`COOP.interpDelayMs`, start ~100).
+
+**Do NOT in 2a:** drop-in join, the earnings grant, cosmetic event fan-out
+(coins / credit pulse / gear-drop / level-up surge on the guest), the lobby, or
+any `version.js` bump.
+
+### Phase 2b — event fan-out + drop-in (after 2a lands)
+
+Cosmetic parity via `cmd` events (`towerFired`, `kill`, `waveStart`,
+`gearDrop`) so the guest runs its own Credit Juice VFX; then drop-in join with
+the `COOP.dropIn.earningsShare` grant computed from `game.totalEarned` (§3).
+
+### Original Phase 2 detail (applies across 2a + 2b)
+
 1. **Intent path.** The three `main.js` chokepoints become: local player →
    `coop.js sendIntent()`; on the host, intents (local and remote) funnel into
    the real `placeTower`/`tryUpgradeTower`/`sellTower`. **The guest applies
