@@ -683,6 +683,48 @@ landmine comes back with it.
 
 ## 9. Phase 3 — Lobby and session browser
 
+### Implementation contract (surveyed 2026-08-22)
+
+**What already exists — do not rebuild any of it:**
+- **The table.** `coop_sessions` is LIVE in Supabase with exactly these columns:
+  `code` (PK), `codename`, `listed` (bool), `host_nick`, `level_id`, `wave`,
+  `players`, `max_players`, `free_tiles`, `offer`, `answer`, `last_seen`,
+  `created_at`. RLS allows anon select/insert/update, plus **delete of stale
+  rows only**. A `pg_cron` job prunes rows unseen for 30 minutes. SQL and
+  rationale are in `SUPABASE_SETUP.md`.
+- **`src/net.js`** — transport. `hostSession()` (promise with `.code`),
+  `joinSession(code)`, `onConnectionState`, `getConnectionState`,
+  `closeSession`, `CONNECTION_STATES`, `getDiagnostics`. **Do not modify it.**
+  It currently writes only `code`, `offer` and `answer`; the lobby metadata
+  columns are unused so far.
+- **`src/coop.js`** — game protocol: `startHost(game)`, `startGuest(game,
+  code)`, `isActive/isHost/isGuest`, `getRole`, `getState`, `sendIntent`,
+  `updateHost`, `updateGuest`. Drop-in join and the earnings grant work.
+- **`COOP` in config.js** — already holds `roomCodeLength/Alphabet`,
+  `sessionTtlMs`, `ownership.colors`, ICE/TURN settings, `dropIn`. Add lobby
+  knobs here (heartbeat interval, stale window, codename word lists, poll
+  interval, name length caps).
+- **`window.coop`** in `main.js` is the temporary console bridge the lobby
+  replaces. Remove it once the UI works.
+- **`ui.js appendGlobalMenuButtons()`** builds `#menu-actions` rows — the CO-OP
+  button belongs here.
+
+**Endless-only, cleared levels only.** Co-op runs a **cleared** campaign level
+in **Endless** mode (`startLevel(level, true)`). Endless is gated on having
+BEATEN the level (`ui.js` disables the button unless `cleared`) — a brand-new
+player can host nothing, and that is correct.
+
+**Session rows must carry live metadata.** `net.js` writes only the handshake
+today. The lobby needs `codename`, `listed`, `host_nick`, `level_id`, `wave`,
+`players`, `max_players`, `free_tiles` written on create and refreshed by the
+heartbeat. Put that in `coop.js` or a new `src/lobby.js` — **not** in `net.js`.
+
+**Free tiles** = buildable tiles minus placed towers. It is the signal that
+stops a joiner entering a session with nowhere to build.
+
+**Codenames are generated, never typed** (§2 round 3) — seeded by the room
+code so they are stable, from word lists in `COOP.codenames`.
+
 1. **CO-OP button** appended to `#menu-actions` (`index.html:172`).
 2. **Session naming is generated, never typed** (round 3). The lobby row is a
    set of **fields**, not a title string, which removes the naming problem
