@@ -23,6 +23,14 @@
     #room-code { min-height: 1.3em; margin-top: 14px; color: #ffe66d; font-size: 30px; letter-spacing: .18em; }
     #connection-state, #round-trip { color: #75ffb0; font-size: 20px; }
     #detail { min-height: 1.5em; overflow-wrap: anywhere; }
+    /* This page does not load styles.css, so .hidden must be defined here. */
+    .hidden { display: none; }
+    pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+    #report-text {
+      width: 100%; margin-top: 10px; padding: 10px; border: 1px solid #3d6874;
+      border-radius: 6px; background: #070b10; color: #dffcff;
+      font: inherit; font-size: 12px;
+    }
   </style>
 </head>
 <body>
@@ -72,6 +80,15 @@
     <section>
       <h2>Event log</h2>
       <pre id="event-log" class="muted">—</pre>
+      <div class="row">
+        <button id="copy-button" type="button">COPY REPORT</button>
+      </div>
+      <p id="copy-status" class="muted" aria-live="polite"></p>
+      <!-- Fallback when the clipboard is unavailable: the assembled report
+           has to exist somewhere selectable, or "copy it manually" is advice
+           with nothing to act on. -->
+      <textarea id="report-text" class="hidden" readonly rows="12"
+                aria-label="Diagnostic report"></textarea>
     </section>
   </main>
 
@@ -234,6 +251,35 @@
       roundTrip.textContent = "—";
       detail.textContent = "";
     }
+
+    // Reading a diagnostics panel off a phone screen and retyping it is
+    // miserable and error-prone, and this whole phase runs on the quality of
+    // what comes back from the device. One tap, one paste.
+    const copyButton = document.querySelector("#copy-button");
+    const copyStatus = document.querySelector("#copy-status");
+    const reportText = document.querySelector("#report-text");
+    copyButton.addEventListener("click", async () => {
+      const report =
+        `=== CO-OP SPIKE REPORT ===\n` +
+        `when:  ${new Date().toISOString()}\n` +
+        `agent: ${navigator.userAgent}\n\n` +
+        `--- diagnostics ---\n${diagnosticsBox.textContent}\n\n` +
+        `--- event log ---\n${eventLogBox.textContent}\n\n` +
+        `--- detail ---\n${detail.textContent || "(none)"}\n`;
+      // Always render it, then try the clipboard. If the clipboard is
+      // unavailable the report is already on screen and selectable.
+      reportText.value = report;
+      try {
+        await navigator.clipboard.writeText(report);
+        copyStatus.textContent = "Copied — paste it into the chat.";
+        reportText.classList.add("hidden");
+      } catch {
+        copyStatus.textContent = "Clipboard blocked — select the text below and copy it.";
+        reportText.classList.remove("hidden");
+        reportText.focus();
+        reportText.select();
+      }
+    });
 
     // Tells the watchdog below that the module actually ran.
     window.__spikeReady = true;
