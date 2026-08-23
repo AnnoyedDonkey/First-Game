@@ -834,6 +834,41 @@ SKILLS(button) | speed-controls(slow, pause, fast, exit)**. In co-op it becomes
 The half that touches the save layer. **Never break or wipe an existing
 localStorage save** (cardinal rule).
 
+### Implementation contract (surveyed 2026-08-22)
+
+**The load-bearing fact nobody expects:** today a co-op run banks **NOTHING**,
+for either player. `game.js` guards every writer with `!game.coop`
+(`game.js:188,193,209`), so a co-op battle ends without `recordBattleEnd` or
+`recordEndlessResult` ever running. Phase 4's real job is to add a **co-op
+banking path for BOTH players** — not merely to ship a payload. The host banks
+its own progression locally; the guest banks its own from a host-sent payload.
+Neither may touch campaign completion, `endlessBest`, the leaderboard, or the
+`+1 skillPoint`-on-win (Endless has no win, and co-op must stay off the solo
+board — locked, §2 round 3).
+
+**What the normal writers do, for reference** (co-op needs a subset):
+- `recordBattleEnd(game, won)` (`progression.js:1030`) → `syncRoster` +
+  `recordRunLoot` + `refreshStoreAfterRun` + `grantLevelMilestones`, then the
+  win-only block (skillPoint / wins / completedLevels), then `writeSave`.
+- `syncRoster(game)` banks each tower's `maxLevel`/`xp`/`kills` back to its
+  roster record, and adds `shardsEarned` to `state.shards`. **It already skips
+  towers whose `ownerId` ≠ `progressionOwnerId`/`localPlayerId`** — so on the
+  host, guest towers are correctly NOT banked into the host's save. Their
+  earnings are exactly what must travel back to the guest.
+- `recordRunLoot(game)` (`progression.js:974`) consumes `game.lootDrops`.
+
+**Two attribution gaps to close:**
+1. **Loot + shards are not per-owner.** At the drop site (`enemies.js:281`,
+   `sourceTower` is in scope) attach `sourceTower.ownerId` to the drop, and
+   accumulate `shardsEarned` per owner (mirror the per-wallet bounty pattern at
+   `enemies.js:250`, `game.totalEarned`). Without this the host cannot tell
+   which drops/shards belong to the guest.
+2. **The guest's roster is empty on the host.** `coop.js preparePlayers`
+   currently sets `roster: []` for the remote owner (a deliberate Phase 1
+   placeholder, `coop.js:334`). Phase 4 fills it from the join payload so
+   `takeRosterUnit` deploys the guest's real veterans with correct
+   `maxLevel`/`xp`/gear.
+
 1. **Join payload (guest → host).** Deployable roster records (name, type,
    career level, mastery XP, gear stats) plus **resolved numbers** for the
    skills the host needs — `getMoneyMult`, interest rate/cap, per-tower
@@ -845,18 +880,50 @@ localStorage save** (cardinal rule).
      spent mid-session, every stat the host computed for that player would go
      stale and the payload would need re-syncing on every change. **Do not
      re-add mid-session skill spending without also solving that.**
-2. **Session-end payload (host → guest).** Per-tower XP and mastery gains,
-   loot earned by the guest's towers, shards, kills/leaks, wave reached. The
-   guest feeds these into its **own** `recordBattleEnd` (`progression.js:1030`)
-   so its save is written locally by its own code.
-3. **Global-skill conflicts.** Proposed: economy skills apply **per-wallet**
-   (each player's own), **core HP takes the host's bonus**, starting money is
-   each player's own into their own wallet.
-4. **Telemetry.** `feedback.js` rows need a `coop` flag and a role, or co-op
-   runs will pollute the balance dashboard's difficulty data. A payload field
-   means a `version.js` bump (see `TELEMETRY_DASHBOARD_PLAN.md` Scope B).
-5. **Validate everything.** This phase writes progression from data that
-   arrived over a network. A malformed payload must never corrupt a roster.
+   - **This payload is sent ONCE and must stay valid for the whole session.**
+     True only because **skills are locked at join** (SKILLS is hidden from the
+     co-op HUD, §9a). Do not re-add mid-session skill spending without also
+     re-syncing this.
+   - The host applies the guest's economy through the existing per-player hook:
+     `game.players[guestId].economy = {moneyMult, interestRate, interestCap}`
+     (that is what `enemies.js moneyMultFor` and `game.js` wave-interest already
+     read per owner). Send **resolved numbers** from the guest's
+     `getMoneyMult`/`getInterestRate`/`getInterestCap`, not skill ids.
+2. **Session-end payload (host → guest).** For each of the **guest's** towers:
+   `{name, maxLevel, xp, kills, gear}` (final in-battle state). Plus the loot
+   drops and rounded shards attributed to the guest's `ownerId`, and
+   wave-reached. The guest applies these to **its own** save through a new
+   co-op banking function (see below) — never the host's.
+3. **A co-op banking path, for both roles.** Add e.g.
+   `progression.bankCoopRun({ towers, loot, shards })` that does the SAFE
+   subset: fold each tower's `maxLevel/xp/kills` into the roster (reuse
+   `syncRoster`'s record logic), run the loot through the same path
+   `recordRunLoot` uses, add shards, then `writeSave`. It must **NOT** touch
+   `completedLevels`, `endlessBest`, `wins`, `skillPoints`, the leaderboard, or
+   milestones. The host calls it at battle end with its OWN towers/loot/shards;
+   the guest calls it with the host-sent payload.
+4. **Global-skill conflicts.** Economy skills apply **per-wallet** (each
+   player's own, already wired via `players[id].economy`); **core HP takes the
+   host's bonus** (`getCoreBonus` runs on the host, the authority); starting
+   money is each player's own into their own wallet.
+5. **Validate everything — this is the dangerous phase.** The guest writes
+   progression from data that arrived over a network. Validate types and
+   bounds on every field of the session-end payload; a tower name that isn't a
+   string, an `xp` that is negative or NaN, a gear object of the wrong shape
+   must be rejected, not written. A malformed payload must never corrupt a
+   roster. **Match roster records by `name`** and never CREATE a roster entry
+   the guest didn't already own from a network message — only update existing
+   ones (a guest can only field its own veterans, so every returned name should
+   already exist locally).
+6. **No save-schema change if avoidable.** Wallets and per-battle earnings are
+   runtime state. If a new persistent field is truly needed it requires a
+   `save.js` default AND a post-`loadSave()` backfill (`progression.js`
+   `migrateSkills` pattern). Prefer none.
+7. **Telemetry (defer unless trivial).** Co-op runs will pollute the balance
+   dashboard if sent as normal runs. Simplest safe move for THIS phase:
+   **suppress `feedback.js` telemetry entirely during a co-op session**
+   (a `game.coop` check), and leave a `coop`-flagged telemetry row for a later
+   pass. Do not silently send co-op runs as solo data.
 
 ---
 
