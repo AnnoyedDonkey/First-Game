@@ -238,6 +238,16 @@ if (DEBUG.coopLocal) {
 }
 
 initTowerButtons((type) => {
+  // A tap on a tower you can't build (locked, or can't afford) still counts as
+  // "never mind" — it cancels whatever was armed rather than doing nothing
+  // (player feedback: tapping any tower should deselect the current one).
+  const buyable = isTowerUnlocked(type) && game.money >= TOWERS[type].baseCost;
+  if (!buyable) {
+    uiState.selectedType = null;
+    uiState.selectedDef = null;
+    uiState.selectedTower = null;
+    return;
+  }
   // Tapping the same button again disarms it.
   uiState.selectedType = uiState.selectedType === type ? null : type;
   uiState.selectedDef = uiState.selectedType ? TOWERS[type] : null;

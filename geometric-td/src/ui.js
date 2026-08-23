@@ -558,7 +558,11 @@ export function updateTowerButtons(game, selectedType) {
     const state = `${unlocked}:${affordable}:${selectedType === type}`;
     if (last[stateKey] === state) continue;
     last[stateKey] = state;
-    btn.disabled = !unlocked || !affordable;
+    // NOT the `disabled` DOM attribute: a disabled button swallows taps, but we
+    // want a tap on an unbuyable tower to still cancel the current selection
+    // (main.js gates whether it actually arms). So it's a visual class only.
+    btn.classList.toggle("disabled", !unlocked || !affordable);
+    btn.setAttribute("aria-disabled", (!unlocked || !affordable) ? "true" : "false");
     btn.classList.toggle("selected", selectedType === type);
     btn.classList.toggle("locked", !unlocked);
     const costSpan = btn.querySelector(".tower-button-cost");
