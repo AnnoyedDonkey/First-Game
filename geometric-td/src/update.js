@@ -35,7 +35,7 @@ export function initUpdateCheck() {
       banner.classList.add("hidden");
       return;
     }
-    location.reload();
+    hardReload();
   });
 
   // Re-tapping a backgrounded home-screen icon fires visibilitychange
@@ -45,6 +45,35 @@ export function initUpdateCheck() {
   });
 
   check();
+}
+
+// A plain location.reload() is NOT enough on GitHub Pages: it serves every
+// module with `Cache-Control: max-age=600` and no revalidation, so for ~10
+// minutes after a deploy a normal reload re-runs the CACHED modules — the
+// running APP_VERSION never changes and the banner reappears forever (seen in
+// Firefox; Safari happens to revalidate). Before reloading, we re-fetch each
+// already-loaded same-origin asset with `cache: "reload"`, which forces the
+// network AND overwrites the HTTP cache entry, so the reload below then boots
+// from fresh copies. The Performance API gives us the exact module list, so no
+// manifest to maintain. A service worker (PWA plan) would make this obsolete.
+async function hardReload() {
+  try {
+    const urls = new Set();
+    for (const entry of performance.getEntriesByType("resource")) {
+      const url = entry.name;
+      if (url.startsWith(location.origin) && /\.(js|css|json)(\?|$)/.test(url)) {
+        urls.add(url);
+      }
+    }
+    urls.add(location.href.split("#")[0]); // the document itself
+    await Promise.all(
+      [...urls].map((url) => fetch(url, { cache: "reload" }).catch(() => {}))
+    );
+  } catch {
+    // Best-effort: if the refresh fails (offline, blocked), still reload —
+    // a normal reload is no worse than the stuck banner.
+  }
+  location.reload();
 }
 
 async function check() {
