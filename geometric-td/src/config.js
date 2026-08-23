@@ -1636,6 +1636,13 @@ export const COOP = {
   // so far rather than hanging. Candidates arrive fastest-first, so this is
   // usually the whole set anyway. Raise it if remote peers fail to connect.
   iceGatheringTimeoutMs: 3000,
+  // Ceiling when a TURN relay is expected. Relay candidates need a TURN
+  // allocation round trip, so they are the SLOWEST to appear — and on a
+  // network where direct P2P fails they are the ONLY ones that work.
+  // Publishing on the 3s timeout before they exist would silently discard the
+  // entire reason TURN is configured, so gathering holds out for a relay up
+  // to this limit.
+  iceGatheringRelayTimeoutMs: 10000,
   connectTimeoutMs: 45000, // overall budget: ICE + signaling + channel open
   // Heartbeat on the `cmd` channel so an idle connection cannot have its NAT
   // mapping reclaimed. Common NAT UDP timeouts start around 30s, so stay well

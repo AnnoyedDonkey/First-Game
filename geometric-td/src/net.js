@@ -243,6 +243,7 @@ async function resolveIceServers(session) {
   }
   if (cachedIce && cachedIce.expiresAt > Date.now()) {
     session.turnStatus = "cached";
+    session.expectsRelay = true;
     return [...base, ...cachedIce.servers];
   }
   try {
@@ -266,6 +267,7 @@ async function resolveIceServers(session) {
     const ttlMs = Math.max(60, (body.ttl || 3600) - 60) * 1000;
     cachedIce = { servers, expiresAt: Date.now() + ttlMs };
     session.turnStatus = "ok";
+    session.expectsRelay = true;
     return [...base, ...servers];
   } catch (error) {
     session.turnStatus = `failed: ${String(error).slice(0, 60)}`;
@@ -430,7 +432,7 @@ async function runHost(session) {
   const offer = await session.pc.createOffer();
   await session.pc.setLocalDescription(offer);
   step(session, "gathering-ice");
-  await waitForIceGathering(session.pc, session.abortController.signal);
+  await waitForIceGathering(session.pc, session.abortController.signal, session);
   step(session, "publishing-offer");
   await insertOffer(session);
   step(session, "polling-for-answer");
@@ -465,7 +467,7 @@ async function runGuest(session) {
   const answer = await session.pc.createAnswer();
   await session.pc.setLocalDescription(answer);
   step(session, "gathering-ice");
-  await waitForIceGathering(session.pc, session.abortController.signal);
+  await waitForIceGathering(session.pc, session.abortController.signal, session);
   step(session, "publishing-answer");
   await writeAnswer(session);
   step(session, "awaiting-peer");
@@ -557,12 +559,15 @@ async function requireOk(response, message) {
 // Candidates arrive fastest-first (host, then srflx), so whatever we have
 // after `COOP.iceGatheringTimeoutMs` is nearly always the full set. Shipping a
 // slightly-short candidate list beats not connecting at all.
-function waitForIceGathering(pc, signal) {
+function waitForIceGathering(pc, signal, session) {
   if (pc.iceGatheringState === "complete") return Promise.resolve();
   return new Promise((resolve, reject) => {
-    let timer = null;
+    const startedAt = Date.now();
+    let softTimer = null;
+    let hardTimer = null;
     const finish = () => {
-      if (timer !== null) clearTimeout(timer);
+      if (softTimer !== null) clearTimeout(softTimer);
+      if (hardTimer !== null) clearTimeout(hardTimer);
       pc.removeEventListener("icegatheringstatechange", onStateChange);
       signal.removeEventListener("abort", onAbort);
     };
@@ -575,15 +580,40 @@ function waitForIceGathering(pc, signal) {
       finish();
       reject(new Error("ICE gathering was cancelled"));
     };
+
+    // Relay candidates are the SLOWEST to appear — they need a TURN
+    // allocation round trip — and on this network they are also the only ones
+    // that work. Publishing before they exist would throw away the entire
+    // reason TURN is configured, so when a relay is expected we hold out for
+    // one rather than firing on the base timeout.
+    const wantsRelay = !!(session && session.expectsRelay);
+    const haveRelay = () => (session?.candidateTypes?.relay || 0) > 0;
+    const softMs = COOP.iceGatheringTimeoutMs;
+    const hardMs = wantsRelay ? COOP.iceGatheringRelayTimeoutMs : COOP.iceGatheringTimeoutMs;
+
+    const trySoft = () => {
+      // Enough is enough once we have what we came for.
+      if (!wantsRelay || haveRelay()) {
+        finish();
+        resolve();
+        return;
+      }
+      // Still no relay: keep waiting, re-checking as candidates trickle in.
+      softTimer = setTimeout(trySoft, 250);
+    };
+
     pc.addEventListener("icegatheringstatechange", onStateChange);
     signal.addEventListener("abort", onAbort, { once: true });
     if (signal.aborted) { onAbort(); return; }
-    // The fallback that makes this safe on Safari. Resolve, don't reject:
-    // partial candidates still connect on a LAN.
-    timer = setTimeout(() => {
+
+    softTimer = setTimeout(trySoft, softMs);
+    // Absolute ceiling. Resolve rather than reject — partial candidates still
+    // beat not connecting, and Safari may never report "complete" at all.
+    hardTimer = setTimeout(() => {
+      if (session) session.gatheringTimedOut = Math.round((Date.now() - startedAt) / 1000);
       finish();
       resolve();
-    }, COOP.iceGatheringTimeoutMs);
+    }, hardMs);
     onStateChange();
   });
 }
