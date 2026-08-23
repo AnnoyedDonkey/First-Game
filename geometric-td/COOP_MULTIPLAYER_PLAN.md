@@ -431,6 +431,52 @@ survived; the `prune-coop-sessions` job is registered and active.
 Behind a local `DEBUG.coopLocal` flag that fakes a second player in one
 browser, so all of it is testable before any netcode exists.
 
+**This phase adds NO networking.** `net.js` is not imported and must not be
+touched. Everything here is verifiable in a single browser tab.
+
+### Implementation contract (surveyed 2026-08-22 — verify before trusting)
+
+**The `game.money` getter alias is the key to keeping this small.** There are
+~32 `.money` references across `ui.js`, `main.js`, `game.js`, `towers.js`,
+`enemies.js`, `balance-sim.js`, and the Balance Lab. Do **not** rewrite them.
+Replace the stored field with `game.wallets[ownerId]` and define `game.money`
+as an accessor pair on the game object that reads/writes **the local player's**
+wallet. Every existing read site (`ui.js:256-258` credit pulse, `ui.js:332`
+affordability, `ui.js:403` upgrade cost, `main.js:378` telemetry `moneyLeft`)
+then keeps working untouched.
+
+**The five write sites** (these are the only places money changes):
+- `enemies.js:251` `game.money += earned` — bounty. Credit **every** wallet the
+  FULL amount (locked decision, §2 round 1), each with **that player's own**
+  `getMoneyMult()`. Also accumulate **`game.totalEarned[ownerId]`** — a new
+  field that does not exist yet and which the drop-in grant depends on (§3).
+- `game.js:196` `game.money += gain` — wave interest. Compute **per wallet**
+  from each player's own rate/cap.
+- `towers.js:269` (upgrade), `towers.js:298` (placement), `towers.js:328`
+  (sell refund) — charge/refund the **acting** player, not the local one.
+
+**The three UI chokepoints** are the entire input surface:
+`main.js:214` (`tryUpgradeTower`), `main.js:219` (`sellTower`),
+`main.js:247` (`placeTower`).
+
+**Ownership rules** (locked, §2 round 1): anyone may upgrade any tower but pays
+from their own wallet; **only the owner may sell**. `sellTower` must return the
+existing `{ok, reason}` shape on refusal so the UI can explain it.
+
+**`DEBUG.coopLocal`** goes in the existing `DEBUG` block (`config.js:22`, which
+currently holds only `gameSpeed`). When on, create a second fake player and
+offer a way to switch which one is "acting" so both wallets and the sell-gate
+can be exercised in one tab.
+
+### Definition of done
+- With `coopLocal` **off**, single-player behaviour is **byte-identical**:
+  starting money, placement cost, upgrade cost, sell refund, wave interest, the
+  HUD credit pulse, and `balance-sim.js` runs all unchanged.
+- With it **on**: two wallets diverge correctly; a kill credits BOTH wallets the
+  full bounty; `totalEarned` accumulates per player; selling another player's
+  tower is refused with a reason; upgrading another player's tower succeeds and
+  charges the actor.
+
 1. **`ownerId` on towers.** `towers.js createTower` / `placeTower` take an
    owner. Default keeps single-player behaviour byte-identical.
 2. **Wallets.** Replace `game.money` with `game.wallets[ownerId]`, keeping
