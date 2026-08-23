@@ -20,13 +20,15 @@ import { emitGearDropEffect } from "./enemies.js";
 import {
   emitCoins, emitDeathShards, emitHitSparks, updateParticles,
 } from "./particles.js";
-import { updateEffects } from "./projectiles.js";
+import { updateEffects, updateProjectiles } from "./projectiles.js";
 
 const ROLES = Object.freeze({ HOST: "host", GUEST: "guest" });
 const OWNER_IDS = Object.freeze({ host: "coop-host", guest: "coop-guest" });
 const OWNER_ORDER = Object.freeze([OWNER_IDS.host, OWNER_IDS.guest]);
 const PHASES = new Set(["ready", "wave", "countdown", "won", "lost"]);
 const JOINABLE_PHASES = new Set(["ready", "wave", "countdown"]);
+const SHOT_EFFECT_KINDS = new Set(["beam", "muzzle", "ring", "burst"]);
+const SHOT_PROJECTILE_KINDS = new Set(["orb", "rocket"]);
 
 let activeGame = null;
 let activeRole = null;
@@ -36,6 +38,8 @@ let latestSnapshot = null;
 let guestJoined = false;
 let hostEvents = [];
 let guestEvents = [];
+let hostShots = [];
+let guestShots = [];
 
 export function startHost(game) {
   requireStartableGame(game);
@@ -99,6 +103,7 @@ export function updateHost(game, now) {
   if (!isHost(game) || getConnectionState() !== CONNECTION_STATES.CONNECTED) return;
   if (!guestJoined) acceptGuest(game, now);
   flushHostEvents();
+  flushHostShots();
   const intervalMs = 1000 / COOP.snapshotHz;
   if (now < lastSnapshotSentAt + intervalMs) return;
 
@@ -145,10 +150,11 @@ export function updateGuest(game, now) {
     enemy.distance = Math.max(0, Math.min(pathEnd, distance));
   }
 
-  // The guest owns a cosmetic-only layer. Existing particles/effects advance
-  // locally; no projectile or simulation state is introduced.
-  updateParticles(game, cosmeticDt);
+  // The guest owns a cosmetic-only layer. Mirrored projectiles advance through
+  // the existing visual path, with their damage gate enforced in explode().
+  updateProjectiles(game, cosmeticDt);
   updateEffects(game, cosmeticDt);
+  updateParticles(game, cosmeticDt);
   let refreshNeeded = false;
   for (const tower of game.towers) {
     if (tower._surgeActive && game.time >= tower._surgeUntil) {
@@ -158,6 +164,7 @@ export function updateGuest(game, now) {
   }
   if (refreshNeeded) refreshTowerStats(game);
   replayGuestEvents(game);
+  replayGuestShots(game);
 }
 
 function requireStartableGame(game) {
@@ -175,9 +182,17 @@ function activate(game, role) {
   guestJoined = false;
   hostEvents = [];
   guestEvents = [];
+  hostShots = [];
+  guestShots = [];
   preparePlayers(game, role);
   if (role === ROLES.HOST) {
-    game.coopEventSink = (event) => queueHostEvent(game, event);
+    game.coopEventSink = (event) => {
+      if (event?.kind === "shot") {
+        queueHostShot(game, event.effects, event.projectiles);
+      } else {
+        queueHostEvent(game, event);
+      }
+    };
   }
   if (role === ROLES.GUEST) {
     delete game.coopEventSink;
@@ -288,6 +303,54 @@ function flushHostEvents() {
   }
 }
 
+function queueHostShot(game, effects, projectiles) {
+  if (!isHost(game) || !guestJoined ||
+      getConnectionState() !== CONNECTION_STATES.CONNECTED) return;
+  const shotEffects = Array.isArray(effects)
+    ? effects.filter((effect) => SHOT_EFFECT_KINDS.has(effect?.kind))
+        .map((effect) => ({ ...effect }))
+    : [];
+  const shotProjectiles = Array.isArray(projectiles)
+    ? projectiles.map(encodeShotProjectile).filter(Boolean)
+    : [];
+  if (!shotEffects.length && !shotProjectiles.length) return;
+  hostShots.push({ time: game.time, effects: shotEffects, projectiles: shotProjectiles });
+}
+
+function encodeShotProjectile(projectile) {
+  if (!SHOT_PROJECTILE_KINDS.has(projectile?.kind)) return null;
+  const sourceTower = projectile.sourceTower;
+  return {
+    kind: projectile.kind,
+    x: projectile.x,
+    y: projectile.y,
+    targetId: projectile.target?.id ?? null,
+    lastTargetPos: { ...projectile.lastTargetPos },
+    speed: projectile.speed,
+    damage: projectile.damage,
+    crit: projectile.crit,
+    splashRadius: projectile.splashRadius,
+    color: projectile.color,
+    sourceTowerId: sourceTower?.id ?? null,
+    sourceAimAngle: sourceTower?.aimAngle ?? 0,
+    fractalWarhead: !!sourceTower?.gearUniques?.has("fractalWarhead"),
+  };
+}
+
+function flushHostShots() {
+  if (!hostShots.length) return;
+  const shots = hostShots;
+  hostShots = [];
+  try {
+    // Shot presentation is disposable and must never head-of-line-block an
+    // intent or reliable cosmetic event. It deliberately shares the lossy,
+    // unordered state channel with snapshots, but remains a separate batch.
+    sendMessage("state", { type: "shots", shots });
+  } catch {
+    // Never retry stale firing art. The next frame carries only new shots.
+  }
+}
+
 function sendSnapshot(game, now) {
   const snapshot = buildSnapshot(game, ++snapshotSequence);
   try {
@@ -389,14 +452,20 @@ onMessage(({ channel, data }) => {
         if (validCosmeticEvent(event)) guestEvents.push(event);
       }
     }
-  } else if (channel === "state" && isGuest() && validSnapshot(message)) {
-    if (latestSnapshot && message.seq <= latestSnapshot.seq) return;
-    if (message.levelId !== activeGame.level.id) {
-      activeGame.coopJoinError =
-        `Host is playing ${message.levelId}; open that level before joining.`;
-      return;
+  } else if (channel === "state" && isGuest()) {
+    if (message?.type === "shots" && Array.isArray(message.shots)) {
+      for (const shot of message.shots) {
+        if (validShot(shot)) guestShots.push(shot);
+      }
+    } else if (validSnapshot(message)) {
+      if (latestSnapshot && message.seq <= latestSnapshot.seq) return;
+      if (message.levelId !== activeGame.level.id) {
+        activeGame.coopJoinError =
+          `Host is playing ${message.levelId}; open that level before joining.`;
+        return;
+      }
+      applySnapshot(activeGame, message, performance.now());
     }
-    applySnapshot(activeGame, message, performance.now());
   }
 });
 
@@ -439,6 +508,36 @@ function validPoint(event) {
   return Number.isFinite(event.x) && Number.isFinite(event.y);
 }
 
+function validShot(shot) {
+  return !!shot && typeof shot === "object" && Number.isFinite(shot.time) &&
+    Array.isArray(shot.effects) && shot.effects.every(validShotEffect) &&
+    Array.isArray(shot.projectiles) && shot.projectiles.every(validShotProjectile);
+}
+
+function validShotEffect(effect) {
+  if (!effect || !SHOT_EFFECT_KINDS.has(effect.kind) ||
+      typeof effect.color !== "string" ||
+      !Number.isFinite(effect.ttl) || !Number.isFinite(effect.maxTtl) ||
+      effect.ttl <= 0 || effect.maxTtl <= 0) return false;
+  if (effect.kind === "beam") {
+    return Number.isFinite(effect.x1) && Number.isFinite(effect.y1) &&
+      Number.isFinite(effect.x2) && Number.isFinite(effect.y2) &&
+      Number.isFinite(effect.width);
+  }
+  return validPoint(effect) && Number.isFinite(effect.radius);
+}
+
+function validShotProjectile(projectile) {
+  return !!projectile && SHOT_PROJECTILE_KINDS.has(projectile.kind) &&
+    validPoint(projectile) && validPoint(projectile.lastTargetPos) &&
+    (projectile.targetId === null || Number.isInteger(projectile.targetId)) &&
+    (projectile.sourceTowerId === null || Number.isInteger(projectile.sourceTowerId)) &&
+    Number.isFinite(projectile.speed) && Number.isFinite(projectile.damage) &&
+    typeof projectile.crit === "boolean" && Number.isFinite(projectile.splashRadius) &&
+    typeof projectile.color === "string" && Number.isFinite(projectile.sourceAimAngle) &&
+    typeof projectile.fractalWarhead === "boolean";
+}
+
 function replayGuestEvents(game) {
   if (!guestEvents.length) return;
   const waiting = [];
@@ -472,6 +571,29 @@ function replayGuestEvents(game) {
     }
   }
   guestEvents = waiting;
+}
+
+function replayGuestShots(game) {
+  if (!guestShots.length) return;
+  const waiting = [];
+  for (const shot of guestShots) {
+    if (shot.time > game.time) {
+      waiting.push(shot);
+      continue;
+    }
+    game.effects.push(...shot.effects);
+    for (const projectile of shot.projectiles) {
+      game.projectiles.push({
+        ...projectile,
+        target: game.enemies.find((enemy) => enemy.id === projectile.targetId) || null,
+        sourceTower: towerById(game, projectile.sourceTowerId),
+        // updateProjectiles still owns flight and impact art, but explode()
+        // must never let a mirrored projectile touch authoritative enemy HP.
+        cosmetic: true,
+      });
+    }
+  }
+  guestShots = waiting;
 }
 
 function validSnapshot(snapshot) {

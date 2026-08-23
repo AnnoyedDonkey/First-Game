@@ -88,9 +88,12 @@ function explode(game, orb) {
       radius: orb.splashRadius * 1.1, ttl: 0.4, maxTtl: 0.4,
     });
   }
-  emitHitSparks(game, orb.x, orb.y, orb.color, rocket ? 34 : 18);
+  // A mirrored projectile recreates these impact sparks locally. When the
+  // host has its co-op sink, do not also duplicate the same burst over `cmd`.
+  const syncImpactSparks = !game.coopEventSink;
+  emitHitSparks(game, orb.x, orb.y, orb.color, rocket ? 34 : 18, syncImpactSparks);
   if (orb.crit) {
-    emitHitSparks(game, orb.x, orb.y, "#ffffff", 18);
+    emitHitSparks(game, orb.x, orb.y, "#ffffff", 18, syncImpactSparks);
     game.effects.push({
       kind: "ring", x: orb.x, y: orb.y, color: "#ffffff",
       radius: orb.splashRadius * 0.7, ttl: 0.22, maxTtl: 0.22,
@@ -102,19 +105,24 @@ function explode(game, orb) {
     VFX.warp.hitShock * (rocket ? 4 : 2)
   );
 
-  // Splash damage to every enemy inside the radius.
-  for (const e of game.enemies) {
-    if (!e.alive) continue;
-    const pos = enemyPosition(e, game.grid);
-    const dx = pos.x - orb.x;
-    const dy = pos.y - orb.y;
-    if (dx * dx + dy * dy <= orb.splashRadius * orb.splashRadius) {
-      damageEnemy(game, e, orb.sourceTower, orb.damage);
+  // Cosmetic guest projectiles own flight and impact presentation only. The
+  // host's snapshots remain the sole source of enemy health and deaths.
+  if (!orb.cosmetic) {
+    for (const e of game.enemies) {
+      if (!e.alive) continue;
+      const pos = enemyPosition(e, game.grid);
+      const dx = pos.x - orb.x;
+      const dy = pos.y - orb.y;
+      if (dx * dx + dy * dy <= orb.splashRadius * orb.splashRadius) {
+        damageEnemy(game, e, orb.sourceTower, orb.damage);
+      }
     }
   }
 
-  if (rocket && orb.sourceTower.gearUniques &&
-      orb.sourceTower.gearUniques.has("fractalWarhead")) {
+  const fractalWarhead = orb.cosmetic
+    ? orb.fractalWarhead
+    : orb.sourceTower.gearUniques && orb.sourceTower.gearUniques.has("fractalWarhead");
+  if (rocket && fractalWarhead) {
     explodeBomblets(game, orb);
   }
 }
@@ -124,15 +132,17 @@ function explodeBomblets(game, orb) {
   const offset = LOOT.combat.fractalOffsetTiles * game.grid.tileSize;
   const radius = orb.splashRadius * LOOT.combat.fractalRadius / 100;
   const damage = orb.damage * LOOT.combat.fractalDamage / 100;
+  const sourceAimAngle = orb.cosmetic ? orb.sourceAimAngle : orb.sourceTower.aimAngle;
   for (let i = 0; i < count; i++) {
-    const angle = (Math.PI * 2 * i) / count + orb.sourceTower.aimAngle;
+    const angle = (Math.PI * 2 * i) / count + sourceAimAngle;
     const x = orb.x + Math.cos(angle) * offset;
     const y = orb.y + Math.sin(angle) * offset;
     game.effects.push({
       kind: "burst", x, y, color: orb.color,
       radius, ttl: 0.28, maxTtl: 0.28,
     });
-    emitHitSparks(game, x, y, orb.color, 10);
+    emitHitSparks(game, x, y, orb.color, 10, !game.coopEventSink);
+    if (orb.cosmetic) continue;
     for (const enemy of game.enemies) {
       if (!enemy.alive) continue;
       const pos = enemyPosition(enemy, game.grid);

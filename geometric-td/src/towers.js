@@ -603,6 +603,11 @@ function fireVolley(game, tower, target, targetPos) {
 }
 
 function fireShot(game, tower, target, targetPos, damageScale) {
+  // The co-op host forwards the exact render objects this shot creates. Keep
+  // the pre-shot bookkeeping allocation-free so solo pays no payload cost.
+  const eventSink = game.coopEventSink;
+  const effectStart = eventSink ? game.effects.length : 0;
+  const projectileStart = eventSink ? game.projectiles.length : 0;
   const def = tower.def;
   const rng = game.rng || Math.random;
   const crit = rng() < tower.critChance;
@@ -782,5 +787,13 @@ function fireShot(game, tower, target, targetPos, damageScale) {
     }
     if (crit) emitCritVfx(game, tower, targetPos.x, targetPos.y);
     damageEnemy(game, target, tower, damage);
+  }
+
+  if (eventSink) {
+    eventSink({
+      kind: "shot",
+      effects: game.effects.slice(effectStart),
+      projectiles: game.projectiles.slice(projectileStart),
+    });
   }
 }
