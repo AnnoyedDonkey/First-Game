@@ -20,7 +20,7 @@ en)` looks it up; `lang` save field via `progression.js getLang/setLang`;
 proper nouns** (tower names Laser/Pulse/Slow/Railgun/Rocket, Indy-7,
 Bratwurst-XL, "GEOMETRIC TD").
 
-**Deployed build: `2026.08.23-4`.**
+**Deployed build: `2026.08.23-5`.**
 
 ### Settings + adaptive performance (`2026.08.23-4`)
 
@@ -42,7 +42,8 @@ Bratwurst-XL, "GEOMETRIC TD").
   background gaps are capped. Guests remain snapshot-driven.
 - DEBUG MODE shows actual rendered FPS plus effective VFX state in battle, e.g.
   `FPS 30 · VFX AUTO→REDUCED`. The main-menu build stamp remains visible and is
-  centered.
+  centered. Follow-up `2026.08.23-5` keeps that stamp in the menu's vertical
+  flex flow beneath the action rows so it cannot overlap them on short screens.
 
 ### Railgun rework (`2026.08.19-14` .. `-20`)
 Multi-part Railgun overhaul. **All knobs live in `config.js VFX.railgun`** unless

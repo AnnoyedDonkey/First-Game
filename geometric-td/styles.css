@@ -272,13 +272,14 @@ html[data-lang="fr"] .menu-actions-row .skill-entry > span:first-child {
   flex-shrink: 0;
 }
 
-/* Discreet centered build stamp at the bottom of the menu. Non-interactive. */
+/* Discreet centered build stamp below the menu actions. Keeping it in normal
+   flex flow prevents the final button row from overlapping it on short screens. */
 #version-tag {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: calc(env(safe-area-inset-bottom) + 8px);
+  position: static;
+  width: 100%;
+  flex: 0 0 auto;
   font-size: 10px;
+  line-height: 1;
   letter-spacing: 1px;
   color: var(--text-dim);
   opacity: 0.5;
