@@ -294,42 +294,24 @@ export function damageEnemy(game, enemy, sourceTower, amount) {
 
   // GeoDefense-style shatter: edges fly apart + a grid shockwave.
   // Stronger killers produce a more violent explosion.
-  emitDeathShards(game, pos.x, pos.y, enemy.def, ts, sourceTower ? sourceTower.level : 1);
+  const power = sourceTower ? sourceTower.level : 1;
+  emitDeathShards(game, pos.x, pos.y, enemy.def, ts, power);
 
   // Credit Juice: coins pop out and rain down on the track. Bosses throw a
   // much bigger, harder-flung haul.
   const coinRange = isBoss ? VFX.coins.bossPerKill : VFX.coins.perKill;
   const coinCount = Math.round(coinRange[0] + Math.random() * (coinRange[1] - coinRange[0]));
-  emitCoins(game, pos.x, pos.y, coinCount, isBoss ? VFX.coins.bossSpeedMult : 1, ts);
+  const coinSpeedMult = isBoss ? VFX.coins.bossSpeedMult : 1;
+  emitCoins(game, pos.x, pos.y, coinCount, coinSpeedMult, ts);
+  game.coopEventSink?.({
+    kind: "kill", x: pos.x, y: pos.y, enemyType: enemy.type,
+    coinCount, coinSpeedMult, power,
+  });
 
   // Credit Juice: gear-drop flash — a rarity-colored diamond pops at the
   // drop site (echoed by a matching expanding ring), so a loot drop reads
   // instantly instead of only showing up later in the loot tray.
-  if (drop) {
-    const gd = VFX.gearDrop;
-    const spd = game.effectiveSpeed || 1; // one-shot VFX decay on speed-scaled time
-    // Only the RARITY travels with the effect: the renderer owns the color
-    // map, so enemies.js needs no import from it (renderer.js already imports
-    // enemyPosition from here, and the reverse edge would make that circular).
-    // The expanding ring is drawn by the gearFlash branch for the same reason.
-    // The item flies to Indy-7 — the core is the LAST point on the path.
-    const core = game.grid.pathPoints[game.grid.pathPoints.length - 1];
-    const total = gd.riseSeconds + gd.zipSeconds;
-    game.effects.push({
-      kind: "gearFlash", rarity: drop.rarity, slot: drop.slot,
-      x: pos.x, y: pos.y, tx: core.x, ty: core.y,
-      tile: ts * gd.tileTiles, rise: ts * gd.riseTiles,
-      riseFrac: gd.riseSeconds / total, // where the rise ends on the 0->1 clock
-      popScale: gd.popScale, popFrac: gd.popFrac, arriveScale: gd.arriveScale,
-      cornerFrac: gd.cornerFrac, glyphFrac: gd.glyphFrac, tileFill: gd.tileFill,
-      glowMult: gd.glowMult, glyphStroke: gd.glyphStroke,
-      ringRadius: ts * gd.ringRadiusTiles, ringFrac: gd.ringTtl / total,
-      // Consumed by updateEffects when this expires: stamps the swallow time on
-      // the game so Indy-7's face can grin about it (renderer coreFaceMood).
-      expireStamp: "lastGearIngestTime",
-      ttl: total * spd, maxTtl: total * spd,
-    });
-  }
+  if (drop) emitGearDropEffect(game, pos.x, pos.y, drop.rarity, drop.slot);
 
   game.springGrid.applyShock(
     pos.x, pos.y,
@@ -348,6 +330,30 @@ export function damageEnemy(game, enemy, sourceTower, amount) {
       game.enemies.push(child);
     }
   }
+}
+
+// Shared by the authoritative kill path and the guest's reliable cosmetic
+// replay. Keeping the complete effect here prevents the two renderers from
+// drifting as Credit Juice presentation knobs change.
+export function emitGearDropEffect(game, x, y, rarity, slot) {
+  const gd = VFX.gearDrop;
+  const spd = game.effectiveSpeed || 1;
+  const ts = game.grid.tileSize;
+  const core = game.grid.pathPoints[game.grid.pathPoints.length - 1];
+  const total = gd.riseSeconds + gd.zipSeconds;
+  game.effects.push({
+    kind: "gearFlash", rarity, slot,
+    x, y, tx: core.x, ty: core.y,
+    tile: ts * gd.tileTiles, rise: ts * gd.riseTiles,
+    riseFrac: gd.riseSeconds / total,
+    popScale: gd.popScale, popFrac: gd.popFrac, arriveScale: gd.arriveScale,
+    cornerFrac: gd.cornerFrac, glyphFrac: gd.glyphFrac, tileFill: gd.tileFill,
+    glowMult: gd.glowMult, glyphStroke: gd.glyphStroke,
+    ringRadius: ts * gd.ringRadiusTiles, ringFrac: gd.ringTtl / total,
+    expireStamp: "lastGearIngestTime",
+    ttl: total * spd, maxTtl: total * spd,
+  });
+  game.coopEventSink?.({ kind: "gearDrop", x, y, rarity, slot });
 }
 
 // Apply a slow debuff (from Slow Towers). `vulnerability` (optional) also

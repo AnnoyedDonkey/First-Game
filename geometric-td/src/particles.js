@@ -20,7 +20,9 @@ function push(game, particle) {
 
 // Spark burst (projectile/beam impacts) — firework-style, with a
 // few white-hot sparks mixed in for extra pop.
-export function emitHitSparks(game, x, y, color, count = VFX.hitSparkCount) {
+export function emitHitSparks(
+  game, x, y, color, count = VFX.hitSparkCount, sync = true
+) {
   for (let i = 0; i < count; i++) {
     const a = Math.random() * Math.PI * 2;
     const speed = rand(VFX.sparkSpeed[0], VFX.sparkSpeed[1]);
@@ -35,6 +37,7 @@ export function emitHitSparks(game, x, y, color, count = VFX.hitSparkCount) {
       maxTtl: VFX.sparkTtl[1],
     });
   }
+  if (sync) game.coopEventSink?.({ kind: "hit", x, y, color, count });
 }
 
 // Golden level-up splash: the power surge breaks apart into a shimmering
@@ -148,7 +151,9 @@ export function emitDeathShards(game, x, y, def, tileSize, power = 1) {
 
   const sparkCount =
     VFX.deathSparkCount * (isBoss ? 3 : 1) + VFX.powerSparkBonus * (power - 1);
-  emitHitSparks(game, x, y, def.color, sparkCount);
+  // The enclosing kill event recreates the whole shatter on a guest, including
+  // these sparks. Do not also fan them out as a separate hit event.
+  emitHitSparks(game, x, y, def.color, sparkCount, false);
 }
 
 export function updateParticles(game, dt) {

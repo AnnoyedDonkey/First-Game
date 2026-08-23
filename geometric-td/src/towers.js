@@ -463,6 +463,7 @@ export function applyLevelUpSurge(game, tower) {
   tower._surgeActive = true;
   recomputeStats(tower, game.grid); // refreshes _masteryRank AND applies the surge buff
   triggerLevelUpSurge(game, tower);
+  game.coopEventSink?.({ kind: "levelUp", towerId: tower.id });
 }
 
 export function updateTowers(game, dt) {

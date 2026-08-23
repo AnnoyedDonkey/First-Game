@@ -10,23 +10,32 @@ import {
 } from "./config.js";
 import {
   CONNECTION_STATES, getConnectionState, hostSession, joinSession,
-  onMessage, sendMessage,
+  onConnectionState, onMessage, sendMessage,
 } from "./net.js";
 import {
-  createTower, placeTower, refreshTowerStats, sellTower, tryUpgradeTower,
-  xpThresholdFor,
+  applyLevelUpSurge, createTower, placeTower, refreshTowerStats, sellTower,
+  tryUpgradeTower, xpThresholdFor,
 } from "./towers.js";
+import { emitGearDropEffect } from "./enemies.js";
+import {
+  emitCoins, emitDeathShards, emitHitSparks, updateParticles,
+} from "./particles.js";
+import { updateEffects } from "./projectiles.js";
 
 const ROLES = Object.freeze({ HOST: "host", GUEST: "guest" });
 const OWNER_IDS = Object.freeze({ host: "coop-host", guest: "coop-guest" });
 const OWNER_ORDER = Object.freeze([OWNER_IDS.host, OWNER_IDS.guest]);
 const PHASES = new Set(["ready", "wave", "countdown", "won", "lost"]);
+const JOINABLE_PHASES = new Set(["ready", "wave", "countdown"]);
 
 let activeGame = null;
 let activeRole = null;
 let snapshotSequence = 0;
 let lastSnapshotSentAt = -Infinity;
 let latestSnapshot = null;
+let guestJoined = false;
+let hostEvents = [];
+let guestEvents = [];
 
 export function startHost(game) {
   requireStartableGame(game);
@@ -88,17 +97,12 @@ export function sendIntent(game, intent) {
 // avoids snapshot bursts when game time is frozen or a browser frame is late.
 export function updateHost(game, now) {
   if (!isHost(game) || getConnectionState() !== CONNECTION_STATES.CONNECTED) return;
+  if (!guestJoined) acceptGuest(game, now);
+  flushHostEvents();
   const intervalMs = 1000 / COOP.snapshotHz;
   if (now < lastSnapshotSentAt + intervalMs) return;
 
-  const snapshot = buildSnapshot(game, ++snapshotSequence);
-  try {
-    sendMessage("state", snapshot);
-    lastSnapshotSentAt = now;
-  } catch {
-    // A lost state send is disposable by design. Do not move the schedule
-    // forward, so the next frame can try the newest state immediately.
-  }
+  sendSnapshot(game, now);
 }
 
 // Guests never call updateGame. Their render clock follows the newest host
@@ -117,6 +121,7 @@ export function updateGuest(game, now) {
   );
   const previousTime = game.time;
   game.time = renderTime;
+  const cosmeticDt = Math.max(0, renderTime - previousTime);
   if (game.phase === "countdown" && renderTime > previousTime) {
     game.countdown = Math.max(0, game.countdown - (renderTime - previousTime));
   }
@@ -139,6 +144,20 @@ export function updateGuest(game, now) {
     }
     enemy.distance = Math.max(0, Math.min(pathEnd, distance));
   }
+
+  // The guest owns a cosmetic-only layer. Existing particles/effects advance
+  // locally; no projectile or simulation state is introduced.
+  updateParticles(game, cosmeticDt);
+  updateEffects(game, cosmeticDt);
+  let refreshNeeded = false;
+  for (const tower of game.towers) {
+    if (tower._surgeActive && game.time >= tower._surgeUntil) {
+      tower._surgeActive = false;
+      refreshNeeded = true;
+    }
+  }
+  if (refreshNeeded) refreshTowerStats(game);
+  replayGuestEvents(game);
 }
 
 function requireStartableGame(game) {
@@ -153,8 +172,15 @@ function activate(game, role) {
   snapshotSequence = 0;
   lastSnapshotSentAt = -Infinity;
   latestSnapshot = null;
+  guestJoined = false;
+  hostEvents = [];
+  guestEvents = [];
   preparePlayers(game, role);
+  if (role === ROLES.HOST) {
+    game.coopEventSink = (event) => queueHostEvent(game, event);
+  }
   if (role === ROLES.GUEST) {
+    delete game.coopEventSink;
     // Nothing from the guest's pre-session game is authoritative. Start with
     // an empty mirror and let the first host snapshot populate render objects.
     game.enemies = [];
@@ -193,16 +219,17 @@ function preparePlayers(game, role) {
     };
   }
 
-  game.ownerIds = [...OWNER_ORDER];
+  game.ownerIds = role === ROLES.HOST ? [OWNER_IDS.host] : [...OWNER_ORDER];
   game.players = players;
-  game.wallets = {
-    [OWNER_IDS.host]: localOwnerId === OWNER_IDS.host ? oldWallet : game.level.startingMoney,
-    [OWNER_IDS.guest]: localOwnerId === OWNER_IDS.guest ? oldWallet : game.level.startingMoney,
-  };
-  game.totalEarned = {
-    [OWNER_IDS.host]: localOwnerId === OWNER_IDS.host ? oldEarned : 0,
-    [OWNER_IDS.guest]: localOwnerId === OWNER_IDS.guest ? oldEarned : 0,
-  };
+  game.wallets = role === ROLES.HOST
+    ? { [OWNER_IDS.host]: oldWallet }
+    : {
+        [OWNER_IDS.host]: game.level.startingMoney,
+        [OWNER_IDS.guest]: oldWallet,
+      };
+  game.totalEarned = role === ROLES.HOST
+    ? { [OWNER_IDS.host]: oldEarned }
+    : { [OWNER_IDS.host]: 0, [OWNER_IDS.guest]: oldEarned };
   game.localPlayerId = localOwnerId;
   game.actingPlayerId = localOwnerId;
   game.progressionOwnerId = localOwnerId;
@@ -240,9 +267,72 @@ function towerById(game, towerId) {
   return game.towers.find((tower) => tower.id === towerId) || null;
 }
 
+function queueHostEvent(game, event) {
+  if (!isHost(game) || !guestJoined ||
+      getConnectionState() !== CONNECTION_STATES.CONNECTED ||
+      !event || typeof event !== "object") return;
+  hostEvents.push({ ...event, time: game.time });
+}
+
+function flushHostEvents() {
+  if (!hostEvents.length) return;
+  const events = hostEvents;
+  hostEvents = [];
+  try {
+    // One reliable message per render frame avoids DataChannel overhead for
+    // every individual spark burst while preserving event order.
+    sendMessage("cmd", { type: "events", events });
+  } catch {
+    // Cosmetic history is stale once a send fails; snapshots remain the
+    // authoritative recovery path.
+  }
+}
+
+function sendSnapshot(game, now) {
+  const snapshot = buildSnapshot(game, ++snapshotSequence);
+  try {
+    sendMessage("state", snapshot);
+    lastSnapshotSentAt = now;
+    return true;
+  } catch {
+    // A lost state send is disposable by design. Do not move the schedule
+    // forward, so the next frame can try the newest state immediately.
+    return false;
+  }
+}
+
+function acceptGuest(game, now) {
+  if (!isHost(game) || guestJoined || !JOINABLE_PHASES.has(game.phase)) return;
+  const hostTotalEarned = game.totalEarned[OWNER_IDS.host] || 0;
+  const grant = Math.min(
+    COOP.dropIn.maxGrant,
+    COOP.dropIn.earningsShare * hostTotalEarned
+  );
+  game.ownerIds = [...OWNER_ORDER];
+  game.wallets[OWNER_IDS.guest] = game.level.startingMoney + grant;
+  game.totalEarned[OWNER_IDS.guest] = 0;
+  game.coopDropInGrant = grant;
+  guestJoined = true;
+
+  try {
+    sendMessage("cmd", {
+      type: "join",
+      ownerId: OWNER_IDS.guest,
+      levelId: game.level.id,
+      wallet: game.wallets[OWNER_IDS.guest],
+      grant,
+    });
+  } catch {
+    // The immediate full snapshot below carries the same wallet. If this
+    // assignment message is lost to a closing channel, state remains safe.
+  }
+  sendSnapshot(game, now);
+}
+
 function buildSnapshot(game, sequence) {
   return {
     seq: sequence,
+    levelId: game.level.id,
     time: game.time,
     phase: game.phase,
     waveIndex: game.waveIndex,
@@ -272,6 +362,12 @@ function buildSnapshot(game, sequence) {
   };
 }
 
+onConnectionState(({ state }) => {
+  if (state === CONNECTION_STATES.CONNECTED && isHost() && !guestJoined) {
+    acceptGuest(activeGame, performance.now());
+  }
+});
+
 onMessage(({ channel, data }) => {
   // net.js deliberately exposes the DataChannel payload unchanged. Its game
   // messages are JSON strings, never already-parsed objects.
@@ -283,17 +379,105 @@ onMessage(({ channel, data }) => {
     return;
   }
 
-  if (channel === "cmd" && isHost() && message?.op) {
-    applyIntent(activeGame, message, OWNER_IDS.guest);
+  if (channel === "cmd") {
+    if (isHost() && message?.op) {
+      applyIntent(activeGame, message, OWNER_IDS.guest);
+    } else if (isGuest() && message?.type === "join") {
+      applyJoinAssignment(activeGame, message);
+    } else if (isGuest() && message?.type === "events" && Array.isArray(message.events)) {
+      for (const event of message.events) {
+        if (validCosmeticEvent(event)) guestEvents.push(event);
+      }
+    }
   } else if (channel === "state" && isGuest() && validSnapshot(message)) {
     if (latestSnapshot && message.seq <= latestSnapshot.seq) return;
+    if (message.levelId !== activeGame.level.id) {
+      activeGame.coopJoinError =
+        `Host is playing ${message.levelId}; open that level before joining.`;
+      return;
+    }
     applySnapshot(activeGame, message, performance.now());
   }
 });
 
+function applyJoinAssignment(game, message) {
+  if (!game || message.ownerId !== OWNER_IDS.guest ||
+      typeof message.levelId !== "string" ||
+      !Number.isFinite(message.wallet) || !Number.isFinite(message.grant)) return;
+  if (message.levelId !== game.level.id) {
+    game.coopJoinError =
+      `Host is playing ${message.levelId}; open that level before joining.`;
+    return;
+  }
+  game.coopDropInGrant = message.grant;
+  // Cross-channel ordering is undefined. Do not let a late join assignment
+  // roll back a wallet already advanced by a newer state snapshot.
+  if (!latestSnapshot) game.wallets[OWNER_IDS.guest] = message.wallet;
+}
+
+function validCosmeticEvent(event) {
+  if (!event || typeof event !== "object" || !Number.isFinite(event.time)) return false;
+  switch (event.kind) {
+    case "hit":
+      return validPoint(event) && typeof event.color === "string" &&
+        Number.isInteger(event.count) && event.count >= 0;
+    case "kill":
+      return validPoint(event) && !!ENEMIES[event.enemyType] &&
+        Number.isInteger(event.coinCount) && event.coinCount >= 0 &&
+        Number.isFinite(event.coinSpeedMult) && Number.isFinite(event.power);
+    case "levelUp":
+      return Number.isInteger(event.towerId);
+    case "gearDrop":
+      return validPoint(event) && typeof event.rarity === "string" &&
+        typeof event.slot === "string";
+    default:
+      return false;
+  }
+}
+
+function validPoint(event) {
+  return Number.isFinite(event.x) && Number.isFinite(event.y);
+}
+
+function replayGuestEvents(game) {
+  if (!guestEvents.length) return;
+  const waiting = [];
+  for (const event of guestEvents) {
+    if (event.time > game.time) {
+      waiting.push(event);
+      continue;
+    }
+    if (event.kind === "hit") {
+      emitHitSparks(game, event.x, event.y, event.color, event.count);
+    } else if (event.kind === "kill") {
+      emitDeathShards(
+        game, event.x, event.y, ENEMIES[event.enemyType],
+        game.grid.tileSize, event.power
+      );
+      emitCoins(
+        game, event.x, event.y, event.coinCount,
+        event.coinSpeedMult, game.grid.tileSize
+      );
+    } else if (event.kind === "levelUp") {
+      const tower = towerById(game, event.towerId);
+      if (tower) {
+        applyLevelUpSurge(game, tower);
+      } else if (!latestSnapshot || latestSnapshot.time < event.time) {
+        // cmd and state are separate channels. A newly placed tower's surge
+        // can arrive before the snapshot that first introduces that tower.
+        waiting.push(event);
+      }
+    } else if (event.kind === "gearDrop") {
+      emitGearDropEffect(game, event.x, event.y, event.rarity, event.slot);
+    }
+  }
+  guestEvents = waiting;
+}
+
 function validSnapshot(snapshot) {
   if (!snapshot || typeof snapshot !== "object" ||
-      !Number.isInteger(snapshot.seq) || !Number.isFinite(snapshot.time) ||
+      !Number.isInteger(snapshot.seq) || typeof snapshot.levelId !== "string" ||
+      !Number.isFinite(snapshot.time) ||
       !PHASES.has(snapshot.phase) || !Number.isInteger(snapshot.waveIndex) ||
       !Number.isFinite(snapshot.coreHealth) ||
       !validOwnerNumbers(snapshot.wallets) || !validOwnerNumbers(snapshot.totalEarned) ||

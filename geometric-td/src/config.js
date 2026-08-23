@@ -1621,6 +1621,10 @@ export const COOP = {
   // guests render slightly behind the newest host clock to absorb jitter.
   snapshotHz: 10,
   interpDelayMs: 100,
+  dropIn: {
+    earningsShare: 0.6, // retroactive share of the host's bounty earnings
+    maxGrant: 5000,     // credits; hard ceiling for a very late join
+  },
   // Phase 1 ownership presentation. Player presence reuses these same colors
   // in Phase 3b, so board ownership and the co-op HUD stay one visual language.
   ownership: {
