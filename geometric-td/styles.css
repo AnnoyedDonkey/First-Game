@@ -3279,7 +3279,8 @@ html[data-lang="fr"] .settings-help { letter-spacing: .2px; }
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1px;
+  gap: 2px;
+  padding: 4px 6px;
   min-height: 46px;
   border-radius: 12px;
   color: var(--tower-color, var(--neon-cyan));
@@ -3287,14 +3288,25 @@ html[data-lang="fr"] .settings-help { letter-spacing: .2px; }
   box-shadow: inset 0 0 8px rgba(53, 224, 255, 0.06);
 }
 
-.tower-button-name { font-size: 10px; letter-spacing: 1px; }
-.tower-button-cost { font-size: 10px; opacity: 0.75; }
+/* The live tower micro-sim canvas (src/tray-icon.js draws the real shape +
+   firing here). Its intrinsic size is set per-device in JS; cap it so a narrow
+   tray with many towers stays tidy. */
+.tower-button-icon {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  flex: 0 0 auto;
+  pointer-events: none;
+}
+.tower-button-cost { font-size: 10px; opacity: 0.75; line-height: 1; }
 
+/* Selected = highlight ring + the firing animation. We do NOT fill the
+   background with the tower color: the canvas draws the tower in that same
+   color and would vanish against it. */
 .tower-button.selected {
-  background: var(--tower-color, var(--neon-cyan));
-  color: var(--bg);
-  text-shadow: none;
-  box-shadow: 0 0 12px var(--tower-color, var(--neon-cyan));
+  border-width: 2px;
+  box-shadow: 0 0 12px var(--tower-color, var(--neon-cyan)),
+              inset 0 0 10px rgba(255, 255, 255, 0.08);
 }
 
 .tower-button:disabled {
@@ -3304,6 +3316,8 @@ html[data-lang="fr"] .settings-help { letter-spacing: .2px; }
   background: var(--bg);
   cursor: default;
 }
+/* Dim the icon too when a tower is unaffordable, so the chip reads as inert. */
+.tower-button:disabled .tower-button-icon { opacity: 0.5; }
 
 .tower-button.locked { opacity: 0.55; }
 .tower-button.locked .tower-button-cost { font-size: 8px; letter-spacing: 0; }

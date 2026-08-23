@@ -295,6 +295,22 @@ export function render(ctx, game, time, uiState = {}) {
   activePalette(game);
   const reduced = visualEffectsReduced();
 
+  // Bare mode (tray-icon micro-sims): draw ONLY the tower and its shots on a
+  // transparent surface — no background, board, path, core, or enemies. The
+  // caller owns clearing + any crop transform, so we neither fill nor clear
+  // here. This is what makes the tower-tray icons show the real in-game firing
+  // visuals (see src/tray-icon.js) instead of a hand-drawn lookalike.
+  if (uiState.bare) {
+    drawTowers(ctx, game, uiState);
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    drawProjectiles(ctx, game, reduced);
+    drawEffects(ctx, game, reduced);
+    drawParticles(ctx, game, reduced);
+    ctx.restore();
+    return;
+  }
+
   ctx.fillStyle = pal.background;
   ctx.fillRect(0, 0, w, h);
 

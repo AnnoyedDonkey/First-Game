@@ -641,6 +641,22 @@ export const LOOT = {
 // All the spectacle knobs live here. "Subtle" starting values —
 // raise warp strengths and particle counts for more drama.
 export const VFX = {
+  // Tower-tray icons: the bottom HUD shows each tower as a live micro-sim
+  // (src/tray-icon.js) instead of its name. Non-selected buttons draw one
+  // idle frame; the SELECTED tower runs a firing loop — real in-game shots
+  // aimed at an invisible pinned target one tile "up", so the shots leave the
+  // cropped frame and hit nothing on the real board. All cosmetic; tune here.
+  trayIcon: {
+    tilePx: 26,            // sim tile size in CSS px (drives tower + shot scale)
+    viewTiles: 1.5,        // how many tiles the square icon crops to (tower centered)
+    gridWidth: 3,          // sim board width in tiles (tower centered at 1,1)
+    gridHeight: 3,         // sim board height in tiles
+    towerTile: { x: 1, y: 1 }, // where the tower sits (kept centered by the crop)
+    targetTile: { x: 1, y: 0 }, // invisible pinned target — one tile up = aim up
+    dummyHealthMult: 1e12, // huge HP so the target never dies (no coins/gear/loot)
+    maxFrameDt: 0.05,      // clamp per-frame dt so a tab-return can't fast-forward
+  },
+
   maxParticles: 900,       // hard cap; oldest particles are dropped first
   hitSparkCount: 9,        // base sparks per hit (+1 per tower level)
   deathSparkCount: 20,     // extra sparks on top of shards when a unit dies

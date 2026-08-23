@@ -56,6 +56,10 @@ import { ENEMY_LOOK } from "./renderer.js";
 import {
   createTowerDemo, stepTowerDemo, renderTowerDemo, destroyTowerDemo,
 } from "./tower-demo.js";
+import {
+  createTrayIconSim, stepTrayIconSim, renderTrayIconSim,
+  destroyTrayIconSim, trayIconViewPx,
+} from "./tray-icon.js";
 import { isLobbyEnabled, openLobbyMenu } from "./lobby.js";
 
 // ---- i18n display-name helpers (Phase B) ----
@@ -435,6 +439,92 @@ function updateWaveButton(game) {
 // ---------- Tower buttons ----------
 
 const towerButtonRefs = {}; // type -> button element
+const towerIconRefs = {};   // type -> <canvas> showing the live tower + shots
+
+// The tray shows each tower as a real micro-sim (src/tray-icon.js) rather than
+// its name, so a firing icon EXACTLY matches how that tower fires in battle.
+// Non-selected buttons paint one idle frame; the selected tower runs a rAF
+// loop. Only one animates at a time, so this costs one loop total.
+let trayAnimSim = null;      // active firing sim, or null
+let trayAnimType = null;     // the type currently animating, or null
+let trayAnimCanvas = null;   // the selected button's canvas
+let trayAnimFrame = null;    // rAF handle
+let trayAnimLastTime = null; // last rAF timestamp (for dt)
+
+function trayDpr() {
+  return Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+}
+
+// Size a tray canvas to a crisp square (viewPx CSS px, backed by dpr) and
+// return the ready 2D context, or null if canvas 2D is unavailable.
+function prepareTrayCanvas(canvas) {
+  const viewPx = trayIconViewPx();
+  const dpr = trayDpr();
+  canvas.style.width = `${viewPx}px`;
+  canvas.style.height = `${viewPx}px`;
+  canvas.width = Math.round(viewPx * dpr);
+  canvas.height = Math.round(viewPx * dpr);
+  return canvas.getContext("2d");
+}
+
+// Paint a single idle frame (the tower at rest, no shots) for one button.
+function paintTrayStatic(type) {
+  const canvas = towerIconRefs[type];
+  if (!canvas) return;
+  const ctx = prepareTrayCanvas(canvas);
+  if (!ctx) return;
+  const sim = createTrayIconSim(type);
+  renderTrayIconSim(sim, ctx, trayDpr());
+  destroyTrayIconSim(sim);
+}
+
+function cancelTrayAnimFrame() {
+  if (trayAnimFrame != null) cancelAnimationFrame(trayAnimFrame);
+  trayAnimFrame = null;
+}
+
+function stopTrayAnim() {
+  cancelTrayAnimFrame();
+  const wasType = trayAnimType;
+  if (trayAnimSim) destroyTrayIconSim(trayAnimSim);
+  trayAnimSim = null;
+  trayAnimType = null;
+  trayAnimCanvas = null;
+  trayAnimLastTime = null;
+  // Restore the idle tower shape on the button we just left.
+  if (wasType) paintTrayStatic(wasType);
+}
+
+function animateTrayIcon(time) {
+  trayAnimFrame = null;
+  const ctx = trayAnimCanvas && trayAnimCanvas.getContext("2d");
+  // Bail if hidden, torn down, or the tray was replaced by the upgrade panel
+  // (offsetParent is null for a display:none ancestor) — stopTrayAnim repaints.
+  if (!trayAnimSim || !ctx || document.hidden || !trayAnimCanvas.offsetParent) {
+    return;
+  }
+  if (trayAnimLastTime != null) {
+    const dt = Math.min((time - trayAnimLastTime) / 1000, VFX.trayIcon.maxFrameDt);
+    stepTrayIconSim(trayAnimSim, dt);
+  }
+  trayAnimLastTime = time;
+  renderTrayIconSim(trayAnimSim, ctx, trayDpr());
+  trayAnimFrame = requestAnimationFrame(animateTrayIcon);
+}
+
+function startTrayAnim(type) {
+  stopTrayAnim();
+  const canvas = towerIconRefs[type];
+  if (!canvas) return;
+  const ctx = prepareTrayCanvas(canvas);
+  if (!ctx) return;
+  trayAnimSim = createTrayIconSim(type);
+  trayAnimType = type;
+  trayAnimCanvas = canvas;
+  trayAnimLastTime = null;
+  renderTrayIconSim(trayAnimSim, ctx, trayDpr());
+  trayAnimFrame = requestAnimationFrame(animateTrayIcon);
+}
 
 // Build one button per tower type from config. onSelect(type) fires on tap.
 export function initTowerButtons(onSelect) {
@@ -442,12 +532,18 @@ export function initTowerButtons(onSelect) {
     const btn = document.createElement("button");
     btn.className = "tower-button";
     btn.style.setProperty("--tower-color", def.color);
-    btn.innerHTML =
-      `<span class="tower-button-name">${(def.trayName || def.name.replace(" Tower", "")).toUpperCase()}</span>` +
-      `<span class="tower-button-cost">$${def.baseCost}</span>`;
+    const canvas = document.createElement("canvas");
+    canvas.className = "tower-button-icon";
+    const cost = document.createElement("span");
+    cost.className = "tower-button-cost";
+    cost.textContent = `$${def.baseCost}`;
+    btn.appendChild(canvas);
+    btn.appendChild(cost);
     btn.addEventListener("click", () => onSelect(type));
     el.towerButtons.appendChild(btn);
     towerButtonRefs[type] = btn;
+    towerIconRefs[type] = canvas;
+    paintTrayStatic(type);
   }
 }
 
@@ -467,6 +563,25 @@ export function updateTowerButtons(game, selectedType) {
     costSpan.textContent = unlocked
       ? `$${TOWERS[type].baseCost}`
       : (TOWERS[type].unlockLabel || "LOCKED");
+  }
+
+  // Drive the firing animation: the SELECTED unlocked tower fires; nothing
+  // animates while the tray is hidden (the upgrade panel covers it) or under
+  // reduced-motion. `desired` is the type that should be animating right now.
+  const trayVisible = el.towerButtons.style.display !== "none";
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const desired = (trayVisible && !reduced && selectedType &&
+    towerIconRefs[selectedType] && isTowerUnlocked(selectedType))
+    ? selectedType
+    : null;
+  if (desired !== trayAnimType) {
+    if (desired) startTrayAnim(desired);
+    else stopTrayAnim();
+  } else if (desired && trayAnimSim && trayAnimFrame == null && !document.hidden) {
+    // The loop self-halted (tab was hidden / tray was briefly covered) but the
+    // same tower is still selected — resume it without rebuilding the sim.
+    trayAnimLastTime = null;
+    trayAnimFrame = requestAnimationFrame(animateTrayIcon);
   }
 }
 
