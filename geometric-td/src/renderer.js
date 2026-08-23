@@ -353,20 +353,27 @@ function drawTowerGear(ctx, game) {
   const half = g.diamondSize / 2;
 
   for (const tower of game.towers) {
-    const gear = tower.gear;
-    if (!gear) continue;
+    // A guest mirror carries gear rarities (not full items) sent by the host;
+    // solo/host read the real equipped gear. Either way we only need rarity.
+    let rarities;
+    if (tower._coopGearRarities) {
+      rarities = tower._coopGearRarities;
+    } else if (tower.gear) {
+      rarities = GEAR_SLOTS.map((slot) => tower.gear[slot]?.rarity || null);
+    } else {
+      continue;
+    }
 
     // Collect equipped items in a stable slot order (one orbital each).
     const colors = [];
     let bestColor = null, bestRank = -1, hasSingularity = false;
-    for (const slot of GEAR_SLOTS) {
-      const item = gear[slot];
-      if (!item) continue;
-      const color = GEAR_RARITY_COLOR[item.rarity] || GEAR_RARITY_COLOR.common;
+    for (const rarity of rarities) {
+      if (!rarity) continue;
+      const color = GEAR_RARITY_COLOR[rarity] || GEAR_RARITY_COLOR.common;
       colors.push(color);
-      const rank = GEAR_RARITY_RANK[item.rarity] ?? 0;
+      const rank = GEAR_RARITY_RANK[rarity] ?? 0;
       if (rank > bestRank) { bestRank = rank; bestColor = color; }
-      if (item.rarity === "singularity") hasSingularity = true;
+      if (rarity === "singularity") hasSingularity = true;
     }
     if (!colors.length) continue;
 
@@ -904,8 +911,13 @@ function drawTowers(ctx, game, uiState) {
       }
     }
 
-    // Pulsing chevron above towers that are ready to upgrade.
-    if (isUpgradeEligible(tower)) {
+    // Pulsing chevron above towers that are ready to upgrade. A guest mirror
+    // has no XP, so it uses the host-sent readiness flag; solo/host fall back
+    // to the real eligibility check.
+    const upgradeReady = tower._coopUpgradeReady !== undefined
+      ? tower._coopUpgradeReady
+      : isUpgradeEligible(tower);
+    if (upgradeReady) {
       const bob = Math.sin(time * 5) * 2;
       const cx = tower.pos.x;
       const cy = tower.pos.y - ts * 0.42 + bob;

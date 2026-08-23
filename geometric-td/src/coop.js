@@ -17,9 +17,10 @@ import {
   codenameForCode, countFreeTiles, heartbeatHostSession, publishHostSession,
 } from "./lobby.js";
 import {
-  applyLevelUpSurge, createTower, placeTower, refreshTowerStats, sellTower,
-  tryUpgradeTower, upgradeCostFor,
+  applyLevelUpSurge, createTower, isUpgradeEligible, placeTower,
+  refreshTowerStats, sellTower, tryUpgradeTower, upgradeCostFor,
 } from "./towers.js";
+import { GEAR_SLOTS } from "./equipment.js";
 import { emitGearDropEffect } from "./enemies.js";
 import {
   emitCoins, emitDeathShards, emitHitSparks, updateParticles,
@@ -790,6 +791,12 @@ function buildSnapshot(game, sequence) {
       level: tower.level,
       ownerId: tower.ownerId,
       upgradeCost: upgradeCostFor(tower),
+      // Guest-visible cosmetics: whether the host's real tower is XP-ready to
+      // upgrade (drives the guest's chevron + button highlight), and the gear
+      // rarity per slot (drives the orbital diamonds). Rarities only — the
+      // guest never needs the item stats, the host owns damage.
+      up: isUpgradeEligible(tower),
+      gear: GEAR_SLOTS.map((slot) => tower.gear?.[slot]?.rarity || null),
     })),
   };
 }
@@ -1306,6 +1313,11 @@ function applyTowerSnapshots(game, snapshots) {
     // real tower's XP and unlocked level.
     tower.maxUnlockedLevel = state.level;
     tower._coopUpgradeCost = state.upgradeCost;
+    // Host-authoritative upgrade readiness + gear rarities for the guest's
+    // chevron, button highlight, and orbital diamonds. Kept off tower.gear so
+    // the guest's stat math is untouched (host owns real damage).
+    tower._coopUpgradeReady = !!state.up;
+    tower._coopGearRarities = Array.isArray(state.gear) ? state.gear : null;
     tower.ownerId = state.ownerId;
     mirrored.push(tower);
   }

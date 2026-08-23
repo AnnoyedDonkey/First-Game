@@ -478,7 +478,9 @@ export function updateUpgradePanel(game, tower) {
   const threshold = guestMirror
     ? (cost === null ? null : 0)
     : xpThresholdFor(tower);
-  const eligible = !guestMirror && isUpgradeEligible(tower);
+  // A guest mirror has no XP; the host sends whether its real tower is
+  // upgrade-ready. Solo/host use the real check.
+  const eligible = guestMirror ? !!tower._coopUpgradeReady : isUpgradeEligible(tower);
 
   const rank = masteryRankFor(tower.xp);
   const dps = tower.damage / tower.fireInterval;
@@ -496,7 +498,9 @@ export function updateUpgradePanel(game, tower) {
   let xpText;
   const xpReadyText = t("ui.xpReady", "XP READY");
   if (guestMirror) {
-    xpText = t("coop.upgrade.hostVerified", "HOST VERIFIES XP");
+    // No XP numbers on the mirror; show the same ready/not cue as solo,
+    // driven by the host's readiness flag. Reuses existing translated keys.
+    xpText = eligible ? xpReadyText : `${t("ui.need", "NEED")} ${t("ui.xp", "XP")}`;
   } else if (threshold !== null && tower.xp < threshold) {
     xpText = `XP ${tower.xp}/${threshold}`;
   } else if (threshold !== null) {
@@ -517,10 +521,6 @@ export function updateUpgradePanel(game, tower) {
     label = t("ui.max", "MAX");
     sub = t("ui.level", "LEVEL");
     disabled = true;
-  } else if (guestMirror) {
-    label = t("ui.upgrade", "UPGRADE");
-    sub = `$${cost}`;
-    disabled = game.money < cost;
   } else if (!eligible) {
     label = t("ui.need", "NEED");
     sub = t("ui.xp", "XP");
@@ -551,7 +551,7 @@ export function updateUpgradePanel(game, tower) {
     last.upBtnDisabled = disabled;
     el.upgradeButton.disabled = disabled;
   }
-  const glow = !guestMirror && eligible && !disabled;
+  const glow = eligible && !disabled;
   if (last.upBtnGlow !== glow) {
     last.upBtnGlow = glow;
     el.upgradeButton.classList.toggle("eligible", glow);
