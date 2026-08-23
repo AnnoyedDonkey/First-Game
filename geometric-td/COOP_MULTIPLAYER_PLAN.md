@@ -317,13 +317,47 @@ this plan originally assumed (§2, round 2) — for iOS users with Private Relay
 a relay is the **only** path that works. Phase 5 is effectively mandatory for
 the real feature, not optional.
 
-**Also confirmed in the same test:** iOS Safari **never** reports
-`iceGatheringState === "complete"` — the diagnostics showed `ice gath:
-gathering` even after the session failed. The `COOP.iceGatheringTimeoutMs`
-fallback is what makes signaling work at all on iOS; without it the guest hangs
-forever. Do not remove it. The published offer was verified complete (3
-candidates including both srflx), so publishing early did **not** truncate the
-candidate list.
+**About ICE gathering on iOS — corrected.** An earlier revision of this file
+claimed iOS Safari *never* reports `iceGatheringState === "complete"`. That was
+**wrong**, and it was written from a single observation. With Private Relay
+**on**, gathering did stall at `gathering` forever; with it **off**, the very
+next test reported `complete`. The stall was Private Relay, not Safari.
+`COOP.iceGatheringTimeoutMs` is still worth keeping — it costs nothing and it
+protects against exactly that stall, which any user with Private Relay on will
+hit — but it is a safety net, not a workaround for a Safari defect. The
+published offer was verified complete (3 candidates including both srflx), so
+publishing early does **not** truncate the candidate list.
+
+### ⚠️ Phase 0 finding 2 — same-LAN peers still cannot reach each other
+
+With Private Relay fully disabled, a PC-hosts / phone-joins test still failed,
+and the SDP shows why the failure is now a *local* one:
+
+```
+PC    srflx:  96.250.89.177   + <uuid>.local host (UDP + TCP)
+phone srflx:  96.250.89.177   + <uuid>.local host
+```
+
+**Identical public IP** — the two devices really are on one network. That
+leaves exactly two possible candidate pairings, and both are dead ends:
+
+- **host ↔ host** — both host candidates are mDNS `.local` names. Each side
+  must resolve the *other's* name; if either cannot, no packet is ever sent to
+  that pair.
+- **srflx ↔ srflx** — both resolve to the same public address, so this pair
+  only works if the router supports **NAT hairpinning**. Many consumer routers
+  do not.
+
+Prime suspects, in order: **AP/client isolation** on the Wi-Fi (blocks
+device-to-device traffic outright), **the Windows firewall network profile**
+set to Public (blocks inbound), or **mDNS resolution failing** on one or both
+sides.
+
+**Cheap discriminator before any more code:** serve the game from the PC
+(`./serve.ps1`) and try to load `http://<PC-LAN-IP>:8420` on the phone. If the
+page loads, the devices *can* reach each other and the problem is specific to
+mDNS/ICE. If it does not load, the network itself is blocking them and no
+amount of WebRTC work will help — only a relay.
 
 ### Phase 0 follow-up — row cleanup: DONE (2026-08-22)
 
