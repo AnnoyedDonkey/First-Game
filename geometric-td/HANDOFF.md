@@ -705,10 +705,14 @@ BALANCE_LAB_PLAN.md  approved Balance Lab L0-L7 plan
     **Don't re-plan this for iOS.** If Android is ever a target it's an easy
     win (~1h): a feature-detected `haptics.js` with durations in `config.js`,
     an ON/OFF toggle, sharing call sites with the sound layer.
-- **IN PROGRESS — Co-op multiplayer (own mode):** full phased plan in
-  **`COOP_MULTIPLAYER_PLAN.md`** (designed 2026-08-22 over four ideation
-  rounds). **Phase 0 (transport) and Phase 5 (TURN relay) are DONE and
-  verified iPhone↔PC on the deployed build; Phase 1 is the next build step.**
+- **CO-OP MULTIPLAYER — v1 BUILD COMPLETE (2026-08-22):** full phased record in
+  **`COOP_MULTIPLAYER_PLAN.md`**. **All phases (0,1,2a,2b,2b-3,3,3b,4,5) are
+  shipped and verified locally.** Real two-player iPhone↔PC Endless co-op runs
+  over the TURN relay. **The one thing left is live two-device timing/feel** —
+  every multi-tab test drove the loops by hand because automation tabs suspend
+  rAF. Next real work is a human two-device play session, then any polish it
+  surfaces. Deliberate v1 limits: no mid-run-leave banking, no lobby
+  kick/terminate, 2-player UI (schema ready for 4), no co-op leaderboard.
   Two players (schema/protocol designed for 4) on one board via a CO-OP button
   in `#menu-actions` → session browser → host picks Public/Private + a
   **cleared** level, played in **Endless**. Host starts alone, guest **drops
