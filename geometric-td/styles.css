@@ -3271,8 +3271,9 @@ html[data-lang="fr"] .settings-help { letter-spacing: .2px; }
   cursor: pointer;
 }
 
-/* Tray: bare tower icons (no chip/rectangle) + price. The tower glyph is the
-   button — no border, background, or box. */
+/* Tray: bare tower icons + price. Unselected buttons show no chip; the box
+   reappears only for the SELECTED tower (see below). A permanently-reserved
+   transparent border keeps the layout from shifting when it becomes visible. */
 .tower-button {
   flex: 1 1 0;
   min-width: 0; /* equal-width; shrink to make room for the wave button */
@@ -3283,8 +3284,8 @@ html[data-lang="fr"] .settings-help { letter-spacing: .2px; }
   gap: 2px;
   padding: 2px 2px;
   min-height: 46px;
-  border: none;
-  border-radius: 0;
+  border: 2px solid transparent;
+  border-radius: 10px;
   background: none;
   box-shadow: none;
   color: var(--tower-color, var(--neon-cyan));
@@ -3302,10 +3303,15 @@ html[data-lang="fr"] .settings-help { letter-spacing: .2px; }
 }
 .tower-button-cost { font-size: 10px; opacity: 0.75; line-height: 1; }
 
-/* Selected = the firing animation + a glow on the icon itself (no box). */
+/* Selected = the box comes back (border + glow + faint fill) plus the firing
+   animation, so it's obvious which tower is armed. */
+.tower-button.selected {
+  border-color: var(--tower-color, var(--neon-cyan));
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0 10px var(--tower-color, var(--neon-cyan));
+}
 .tower-button.selected .tower-button-icon {
   filter: drop-shadow(0 0 5px var(--tower-color, var(--neon-cyan)));
-  transform: scale(1.06);
 }
 
 .tower-button:disabled {
@@ -3314,8 +3320,12 @@ html[data-lang="fr"] .settings-help { letter-spacing: .2px; }
   box-shadow: none;
   cursor: default;
 }
-/* Dim the icon too when a tower is unaffordable, so it reads as inert. */
-.tower-button:disabled .tower-button-icon { opacity: 0.5; }
+/* Unaffordable (unlocked) tower: render its icon light grey so it clearly reads
+   as "can't build this yet". Locked towers keep their own dim + unlock label. */
+.tower-button:disabled:not(.locked) .tower-button-icon {
+  filter: grayscale(1) brightness(1.7) opacity(0.85);
+}
+.tower-button.locked .tower-button-icon { opacity: 0.5; }
 
 .tower-button.locked { opacity: 0.55; }
 .tower-button.locked .tower-button-cost { font-size: 8px; letter-spacing: 0; }
