@@ -33,6 +33,8 @@ const DEFAULT_SAVE = {
   seenTowerIntros: [],   // late tower type ids whose pre-battle recruit card has fired
   seenTowerBarks: [],    // tower type ids whose one-liner has fired (once ever, first placement)
   barksEnabled: true,    // master toggle for in-battle banter (enemy intros / boss / tower barks)
+  visualEffects: "auto", // "auto" adapts per device; "full" | "reduced" force a mode
+  debugMode: false,      // shows rendered FPS + effective VFX mode during battles
   lang: "en",            // UI language: "en" (default) | "fr" — see i18n.js, getLang/setLang
 };
 

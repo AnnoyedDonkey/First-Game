@@ -24,6 +24,37 @@ export const DEBUG = {
   coopLocal: false,    // fake a second local player for Phase 1 wallet/owner testing
 };
 
+// ---------- Runtime performance ----------
+// AUTO visual quality watches rendered frames on each device independently;
+// it is deliberately local-only and never enters a co-op snapshot. Simulation
+// uses bounded game-time substeps so a 30 Hz Low Power Mode render cadence can
+// run two safe ticks without making 120 Hz displays update less often.
+export const PERFORMANCE = {
+  simulation: {
+    maxStepSeconds: 1 / 60,
+    maxFrameSeconds: 0.25, // discard longer background/stall gaps
+    maxCatchUpSteps: 32,   // enough for 16x game speed at a 30 Hz render cadence
+  },
+  monitor: {
+    sampleWindowMs: 500,
+    resetGapMs: 1000,      // a hidden/backgrounded page is not a low-FPS sample
+    reduceBelowFps: 42,
+    reduceHoldMs: 2000,
+    restoreAboveFps: 52,
+    restoreHoldMs: 5000,   // slower recovery prevents quality-mode flutter
+  },
+  reduced: {
+    maxParticles: 260,
+    particleCountScale: 0.35,
+    deathShardScale: 0.5,
+    minParticleCount: 1,
+    skipWarpGrid: true,
+    skipGearOrbitals: true,
+    skipSpringGrid: true,
+    simpleParticleRendering: true,
+  },
+};
+
 // Single-player towers and wallets use this owner id. Co-op sessions replace
 // it with the ids assigned by the host; keeping the fallback shared prevents
 // callers such as the Balance Lab and tower demos from needing co-op setup.

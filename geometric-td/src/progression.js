@@ -77,6 +77,8 @@ state.seenTowerIntros ||= [];
 backfillTowerIntros(); // Tower cards: spare veterans retroactive recruit intros
 state.seenTowerBarks ||= [];
 if (state.barksEnabled === undefined) state.barksEnabled = true;
+if (!["auto", "full", "reduced"].includes(state.visualEffects)) state.visualEffects = "auto";
+if (state.debugMode === undefined) state.debugMode = false;
 // UI language (default English). Belt-and-suspenders alongside save.js's
 // DEFAULT_SAVE merge, then seed the i18n engine so the first render (and
 // static [data-i18n] markup) is already in the player's chosen language.
@@ -499,6 +501,27 @@ export function getBarksEnabled() {
 }
 export function setBarksEnabled(on) {
   state.barksEnabled = !!on;
+  writeSave(state);
+}
+
+// Per-device visual quality. AUTO is intentionally the default: it can react
+// to iOS Low Power Mode's lower render cadence without affecting another
+// player's presentation or putting any preference on the co-op wire.
+export function getVisualEffectsMode() {
+  return ["full", "reduced"].includes(state.visualEffects)
+    ? state.visualEffects
+    : "auto";
+}
+export function setVisualEffectsMode(mode) {
+  state.visualEffects = ["full", "reduced"].includes(mode) ? mode : "auto";
+  writeSave(state);
+}
+
+export function getDebugMode() {
+  return state.debugMode === true;
+}
+export function setDebugMode(on) {
+  state.debugMode = !!on;
   writeSave(state);
 }
 

@@ -6,7 +6,7 @@ July **and** August 2026); the original pre-cleanup handoff is preserved in Git
 at commit `2650204`. This file keeps only what you need to start work:
 current state, non-obvious mechanics, rules, tuning locations, and the file map.
 
-## Current state — 2026-08-19
+## Current state — 2026-08-23
 
 **IN PROGRESS — French localization (i18n).** A discreet `EN|FR` language
 toggle (default English) so the player's dad can play in French. Read
@@ -20,7 +20,29 @@ en)` looks it up; `lang` save field via `progression.js getLang/setLang`;
 proper nouns** (tower names Laser/Pulse/Slow/Railgun/Rocket, Indy-7,
 Bratwurst-XL, "GEOMETRIC TD").
 
-**Deployed build: `2026.08.19-20`.**
+**Deployed build: `2026.08.23-4`.**
+
+### Settings + adaptive performance (`2026.08.23-4`)
+
+- The main menu's old BANTER button is now **SETTINGS**. The panel owns Story
+  Banter, Visual Effects (`AUTO` / `FULL` / `REDUCED`), Debug Mode, Language,
+  and the only Reset All Progress control (two-tap confirmation). Preferences
+  persist via `save.js` defaults **and** `progression.js` backfills.
+- Visual quality is **per device and local-only**. It never enters a co-op join
+  payload, command, catalog, event, or recurring snapshot. AUTO samples rendered
+  FPS and enters reduced mode after sustained sub-42 FPS, then restores after a
+  sustained recovery above 52 FPS; hysteresis/timing and reduced budgets live in
+  `config.js PERFORMANCE`.
+- Reduced mode keeps gameplay intact while cutting particle counts/cap/glows,
+  gear orbitals, and the spring-warp mesh. It applies to campaign, solo Endless,
+  co-op host, and co-op guest rendering independently.
+- `simulation-clock.js` divides low-FPS/high-speed authoritative frames into
+  bounded substeps no larger than 1/60 game-second. It preserves per-render
+  updates at 120 Hz and slow motion, while 30 Hz gets two safe ticks and long
+  background gaps are capped. Guests remain snapshot-driven.
+- DEBUG MODE shows actual rendered FPS plus effective VFX state in battle, e.g.
+  `FPS 30 · VFX AUTO→REDUCED`. The main-menu build stamp remains visible and is
+  centered.
 
 ### Railgun rework (`2026.08.19-14` .. `-20`)
 Multi-part Railgun overhaul. **All knobs live in `config.js VFX.railgun`** unless
@@ -495,6 +517,8 @@ src/towers.js       placement, targeting, firing, upgrades, roster use
 src/enemies.js      movement, damage/death, bounty, XP, shards, status effects
 src/projectiles.js  projectiles and transient combat effects
 src/renderer.js     Canvas rendering and visual constants
+src/performance.js  per-device FPS monitor + AUTO/FULL/REDUCED effective VFX state
+src/simulation-clock.js bounded authoritative simulation substeps across render cadences
 src/progression.js  persistent roster, skills, shards, migration/backfills (+ tooling-only seedRoster/seedSkills exports for balance sims)
 src/equipment.js    equipped-item stat aggregation and mastery helpers
 src/loot.js         item generation

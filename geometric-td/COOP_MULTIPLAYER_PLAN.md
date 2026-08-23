@@ -1242,6 +1242,25 @@ A live two-device host/guest role swap is still the final human check.
 
 ---
 
+## 10g. Per-device adaptive performance (2026-08-23)
+
+The global SETTINGS screen's Visual Effects mode is deliberately **not part of
+the multiplayer protocol**. Each device persists and evaluates its own
+`AUTO` / `FULL` / `REDUCED` choice, so a low-power guest can cut its local
+particles, glows, gear orbitals, and spring mesh without changing the host's
+presentation or adding bytes to the 10Hz snapshot. Cosmetic co-op events send
+their full requested particle count; each receiving device applies its own
+local reduction when replaying them.
+
+The co-op host shares the same bounded authoritative simulation substeps as
+solo campaign/Endless, preventing a 30Hz render cadence from slowing the shared
+game clock. Guests still never call `updateGame`; their existing snapshot clock,
+extrapolation, and cosmetic-only updates remain unchanged. DEBUG MODE's FPS/VFX
+readout is also local-only and never enters the wire format. No protocol-version
+or snapshot-schema change was required.
+
+---
+
 ## 11. Phase 5 — TURN relay — ✅ DONE (2026-08-22, pulled forward)
 
 **Built, deployed, and verified on real devices.** Pulled forward from "last

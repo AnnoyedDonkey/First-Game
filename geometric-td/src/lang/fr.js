@@ -36,6 +36,21 @@ export const FR = {
   "menu.resetConfirm": "EFFACER TOURELLES, TALENTS & NIVEAUX ? RETAPEZ",
   "menu.welcomeBack": "BON RETOUR",
 
+  // ---------- Settings: per-device gameplay + performance preferences ----------
+  "settings.title": "RÉGLAGES",
+  "settings.subtitle": "PRÉFÉRENCES DE L'APPAREIL ET DU JEU",
+  "settings.banter": "DIALOGUES",
+  "settings.effects": "EFFETS VISUELS",
+  "settings.effectsHelp": "AUTO RÉDUIT LES EFFETS COSMÉTIQUES SI LE TAUX D'IMAGES RESTE BAS",
+  "settings.debug": "MODE DEBUG",
+  "settings.debugHelp": "AFFICHE LE TAUX D'IMAGES ET LE MODE VISUEL ACTIF EN JEU",
+  "settings.danger": "ZONE DANGEREUSE",
+  "settings.on": "ACTIF",
+  "settings.off": "INACTIF",
+  "settings.auto": "AUTO",
+  "settings.full": "COMPLETS",
+  "settings.reduced": "RÉDUITS",
+
   // ---------- Phase A: HUD + static overlays (index.html) + ui.js dynamic ----------
   "hud.credits": "CRÉDITS",
   "hud.wave": "VAGUE",

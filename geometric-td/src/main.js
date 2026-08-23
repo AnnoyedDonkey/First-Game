@@ -15,6 +15,7 @@ import {
   shouldShowBeat, markBeatSeen, shouldShowEnemyIntro, markEnemyIntroSeen,
   shouldShowTowerIntro, markTowerIntroSeen, isTowerUnlocked,
   shouldShowTowerBark, markTowerBarkSeen, getBarksEnabled,
+  getVisualEffectsMode, getDebugMode,
 } from "./progression.js";
 import { render } from "./renderer.js";
 import { bindCanvasInput } from "./input.js";
@@ -40,6 +41,11 @@ import { startOnboarding, playCards, isOnboardingActive, setCardsSuppressed } fr
 import { t, tf } from "./i18n.js";
 import * as coop from "./coop.js";
 import { initLobbyMenu } from "./lobby.js";
+import {
+  getPerformanceSnapshot, resetFrameRateMonitor, sampleFrameRate,
+  setVisualEffectsMode,
+} from "./performance.js";
+import { createSimulationClock } from "./simulation-clock.js";
 
 const TILE_SIZE = 64; // internal render resolution per tile
 
@@ -51,6 +57,10 @@ window.loot = loot;
 const canvas = document.getElementById("game-canvas");
 const ctx = canvas.getContext("2d");
 const gameArea = document.getElementById("game-area");
+const fpsDisplay = document.getElementById("fps-display");
+const simulationClock = createSimulationClock();
+
+setVisualEffectsMode(getVisualEffectsMode());
 
 let game = null;
 let overlayShown = false;
@@ -91,6 +101,7 @@ window.gear = {
 function startLevel(level, endless = false) {
   setCoopHudMode(false);
   game = createGame(level, TILE_SIZE, endless);
+  resetFrameRateMonitor(performance.now());
   overlayShown = false;
   // Per-battle bark driver state: the boss-banter guard, plus when each
   // enemy type was first spotted this battle (NARRATIVE.enemyIntro.delay
@@ -344,6 +355,7 @@ bindCanvasInput(canvas, {
 
 function goToMainMenu() {
   game = null;
+  fpsDisplay.classList.add("hidden");
   window.game = null;
   hideOverlay();
   showLevelSelect(LEVELS, getProgress().completedLevels, startLevel);
@@ -835,21 +847,22 @@ function updateBarks(game) {
 // ---------- Game loop ----------
 let lastTime = performance.now();
 
+function updateFpsDisplay(perf) {
+  const show = !!game && getDebugMode() && !overlayShown;
+  fpsDisplay.classList.toggle("hidden", !show);
+  if (!show) return;
+  const fps = perf.fps > 0 ? Math.round(perf.fps) : "—";
+  const effective = perf.reduced ? "REDUCED" : "FULL";
+  const mode = perf.selectedMode === "auto" ? `AUTO→${effective}` : effective;
+  const text = `FPS ${fps} · VFX ${mode}`;
+  if (fpsDisplay.textContent !== text) fpsDisplay.textContent = text;
+  fpsDisplay.classList.toggle("reduced", perf.reduced);
+}
+
 function frame(now) {
-  // Clamp dt so a backgrounded tab doesn't cause a huge jump.
-  // Paused = zero-length ticks: the world freezes but still renders.
-  // Also freezes while the forfeit-confirm prompt is up, and while a story
-  // card is on screen — the enemy-intro rebuild plays cards mid-battle, and
-  // the same clamp-then-zero shape the tutorial's freeze steps use means
-  // resuming can't hand updateGame a large catch-up dt (lastTime advances
-  // every frame regardless).
-  const dt =
-    Math.min((now - lastTime) / 1000, 0.05) *
-    DEBUG.gameSpeed *
-    (gamePaused || exitConfirming || tutorial.isTutorialFreezing() || isOnboardingActive()
-      ? 0
-      : speedFactor);
+  const frameSeconds = Math.max(0, (now - lastTime) / 1000);
   lastTime = now;
+  const perf = sampleFrameRate(now);
 
   if (game) {
     // Self-heal: if the canvas was sized while the page was hidden
@@ -868,7 +881,20 @@ function frame(now) {
         uiState.selectedTower = null;
       }
     } else {
-      updateGame(game, dt);
+      // Solo and the co-op host own the authoritative simulation. Bounded
+      // substeps prevent a 30 Hz render cadence from slowing game time without
+      // making a 120 Hz display update less often; long gaps are discarded.
+      const frozen = gamePaused || exitConfirming ||
+        tutorial.isTutorialFreezing() || isOnboardingActive();
+      if (frozen) {
+        updateGame(game, 0);
+      } else {
+        simulationClock.advance(
+          frameSeconds,
+          DEBUG.gameSpeed * speedFactor,
+          (dt) => updateGame(game, dt)
+        );
+      }
       if (coop.isHost(game)) coop.updateHost(game, now);
     }
     // Drain any milestone toasts queued by this tick's wave-clear (B5).
@@ -890,6 +916,8 @@ function frame(now) {
     if (coop.isActive(game)) checkCoopEndState();
     else checkEndState();
   }
+
+  updateFpsDisplay(game ? perf : getPerformanceSnapshot());
 
   requestAnimationFrame(frame);
 }

@@ -4,8 +4,9 @@
 
 import { enemyPosition } from "./enemies.js";
 import { isUpgradeEligible } from "./towers.js";
-import { SHAPE_SIDES, VFX, ENEMIES } from "./config.js";
+import { PERFORMANCE, SHAPE_SIDES, VFX, ENEMIES } from "./config.js";
 import { GEAR_SLOTS } from "./equipment.js";
+import { visualEffectsReduced } from "./performance.js";
 
 // Rarity accent colors for in-battle gear orbitals (B4). Mirrors the
 // RARITY_COLOR map in ui.js — kept local so the renderer takes no UI import.
@@ -292,12 +293,13 @@ export function render(ctx, game, time, uiState = {}) {
   const w = grid.width * ts;
   const h = grid.height * ts;
   activePalette(game);
+  const reduced = visualEffectsReduced();
 
   ctx.fillStyle = pal.background;
   ctx.fillRect(0, 0, w, h);
 
   drawCircuitLayer(ctx, game);
-  drawWarpGrid(ctx, game);
+  drawWarpGrid(ctx, game, reduced);
   drawPath(ctx, grid, time);
   drawBlockedTiles(ctx, grid);
   drawFields(ctx, grid, time);
@@ -313,10 +315,10 @@ export function render(ctx, game, time, uiState = {}) {
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
   drawSurgeAura(ctx, game);
-  drawTowerGear(ctx, game);
-  drawProjectiles(ctx, game);
-  drawEffects(ctx, game);
-  drawParticles(ctx, game);
+  if (!(reduced && PERFORMANCE.reduced.skipGearOrbitals)) drawTowerGear(ctx, game);
+  drawProjectiles(ctx, game, reduced);
+  drawEffects(ctx, game, reduced);
+  drawParticles(ctx, game, reduced);
   ctx.restore();
 }
 
@@ -405,35 +407,53 @@ function drawTowerGear(ctx, game) {
 
 // The spring-mesh background grid — lines pass through the simulated
 // node positions, so shockwaves visibly ripple across the board.
-function drawWarpGrid(ctx, game) {
+function drawWarpGrid(ctx, game, reduced) {
   const grid = game.grid;
   const sg = game.springGrid;
   const ts = grid.tileSize;
-  // How many mesh nodes per tile boundary (spacing 0.5 tiles -> 2).
-  const perTile = Math.round(ts / sg.spacing);
 
-  ctx.lineWidth = 1;
-  for (let r = 0; r < sg.rows; r++) {
-    ctx.strokeStyle = r % perTile === 0 ? pal.gridLineMajor : pal.gridLine;
+  // Keep a readable tile grid in reduced mode, but drop the half-tile spring
+  // mesh and all displacement lookups. Buildability dots remain below.
+  if (reduced && PERFORMANCE.reduced.skipWarpGrid) {
+    ctx.strokeStyle = pal.gridLineMajor;
+    ctx.lineWidth = 1;
     ctx.beginPath();
-    for (let c = 0; c < sg.cols; c++) {
-      const x = sg.homeX(c) + sg.dispX(c, r);
-      const y = sg.homeY(r) + sg.dispY(c, r);
-      if (c === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
+    for (let x = 0; x <= grid.width; x++) {
+      ctx.moveTo(x * ts, 0);
+      ctx.lineTo(x * ts, grid.height * ts);
+    }
+    for (let y = 0; y <= grid.height; y++) {
+      ctx.moveTo(0, y * ts);
+      ctx.lineTo(grid.width * ts, y * ts);
     }
     ctx.stroke();
-  }
-  for (let c = 0; c < sg.cols; c++) {
-    ctx.strokeStyle = c % perTile === 0 ? pal.gridLineMajor : pal.gridLine;
-    ctx.beginPath();
+  } else {
+    // How many mesh nodes per tile boundary (spacing 0.5 tiles -> 2).
+    const perTile = Math.round(ts / sg.spacing);
+
+    ctx.lineWidth = 1;
     for (let r = 0; r < sg.rows; r++) {
-      const x = sg.homeX(c) + sg.dispX(c, r);
-      const y = sg.homeY(r) + sg.dispY(c, r);
-      if (r === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
+      ctx.strokeStyle = r % perTile === 0 ? pal.gridLineMajor : pal.gridLine;
+      ctx.beginPath();
+      for (let c = 0; c < sg.cols; c++) {
+        const x = sg.homeX(c) + sg.dispX(c, r);
+        const y = sg.homeY(r) + sg.dispY(c, r);
+        if (c === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
     }
-    ctx.stroke();
+    for (let c = 0; c < sg.cols; c++) {
+      ctx.strokeStyle = c % perTile === 0 ? pal.gridLineMajor : pal.gridLine;
+      ctx.beginPath();
+      for (let r = 0; r < sg.rows; r++) {
+        const x = sg.homeX(c) + sg.dispX(c, r);
+        const y = sg.homeY(r) + sg.dispY(c, r);
+        if (r === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
   }
 
   // Small dot on every buildable tile so players can read the board.
@@ -989,7 +1009,7 @@ function drawPlacementPreview(ctx, game, uiState) {
 // NOTE: drawProjectiles/drawEffects/drawParticles run inside the
 // additive ("lighter") pass — glow sprites instead of shadowBlur.
 
-function drawProjectiles(ctx, game) {
+function drawProjectiles(ctx, game, reduced) {
   for (const p of game.projectiles) {
     if (p.kind === "rocket") {
       // A fiery exhaust trail behind the warhead, pointing back along travel.
@@ -998,15 +1018,17 @@ function drawProjectiles(ctx, game) {
       const d = Math.hypot(dx, dy) || 1;
       const bx = p.x - (dx / d) * 14;
       const by = p.y - (dy / d) * 14;
-      drawGlow(ctx, bx, by, 8, p.color, 0.5);
-      drawGlow(ctx, p.x, p.y, 15, p.color, 0.95);
+      if (!reduced) {
+        drawGlow(ctx, bx, by, 8, p.color, 0.5);
+        drawGlow(ctx, p.x, p.y, 15, p.color, 0.95);
+      }
       ctx.fillStyle = "#ffffff";
       ctx.beginPath();
       ctx.arc(p.x, p.y, 2.8, 0, Math.PI * 2);
       ctx.fill();
       continue;
     }
-    drawGlow(ctx, p.x, p.y, 10, p.color, 0.9);
+    if (!reduced) drawGlow(ctx, p.x, p.y, 10, p.color, 0.9);
     ctx.fillStyle = "#ffffff";
     ctx.beginPath();
     ctx.arc(p.x, p.y, 2.2, 0, Math.PI * 2);
@@ -1014,7 +1036,7 @@ function drawProjectiles(ctx, game) {
   }
 }
 
-function drawEffects(ctx, game) {
+function drawEffects(ctx, game, reduced) {
   for (const fx of game.effects) {
     const life = fx.ttl / fx.maxTtl; // 1 -> 0
     ctx.save();
@@ -1030,9 +1052,16 @@ function drawEffects(ctx, game) {
       ctx.moveTo(fx.x1, fx.y1);
       ctx.lineTo(fx.x2, fx.y2);
       ctx.stroke();
-      drawGlow(ctx, fx.x2, fx.y2, 6 + w * 2, fx.color, life * 0.8);
+      if (!reduced) drawGlow(ctx, fx.x2, fx.y2, 6 + w * 2, fx.color, life * 0.8);
     } else if (fx.kind === "muzzle") {
-      drawGlow(ctx, fx.x, fx.y, fx.radius, fx.color, life);
+      if (reduced) {
+        ctx.beginPath();
+        ctx.arc(fx.x, fx.y, Math.max(2, fx.radius * 0.25), 0, Math.PI * 2);
+        ctx.fillStyle = fx.color;
+        ctx.fill();
+      } else {
+        drawGlow(ctx, fx.x, fx.y, fx.radius, fx.color, life);
+      }
     } else if (fx.kind === "ring" || fx.kind === "burst") {
       // Rings/bursts expand as they fade.
       const r = fx.radius * (fx.kind === "burst" ? 1.5 - life * 0.5 : 1.2 - life * 0.2);
@@ -1040,7 +1069,9 @@ function drawEffects(ctx, game) {
       ctx.beginPath();
       ctx.arc(fx.x, fx.y, r, 0, Math.PI * 2);
       ctx.stroke();
-      if (fx.kind === "burst") drawGlow(ctx, fx.x, fx.y, r * 0.8, fx.color, life * 0.6);
+      if (fx.kind === "burst" && !reduced) {
+        drawGlow(ctx, fx.x, fx.y, r * 0.8, fx.color, life * 0.6);
+      }
     } else if (fx.kind === "tileFlash") {
       const ts = game.grid.tileSize;
       ctx.fillStyle = fx.color;
@@ -1183,7 +1214,7 @@ function drawSlotGlyph(ctx, slot, cx, cy, size, color, strokeWidth) {
   ctx.restore();
 }
 
-function drawParticles(ctx, game) {
+function drawParticles(ctx, game, reduced) {
   for (const p of game.particles) {
     const life = p.ttl / p.maxTtl;
 
@@ -1218,18 +1249,27 @@ function drawParticles(ctx, game) {
       ctx.stroke();
       ctx.restore();
       ctx.globalAlpha = 1;
-      drawGlow(ctx, p.x, p.y, p.size * c.glowMult, p.color, life * (p.landed ? 0.7 : 1));
+      if (!reduced || !PERFORMANCE.reduced.simpleParticleRendering) {
+        drawGlow(ctx, p.x, p.y, p.size * c.glowMult, p.color, life * (p.landed ? 0.7 : 1));
+      }
     } else {
       // Spark: glowing dot + a motion-trail streak behind it.
       ctx.globalAlpha = life;
-      ctx.strokeStyle = p.color;
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      ctx.moveTo(p.x - p.vx * 0.045, p.y - p.vy * 0.045);
-      ctx.lineTo(p.x, p.y);
-      ctx.stroke();
+      if (reduced && PERFORMANCE.reduced.simpleParticleRendering) {
+        ctx.fillStyle = p.color;
+        ctx.fillRect(p.x - 1, p.y - 1, 2, 2);
+      } else {
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(p.x - p.vx * 0.045, p.y - p.vy * 0.045);
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+      }
       ctx.globalAlpha = 1;
-      drawGlow(ctx, p.x, p.y, p.size * 3, p.color, life);
+      if (!reduced || !PERFORMANCE.reduced.simpleParticleRendering) {
+        drawGlow(ctx, p.x, p.y, p.size * 3, p.color, life);
+      }
     }
   }
 }

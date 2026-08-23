@@ -36,8 +36,11 @@ import {
   countUnseenStash, isItemSeen, markItemSeen,
   getPlayerName, hasPlayerName,
   getBarksEnabled, setBarksEnabled,
+  getVisualEffectsMode, setVisualEffectsMode as saveVisualEffectsMode,
+  getDebugMode, setDebugMode,
   getLang, setLang,
 } from "./progression.js";
+import { setVisualEffectsMode as applyVisualEffectsMode } from "./performance.js";
 import { t, tf, onLangChange } from "./i18n.js";
 import {
   canEquipItem, GEAR_SLOTS, normalizeGear, masteryRankFor as gearMasteryRankFor,
@@ -100,12 +103,18 @@ const el = {
   skillSheetOverlay: document.getElementById("skill-sheet-overlay"),
   skillSheet: document.getElementById("skill-sheet"),
   skillClose: document.getElementById("skill-close"),
-  resetSave: document.getElementById("reset-save"),
   hud: document.getElementById("hud"),
   levelOverlay: document.getElementById("level-overlay"),
   levelList: document.getElementById("level-list"),
   shardsValue: document.getElementById("shards-value"),
   menuActions: document.getElementById("menu-actions"),
+  settingsOverlay: document.getElementById("settings-overlay"),
+  settingsBanter: document.getElementById("settings-banter"),
+  settingsEffects: document.getElementById("settings-effects"),
+  settingsDebug: document.getElementById("settings-debug"),
+  settingsLanguage: document.getElementById("settings-language"),
+  settingsReset: document.getElementById("settings-reset"),
+  settingsClose: document.getElementById("settings-close"),
   worldPrev: document.getElementById("world-prev"),
   worldNext: document.getElementById("world-next"),
   worldName: document.getElementById("world-name"),
@@ -1145,29 +1154,13 @@ function appendGlobalMenuButtons() {
   introBtn.addEventListener("click", () => startOnboarding());
   introRow.appendChild(introBtn);
 
-  // Language toggle (mirrors the home-screen EN|FR pill). Shows the
-  // ACTIVE language on the right; tapping swaps it. Persisted via setLang,
-  // which re-points i18n and (through onLangChange) re-renders this menu.
-  const langBtn = document.createElement("button");
-  langBtn.className = "level-button skill-entry";
-  const fr = getLang() === "fr";
-  langBtn.innerHTML =
-    `<span>${t("menu.language", "LANGUAGE")}</span><span class="level-done">${fr ? "FR" : "EN"}</span>`;
-  langBtn.addEventListener("click", () => setLang(getLang() === "fr" ? "en" : "fr"));
-  introRow.appendChild(langBtn);
-
-  // STORY BANTER toggle: silences all in-battle barks (enemy intros, boss
-  // taunts/roasts, tower one-liners) when OFF. Persisted via setBarksEnabled.
-  const banterBtn = document.createElement("button");
-  banterBtn.className = "level-button skill-entry";
-  const renderBanter = () => {
-    const on = getBarksEnabled();
-    banterBtn.innerHTML =
-      `<span>${t("menu.banter", "BANTER")}</span><span class="${on ? "level-done" : "level-points"}">${on ? "ON" : "OFF"}</span>`;
-  };
-  renderBanter();
-  banterBtn.addEventListener("click", () => { setBarksEnabled(!getBarksEnabled()); renderBanter(); });
-  introRow.appendChild(banterBtn);
+  // Device/game preferences moved into one focused screen. Its choices stay
+  // local to this save; in particular, visual quality never enters co-op data.
+  const settingsBtn = document.createElement("button");
+  settingsBtn.className = "level-button skill-entry";
+  settingsBtn.innerHTML = `<span>${t("settings.title", "SETTINGS")}</span>`;
+  settingsBtn.addEventListener("click", openSettings);
+  introRow.appendChild(settingsBtn);
 
   // CO-OP shares this row so it lines up under the top row's columns instead
   // of claiming a wide row of its own.
@@ -1183,25 +1176,82 @@ function appendGlobalMenuButtons() {
 
   el.menuActions.appendChild(introRow);
 
-  // Reset all progress — two-tap confirm, then reload clean.
-  const resetBtn = document.createElement("button");
-  resetBtn.className = "menu-reset";
-  resetBtn.textContent = t("menu.reset", "RESET ALL PROGRESS");
-  resetBtn.addEventListener("click", () => {
-    if (resetBtn.classList.contains("confirming")) {
-      resetProgress();
-      location.reload();
-    } else {
-      resetBtn.classList.add("confirming");
-      resetBtn.textContent = t("menu.resetConfirm", "WIPE ROSTER, SKILLS & LEVELS? TAP AGAIN");
-      setTimeout(() => {
-        resetBtn.classList.remove("confirming");
-        resetBtn.textContent = t("menu.reset", "RESET ALL PROGRESS");
-      }, 3000);
-    }
-  });
-  el.menuActions.appendChild(resetBtn);
 }
+
+// ---------- Settings overlay ----------
+
+const EFFECT_MODES = ["auto", "full", "reduced"];
+let settingsResetTimer = null;
+
+function settingValue(button, value, on = true) {
+  const out = button.querySelector(".settings-value");
+  out.textContent = value;
+  out.classList.toggle("off", !on);
+}
+
+function effectModeLabel(mode) {
+  if (mode === "full") return t("settings.full", "FULL");
+  if (mode === "reduced") return t("settings.reduced", "REDUCED");
+  return t("settings.auto", "AUTO");
+}
+
+function renderSettings() {
+  const on = t("settings.on", "ON");
+  const off = t("settings.off", "OFF");
+  const barksEnabled = getBarksEnabled();
+  const debugEnabled = getDebugMode();
+  settingValue(el.settingsBanter, barksEnabled ? on : off, barksEnabled);
+  const effects = getVisualEffectsMode();
+  settingValue(el.settingsEffects, effectModeLabel(effects), effects !== "reduced");
+  settingValue(el.settingsDebug, debugEnabled ? on : off, debugEnabled);
+  settingValue(el.settingsLanguage, getLang() === "fr" ? "FR" : "EN");
+}
+
+function resetSettingsConfirm() {
+  if (settingsResetTimer) clearTimeout(settingsResetTimer);
+  settingsResetTimer = null;
+  el.settingsReset.classList.remove("confirming");
+  el.settingsReset.textContent = t("menu.reset", "RESET ALL PROGRESS");
+}
+
+function openSettings() {
+  resetSettingsConfirm();
+  renderSettings();
+  el.settingsOverlay.classList.remove("hidden");
+}
+
+el.settingsClose.addEventListener("click", () => {
+  resetSettingsConfirm();
+  el.settingsOverlay.classList.add("hidden");
+});
+el.settingsBanter.addEventListener("click", () => {
+  setBarksEnabled(!getBarksEnabled());
+  renderSettings();
+});
+el.settingsEffects.addEventListener("click", () => {
+  const current = getVisualEffectsMode();
+  const next = EFFECT_MODES[(EFFECT_MODES.indexOf(current) + 1) % EFFECT_MODES.length];
+  saveVisualEffectsMode(next);
+  applyVisualEffectsMode(next);
+  renderSettings();
+});
+el.settingsDebug.addEventListener("click", () => {
+  setDebugMode(!getDebugMode());
+  renderSettings();
+});
+el.settingsLanguage.addEventListener("click", () => {
+  setLang(getLang() === "fr" ? "en" : "fr");
+});
+el.settingsReset.addEventListener("click", () => {
+  if (el.settingsReset.classList.contains("confirming")) {
+    resetProgress();
+    location.reload();
+    return;
+  }
+  el.settingsReset.classList.add("confirming");
+  el.settingsReset.textContent = t("menu.resetConfirm", "WIPE ROSTER, SKILLS & LEVELS? TAP AGAIN");
+  settingsResetTimer = setTimeout(resetSettingsConfirm, 3000);
+});
 
 // Arrow + swipe navigation, bound once (state lives in menuCtx/currentWorld).
 el.worldPrev.addEventListener("click", () => navigateWorld(-1));
@@ -1212,6 +1262,7 @@ el.worldNext.addEventListener("click", () => navigateWorld(1));
 // handled by i18n itself.
 onLangChange(() => {
   if (menuCtx) renderWorld();
+  if (!el.settingsOverlay.classList.contains("hidden")) renderSettings();
   updateWelcomeBack();
   // Rebuild translated pip titles/host mark on the next HUD update without
   // treating the same players as a fresh join.
@@ -2532,19 +2583,6 @@ export function initSkillTree(onSkillBought) {
   el.skillsButton.addEventListener("click", openSkillTree);
   el.skillClose.addEventListener("click", () => {
     el.skillOverlay.classList.add("hidden");
-    resetConfirmState();
-  });
-
-  // Reset save: two-tap confirm, then reload into a clean state.
-  el.resetSave.addEventListener("click", () => {
-    if (el.resetSave.classList.contains("confirming")) {
-      resetProgress();
-      location.reload();
-    } else {
-      el.resetSave.classList.add("confirming");
-      el.resetSave.textContent = t("skill.resetSaveConfirm", "SURE? TAP AGAIN");
-      setTimeout(resetConfirmState, 3000);
-    }
   });
 }
 
@@ -2555,11 +2593,6 @@ export function openSkillTree() {
   el.skillOverlay.classList.remove("hidden");
   skillZoom = 1;
   renderSkillTree(skillBoughtCallback, true);
-}
-
-function resetConfirmState() {
-  el.resetSave.classList.remove("confirming");
-  el.resetSave.textContent = t("skill.resetSave", "RESET SAVE");
 }
 
 // Cumulative effect text at a given tier, from the node's `kind`. Per-tower

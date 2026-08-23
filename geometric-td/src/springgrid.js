@@ -9,7 +9,8 @@
 // readability never suffers.
 // ============================================================
 
-import { VFX } from "./config.js";
+import { PERFORMANCE, VFX } from "./config.js";
+import { visualEffectsReduced } from "./performance.js";
 
 export function createSpringGrid(widthPx, heightPx, tileSize) {
   const w = VFX.warp;
@@ -41,6 +42,7 @@ export function createSpringGrid(widthPx, heightPx, tileSize) {
 
     // Radial impulse: pushes nearby nodes away from (x, y).
     applyShock(x, y, radiusPx, strength) {
+      if (visualEffectsReduced() && PERFORMANCE.reduced.skipSpringGrid) return;
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
           const i = idx(c, r);
@@ -56,6 +58,7 @@ export function createSpringGrid(widthPx, heightPx, tileSize) {
     },
 
     update(dt) {
+      if (visualEffectsReduced() && PERFORMANCE.reduced.skipSpringGrid) return;
       // Border nodes stay anchored so the frame never tears away.
       for (let r = 1; r < rows - 1; r++) {
         for (let c = 1; c < cols - 1; c++) {

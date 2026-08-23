@@ -6,7 +6,8 @@
 // additive blending in the renderer so overlaps bloom.
 // ============================================================
 
-import { VFX, SHAPE_SIDES } from "./config.js";
+import { PERFORMANCE, VFX, SHAPE_SIDES } from "./config.js";
+import { visualEffectsReduced } from "./performance.js";
 
 function rand(min, max) {
   return min + Math.random() * (max - min);
@@ -14,8 +15,16 @@ function rand(min, max) {
 
 // Respect the particle cap: drop the oldest when full.
 function push(game, particle) {
-  if (game.particles.length >= VFX.maxParticles) game.particles.shift();
+  const cap = visualEffectsReduced() ? PERFORMANCE.reduced.maxParticles : VFX.maxParticles;
+  if (game.particles.length >= cap) {
+    game.particles.splice(0, game.particles.length - cap + 1);
+  }
   game.particles.push(particle);
+}
+
+function visualCount(count, scale = PERFORMANCE.reduced.particleCountScale) {
+  if (!visualEffectsReduced() || count <= 0) return count;
+  return Math.max(PERFORMANCE.reduced.minParticleCount, Math.ceil(count * scale));
 }
 
 // Spark burst (projectile/beam impacts) — firework-style, with a
@@ -23,6 +32,8 @@ function push(game, particle) {
 export function emitHitSparks(
   game, x, y, color, count = VFX.hitSparkCount, sync = true
 ) {
+  const requestedCount = count;
+  count = visualCount(count);
   for (let i = 0; i < count; i++) {
     const a = Math.random() * Math.PI * 2;
     const speed = rand(VFX.sparkSpeed[0], VFX.sparkSpeed[1]);
@@ -37,7 +48,9 @@ export function emitHitSparks(
       maxTtl: VFX.sparkTtl[1],
     });
   }
-  if (sync) game.coopEventSink?.({ kind: "hit", x, y, color, count });
+  // Send the requested count, not this device's reduced visual count. Every
+  // peer applies its own local quality setting when it replays the event.
+  if (sync) game.coopEventSink?.({ kind: "hit", x, y, color, count: requestedCount });
 }
 
 // Golden level-up splash: the power surge breaks apart into a shimmering
@@ -48,7 +61,8 @@ export function emitLevelUpSplash(game, x, y) {
   // Sparks fade on the speed-scaled game clock; scale their lifetime up by the
   // current speed so the splash reads for a constant real-time length at x2/x4.
   const spd = game.effectiveSpeed || 1;
-  for (let i = 0; i < lu.splashSparks; i++) {
+  const splashSparks = visualCount(lu.splashSparks);
+  for (let i = 0; i < splashSparks; i++) {
     const a = Math.random() * Math.PI * 2;
     const speed = rand(lu.splashSpeed[0], lu.splashSpeed[1]);
     push(game, {
@@ -71,6 +85,7 @@ export function emitLevelUpSplash(game, x, y) {
 // enemies.js). `speedMult` lets bosses throw their haul harder (bossSpeedMult).
 export function emitCoins(game, x, y, count, speedMult = 1, tileSize) {
   const c = VFX.coins;
+  count = visualCount(count);
   for (let i = 0; i < count; i++) {
     const rest = rand(c.restTtl[0], c.restTtl[1]);
     const a = Math.random() * Math.PI * 2;
@@ -116,7 +131,10 @@ export function emitDeathShards(game, x, y, def, tileSize, power = 1) {
   const radius = tileSize * def.size;
   const isBoss = def.shape === "octagon";
   // Base pieces per edge, +1 at tower level 3, +1 more at level 5.
-  const splits = (isBoss ? 3 : 1) + (power >= 3 ? 1 : 0) + (power >= 5 ? 1 : 0);
+  const fullSplits = (isBoss ? 3 : 1) + (power >= 3 ? 1 : 0) + (power >= 5 ? 1 : 0);
+  const splits = visualEffectsReduced()
+    ? Math.max(1, Math.ceil(fullSplits * PERFORMANCE.reduced.deathShardScale))
+    : fullSplits;
   const speedMult = (isBoss ? 1.4 : 1) * (1 + 0.09 * (power - 1));
 
   for (let i = 0; i < sides; i++) {
@@ -157,6 +175,8 @@ export function emitDeathShards(game, x, y, def, tileSize, power = 1) {
 }
 
 export function updateParticles(game, dt) {
+  const cap = visualEffectsReduced() ? PERFORMANCE.reduced.maxParticles : VFX.maxParticles;
+  if (game.particles.length > cap) game.particles.splice(0, game.particles.length - cap);
   const drag = 2.2;
   const c = VFX.coins;
   for (const p of game.particles) {
