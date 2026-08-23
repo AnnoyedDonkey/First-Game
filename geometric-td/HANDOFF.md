@@ -705,16 +705,23 @@ BALANCE_LAB_PLAN.md  approved Balance Lab L0-L7 plan
     **Don't re-plan this for iOS.** If Android is ever a target it's an easy
     win (~1h): a feature-detected `haptics.js` with durations in `config.js`,
     an ON/OFF toggle, sharing call sites with the sound layer.
-- **NEXT — Co-op multiplayer (own mode):** full phased plan in
+- **IN PROGRESS — Co-op multiplayer (own mode):** full phased plan in
   **`COOP_MULTIPLAYER_PLAN.md`** (designed 2026-08-22 over four ideation
-  rounds, **build not started**). Two players (schema/protocol designed for 4)
-  on one board via a CO-OP button in `#menu-actions` → session browser →
-  host picks Public/Private + a **cleared** level, played in **Endless**.
-  Host starts alone, guest **drops in at any wave**. Separate wallets with
-  FULL bounty to each; anyone upgrades any tower, only the owner sells.
-  **Host-authoritative** sim over a WebRTC DataChannel; the existing Supabase
-  project carries the lobby + signaling (new `coop_sessions` table). Phase 0
-  is a throwaway connection spike — iOS Safari WebRTC is the big unknown.
+  rounds). **Phase 0 (transport) and Phase 5 (TURN relay) are DONE and
+  verified iPhone↔PC on the deployed build; Phase 1 is the next build step.**
+  Two players (schema/protocol designed for 4) on one board via a CO-OP button
+  in `#menu-actions` → session browser → host picks Public/Private + a
+  **cleared** level, played in **Endless**. Host starts alone, guest **drops
+  in at any wave**. Separate wallets with FULL bounty to each; anyone upgrades
+  any tower, only the owner sells. **Host-authoritative** sim over a WebRTC
+  DataChannel; the existing Supabase project carries the lobby + signaling
+  (`coop_sessions` table) and mints TURN credentials (`turn-credentials` edge
+  function, secrets set by the owner, never in this repo).
+  **The relay is the transport, not a fallback** — direct P2P was chased to
+  ground and fails on an ordinary home network for two independent reasons
+  (iCloud Private Relay on iOS, inbound blocking on the LAN). Don't spend time
+  re-attempting direct P2P. Live files: `src/net.js`, `COOP` in `config.js`,
+  the unlinked `coop-spike.html` test page.
   Three things a future session must not undo: co-op must **never** write
   `endlessBest` or the solo Endless board (permanent pollution of a live
   shared board); **skills are locked at join** (the one-shot join payload

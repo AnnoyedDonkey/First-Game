@@ -46,7 +46,7 @@ and protocol designed for **up to 4**.
 | **Level choice** | Host picks any level they have **cleared** | Endless is gated on clearing, not unlocking (`ui.js:890`). |
 | **Lobby** | Session browser with **public (listed)** and **private (code)** sessions | One `listed` boolean on the same row; supporting both is nearly free. |
 | **Start** | **Host starts alone; guest drops in at any wave** | Strictly dominates "wait for a player" — a host who wants to wait simply waits. |
-| **Reach** | **Free public STUN now; Cloudflare TURN committed as Phase 5** | Public browsing genuinely works (~80–85% of network pairs). The LAN-only constraint from round 1 is **superseded**. |
+| **Reach** | ~~Free public STUN now; Cloudflare TURN committed as Phase 5~~ → **SUPERSEDED 2026-08-22: a TURN relay is the transport, and it is DONE (§11).** | Device testing disproved the "STUN covers ~80–85% of pairs" assumption for this player base. Direct P2P failed on an ordinary home network for two independent reasons, and iOS Private Relay (on by default for iCloud+) breaks it for exactly the players this game has. The LAN-only constraint from round 1 was already superseded; the STUN-only assumption now is too. |
 | **Drop-in economy** | **Share of the host's TOTAL EARNED** (not current balance) | See §3 — the share has an exact meaning, which makes it tunable rather than guesswork. |
 | **Board space** | **No restriction on the host; the lobby row shows free buildable tiles** | Joiners self-select away from full boards. |
 
@@ -218,10 +218,23 @@ it (`HANDOFF.md` → "Ops").
 
 ---
 
-### Phase 0 — AS BUILT (2026-08-22, delegated to Codex)
+### Phase 0 — ✅ COMPLETE AND VERIFIED ON REAL DEVICES (2026-08-22)
 
-Code complete; **the two-device verification that is Phase 0's actual
-deliverable has NOT happened yet.** What exists:
+**iPhone ↔ PC connected successfully over the deployed HTTPS build**, with both
+data channels open. The phase's whole purpose — proving the transport works on
+the target device — is discharged.
+
+**The answer, in one line: it works over a TURN relay, and only over a TURN
+relay.** Direct peer-to-peer was chased to ground and failed for two
+independent reasons on one ordinary home network (see the two findings below).
+Every later phase should assume the relay is the transport.
+
+What it took, in order: an ICE-gathering timeout (Safari stalls under Private
+Relay), disabling iCloud Private Relay, a relay provider, and holding gathering
+open long enough for relay candidates to arrive. The last one nearly went
+unnoticed — see "hold for a relay" below.
+
+What exists:
 
 - **`src/net.js`** (532 lines) — `hostSession()` / `joinSession(code)` /
   `sendMessage` / `closeSession`, an 8-state connection machine
@@ -273,12 +286,24 @@ no browser):
   `config.js` edit.
 - Test rows were deleted afterwards; the table is empty.
 
-**STILL NOT VERIFIED — this is what remains of Phase 0's deliverable:**
-**iOS Safari**, on-LAN and cross-network, from the deployed HTTPS build. Two
-physical devices, human-in-the-loop. Loopback proves the protocol; it proves
-nothing about Safari's WebRTC or about STUN traversal, which is the actual
-risk this phase exists to retire. Timeout and stale-row handling are also
-still unexercised.
+**VERIFIED ON REAL DEVICES (2026-08-22):** iPhone (iOS 18.7, Safari 26.6) and a
+Windows PC (Firefox 154) connected over the deployed HTTPS build, both channels
+open, via the Metered TURN relay.
+
+**Relay gathering — the near-miss worth remembering.** Relay candidates require
+a TURN allocation round trip and are the slowest to appear. The original 3s
+gathering timeout could publish the offer *before* they existed, discarding the
+only candidates that work on this network and looking exactly like "TURN
+doesn't work". `COOP.iceGatheringRelayTimeoutMs` (10s) now holds gathering open,
+re-checking every 250ms, until a relay candidate exists. Verified: host gathers
+8 candidates (host 1, srflx 1, relay 6) with **all 6 relays present in the
+stored offer**.
+
+**ICE still prefers a direct pair when one exists** — a loopback test connected
+at 0.7ms without touching the relay. So the relay costs no latency and burns no
+quota on networks where P2P already works. It is insurance, not a toll booth.
+
+**Still unexercised:** connect-timeout and stale-row handling paths.
 
 ### ⚠️ Phase 0 finding — iCloud Private Relay breaks peer-to-peer (2026-08-22)
 
@@ -575,7 +600,34 @@ localStorage save** (cardinal rule).
 
 ---
 
-## 11. Phase 5 — Cloudflare TURN (committed, not speculative)
+## 11. Phase 5 — TURN relay — ✅ DONE (2026-08-22, pulled forward)
+
+**Built, deployed, and verified on real devices.** Pulled forward from "last
+phase" to "prerequisite" once device testing proved direct P2P cannot work
+(§ the two Phase 0 findings). As built:
+
+- **Provider: Metered free tier** (~50GB/month, no credit card). Cloudflare's
+  TURN was the original plan but requires a card on file, which the owner
+  declined. The traffic here is intents and small snapshots, so the free tier
+  is generous.
+- **`turn-credentials` Supabase edge function** (`verify_jwt: false`) mints
+  short-lived credentials. It is **provider-agnostic** — it reads either
+  `METERED_SUBDOMAIN` + `METERED_API_KEY` or `CF_TURN_KEY_ID` +
+  `CF_TURN_API_TOKEN`, whichever is set, so switching providers is a secrets
+  change and not a redeploy. It passes the provider's own error text through,
+  because during setup "bad token" vs "wrong id" is the whole diagnosis.
+- **Secrets live in Supabase, never in this repo.** The game is a static site
+  with nowhere to hold a secret; the browser only ever sees expiring
+  credentials. **The owner sets these themselves — do not ask for the values.**
+- **Gotcha for Metered:** use the per-credential **API Key** (the "Show API
+  Key" button beside a TURN credential), NOT the account-wide **Secret Key**
+  from the Developers page. `METERED_SUBDOMAIN` is the bare label
+  (`geometric-td`), not the full `geometric-td.metered.live`.
+- `COOP.turnEndpoint` points at the function; `null` disables it. A TURN
+  failure is never fatal — it falls back to STUN-only and records why in
+  diagnostics.
+
+### Historical: the original Cloudflare plan
 
 STUN alone fails for roughly 15% of network pairs (symmetric NAT). TURN is the
 only fix, and this is where the player's Cloudflare account earns its place.
