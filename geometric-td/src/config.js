@@ -1620,7 +1620,11 @@ export const COOP = {
   // Phase 2a host-authoritative state sync. Snapshots ride the lossy channel;
   // guests render slightly behind the newest host clock to absorb jitter.
   snapshotHz: 10,
-  interpDelayMs: 100,
+  interpDelayMs: 100,          // starting buffer before arrival jitter is known
+  maxExtrapolationMs: 250,     // coast this long past the newest state, then hold
+  correctionEaseMs: 200,       // converge prediction error without a hard snap
+  interpDelayMinMs: 50,        // steady links favor accurate extrapolation
+  interpDelayMaxMs: 250,       // jittery links trade latency for a deeper buffer
   dropIn: {
     earningsShare: 0.6, // retroactive share of the host's bounty earnings
     maxGrant: 5000,     // credits; hard ceiling for a very late join

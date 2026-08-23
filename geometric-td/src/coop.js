@@ -43,6 +43,11 @@ let activeRole = null;
 let snapshotSequence = 0;
 let lastSnapshotSentAt = -Infinity;
 let latestSnapshot = null;
+let guestSnapshotJitterMs = 0;
+let guestInterpDelayMs = COOP.interpDelayMs;
+let guestInterpDelayTargetMs = COOP.interpDelayMs;
+let guestLastSnapshotReceivedAt = null;
+let guestLastUpdateAt = null;
 let guestJoined = false;
 let guestPresent = false;
 let sessionConnected = false;
@@ -160,9 +165,10 @@ export function updateGuest(game, now) {
   sendGuestProfile(game);
   if (!latestSnapshot) return;
 
+  advanceGuestInterpDelay(now);
   const elapsedSinceSnapshot = Math.max(0, now - latestSnapshot.receivedAt) / 1000;
   const bufferedElapsed = latestSnapshot.clockAdvancing
-    ? elapsedSinceSnapshot - COOP.interpDelayMs / 1000
+    ? elapsedSinceSnapshot - guestInterpDelayMs / 1000
     : 0;
   const renderTime = Math.max(
     0,
@@ -178,19 +184,17 @@ export function updateGuest(game, now) {
   const pathEnd = game.grid.totalPathLength;
   const tileSize = game.grid.tileSize;
   for (const enemy of game.enemies) {
-    const snapshotTime = enemy._coopSnapshotTime;
-    let distance;
-    if (enemy._coopPreviousTime != null && renderTime <= snapshotTime) {
-      const span = snapshotTime - enemy._coopPreviousTime;
-      const alpha = span > 0
-        ? Math.max(0, Math.min(1, (renderTime - enemy._coopPreviousTime) / span))
-        : 1;
-      distance = enemy._coopPreviousDistance +
-        (enemy._coopSnapshotDistance - enemy._coopPreviousDistance) * alpha;
-    } else {
-      distance = enemy._coopSnapshotDistance +
-        enemy.speedTilesPerSec * tileSize * (renderTime - snapshotTime);
-    }
+    const authoritativeDistance = guestEnemyDistanceAt(enemy, renderTime, tileSize);
+    const correctionElapsed = Math.max(0, now - enemy._coopCorrectionStartedAt);
+    const correctionDuration = Math.max(
+      0,
+      enemy._coopCorrectionEndsAt - enemy._coopCorrectionStartedAt
+    );
+    const correctionRemaining = correctionDuration > 0
+      ? Math.max(0, 1 - correctionElapsed / correctionDuration)
+      : 0;
+    const distance = authoritativeDistance +
+      enemy._coopCorrectionOffset * correctionRemaining;
     enemy.distance = Math.max(0, Math.min(pathEnd, distance));
   }
 
@@ -226,6 +230,7 @@ function activate(game, role) {
   snapshotSequence = 0;
   lastSnapshotSentAt = -Infinity;
   latestSnapshot = null;
+  if (role === ROLES.GUEST) resetGuestMotion();
   guestJoined = false;
   guestPresent = false;
   sessionConnected = false;
@@ -272,6 +277,7 @@ function deactivate() {
     delete activeGame.coopEndReason;
   }
   activeGame = null;
+  if (activeRole === ROLES.GUEST) resetGuestMotion();
   activeRole = null;
   latestSnapshot = null;
   guestPresent = false;
@@ -1074,6 +1080,11 @@ function applySnapshot(game, snapshot, receivedAt) {
   const clockAdvancing = latestSnapshot
     ? snapshot.time > latestSnapshot.time
     : snapshot.phase !== "won" && snapshot.phase !== "lost";
+  noteGuestSnapshotArrival(receivedAt);
+  const renderTimeAtReceipt = Math.max(
+    0,
+    snapshot.time - (clockAdvancing ? guestInterpDelayMs / 1000 : 0)
+  );
   const oldPhase = game.phase;
   game.phase = snapshot.phase;
   game.waveIndex = snapshot.waveIndex;
@@ -1084,7 +1095,13 @@ function applySnapshot(game, snapshot, receivedAt) {
     game.countdown = game.timeBetweenWaves;
   }
 
-  applyEnemySnapshots(game, snapshot.enemies, snapshot.time);
+  applyEnemySnapshots(
+    game,
+    snapshot.enemies,
+    snapshot.time,
+    renderTimeAtReceipt,
+    receivedAt
+  );
   applyTowerSnapshots(game, snapshot.towers);
   latestSnapshot = {
     seq: snapshot.seq,
@@ -1101,12 +1118,20 @@ function copyOwnerNumbers(record) {
   };
 }
 
-function applyEnemySnapshots(game, snapshots, snapshotTime) {
+function applyEnemySnapshots(
+  game,
+  snapshots,
+  snapshotTime,
+  renderTimeAtReceipt,
+  receivedAt
+) {
   const existing = new Map(game.enemies.map((enemy) => [enemy.id, enemy]));
   const mirrored = [];
   for (const state of snapshots) {
     let enemy = existing.get(state.id);
-    if (!enemy || enemy.type !== state.type) enemy = createMirroredEnemy(state, game.grid);
+    const canCorrect = !!enemy && enemy.type === state.type;
+    if (!canCorrect) enemy = createMirroredEnemy(state, game.grid);
+    const visibleDistance = enemy.distance;
 
     const oldSnapshotTime = enemy._coopSnapshotTime;
     const oldSnapshotDistance = enemy._coopSnapshotDistance;
@@ -1121,6 +1146,25 @@ function applyEnemySnapshots(game, snapshots, snapshotTime) {
     }
     enemy._coopSnapshotTime = snapshotTime;
     enemy._coopSnapshotDistance = state.distance;
+    if (canCorrect) {
+      const authoritativeDistance = guestEnemyDistanceAt(
+        enemy,
+        renderTimeAtReceipt,
+        game.grid.tileSize
+      );
+      // Keep an active correction's deadline. Restarting a full window on
+      // every snapshot can leave a small error lingering forever.
+      const correctionEndsAt = enemy._coopCorrectionEndsAt > receivedAt
+        ? enemy._coopCorrectionEndsAt
+        : receivedAt + COOP.correctionEaseMs;
+      enemy._coopCorrectionOffset = visibleDistance - authoritativeDistance;
+      enemy._coopCorrectionStartedAt = receivedAt;
+      enemy._coopCorrectionEndsAt = correctionEndsAt;
+    } else {
+      enemy._coopCorrectionOffset = 0;
+      enemy._coopCorrectionStartedAt = receivedAt;
+      enemy._coopCorrectionEndsAt = receivedAt;
+    }
     enemy.health = state.health;
     enemy.maxHealth = state.maxHealth;
     enemy.slowUntil = state.flags.slow ? Infinity : 0;
@@ -1157,7 +1201,82 @@ function createMirroredEnemy(state, grid) {
     _coopPreviousDistance: state.distance,
     _coopSnapshotTime: null,
     _coopSnapshotDistance: state.distance,
+    _coopCorrectionOffset: 0,
+    _coopCorrectionStartedAt: 0,
+    _coopCorrectionEndsAt: 0,
   };
+}
+
+function guestEnemyDistanceAt(enemy, renderTime, tileSize) {
+  const snapshotTime = enemy._coopSnapshotTime;
+  if (enemy._coopPreviousTime != null && renderTime <= snapshotTime) {
+    const span = snapshotTime - enemy._coopPreviousTime;
+    const alpha = span > 0
+      ? Math.max(0, Math.min(1, (renderTime - enemy._coopPreviousTime) / span))
+      : 1;
+    return enemy._coopPreviousDistance +
+      (enemy._coopSnapshotDistance - enemy._coopPreviousDistance) * alpha;
+  }
+
+  const extrapolationSeconds = Math.min(
+    renderTime - snapshotTime,
+    COOP.maxExtrapolationMs / 1000
+  );
+  return enemy._coopSnapshotDistance +
+    enemy.speedTilesPerSec * tileSize * extrapolationSeconds;
+}
+
+function noteGuestSnapshotArrival(receivedAt) {
+  if (guestLastSnapshotReceivedAt != null) {
+    const expectedIntervalMs = 1000 / COOP.snapshotHz;
+    const arrivalIntervalMs = Math.max(0, receivedAt - guestLastSnapshotReceivedAt);
+    const deviationMs = Math.abs(arrivalIntervalMs - expectedIntervalMs);
+    // One second's expected samples form the EWMA window, so snapshotHz
+    // remains the single cadence knob instead of hiding another constant.
+    const sampleWeight = 1 / Math.max(1, COOP.snapshotHz);
+    guestSnapshotJitterMs +=
+      (deviationMs - guestSnapshotJitterMs) * sampleWeight;
+    guestInterpDelayTargetMs = clampGuestInterpDelay(
+      COOP.interpDelayMinMs + guestSnapshotJitterMs
+    );
+  }
+  guestLastSnapshotReceivedAt = receivedAt;
+}
+
+function advanceGuestInterpDelay(now) {
+  if (guestLastUpdateAt == null) {
+    guestLastUpdateAt = now;
+    return;
+  }
+  const elapsedMs = Math.max(0, now - guestLastUpdateAt);
+  guestLastUpdateAt = now;
+  const transitionMs = Math.max(COOP.correctionEaseMs, COOP.interpDelayMaxMs);
+  const deltaMs = guestInterpDelayTargetMs - guestInterpDelayMs;
+  const stepMs = transitionMs > 0
+    ? deltaMs * Math.min(1, elapsedMs / transitionMs)
+    : deltaMs;
+  if (deltaMs > 0) {
+    // Growing the buffer no faster than real time keeps renderTime monotonic.
+    guestInterpDelayMs += Math.min(stepMs, elapsedMs);
+  } else {
+    guestInterpDelayMs += stepMs;
+  }
+  guestInterpDelayMs = clampGuestInterpDelay(guestInterpDelayMs);
+}
+
+function clampGuestInterpDelay(delayMs) {
+  return Math.max(
+    COOP.interpDelayMinMs,
+    Math.min(COOP.interpDelayMaxMs, delayMs)
+  );
+}
+
+function resetGuestMotion() {
+  guestSnapshotJitterMs = 0;
+  guestInterpDelayMs = clampGuestInterpDelay(COOP.interpDelayMs);
+  guestInterpDelayTargetMs = guestInterpDelayMs;
+  guestLastSnapshotReceivedAt = null;
+  guestLastUpdateAt = null;
 }
 
 function applyTowerSnapshots(game, snapshots) {
