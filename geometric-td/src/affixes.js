@@ -168,11 +168,18 @@ function corruptionOnHit(ctx) {
   applyCorruptionStacks(ctx.enemy, power, ctx.game?.time ?? 0);
 }
 
-// Phase C's Rootkit ramp multiplies this base amount here. Keeping the amount
-// pure lets enemies.js own iteration and damageEnemy routing without a cycle.
 export function corruptionTickDamage(enemy, game, dt) {
-  const stacks = getFaultStacks(enemy, "corruption");
-  return stacks * dt;
+  const fault = getFault(enemy, "corruption");
+  if (!fault) return 0;
+  const rootkitCap = game?.modNetwork?.rootkit || 0;
+  const started = Number.isFinite(fault.corruptedAt) ? fault.corruptedAt : game?.time;
+  const secondsCorrupted = Number.isFinite(game?.time) && Number.isFinite(started)
+    ? Math.max(0, game.time - started)
+    : 0;
+  const ramp = Math.min(
+    rootkitCap, LOOT.mods.rootkit.rampPerSec * secondsCorrupted
+  );
+  return (fault.stacks || 0) * dt * (1 + ramp);
 }
 
 export function corruptionSpreadAmount(enemy) {
@@ -365,7 +372,7 @@ export const MODS = Object.freeze({
       const started = Number.isFinite(fault.corruptedAt) ? fault.corruptedAt : now;
       return {
         ...fault,
-        currentDps: fault.stacks || 0,
+        currentDps: corruptionTickDamage(enemy, game, 1),
         secondsCorrupted: Math.max(0, (now || 0) - (started || 0)),
       };
     },
@@ -375,11 +382,35 @@ export const MODS = Object.freeze({
       const seconds = Math.max(0, (now || 0) - (started || 0));
       return [
         `Stacks: ${fault.stacks || 0}`,
-        `Current DPS: ${fault.stacks || 0}`,
+        `Current DPS: ${Math.round(corruptionTickDamage(enemy, game, 1) * 100) / 100}`,
         `Corrupted for: ${Math.round(seconds * 10) / 10}s`,
       ];
     },
     onHit: corruptionOnHit,
+  }),
+  rootkit: Object.freeze({
+    id: "rootkit",
+    category: "protocol",
+    nameKey: "mod.rootkit.name",
+    name: "Rootkit",
+    descKey: "mod.rootkit.desc",
+    description: "Corrupted enemies take +{ramp}% more Corruption damage per second, up to +{power}%.",
+    descriptionParams(mod) {
+      return {
+        power: Number.isFinite(mod?.power) ? mod.power : LOOT.mods.powers.rootkit.rare,
+        ramp: Math.round(LOOT.mods.rootkit.rampPerSec * 10000) / 100,
+      };
+    },
+    powerForRarity(rarity) {
+      return LOOT.mods.powers.rootkit[rarity];
+    },
+    onNetworkChange(game) {
+      let strongest = 0;
+      for (const tower of game.towers || []) {
+        strongest = Math.max(strongest, strongestModPower(tower, "rootkit"));
+      }
+      game.modNetwork.rootkit = strongest;
+    },
   }),
   damageBroadcast: Object.freeze({
     id: "damageBroadcast",

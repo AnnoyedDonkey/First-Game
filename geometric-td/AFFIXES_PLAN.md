@@ -584,7 +584,12 @@ Architecture notes that apply to the whole batch:
   enemy amplifies the Corruption ticks (routing proof); no Fork/Desync side-effects
   from ticks; console clean. **Ship.**
 
-## [ ] Phase C — Rootkit (Transformer: lifetime ramp)
+## [x] Phase C — Rootkit (Transformer: lifetime ramp) — SHIPPED `2026.08.29-6`
+> As built: `rootkit` protocol; `game.modNetwork.rootkit` = strongest on-board cap
+> (place/sell/gear); the single multiply point `corruptionTickDamage` becomes
+> `stacks*dt*(1+min(cap, 0.05*secondsCorrupted))`. Verified Rare ramp 10→15→20→25
+> DPS (cap +150%), flat without Rootkit, cache clears on sell.
+
 - **Files:** `src/affixes.js`, `src/config.js`.
 - **Behavior:** Corruption tick damage ×= `1 + min(rootkitCap, rampPerSec *
   secondsCorrupted)`. `rootkitCap` = strongest Rootkit power on the board (0 if

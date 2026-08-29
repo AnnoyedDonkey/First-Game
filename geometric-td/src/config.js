@@ -430,6 +430,10 @@ export const LOOT = {
         common: 1, enhanced: 2, rare: 3,
         prismatic: 4, singularity: 6,
       },
+      rootkit: {
+        common: 1.0, enhanced: 1.25, rare: 1.5,
+        prismatic: 1.75, singularity: 2.0,
+      },
       throttle: { perStack: 0.02, maxSlow: 0.50 },
       exposed: { perStack: 0.02, maxStacks: 20 },
       fork: {
@@ -458,6 +462,7 @@ export const LOOT = {
       maxStacks: 50, spreadFrac: 0.5,
       spreadTargets: 1, spreadRadiusTiles: 2,
     },
+    rootkit: { rampPerSec: 0.05 },
     arrayExtraSourceBonus: 0.01,
     // Array damage bonus = min(sameTypeCount, arrayMaxTowers) × effectivePower.
     // The cap keeps a same-type tower spam from scaling without bound (and from
