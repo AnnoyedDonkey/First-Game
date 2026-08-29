@@ -6,7 +6,7 @@ July **and** August 2026); the original pre-cleanup handoff is preserved in Git
 at commit `2650204`. This file keeps only what you need to start work:
 current state, non-obvious mechanics, rules, tuning locations, and the file map.
 
-## Current state — 2026-08-23
+## Current state — 2026-08-29
 
 **IN PROGRESS — French localization (i18n).** A discreet `EN|FR` language
 toggle (default English) so the player's dad can play in French. Read
@@ -20,9 +20,9 @@ en)` looks it up; `lang` save field via `progression.js getLang/setLang`;
 proper nouns** (tower names Laser/Pulse/Slow/Railgun/Rocket, Indy-7,
 Bratwurst-XL, "GEOMETRIC TD").
 
-**Deployed build: `2026.08.28-1`.**
+**Deployed build: `2026.08.29-7`.**
 
-### Affix "mods" system (in progress, `2026.08.28-1`)
+### Affix "mods" system (`2026.08.28-1`..`2026.08.29-7`)
 Behavioral gear modifiers — **Faults** on enemies (Desync/Throttle/Exposed) and
 **Protocols** on towers (Array/Fork/4× Broadcast) — a data-driven foundation for
 a future roguelike (roguelike NOT built here). **Read `AFFIXES_PLAN.md` first for
