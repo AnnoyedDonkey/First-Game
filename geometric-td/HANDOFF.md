@@ -20,7 +20,21 @@ en)` looks it up; `lang` save field via `progression.js getLang/setLang`;
 proper nouns** (tower names Laser/Pulse/Slow/Railgun/Rocket, Indy-7,
 Bratwurst-XL, "GEOMETRIC TD").
 
-**Deployed build: `2026.08.23-11`.**
+**Deployed build: `2026.08.28-1`.**
+
+### Affix "mods" system (in progress, `2026.08.28-1`)
+Behavioral gear modifiers — **Faults** on enemies (Desync/Throttle/Exposed) and
+**Protocols** on towers (Array/Fork/4× Broadcast) — a data-driven foundation for
+a future roguelike (roguelike NOT built here). **Read `AFFIXES_PLAN.md` first for
+any mod work.** New `item.mods:[{id,power}]` field, SEPARATE from the shipped
+`item.affixes` stat-rolls (never merge). Registry `src/affixes.js`, all knobs
+`config.js LOOT.mods`, minimal explicit hooks (`onHit`/`onKill`/`onNetworkChange`,
+not a bus), recursion ctx threaded through `damageEnemy`/`projectiles`,
+Array/Broadcast cached on `game.modNetwork`/`tower._broadcast` (rebuilt on
+place/sell/gear-change via `refreshModNetwork`; `recomputeStats` now takes `game`).
+On-device testing via a **Mod Lab** panel gated behind Settings→DEBUG MODE. Built
+one-mod-per-ship (each its own version bump) via Codex. **P0 foundation shipped
+(invisible — registry empty); NEXT = P1 Exposed.**
 
 ### Tower tray icons + firing preview (`2026.08.23-6` .. `-11`)
 The bottom-HUD tower tray shows a **live micro-sim per tower** (its real shape +
@@ -855,6 +869,11 @@ BALANCE_LAB_PLAN.md  approved Balance Lab L0-L7 plan
   + co-op HUD → progression exchange → Cloudflare TURN), the still-open
   questions in §12, and the parked identity features in §13. Designed
   2026-08-22, build not started.
+- `AFFIXES_PLAN.md` — **read this first for any affix/mods work.** The build
+  plan + phase tracker for behavioral gear "mods" (Faults/Protocols): data model
+  (`item.mods`), registry/hook/cache architecture, the performance contract, the
+  Mod Lab debug harness, and the one-mod-per-ship phase list. Requirements source
+  is `plans/affixes.md`. P0 foundation shipped 2026.08.28-1.
 - `GAME_BRIEF.md` — original feature specification.
 - `PWA_HOMESCREEN_PLAN.md` — phased plan to make the game an installable,
   offline-capable home-screen app (iOS + Android) with an in-game install
