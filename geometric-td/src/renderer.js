@@ -984,6 +984,22 @@ function drawTowers(ctx, game, uiState) {
     ctx.stroke();
     ctx.restore();
   }
+
+  // Broadcast aura ring for the selected tower (Protocol mods) — shows which
+  // towers a Broadcast affects. Radius is stamped on the tower by the mod
+  // network rebuild (affixes.js applyBroadcastAura).
+  if (sel && sel._broadcastRadius > 0) {
+    ctx.save();
+    ctx.strokeStyle = "#ffd36b";
+    ctx.globalAlpha = 0.4;
+    ctx.setLineDash([3, 7]);
+    ctx.lineDashOffset = time * 10;
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.arc(sel.pos.x, sel.pos.y, sel._broadcastRadius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
 }
 
 // Ghost tower + range ring on the hovered tile while a type is selected.

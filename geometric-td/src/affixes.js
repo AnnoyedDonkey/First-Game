@@ -4,6 +4,7 @@
 // ============================================================
 
 import { LOOT } from "./config.js";
+import { aggregateMods } from "./equipment.js";
 
 // Fault storage stays lazy: the overwhelming majority of enemies never need
 // an `enemy.faults` object. These helpers are deliberately generic so later
@@ -128,6 +129,31 @@ function desyncOnHit(ctx) {
   }
 }
 
+// Broadcast Protocols share ONE aura applicator. A source carrying `modId` adds
+// its power to the given `_broadcast` field of every tower within
+// broadcastRadiusTiles (itself only if broadcastSelfBuffs). Sources stack
+// ADDITIVELY (spec §20). Runs ONLY on network change (place/sell/gear), never
+// per frame (spec §5); recomputeStats then reads the resolved _broadcast.
+function applyBroadcastAura(game, modId, field) {
+  const towers = game.towers || [];
+  if (towers.length === 0) return;
+  const ts = game.grid?.tileSize || 0;
+  const radius = LOOT.mods.broadcastRadiusTiles * ts;
+  const r2 = radius * radius;
+  const selfBuffs = LOOT.mods.broadcastSelfBuffs;
+  for (const source of towers) {
+    const power = strongestModPower(source, modId);
+    if (power <= 0) continue;
+    source._broadcastRadius = radius; // drives the selection aura ring
+    for (const target of towers) {
+      if (target === source && !selfBuffs) continue;
+      const dx = target.pos.x - source.pos.x;
+      const dy = target.pos.y - source.pos.y;
+      if (dx * dx + dy * dy <= r2) target._broadcast[field] += power;
+    }
+  }
+}
+
 export const MODS = Object.freeze({
   throttle: Object.freeze({
     id: "throttle",
@@ -229,6 +255,23 @@ export const MODS = Object.freeze({
     },
     onHit: desyncOnHit,
   }),
+  damageBroadcast: Object.freeze({
+    id: "damageBroadcast",
+    category: "protocol",
+    nameKey: "mod.damageBroadcast.name",
+    name: "Damage Broadcast",
+    descKey: "mod.damageBroadcast.desc",
+    description: "Nearby towers deal +{power}% more damage.",
+    descriptionParams(mod) {
+      return { power: Number.isFinite(mod?.power) ? mod.power : LOOT.mods.powers.damageBroadcast.rare };
+    },
+    powerForRarity(rarity) {
+      return LOOT.mods.powers.damageBroadcast[rarity];
+    },
+    onNetworkChange(game) {
+      applyBroadcastAura(game, "damageBroadcast", "damage");
+    },
+  }),
 });
 
 const MOD_IDS = Object.keys(MODS);
@@ -309,7 +352,13 @@ export function onNetworkChange(game) {
   game.modNetwork ||= {};
   game.modNetwork.array = {};
   for (const tower of game.towers || []) {
+    // Refresh gearMods from current gear FIRST: a gear equip/unequip triggers a
+    // network rebuild, and Protocol hooks below read gearMods to find carriers.
+    // recomputeStats also sets this, but it runs AFTER onNetworkChange, so the
+    // network must not depend on that ordering (would miss just-changed gear).
+    tower.gearMods = aggregateMods(tower.gear);
     tower._broadcast = { damage: 0, fireRate: 0, range: 0, crit: 0 };
+    tower._broadcastRadius = 0;
   }
   for (const id of MOD_IDS) MODS[id].onNetworkChange?.(game);
 }

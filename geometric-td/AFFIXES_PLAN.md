@@ -360,7 +360,24 @@ Legend for per-mod sections: **Files** (what Codex touches) · **Behavior** ·
   accrues, stronger upgrades / weaker never downgrades, different-type consumes
   with correct bonus, carrier-consumer restarts at 1).
 
-### [ ] P4 — Damage Broadcast (Protocol) — builds the aura system
+### [x] P4 — Damage Broadcast (Protocol) — SHIPPED `2026.08.28-5` (built directly, Codex rate-limited)
+- **As built:** a shared `applyBroadcastAura(game, modId, field)` in affixes.js
+  (P5's three broadcasts reuse it) that, on network change, adds each source's
+  power to the target `_broadcast` field of every tower within
+  `broadcastRadiusTiles` (self excluded unless `broadcastSelfBuffs`; sources
+  additive). `recomputeStats` already applied `_broadcast.damage`. Selection aura
+  ring added in renderer.js (reads `tower._broadcastRadius`).
+- **IMPORTANT ordering fix:** `onNetworkChange` now refreshes each tower's
+  `gearMods` from current gear FIRST (imports `aggregateMods`), because
+  `refreshModNetwork` runs it BEFORE `refreshTowerStats` — otherwise a gear
+  equip/unequip rebuilt the network from STALE gearMods and the aura missed the
+  just-changed gear (worked on placement only). This also hardens P6 Array.
+- **Verified in-browser:** ungeared neighbor within radius gets +16% (rare),
+  out-of-range 0, source not self-buffed (`_broadcast.damage`=0 with stat affixes
+  stripped to isolate the aura), sell removes the buff and restores base, radius
+  = 3 tiles, Fault regressions intact, self-test green, console clean.
+- **Note:** a rare+ broadcast item ALSO rolls normal stat affixes; those buff the
+  wearer directly (that's the stat system, not the aura) — expected.
 - **Behavior:** reusable **aura** (spec §18): source tower buffs nearby towers'
   damage by its power; configurable radius; source excluded unless
   `broadcastSelfBuffs`; bonus vanishes when source removed; recompute on enter/
