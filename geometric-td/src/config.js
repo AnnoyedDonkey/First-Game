@@ -437,6 +437,13 @@ export const LOOT = {
       backdoor: {
         rare: 0.3, prismatic: 0.35, singularity: 0.4,
       },
+      overclock: {
+        common: { perKill: 0.02, cap: 0.40 },
+        enhanced: { perKill: 0.025, cap: 0.45 },
+        rare: { perKill: 0.03, cap: 0.50 },
+        prismatic: { perKill: 0.035, cap: 0.55 },
+        singularity: { perKill: 0.04, cap: 0.60 },
+      },
       throttle: { perStack: 0.02, maxSlow: 0.50 },
       exposed: { perStack: 0.02, maxStacks: 20 },
       fork: {
@@ -466,6 +473,7 @@ export const LOOT = {
       spreadTargets: 1, spreadRadiusTiles: 2,
     },
     rootkit: { rampPerSec: 0.05 },
+    overclock: { killCooldownSec: 0.5 },
     arrayExtraSourceBonus: 0.01,
     // Array damage bonus = min(sameTypeCount, arrayMaxTowers) × effectivePower.
     // The cap keeps a same-type tower spam from scaling without bound (and from

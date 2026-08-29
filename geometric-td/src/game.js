@@ -16,6 +16,7 @@ import { createGridModel } from "./grid.js";
 import { createEnemy, updateEnemies, updateFaults } from "./enemies.js";
 import { updateTowers } from "./towers.js";
 import { updateProjectiles, updateEffects } from "./projectiles.js";
+import { onWaveStart } from "./affixes.js";
 import {
   getCoreBonus, recordBattleEnd, recordEndlessResult,
   getInterestRate, getInterestCap, getMoneyMult,
@@ -142,6 +143,7 @@ export function startNextWave(game) {
   game.spawnQueue = buildSpawnQueue(waveDef);
   game.waveClock = 0;
   game.phase = "wave";
+  onWaveStart(game);
 }
 
 export function updateGame(game, dt) {

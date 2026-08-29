@@ -89,6 +89,14 @@ export function setForkSpawner(fn) {
   forkSpawner = fn;
 }
 
+// Overclock changes one live tower's derived fire rate on kill/reset. towers.js
+// injects its private recomputeStats wrapper here so this module stays free of
+// the affixes.js <-> towers.js import cycle.
+let towerStatRecomputer = null;
+export function setTowerStatRecomputer(fn) {
+  towerStatRecomputer = fn;
+}
+
 function forkOnKill(ctx) {
   // canProc===false marks a triggered (non-primary) hit — Fork never chains off
   // those, and forked towers are gearless so they can't carry Fork anyway.
@@ -108,6 +116,64 @@ function strongestModPower(source, id) {
   let max = 0;
   for (const m of list) if (Number.isFinite(m.power) && m.power > max) max = m.power;
   return max;
+}
+
+// An Overclock item's stored power is its per-kill gain. The cap remains tied
+// to that item's rarity in config, so resolve the strongest equipped copy from
+// the live gear while still using gearMods as the carrier/source-of-power cache.
+function overclockParams(tower) {
+  const perKill = strongestModPower(tower, "overclock");
+  if (perKill <= 0) return null;
+
+  let cap = 0;
+  for (const item of Object.values(tower.gear || {})) {
+    const configured = LOOT.mods.powers.overclock[item?.rarity];
+    if (!configured) continue;
+    for (const mod of item?.mods || []) {
+      if (mod?.id === "overclock" && mod.power === perKill) {
+        cap = Math.max(cap, configured.cap);
+      }
+    }
+  }
+  // Synthetic/debug towers may provide gearMods directly. Exact config powers
+  // still resolve without requiring a fake item shell.
+  if (cap <= 0) {
+    for (const configured of Object.values(LOOT.mods.powers.overclock)) {
+      if (configured.perKill === perKill) cap = Math.max(cap, configured.cap);
+    }
+  }
+  return cap > 0 ? { perKill, cap } : null;
+}
+
+function overclockOnKill(ctx) {
+  const tower = ctx?.source;
+  if (!tower || !ctx.game || ctx.canProc !== true || !overclockParams(tower)) return;
+
+  const now = ctx.game.time;
+  if (!Number.isFinite(now)) return;
+  const state = tower._overclock || { stacks: 0, lastStackAt: -Infinity };
+  const lastStackAt = Number.isFinite(state.lastStackAt) ? state.lastStackAt : -Infinity;
+  if (now - lastStackAt < LOOT.mods.overclock.killCooldownSec) return;
+
+  state.stacks = Math.max(0, state.stacks || 0) + 1;
+  state.lastStackAt = now;
+  tower._overclock = state;
+  towerStatRecomputer?.(ctx.game, tower);
+}
+
+function overclockOnWaveStart(game, tower) {
+  // Do not create runtime state for a fresh carrier. Once a tower has earned a
+  // stack, every wave start explicitly clears it and refreshes derived stats.
+  if (!tower?._overclock) return;
+  tower._overclock.stacks = 0;
+  towerStatRecomputer?.(game, tower);
+}
+
+export function overclockFireRateMult(tower) {
+  const configured = overclockParams(tower);
+  if (!configured) return 1;
+  const stacks = Math.max(0, tower?._overclock?.stacks || 0);
+  return 1 + Math.min(configured.cap, stacks * configured.perKill);
 }
 
 function startDesync(enemy, towerType, powerPerStack) {
@@ -545,6 +611,30 @@ export const MODS = Object.freeze({
     },
     onKill: forkOnKill,
   }),
+  overclock: Object.freeze({
+    id: "overclock",
+    category: "protocol",
+    nameKey: "mod.overclock.name",
+    name: "Overclock",
+    descKey: "mod.overclock.desc",
+    description: "Killing blows grant +{power}% fire rate per stack, up to +{cap}%. Resets at the start of each wave.",
+    descriptionParams(mod) {
+      const table = LOOT.mods.powers.overclock;
+      let configured = table.rare;
+      if (Number.isFinite(mod?.power)) {
+        configured = Object.values(table).find((entry) => entry.perKill === mod.power) || configured;
+      }
+      return {
+        power: Number.isFinite(mod?.power) ? mod.power : configured.perKill,
+        cap: Math.round(configured.cap * 10000) / 100,
+      };
+    },
+    powerForRarity(rarity) {
+      return LOOT.mods.powers.overclock[rarity]?.perKill;
+    },
+    onKill: overclockOnKill,
+    onWaveStart: overclockOnWaveStart,
+  }),
 });
 
 const MOD_IDS = Object.keys(MODS);
@@ -583,6 +673,19 @@ export function onHit(ctx) {
 
 export function onKill(ctx) {
   return dispatchCombatHook("onKill", ctx);
+}
+
+// Wave starts are tower-local: walk each tower's equipped mod ids and invoke
+// only definitions that declared interest. A duplicate mod id still resets its
+// carrier once, and towers without interested mods are skipped entirely.
+export function onWaveStart(game) {
+  if (!game) return;
+  for (const tower of game.towers || []) {
+    for (const id of Object.keys(tower.gearMods || {})) {
+      const handler = MODS[id]?.onWaveStart;
+      if (handler) handler(game, tower);
+    }
+  }
 }
 
 // Movement-affecting Faults compose multiplicatively. The enemy loop calls

@@ -17,7 +17,9 @@ import { emitHitSparks, emitLevelUpSplash } from "./particles.js";
 import {
   aggregateGear, aggregateMods, masteryRankFor, normalizeGear, xpToNextMastery,
 } from "./equipment.js";
-import { onNetworkChange, setForkSpawner } from "./affixes.js";
+import {
+  onNetworkChange, overclockFireRateMult, setForkSpawner, setTowerStatRecomputer,
+} from "./affixes.js";
 
 let nextTowerId = 1;
 const rosterCounters = {}; // per-rosterPrefix counters for names like Laser-01
@@ -125,6 +127,7 @@ function spawnForkTower(game, parent) {
   });
 }
 setForkSpawner(spawnForkTower);
+setTowerStatRecomputer((game, tower) => recomputeStats(tower, game.grid, game));
 
 // Live stats = base stats scaled by level (compound growth per level).
 // SPECIALTY bonuses are PERMANENT: they follow the highest level the
@@ -212,7 +215,7 @@ function recomputeStats(tower, grid, game = null) {
 
   // Canonical effective-stat order: base -> level growth -> specialty ->
   // mastery -> global skills -> normal gear -> Array -> Broadcast -> conduit
-  // -> surge. Enemy-side Faults never enter this tower pipeline.
+  // -> surge -> Overclock. Enemy-side Faults never enter this tower pipeline.
   const array = game?.modNetwork?.array?.[tower.type];
   // Cached bonus already applies the arrayMaxTowers cap (see rebuildArrayNetwork).
   const arrayBonus = array?.bonus || 0;
@@ -243,6 +246,7 @@ function recomputeStats(tower, grid, game = null) {
     tower.damage *= lu.buffDamageMult;
     tower.fireInterval /= lu.buffFireRateMult;
   }
+  tower.fireInterval /= overclockFireRateMult(tower);
 }
 
 // Re-exported for the existing UI imports; implementation lives beside the
