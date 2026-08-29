@@ -13,7 +13,7 @@ import {
 } from "./config.js";
 import { updateMilestoneResults } from "./milestones.js";
 import { createGridModel } from "./grid.js";
-import { createEnemy, updateEnemies } from "./enemies.js";
+import { createEnemy, updateEnemies, updateFaults } from "./enemies.js";
 import { updateTowers } from "./towers.js";
 import { updateProjectiles, updateEffects } from "./projectiles.js";
 import {
@@ -161,6 +161,7 @@ export function updateGame(game, dt) {
   // Combat: towers fire, projectiles fly, effects fade.
   updateTowers(game, dt);
   updateProjectiles(game, dt);
+  updateFaults(game, dt);
   updateEffects(game, dt);
   updateParticles(game, dt);
   game.springGrid.update(dt);

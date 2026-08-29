@@ -1762,13 +1762,27 @@ function modPower(power) {
   return Math.round(power * 10000) / 100;
 }
 
+function modPowerValue(id, power) {
+  return getMod(id)?.powerFormat === "flat" ? power : modPower(power);
+}
+
+function modPowerSuffix(id) {
+  return getMod(id)?.powerSuffix ?? "%";
+}
+
+function modPowerText(id, power) {
+  return `+${modPowerValue(id, power)}${modPowerSuffix(id)}`;
+}
+
 function modDescription(id, power) {
   const def = getMod(id);
   if (!def) return "No behavior is registered for this debug mod yet.";
   const fallback = def.description || "Behavioral gear modifier.";
   const rawParams = def.descriptionParams?.({ id, power }) || {};
   const params = { ...rawParams };
-  if (Number.isFinite(params.power)) params.power = modPower(params.power);
+  if (Number.isFinite(params.power) && def.powerFormat !== "flat") {
+    params.power = modPower(params.power);
+  }
   return def.descKey ? tf(def.descKey, fallback, params) : tf("", fallback, params);
 }
 
@@ -1840,7 +1854,7 @@ function itemAffixSummary(item) {
     parts.push(`${affixLabel(def, a.stat)} +${a.value}${def && def.int ? "" : "%"}`);
   }
   for (const mod of itemMods(item)) {
-    parts.push(`MOD ${modName(mod.id)} +${modPower(mod.power)}%`);
+    parts.push(`MOD ${modName(mod.id)} ${modPowerText(mod.id, mod.power)}`);
   }
   return parts.join(" / ");
 }
@@ -1871,7 +1885,7 @@ function itemAffixRowsHtml(item) {
     rows.push(
       `<div class="gear-affix mod ${def?.category || "unregistered"}"><div class="gear-affix-main">` +
       traitToggleHtml(`MOD: ${modName(mod.id)}`, "mod", mod.id, mod.power) +
-      `<span class="val">+${modPower(mod.power)}%</span>` +
+      `<span class="val">${modPowerText(mod.id, mod.power)}</span>` +
       `</div><div class="gear-trait-desc hidden"></div></div>`
     );
   }
@@ -2145,14 +2159,15 @@ function openCompareSheet(current, incoming, opts = {}) {
   const modRows = modIds.map((id) => {
     const curMod = curMods.get(id), newMod = newMods.get(id);
     const hasCur = !!curMod, hasNew = !!newMod;
-    const cv = hasCur ? modPower(curMod.power) : 0;
-    const nv = hasNew ? modPower(newMod.power) : 0;
-    const delta = hasCur && hasNew ? modPower(newMod.power - curMod.power) : 0;
+    const suffix = modPowerSuffix(id);
+    const delta = hasCur && hasNew
+      ? modPowerValue(id, newMod.power - curMod.power)
+      : 0;
     const deltaHtml = delta === 0 ? "" :
-      `<span class="cmp-delta ${delta > 0 ? "up" : "down"}">${delta > 0 ? "&#9650;" : "&#9660;"}${Math.abs(delta)}%</span>`;
+      `<span class="cmp-delta ${delta > 0 ? "up" : "down"}">${delta > 0 ? "&#9650;" : "&#9660;"}${Math.abs(delta)}${suffix}</span>`;
     return `<div class="cmp-row"><span class="cmp-label">${escapeHtml(modName(id))}</span>` +
-      `<span class="cmp-cell${hasCur ? "" : " cmp-absent"}">${hasCur ? `+${cv}%` : "&mdash;"}</span>` +
-      `<span class="cmp-cell${hasNew ? "" : " cmp-absent"}">${hasNew ? `+${nv}%` : "&mdash;"}${deltaHtml}</span></div>`;
+      `<span class="cmp-cell${hasCur ? "" : " cmp-absent"}">${hasCur ? modPowerText(id, curMod.power) : "&mdash;"}</span>` +
+      `<span class="cmp-cell${hasNew ? "" : " cmp-absent"}">${hasNew ? modPowerText(id, newMod.power) : "&mdash;"}${deltaHtml}</span></div>`;
   }).join("");
 
   const footer = readOnly

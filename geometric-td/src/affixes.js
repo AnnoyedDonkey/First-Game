@@ -151,6 +151,36 @@ function desyncOnHit(ctx) {
   }
 }
 
+// Shared by carrier hits and death transfer. Creating the Fault stamps its
+// lifetime origin once; adding to an existing infection never resets the age.
+export function applyCorruptionStacks(enemy, amount, gameTime) {
+  const existing = getFault(enemy, "corruption");
+  const metadata = existing ? null : { corruptedAt: gameTime };
+  return addFaultStacks(
+    enemy, "corruption", amount, LOOT.mods.corruption.maxStacks, metadata
+  );
+}
+
+function corruptionOnHit(ctx) {
+  if (!ctx?.enemy || !ctx.source) return;
+  const power = strongestModPower(ctx.source, "corruption");
+  if (power <= 0) return;
+  applyCorruptionStacks(ctx.enemy, power, ctx.game?.time ?? 0);
+}
+
+// Phase C's Rootkit ramp multiplies this base amount here. Keeping the amount
+// pure lets enemies.js own iteration and damageEnemy routing without a cycle.
+export function corruptionTickDamage(enemy, game, dt) {
+  const stacks = getFaultStacks(enemy, "corruption");
+  return stacks * dt;
+}
+
+export function corruptionSpreadAmount(enemy) {
+  return Math.floor(
+    getFaultStacks(enemy, "corruption") * LOOT.mods.corruption.spreadFrac
+  );
+}
+
 // Broadcast Protocols share ONE aura applicator. A source carrying `modId` adds
 // its power to the given `_broadcast` field of every tower within
 // broadcastRadiusTiles (itself only if broadcastSelfBuffs). Sources stack
@@ -311,6 +341,46 @@ export const MODS = Object.freeze({
     },
     onHit: desyncOnHit,
   }),
+  corruption: Object.freeze({
+    id: "corruption",
+    category: "fault",
+    nameKey: "mod.corruption.name",
+    name: "Corruption",
+    descKey: "mod.corruption.desc",
+    powerFormat: "flat",
+    powerSuffix: " stacks/hit",
+    description: "Hits add {power} permanent Corruption stacks. Corruption deals damage per second equal to its stacks and transfers {spread}% to the nearest enemy on death, up to {maxStacks} stacks.",
+    descriptionParams(mod) {
+      return {
+        power: Number.isFinite(mod?.power) ? mod.power : LOOT.mods.powers.corruption.rare,
+        spread: Math.round(LOOT.mods.corruption.spreadFrac * 10000) / 100,
+        maxStacks: LOOT.mods.corruption.maxStacks,
+      };
+    },
+    powerForRarity(rarity) {
+      return LOOT.mods.powers.corruption[rarity];
+    },
+    inspect(fault, enemy, game) {
+      const now = Number.isFinite(game?.time) ? game.time : fault.corruptedAt;
+      const started = Number.isFinite(fault.corruptedAt) ? fault.corruptedAt : now;
+      return {
+        ...fault,
+        currentDps: fault.stacks || 0,
+        secondsCorrupted: Math.max(0, (now || 0) - (started || 0)),
+      };
+    },
+    debugLines(fault, enemy, game) {
+      const now = Number.isFinite(game?.time) ? game.time : fault.corruptedAt;
+      const started = Number.isFinite(fault.corruptedAt) ? fault.corruptedAt : now;
+      const seconds = Math.max(0, (now || 0) - (started || 0));
+      return [
+        `Stacks: ${fault.stacks || 0}`,
+        `Current DPS: ${fault.stacks || 0}`,
+        `Corrupted for: ${Math.round(seconds * 10) / 10}s`,
+      ];
+    },
+    onHit: corruptionOnHit,
+  }),
   damageBroadcast: Object.freeze({
     id: "damageBroadcast",
     category: "protocol",
@@ -464,20 +534,22 @@ export function faultMovementMult(enemy) {
   return mult;
 }
 
-export function inspectFaults(enemy) {
+export function inspectFaults(enemy, game = null) {
   const inspected = {};
   for (const [id, fault] of Object.entries(enemy?.faults || {})) {
-    inspected[id] = MODS[id]?.inspect ? MODS[id].inspect(fault) : { ...fault };
+    inspected[id] = MODS[id]?.inspect
+      ? MODS[id].inspect(fault, enemy, game)
+      : { ...fault };
   }
   return inspected;
 }
 
-export function faultInspectionLines(enemy) {
+export function faultInspectionLines(enemy, game = null) {
   const lines = [];
   for (const [id, fault] of Object.entries(enemy?.faults || {})) {
     const def = MODS[id];
     lines.push(`${def?.name || id}:`);
-    if (def?.debugLines) lines.push(...def.debugLines(fault));
+    if (def?.debugLines) lines.push(...def.debugLines(fault, enemy, game));
     else lines.push(`Stacks: ${fault.stacks || 0}`);
     lines.push("");
   }

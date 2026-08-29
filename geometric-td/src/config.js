@@ -426,6 +426,10 @@ export const LOOT = {
         common: 0.01, enhanced: 0.015, rare: 0.02,
         prismatic: 0.025, singularity: 0.03,
       },
+      corruption: {
+        common: 1, enhanced: 2, rare: 3,
+        prismatic: 4, singularity: 6,
+      },
       throttle: { perStack: 0.02, maxSlow: 0.50 },
       exposed: { perStack: 0.02, maxStacks: 20 },
       fork: {
@@ -450,6 +454,10 @@ export const LOOT = {
       },
     },
     desyncMaxStacks: 50,
+    corruption: {
+      maxStacks: 50, spreadFrac: 0.5,
+      spreadTargets: 1, spreadRadiusTiles: 2,
+    },
     arrayExtraSourceBonus: 0.01,
     // Array damage bonus = min(sameTypeCount, arrayMaxTowers) × effectivePower.
     // The cap keeps a same-type tower spam from scaling without bound (and from
@@ -752,6 +760,7 @@ export const VFX = {
       exposed: { label: "E", color: "#ff7a59" },
       throttle: { label: "T", color: "#35e0ff" },
       desync: { label: "D", color: "#ff3fd4" },
+      corruption: { label: "C", color: "#a6ff4d" },
     },
   },
 

@@ -543,7 +543,14 @@ Architecture notes that apply to the whole batch:
   and the consume still fires; existing self-test green; no behavior change beyond
   these two numbers. **Ship.**
 
-## [ ] Phase B — Corruption (Setter) + the fault-tick hook
+## [x] Phase B — Corruption (Setter) + the fault-tick hook — SHIPPED `2026.08.29-5`
+> As built: fault-tick = `enemies.js updateFaults(game,dt)` from `game.js`
+> updateGame; Corruption ticks via `damageEnemy(null source, {triggered,canProc:false})`
+> so Exposed/fields amplify it (verified 20 corr × 1.2 exposed = 24/s) with no
+> faults added / no Fork proc; spread-on-death = ½ to one nearest in enemies.js;
+> `corruptionTickDamage(enemy,game,dt)=stacks*dt` is the Phase-C Rootkit multiply
+> point; Corruption got a "C" pip in `VFX.faultMarker.types` (enemy/tower/gear).
+
 - **Files:** `src/affixes.js` (register `corruption`; pure helpers), `src/config.js`
   (`LOOT.mods.powers.corruption` + `LOOT.mods.corruption` params), `src/enemies.js`
   (fault-tick loop + spread-on-death), `src/game.js` (call the tick from

@@ -74,10 +74,10 @@ function dumpFaults(enemyIndex = 0) {
   if (!enemy) return null;
   const result = {
     enemyIndex, id: enemy.id, health: enemy.health,
-    faults: inspectFaults(enemy),
+    faults: inspectFaults(enemy, game),
   };
   const lines = [`ENEMY #${enemy.id}`, "", `HP: ${Math.max(0, Math.ceil(enemy.health)).toLocaleString()}`, ""];
-  lines.push(...faultInspectionLines(enemy));
+  lines.push(...faultInspectionLines(enemy, game));
   console.log(lines.join("\n").trimEnd());
   return result;
 }

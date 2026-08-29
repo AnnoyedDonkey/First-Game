@@ -6,9 +6,13 @@ import { ENEMIES, ECONOMY, VFX, LOOT } from "./config.js";
 import { getMoneyMult, getXpMult, getSkillShardFindMult } from "./progression.js";
 import { rollKillDrop } from "./loot.js";
 import { emitHitSparks, emitDeathShards, emitCoins } from "./particles.js";
-import { faultMovementMult, onHit, onKill } from "./affixes.js";
+import {
+  applyCorruptionStacks, corruptionSpreadAmount, corruptionTickDamage,
+  faultMovementMult, onHit, onKill,
+} from "./affixes.js";
 
 let nextEnemyId = 1;
+const faultTickQueue = [];
 
 function moneyMultFor(game, ownerId) {
   return game.players?.[ownerId]?.economy?.moneyMult ?? getMoneyMult();
@@ -126,8 +130,59 @@ export function updateEnemies(game, dt) {
   return leaked;
 }
 
+// Snapshot tick amounts before applying any damage. A death may transfer
+// Corruption, but that fresh infection is not eligible to tick until the next
+// frame, preventing a same-frame spread/damage cascade.
+export function updateFaults(game, dt) {
+  faultTickQueue.length = 0;
+  for (const enemy of game.enemies) {
+    if (!enemy.alive || !enemy.faults) continue;
+    const damage = corruptionTickDamage(enemy, game, dt);
+    if (damage > 0) faultTickQueue.push(enemy, damage);
+  }
+  const dotCtx = {
+    source: null, sourceType: null, triggered: true, canProc: false, game,
+  };
+  for (let i = 0; i < faultTickQueue.length; i += 2) {
+    const enemy = faultTickQueue[i];
+    if (enemy.alive) damageEnemy(game, enemy, null, faultTickQueue[i + 1], dotCtx);
+  }
+  faultTickQueue.length = 0;
+}
+
 export function enemyPosition(enemy, grid) {
   return grid.positionOnPath(enemy.distance);
+}
+
+// Death transfer is a bounded nearest-neighbor search and runs only when an
+// infected enemy dies. Stacks are applied directly, never through onHit, so a
+// transfer cannot proc or recursively spread by itself.
+function spreadCorruptionOnDeath(game, enemy) {
+  const amount = corruptionSpreadAmount(enemy);
+  const cfg = LOOT.mods.corruption;
+  if (amount <= 0 || cfg.spreadTargets <= 0) return;
+
+  const origin = enemyPosition(enemy, game.grid);
+  const radius = cfg.spreadRadiusTiles * game.grid.tileSize;
+  const radiusSq = radius * radius;
+  const selected = [];
+  for (let n = 0; n < cfg.spreadTargets; n++) {
+    let nearest = null;
+    let nearestDistSq = radiusSq;
+    for (const candidate of game.enemies) {
+      if (!candidate.alive || candidate === enemy || selected.includes(candidate)) continue;
+      const pos = enemyPosition(candidate, game.grid);
+      const dx = pos.x - origin.x;
+      const dy = pos.y - origin.y;
+      const distSq = dx * dx + dy * dy;
+      if (distSq > radiusSq || (nearest && distSq >= nearestDistSq)) continue;
+      nearest = candidate;
+      nearestDistSq = distSq;
+    }
+    if (!nearest) break;
+    selected.push(nearest);
+    applyCorruptionStacks(nearest, amount, game.time);
+  }
 }
 
 // Contributor-weighted XP (loot spec §3): every tower that damages or
@@ -190,6 +245,7 @@ export function damageEnemy(game, enemy, sourceTower, amount, ctx = null) {
     triggered: false,
     canProc: true,
   };
+  const silentTriggered = hitCtx.triggered && !sourceTower;
 
   // Damage-type counters: enemies resist / are weak to specific towers
   // (ENEMIES[type].damageMult keyed by the tower's damageType).
@@ -233,13 +289,16 @@ export function damageEnemy(game, enemy, sourceTower, amount, ctx = null) {
   if (Number.isFinite(hitCtx.damage)) dmg = hitCtx.damage;
 
   enemy.health -= dmg;
-  enemy.hitFlash = 0.1;
+  if (!silentTriggered) enemy.hitFlash = 0.1;
 
   // Bank this hit's damage as XP-contribution weight (1 per point of
   // damage dealt). Runs before the death check so the killing blow counts.
   addContribution(enemy, sourceTower, dmg);
 
   if (enemy.health > 0) {
+    // Continuous null-source ticks are intentionally silent; emitting impact
+    // sparks every frame would flood the particle budget and keep hit-flash on.
+    if (silentTriggered) return;
     // Impact feedback that TEACHES the counter: a wrong-tower hit clangs
     // off dull grey with a shield ring; a super-effective hit pops bright
     // white with a colored halo. Neutral hits use the normal spark burst.
@@ -266,6 +325,7 @@ export function damageEnemy(game, enemy, sourceTower, amount, ctx = null) {
 
   enemy.alive = false;
   onKill(hitCtx);
+  spreadCorruptionOnDeath(game, enemy);
   game.kills = (game.kills || 0) + 1; // B5 milestone tracking
   const isBoss = enemy.type === "boss";
   for (const ownerId of Object.keys(game.wallets)) {
@@ -298,8 +358,15 @@ export function damageEnemy(game, enemy, sourceTower, amount, ctx = null) {
     (sourceTower ? sourceTower.shardFindMult || 1 : 1) *
     getSkillShardFindMult();
   if (game.coop && game.shardsEarned && typeof game.shardsEarned === "object") {
-    const ownerId = sourceTower.ownerId;
-    game.shardsEarned[ownerId] = (game.shardsEarned[ownerId] || 0) + shards;
+    if (sourceTower?.ownerId) {
+      const ownerId = sourceTower.ownerId;
+      game.shardsEarned[ownerId] = (game.shardsEarned[ownerId] || 0) + shards;
+    } else {
+      // Null-source Fault kills are shared, matching co-op bounty and loot.
+      for (const ownerId of Object.keys(game.shardsEarned)) {
+        game.shardsEarned[ownerId] = (game.shardsEarned[ownerId] || 0) + shards;
+      }
+    }
   } else {
     // Preserve the single-player scalar and its round-once banking path.
     game.shardsEarned += shards;
