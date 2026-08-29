@@ -456,6 +456,12 @@ export const LOOT = {
         prismatic: { perKill: 0.01, cap: 0.20 },
         singularity: { perKill: 0.015, cap: 0.20 },
       },
+      // Thermal (Bridge -> Broadcast): fire-rate aura emitted only while the tower
+      // is at max Overclock. Uses broadcastRadiusTiles like the other Broadcasts.
+      thermal: {
+        common: 0.06, enhanced: 0.08, rare: 0.10,
+        prismatic: 0.12, singularity: 0.15,
+      },
       nonvolatile: {
         common: 0.10, enhanced: 0.15, rare: 0.20,
         prismatic: 0.25, singularity: 0.30,

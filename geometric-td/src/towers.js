@@ -18,7 +18,8 @@ import {
   aggregateGear, aggregateMods, masteryRankFor, normalizeGear, xpToNextMastery,
 } from "./equipment.js";
 import {
-  onNetworkChange, overclockFireRateMult, setForkSpawner, setTowerStatRecomputer,
+  onNetworkChange, overclockFireRateMult, setForkSpawner,
+  setNetworkRefresher, setTowerStatRecomputer,
 } from "./affixes.js";
 
 let nextTowerId = 1;
@@ -128,6 +129,7 @@ function spawnForkTower(game, parent) {
 }
 setForkSpawner(spawnForkTower);
 setTowerStatRecomputer((game, tower) => recomputeStats(tower, game.grid, game));
+setNetworkRefresher(refreshModNetwork); // Thermal: rebuild auras + stats on an at-max crossing
 
 // Live stats = base stats scaled by level (compound growth per level).
 // SPECIALTY bonuses are PERMANENT: they follow the highest level the

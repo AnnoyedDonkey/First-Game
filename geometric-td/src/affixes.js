@@ -97,6 +97,16 @@ export function setTowerStatRecomputer(fn) {
   towerStatRecomputer = fn;
 }
 
+// Thermal's aura is state-dependent (only while a tower is at MAX Overclock), so a
+// tower crossing into/out of max must rebuild the network auras + neighbour stats.
+// towers.js injects refreshModNetwork here (same import-cycle dodge as above). The
+// crossing is a rare event (reach max once per wave; drop at wave reset), never a
+// per-frame scan.
+let networkRefresher = null;
+export function setNetworkRefresher(fn) {
+  networkRefresher = fn;
+}
+
 function forkOnKill(ctx) {
   // canProc===false marks a triggered (non-primary) hit — Fork never chains off
   // those, and forked towers are gearless so they can't carry Fork anyway.
@@ -189,6 +199,7 @@ function overclockOnKill(ctx) {
   state.lastStackAt = now;
   tower._overclock = state;
   towerStatRecomputer?.(ctx.game, tower);
+  maybeSyncThermal(ctx.game, tower); // may have just crossed INTO max Overclock
 }
 
 function overclockOnWaveStart(game, tower) {
@@ -200,6 +211,7 @@ function overclockOnWaveStart(game, tower) {
   const frac = game.modNetwork?.nonvolatile || 0;
   tower._overclock.stacks = Math.floor(oldStacks * frac);
   towerStatRecomputer?.(game, tower);
+  maybeSyncThermal(game, tower); // the reset may have dropped it BELOW max Overclock
 }
 
 export function overclockFireRateMult(tower) {
@@ -207,6 +219,52 @@ export function overclockFireRateMult(tower) {
   if (!configured) return 1;
   const stacks = Math.max(0, tower?._overclock?.stacks || 0);
   return 1 + Math.min(configured.cap, stacks * configured.perKill);
+}
+
+// A tower is at MAX Overclock when its accumulated stacks reach the (Turbo/
+// Hyperthread-adjusted) cap. No Overclock -> never at max. This is the gate for
+// Thermal's aura and for its crossing detection.
+function overclockAtMax(tower) {
+  const configured = overclockParams(tower);
+  if (!configured) return false;
+  const stacks = Math.max(0, tower?._overclock?.stacks || 0);
+  return stacks * configured.perKill >= configured.cap;
+}
+
+// Thermal (Bridge -> Broadcast): while the source sits at max Overclock it emits a
+// fire-rate aura to towers within broadcastRadiusTiles, folded into the same
+// _broadcast.fireRate the other Broadcasts use (read by recomputeStats). Gated
+// applyBroadcastAura variant — only at-max Thermal carriers contribute. Runs inside
+// onNetworkChange (network change OR a crossing-triggered refresh), never per frame.
+function applyThermalAura(game) {
+  const towers = game.towers || [];
+  if (towers.length === 0) return;
+  const ts = game.grid?.tileSize || 0;
+  const radius = LOOT.mods.broadcastRadiusTiles * ts;
+  const r2 = radius * radius;
+  const selfBuffs = LOOT.mods.broadcastSelfBuffs;
+  for (const source of towers) {
+    const power = strongestModPower(source, "thermal");
+    if (power <= 0 || !overclockAtMax(source)) continue;
+    source._broadcastRadius = radius; // selection ring, only while emitting
+    for (const target of towers) {
+      if (target === source && !selfBuffs) continue;
+      const dx = target.pos.x - source.pos.x;
+      const dy = target.pos.y - source.pos.y;
+      if (dx * dx + dy * dy <= r2) target._broadcast.fireRate += power;
+    }
+  }
+}
+
+// Called after an Overclock stack change / wave reset for a Thermal carrier. Only
+// when the tower CROSSES into or out of max (a rare, bounded event) do we rebuild
+// the network so the aura enters/leaves neighbours' _broadcast — never per frame.
+function maybeSyncThermal(game, tower) {
+  if (!game || !sourceHasMod(tower, "thermal")) return;
+  const active = overclockAtMax(tower);
+  if (active === !!tower._thermalActive) return;
+  tower._thermalActive = active;
+  networkRefresher?.(game);
 }
 
 function startDesync(enemy, towerType, powerPerStack) {
@@ -704,6 +762,23 @@ export const MODS = Object.freeze({
     },
     powerForRarity(rarity) {
       return LOOT.mods.powers.turbo[rarity]?.perKill;
+    },
+  }),
+  thermal: Object.freeze({
+    id: "thermal",
+    category: "protocol",
+    nameKey: "mod.thermal.name",
+    name: "Thermal",
+    descKey: "mod.thermal.desc",
+    description: "While this tower is at maximum Overclock, nearby towers fire +{power}% faster.",
+    descriptionParams(mod) {
+      return { power: mod?.power };
+    },
+    powerForRarity(rarity) {
+      return LOOT.mods.powers.thermal[rarity];
+    },
+    onNetworkChange(game) {
+      applyThermalAura(game);
     },
   }),
   nonvolatile: Object.freeze({
