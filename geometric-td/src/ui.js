@@ -1821,9 +1821,9 @@ function uniqueDescription(uniqueId) {
   }
 }
 
-function traitToggleHtml(label, kind, key, power = null) {
+function traitToggleHtml(label, kind, key, power = null, expanded = false) {
   const powerAttr = Number.isFinite(power) ? ` data-trait-power="${power}"` : "";
-  return `<button type="button" class="gear-trait-toggle" data-trait-kind="${kind}" data-trait-key="${key}"${powerAttr} aria-expanded="false">` +
+  return `<button type="button" class="gear-trait-toggle" data-trait-kind="${kind}" data-trait-key="${key}"${powerAttr} aria-expanded="${expanded}">` +
     `<span>${escapeHtml(label)}</span><span class="gear-trait-arrow" aria-hidden="true">&#8250;</span></button>`;
 }
 
@@ -1863,13 +1863,25 @@ function itemAffixSummary(item) {
 // callout row when present).
 function itemAffixRowsHtml(item) {
   const rows = [];
+  // Mods and Uniques lead the list and open EXPANDED by default: players won't
+  // know what "Overclock" or a unique does, so show the description without a tap.
+  // Plain stat affixes (Damage, etc.) are self-explanatory and stay collapsed below.
   const unique = itemUniqueName(item);
   if (unique) {
     const cls = item.rarity === "singularity" ? "unique" : "uniqueP";
     const kind = item.rarity === "singularity" ? "UNIQUE" : "MINOR";
     rows.push(`<div class="gear-affix ${cls}"><div class="gear-affix-main">` +
-      traitToggleHtml(`${kind}: ${unique}`, "unique", item.unique) +
-      `</div><div class="gear-trait-desc hidden"></div></div>`);
+      traitToggleHtml(`${kind}: ${unique}`, "unique", item.unique, null, true) +
+      `</div><div class="gear-trait-desc">${escapeHtml(uniqueDescription(item.unique))}</div></div>`);
+  }
+  for (const mod of itemMods(item)) {
+    const def = getMod(mod.id);
+    rows.push(
+      `<div class="gear-affix mod ${def?.category || "unregistered"}"><div class="gear-affix-main">` +
+      traitToggleHtml(`MOD: ${modName(mod.id)}`, "mod", mod.id, mod.power, true) +
+      `<span class="val">${modPowerText(mod.id, mod.power)}</span>` +
+      `</div><div class="gear-trait-desc">${escapeHtml(modDescription(mod.id, mod.power))}</div></div>`
+    );
   }
   for (const a of item.affixes || []) {
     const def = affixDef(a.stat);
@@ -1877,15 +1889,6 @@ function itemAffixRowsHtml(item) {
       `<div class="gear-affix"><div class="gear-affix-main">` +
       traitToggleHtml(affixLabel(def, a.stat), "affix", a.stat) +
       `<span class="val">+${a.value}${def && def.int ? "" : "%"}</span>` +
-      `</div><div class="gear-trait-desc hidden"></div></div>`
-    );
-  }
-  for (const mod of itemMods(item)) {
-    const def = getMod(mod.id);
-    rows.push(
-      `<div class="gear-affix mod ${def?.category || "unregistered"}"><div class="gear-affix-main">` +
-      traitToggleHtml(`MOD: ${modName(mod.id)}`, "mod", mod.id, mod.power) +
-      `<span class="val">${modPowerText(mod.id, mod.power)}</span>` +
       `</div><div class="gear-trait-desc hidden"></div></div>`
     );
   }
