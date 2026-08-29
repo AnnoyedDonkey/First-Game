@@ -434,6 +434,9 @@ export const LOOT = {
         common: 1.0, enhanced: 1.25, rare: 1.5,
         prismatic: 1.75, singularity: 2.0,
       },
+      backdoor: {
+        rare: 0.3, prismatic: 0.35, singularity: 0.4,
+      },
       throttle: { perStack: 0.02, maxSlow: 0.50 },
       exposed: { perStack: 0.02, maxStacks: 20 },
       fork: {

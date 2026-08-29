@@ -7,8 +7,9 @@ import { getMoneyMult, getXpMult, getSkillShardFindMult } from "./progression.js
 import { rollKillDrop } from "./loot.js";
 import { emitHitSparks, emitDeathShards, emitCoins } from "./particles.js";
 import {
-  applyCorruptionStacks, corruptionSpreadAmount, corruptionTickDamage,
-  faultMovementMult, onHit, onKill,
+  addFaultStacks, applyCorruptionStacks, backdoorExposedFloor,
+  corruptionSpreadAmount, corruptionTickDamage, faultMovementMult,
+  getFaultStacks, onHit, onKill,
 } from "./affixes.js";
 
 let nextEnemyId = 1;
@@ -137,6 +138,16 @@ export function updateFaults(game, dt) {
   faultTickQueue.length = 0;
   for (const enemy of game.enemies) {
     if (!enemy.alive || !enemy.faults) continue;
+    // Sync the target-side floor before queuing damage so this frame's
+    // Corruption tick immediately benefits from Backdoor-granted Exposed.
+    const exposedFloor = backdoorExposedFloor(enemy, game);
+    const exposedStacks = getFaultStacks(enemy, "exposed");
+    if (exposedFloor > exposedStacks) {
+      addFaultStacks(
+        enemy, "exposed", exposedFloor - exposedStacks,
+        LOOT.mods.powers.exposed.maxStacks
+      );
+    }
     const damage = corruptionTickDamage(enemy, game, dt);
     if (damage > 0) faultTickQueue.push(enemy, damage);
   }

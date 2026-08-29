@@ -188,6 +188,15 @@ export function corruptionSpreadAmount(enemy) {
   );
 }
 
+export function backdoorExposedFloor(enemy, game) {
+  const ratio = game?.modNetwork?.backdoor || 0;
+  if (ratio <= 0) return 0;
+  return Math.min(
+    LOOT.mods.powers.exposed.maxStacks,
+    Math.floor(getFaultStacks(enemy, "corruption") * ratio)
+  );
+}
+
 // Broadcast Protocols share ONE aura applicator. A source carrying `modId` adds
 // its power to the given `_broadcast` field of every tower within
 // broadcastRadiusTiles (itself only if broadcastSelfBuffs). Sources stack
@@ -410,6 +419,29 @@ export const MODS = Object.freeze({
         strongest = Math.max(strongest, strongestModPower(tower, "rootkit"));
       }
       game.modNetwork.rootkit = strongest;
+    },
+  }),
+  backdoor: Object.freeze({
+    id: "backdoor",
+    category: "protocol",
+    nameKey: "mod.backdoor.name",
+    name: "Backdoor",
+    descKey: "mod.backdoor.desc",
+    description: "Corrupted enemies are also Exposed (Exposed = {power}% of Corruption).",
+    descriptionParams(mod) {
+      return {
+        power: Number.isFinite(mod?.power) ? mod.power : LOOT.mods.powers.backdoor.rare,
+      };
+    },
+    powerForRarity(rarity) {
+      return LOOT.mods.powers.backdoor[rarity];
+    },
+    onNetworkChange(game) {
+      let strongest = 0;
+      for (const tower of game.towers || []) {
+        strongest = Math.max(strongest, strongestModPower(tower, "backdoor"));
+      }
+      game.modNetwork.backdoor = strongest;
     },
   }),
   damageBroadcast: Object.freeze({

@@ -47,7 +47,15 @@ modFaultBadgesHtml` on gear tiles; `.mod-pip` in styles.css) — Protocols have 
 pip (they don't appear on enemies). To add a NEW mod:
 register a definition + hook in `src/affixes.js`, add its numbers to
 `config.js LOOT.mods`; drop/store/tooltip/compare/Mod-Lab are already generic.
-Only per-mod balance TUNING is left, pending playtest feedback. Broadcast = a tower aura: `affixes.js applyBroadcastAura`
+**Batch 2 — Corruption archetype SHIPPED (`2026.08.29-4`..`-7`):** a balance push
+(Fork proc↓, Desync cap 50), then **Corruption** (contagious DoT: hits stack it,
+a per-second **fault-tick** in `enemies.js updateFaults` deals stacks/sec via a
+null-source `damageEnemy` so Exposed/fields amplify it, death transfers ½ to one
+neighbor), **Rootkit** (Transformer: tick ramps +5%/s of Corrupted lifetime to a
++100–200% cap — anti-swarm→anti-boss), and **Backdoor** (Bridge, Rare+: Corrupted
+enemies gain Exposed = 0.3–0.4×, closing the melt loop). Corruption has a "C" pip.
+Design space + role framework + numbers in `mods.md`. Next `[IDEA]`/`[NEXT]`
+batches: Overclock archetype, Cascade. Per-mod balance tuning pending playtest. Broadcast = a tower aura: `affixes.js applyBroadcastAura`
 adds a source's power to nearby towers' `_broadcast.{damage,fireRate,range,crit}`
 (rebuilt on network change, read by `recomputeStats`; radius ring in renderer).
 `onNetworkChange` refreshes `gearMods` before Protocol hooks read it (ordering

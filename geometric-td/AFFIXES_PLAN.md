@@ -603,7 +603,13 @@ Architecture notes that apply to the whole batch:
   climbs 5%/s to the cap; without Rootkit, flat; anti-swarm→anti-boss shift visible
   in `dumpFaults` DPS over time. **Ship.**
 
-## [ ] Phase D — Backdoor (Bridge → Exposed, Rare+)
+## [x] Phase D — Backdoor (Bridge → Exposed, Rare+) — SHIPPED `2026.08.29-7` — COMPLETES the Corruption archetype
+> As built: `backdoor` protocol, Rare+ only (null power at common/enhanced);
+> `game.modNetwork.backdoor` cache; the fault-tick tops up Exposed to
+> `max(existing, min(20, floor(corr*ratio)))`. Melt loop verified end-to-end:
+> Corruption+Rootkit+Backdoor (all Singularity), 50 stacks → 70/s at t=0, 210/s at
+> t=40 (Rootkit +200% × Exposed +40%); real Exposed never lowered; Rare+ gate holds.
+
 - **Files:** `src/affixes.js`, `src/config.js`, `src/enemies.js` (sync in the tick).
 - **Behavior:** while `game.modNetwork.backdoor` (strongest ratio on board, 0 if
   none) > 0 and an enemy has Corruption, keep its Exposed stacks at least
