@@ -33,14 +33,17 @@ not a bus), recursion ctx threaded through `damageEnemy`/`projectiles`,
 Array/Broadcast cached on `game.modNetwork`/`tower._broadcast` (rebuilt on
 place/sell/gear-change via `refreshModNetwork`; `recomputeStats` now takes `game`).
 On-device testing via a **Mod Lab** panel gated behind Settings→DEBUG MODE. Built
-one-mod-per-ship (each its own version bump) via Codex. ****INITIAL 9-MOD SCOPE COMPLETE, shipped through `2026.08.28-8`:** P0 foundation +
+one-mod-per-ship (each its own version bump) via Codex. ****AFFIX SYSTEM COMPLETE (P0–P8), shipped through `2026.08.29-1`:** P0 foundation +
 3 Faults (Exposed/Throttle/Desync) + 4 Broadcasts (damage/fireRate/range/crit) +
-Array + Fork. Fork = on a proc'd kill, spawn a free gearless same-type tower one
-level below the parent on the nearest legal tile (towers.js `spawnForkTower`,
-injected into affixes.js via `setForkSpawner`; guarded by `ctx.canProc` so it
-can't chain). **Only P8 (optional polish/VFX/tuning) remains.** To add a NEW mod:
+Array + Fork + P8 polish. Fork = on a proc'd kill, spawn a free gearless same-type
+tower one level below the parent on the nearest legal tile (towers.js
+`spawnForkTower`, injected into affixes.js via `setForkSpawner`; guarded by
+`ctx.canProc` so it can't chain). P8 added mod rows to the gear COMPARE sheet
+(`ui.js openCompareSheet`) and static E/T/D fault pips over enemies
+(`renderer.js drawFaultMarkers`, `config.js VFX.faultMarker`). To add a NEW mod:
 register a definition + hook in `src/affixes.js`, add its numbers to
-`config.js LOOT.mods`; drop/store/tooltip/Mod-Lab are already generic. Broadcast = a tower aura: `affixes.js applyBroadcastAura`
+`config.js LOOT.mods`; drop/store/tooltip/compare/Mod-Lab are already generic.
+Only per-mod balance TUNING is left, pending playtest feedback. Broadcast = a tower aura: `affixes.js applyBroadcastAura`
 adds a source's power to nearby towers' `_broadcast.{damage,fireRate,range,crit}`
 (rebuilt on network change, read by `recomputeStats`; radius ring in renderer).
 `onNetworkChange` refreshes `gearMods` before Protocol hooks read it (ordering

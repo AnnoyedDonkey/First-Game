@@ -836,6 +836,42 @@ export const ENEMY_LOOK = {
   spinPerPx: 0.01,
 };
 
+function drawFaultMarkers(ctx, enemy, pos, enemyRadius, tileSize) {
+  const cfg = VFX.faultMarker;
+  if (!cfg?.enabled || !enemy.faults) return;
+
+  let count = 0;
+  for (const id in cfg.types) {
+    if ((enemy.faults[id]?.stacks || 0) > 0) count += 1;
+  }
+  if (count === 0) return;
+
+  const diameter = cfg.radiusPx * 2;
+  const width = count * diameter + (count - 1) * cfg.gapPx;
+  let x = pos.x - width / 2 + cfg.radiusPx;
+  const y = pos.y - enemyRadius - tileSize * cfg.offsetTiles - cfg.radiusPx;
+
+  // Static flat pips intentionally avoid animation, glow, and shadowBlur.
+  // They remain status-readable in reduced-motion mode at negligible cost.
+  ctx.save();
+  ctx.globalAlpha = cfg.alpha;
+  ctx.font = cfg.font;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  for (const id in cfg.types) {
+    if ((enemy.faults[id]?.stacks || 0) <= 0) continue;
+    const marker = cfg.types[id];
+    ctx.beginPath();
+    ctx.arc(x, y, cfg.radiusPx, 0, Math.PI * 2);
+    ctx.fillStyle = marker.color;
+    ctx.fill();
+    ctx.fillStyle = cfg.textColor;
+    ctx.fillText(marker.label, x, y);
+    x += diameter + cfg.gapPx;
+  }
+  ctx.restore();
+}
+
 function drawEnemies(ctx, game) {
   const grid = game.grid;
   const ts = grid.tileSize;
@@ -870,6 +906,7 @@ function drawEnemies(ctx, game) {
       ctx.stroke();
     }
     ctx.restore();
+    drawFaultMarkers(ctx, e, pos, r, ts);
   }
 }
 

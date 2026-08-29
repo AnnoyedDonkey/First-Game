@@ -2119,6 +2119,24 @@ function openCompareSheet(current, incoming, opts = {}) {
       `<span class="cmp-cell${newU ? "" : " cmp-absent"}">${newU ? escapeHtml(newU) : "&mdash;"}</span></div>`
     : "";
 
+  // Behavioral mods compare by id just like normal affixes compare by stat.
+  // Old gear safely contributes an empty list through itemMods().
+  const curMods = new Map(itemMods(current).map((mod) => [mod.id, mod]));
+  const newMods = new Map(itemMods(incoming).map((mod) => [mod.id, mod]));
+  const modIds = [...curMods.keys(), ...[...newMods.keys()].filter((id) => !curMods.has(id))];
+  const modRows = modIds.map((id) => {
+    const curMod = curMods.get(id), newMod = newMods.get(id);
+    const hasCur = !!curMod, hasNew = !!newMod;
+    const cv = hasCur ? modPower(curMod.power) : 0;
+    const nv = hasNew ? modPower(newMod.power) : 0;
+    const delta = hasCur && hasNew ? modPower(newMod.power - curMod.power) : 0;
+    const deltaHtml = delta === 0 ? "" :
+      `<span class="cmp-delta ${delta > 0 ? "up" : "down"}">${delta > 0 ? "&#9650;" : "&#9660;"}${Math.abs(delta)}%</span>`;
+    return `<div class="cmp-row"><span class="cmp-label">${escapeHtml(modName(id))}</span>` +
+      `<span class="cmp-cell${hasCur ? "" : " cmp-absent"}">${hasCur ? `+${cv}%` : "&mdash;"}</span>` +
+      `<span class="cmp-cell${hasNew ? "" : " cmp-absent"}">${hasNew ? `+${nv}%` : "&mdash;"}${deltaHtml}</span></div>`;
+  }).join("");
+
   const footer = readOnly
     ? `<div class="gear-sheet-actions"><button class="gear-sheet-btn" id="cmp-close">${t("ui.close", "CLOSE")}</button></div>`
     : `<div class="gear-sheet-actions">` +
@@ -2132,7 +2150,7 @@ function openCompareSheet(current, incoming, opts = {}) {
     `<small>${rarityLabel(current.rarity)}</small></span>` +
     `<span class="cmp-cell" style="color:${newColor}">${escapeHtml(itemTitle(incoming))}` +
     `<small>${rarityLabel(incoming.rarity)}</small></span></div>` +
-    rows + uniqueRow + footer;
+    rows + modRows + uniqueRow + footer;
   openSheet();
 
   if (readOnly) {

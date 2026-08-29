@@ -462,9 +462,25 @@ Legend for per-mod sections: **Files** (what Codex touches) · **Behavior** ·
 - **Verify:** spawns only on legal tiles, no currency spent, spawned level =
   parent−1, no gear inherited; heavy Fork build holds FPS.
 
-### [ ] P8 — Polish & tuning pass
-- Minimal VFX (spec §32), fault status markers, on-device debug spawn panel if
-  wanted, per-mod power tuning from phone feedback.
+### [x] P8 — Polish — SHIPPED `2026.08.29-1` (Codex, after a retry; iterator fix by orchestrator)
+- **Gear COMPARE sheet now shows mods** (reported bug): `openCompareSheet`
+  (ui.js) renders a mods section paralleling the UNIQUE row — union of mod ids,
+  `modName` label, `+modPower%` per side, up/down delta, `cmp-absent` em-dash for
+  one-sided. **Orchestrator fix on top:** Codex wrote `newMods.keys().filter(...)`
+  (Iterator Helpers, Safari 18.4+ only) which would throw on older iPhone Safari —
+  changed to `[...newMods.keys()].filter(...)`.
+- **Fault status markers** (spec §32): `renderer.js drawFaultMarkers` draws small
+  static colored pips with letters (E/T/D) above enemies carrying Exposed/Throttle/
+  Desync; no animation/glow/shadowBlur (guardrails); all knobs in
+  `config.js VFX.faultMarker` (enabled/radius/gap/offset/alpha/font/colors/labels).
+- **Verified in-browser:** real `render()` runs a full frame with an enemy
+  carrying all three faults — no error; config present; clean boot + console.
+  Compare-sheet mod rows reviewed + Codex stub-tested (union/deltas/absent/
+  legacy-safe). Visual readability + compare-sheet layout = phone eyes.
+- **Deliberately NOT done** (no player data yet): per-mod power tuning. Revisit
+  after playtest feedback.
+
+**AFFIX SYSTEM COMPLETE** — P0–P8 all shipped (`2026.08.28-1` … `2026.08.29-1`).
 
 ---
 

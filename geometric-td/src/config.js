@@ -730,6 +730,24 @@ export const VFX = {
     shimmerDepth: 0.75,    // how much the shimmer swells the aura alpha (0-1)
   },
 
+  // Minimal enemy Fault readout (AFFIXES_PLAN P8): static labeled pips above
+  // faulted enemies. No animation/glow keeps this cheap and equally readable
+  // in reduced-motion mode. renderer.js reads only the enemy already drawn.
+  faultMarker: {
+    enabled: true,
+    radiusPx: 4.5,
+    gapPx: 2,
+    offsetTiles: 0.08,
+    alpha: 0.95,
+    font: "700 6px system-ui, sans-serif",
+    textColor: "#05060f",
+    types: {
+      exposed: { label: "E", color: "#ff7a59" },
+      throttle: { label: "T", color: "#35e0ff" },
+      desync: { label: "D", color: "#ff3fd4" },
+    },
+  },
+
   // Circuit-board map decoration: a static layer of PCB traces, solder
   // pads, vias and silkscreen hexes drawn under the battle (renderer.js
   // buildCircuitLayer). Deterministic per level (seeded by level id) and
