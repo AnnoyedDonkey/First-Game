@@ -836,37 +836,47 @@ export const ENEMY_LOOK = {
   spinPerPx: 0.01,
 };
 
-function drawFaultMarkers(ctx, enemy, pos, enemyRadius, tileSize) {
+// {label,color} badges for the Faults an enemy currently carries (stacks > 0).
+function enemyFaultBadges(enemy) {
+  const types = VFX.faultMarker.types;
+  const out = [];
+  if (!enemy.faults) return out;
+  for (const id in types) if ((enemy.faults[id]?.stacks || 0) > 0) out.push(types[id]);
+  return out;
+}
+
+// Badges for the Fault mods a TOWER carries via equipped gear — the SAME glyphs,
+// so the player links the gear/tower to the fault it inflicts on enemies.
+function towerFaultBadges(tower) {
+  const types = VFX.faultMarker.types;
+  const out = [];
+  const gm = tower.gearMods;
+  if (!gm) return out;
+  for (const id in types) if (gm[id]?.length) out.push(types[id]);
+  return out;
+}
+
+// Draw a centered row of flat colored pips with letters, tops at (cx, cy).
+// Static: no animation, glow, or shadowBlur (mobile rendering guardrails).
+function drawModPips(ctx, cx, cy, badges) {
   const cfg = VFX.faultMarker;
-  if (!cfg?.enabled || !enemy.faults) return;
-
-  let count = 0;
-  for (const id in cfg.types) {
-    if ((enemy.faults[id]?.stacks || 0) > 0) count += 1;
-  }
-  if (count === 0) return;
-
+  if (!cfg?.enabled || badges.length === 0) return;
   const diameter = cfg.radiusPx * 2;
-  const width = count * diameter + (count - 1) * cfg.gapPx;
-  let x = pos.x - width / 2 + cfg.radiusPx;
-  const y = pos.y - enemyRadius - tileSize * cfg.offsetTiles - cfg.radiusPx;
-
-  // Static flat pips intentionally avoid animation, glow, and shadowBlur.
-  // They remain status-readable in reduced-motion mode at negligible cost.
+  const width = badges.length * diameter + (badges.length - 1) * cfg.gapPx;
+  let x = cx - width / 2 + cfg.radiusPx;
   ctx.save();
+  ctx.shadowBlur = 0;
   ctx.globalAlpha = cfg.alpha;
   ctx.font = cfg.font;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  for (const id in cfg.types) {
-    if ((enemy.faults[id]?.stacks || 0) <= 0) continue;
-    const marker = cfg.types[id];
+  for (const b of badges) {
     ctx.beginPath();
-    ctx.arc(x, y, cfg.radiusPx, 0, Math.PI * 2);
-    ctx.fillStyle = marker.color;
+    ctx.arc(x, cy, cfg.radiusPx, 0, Math.PI * 2);
+    ctx.fillStyle = b.color;
     ctx.fill();
     ctx.fillStyle = cfg.textColor;
-    ctx.fillText(marker.label, x, y);
+    ctx.fillText(b.label, x, cy);
     x += diameter + cfg.gapPx;
   }
   ctx.restore();
@@ -906,7 +916,8 @@ function drawEnemies(ctx, game) {
       ctx.stroke();
     }
     ctx.restore();
-    drawFaultMarkers(ctx, e, pos, r, ts);
+    const cfg = VFX.faultMarker;
+    drawModPips(ctx, pos.x, pos.y - r - ts * cfg.offsetTiles - cfg.radiusPx, enemyFaultBadges(e));
   }
 }
 
@@ -1004,6 +1015,10 @@ function drawTowers(ctx, game, uiState) {
       ctx.stroke();
     }
     ctx.restore();
+    // Fault-mod badges (E/T/D) above towers carrying that gear — same glyphs as
+    // the enemy markers, so the player connects the dots. Drawn after restore so
+    // it inherits no tower shadowBlur.
+    drawModPips(ctx, tower.pos.x, tower.pos.y - ts * 0.5, towerFaultBadges(tower));
   }
 
   // Range ring for the selected tower — dashes slowly rotate. Skipped for

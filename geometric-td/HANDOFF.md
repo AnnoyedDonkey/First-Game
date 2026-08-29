@@ -39,8 +39,12 @@ Array + Fork + P8 polish. Fork = on a proc'd kill, spawn a free gearless same-ty
 tower one level below the parent on the nearest legal tile (towers.js
 `spawnForkTower`, injected into affixes.js via `setForkSpawner`; guarded by
 `ctx.canProc` so it can't chain). P8 added mod rows to the gear COMPARE sheet
-(`ui.js openCompareSheet`) and static E/T/D fault pips over enemies
-(`renderer.js drawFaultMarkers`, `config.js VFX.faultMarker`). To add a NEW mod:
+(`ui.js openCompareSheet`) and static E/T/D fault pips (`config.js
+VFX.faultMarker.types` = single source of the label+color per Fault) shown over
+afflicted enemies AND on the towers/gear that carry those Fault mods
+(`renderer.js drawModPips` reads `enemy.faults` / `tower.gearMods`; `ui.js
+modFaultBadgesHtml` on gear tiles; `.mod-pip` in styles.css) — Protocols have no
+pip (they don't appear on enemies). To add a NEW mod:
 register a definition + hook in `src/affixes.js`, add its numbers to
 `config.js LOOT.mods`; drop/store/tooltip/compare/Mod-Lab are already generic.
 Only per-mod balance TUNING is left, pending playtest feedback. Broadcast = a tower aura: `affixes.js applyBroadcastAura`

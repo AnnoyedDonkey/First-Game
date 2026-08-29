@@ -1883,6 +1883,23 @@ function itemAffixRowsHtml(item) {
 // attribute the click delegate reads. `opts.priceTag` (STORE only) shows a
 // Shard price in the corner instead of the lock-dot, dimmed + red when
 // `opts.unaffordable` is set.
+// Small E/T/D pips for the Fault mods an item carries — the SAME glyphs the
+// afflicted enemy shows (VFX.faultMarker.types is the single source of truth),
+// so a player connects gear -> tower -> enemy. Only Faults appear here (Protocols
+// aren't in that map); returns "" when the item carries none.
+function modFaultBadgesHtml(item) {
+  const types = VFX.faultMarker?.types;
+  if (!types) return "";
+  const ids = new Set(itemMods(item).map((m) => m.id));
+  const pips = [];
+  for (const id in types) {
+    if (!ids.has(id)) continue;
+    const m = types[id];
+    pips.push(`<span class="mod-pip" style="background:${m.color}">${m.label}</span>`);
+  }
+  return pips.length ? `<span class="mod-pips">${pips.join("")}</span>` : "";
+}
+
 function tileHtml(item, opts = {}) {
   const color = RARITY_COLOR[item.rarity];
   const lockLetter = item.towerType ? TOWERS[item.towerType].prefix : "";
@@ -1898,6 +1915,7 @@ function tileHtml(item, opts = {}) {
   return `<button class="item-tile ${RARITY_CLASS[item.rarity]}${extraClass}" ${dataAttr}>` +
     slotGlyph(item.slot, color) +
     cornerTag +
+    modFaultBadgesHtml(item) +
     (isNew ? `<span class="new-tag">${t("reward.new", "NEW")}</span>` : "") +
     `</button>`;
 }
@@ -2422,6 +2440,7 @@ function renderTowersTab() {
               equipFlashTarget.towerName === rec.name && equipFlashTarget.slot === slot;
             return `<button class="gear-tile filled ${RARITY_CLASS[item.rarity]}${justEquipped ? " just-equipped" : ""}" data-item-tower="${escapeHtml(rec.name)}" data-item-slot="${slot}">` +
               slotGlyph(slot, RARITY_COLOR[item.rarity]) +
+              modFaultBadgesHtml(item) +
               `<span class="tile-label" style="color:${RARITY_COLOR[item.rarity]}">${slotLabel(slot)}</span></button>`;
           }).join("") +
           `</div></div>`;
