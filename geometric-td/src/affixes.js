@@ -155,7 +155,24 @@ function overclockParams(tower) {
       }
     }
   }
-  return cap > 0 ? { perKill, cap: cap + hyperthreadCapBonus } : null;
+  // Turbo is self-only: its strongest equipped copy raises this wearer's
+  // Overclock ramp and cap. Resolve rarity-backed values from live gear so a
+  // carried Turbo can never affect a tower without Overclock.
+  let turbo = { perKillBonus: 0, capBonus: 0 };
+  if (sourceHasMod(tower, "turbo")) {
+    for (const item of Object.values(tower.gear || {})) {
+      const configured = LOOT.mods.powers.turbo[item?.rarity];
+      if (!configured) continue;
+      if ((item?.mods || []).some((mod) => mod?.id === "turbo") &&
+          (configured.perKill > turbo.perKillBonus ||
+           (configured.perKill === turbo.perKillBonus && configured.cap > turbo.capBonus))) {
+        turbo = { perKillBonus: configured.perKill, capBonus: configured.cap };
+      }
+    }
+  }
+  return cap > 0
+    ? { perKill: perKill + turbo.perKillBonus, cap: cap + hyperthreadCapBonus + turbo.capBonus }
+    : null;
 }
 
 function overclockOnKill(ctx) {
@@ -665,6 +682,28 @@ export const MODS = Object.freeze({
     },
     powerForRarity(rarity) {
       return LOOT.mods.powers.hyperthread[rarity]?.capBonus;
+    },
+  }),
+  turbo: Object.freeze({
+    id: "turbo",
+    category: "protocol",
+    nameKey: "mod.turbo.name",
+    name: "Turbo",
+    descKey: "mod.turbo.desc",
+    description: "This tower's Overclock gains +{power}% more fire rate per stack and +{cap}% higher cap.",
+    descriptionParams(mod) {
+      const table = LOOT.mods.powers.turbo;
+      let configured = table.rare;
+      if (Number.isFinite(mod?.power)) {
+        configured = Object.values(table).find((entry) => entry.perKill === mod.power) || configured;
+      }
+      return {
+        power: Number.isFinite(mod?.power) ? mod.power : configured.perKill,
+        cap: Math.round(configured.cap * 10000) / 100,
+      };
+    },
+    powerForRarity(rarity) {
+      return LOOT.mods.powers.turbo[rarity]?.perKill;
     },
   }),
   nonvolatile: Object.freeze({

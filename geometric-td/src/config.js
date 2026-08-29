@@ -449,6 +449,13 @@ export const LOOT = {
         prismatic: { capBonus: 0.05 },
         singularity: { capBonus: 0.10 },
       },
+      turbo: {
+        common: { perKill: 0.005, cap: 0.10 },
+        enhanced: { perKill: 0.005, cap: 0.10 },
+        rare: { perKill: 0.01, cap: 0.15 },
+        prismatic: { perKill: 0.01, cap: 0.20 },
+        singularity: { perKill: 0.015, cap: 0.20 },
+      },
       nonvolatile: {
         common: 0.10, enhanced: 0.15, rare: 0.20,
         prismatic: 0.25, singularity: 0.30,
