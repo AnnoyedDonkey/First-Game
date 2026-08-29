@@ -505,3 +505,109 @@ mods store rolled power · rarity → power varies · mod gear drops/buys/equips
 unequips/survives save-reload · UI shows mod name+power+desc · debug spawn works ·
 recursion ctx present. Per-mod behavioral criteria: see §8 phase sections and
 `plans/affixes.md` §39.
+
+---
+
+# Batch 2 — Corruption archetype (+ balance push)
+
+Forward design + first-pass numbers live in **`mods.md`** (§3.4 Corruption
+matrix, §5 hooks, §6 shipped-mod changes, §7 numbers). Read mods.md for mechanics;
+this section is the build steps. Same rules as the P0–P8 phases: one phase per
+version-bump ship, Mod-Lab-verified, delegated to Codex, orchestrator reviews the
+diff for intent + bumps/commits/pushes. **All numbers in `config.js LOOT.mods`.**
+
+Architecture notes that apply to the whole batch:
+- **Faults live on `enemy.faults` via the generic helpers** already in affixes.js.
+- **Corruption damage routes through `damageEnemy` with a NULL source and a
+  `{triggered:true, canProc:false, sourceType:null}` ctx.** That is deliberate:
+  it makes Corruption benefit from Exposed / field tiles (the Backdoor melt loop)
+  while adding no faults (all onHit handlers no-op on a null source) and proccing
+  nothing (Fork/Desync skip null-source hits). Verify that routing.
+- **The fault-tick loop and Corruption's spread-on-death live in `enemies.js`**
+  (it owns enemy iteration, `enemyPosition`, and `damageEnemy`), calling PURE
+  calc helpers exported from affixes.js — same split as Throttle's
+  `faultMovementMult`. affixes.js must NOT import enemies.js (cycle).
+- **Rootkit and Backdoor are network-wide rule modifiers** (Protocol category):
+  their strongest on-board power is cached on `game.modNetwork` in
+  `onNetworkChange`, and the tick reads the cache. (Per mods.md §5: fault
+  modifiers act network-wide; this is how.)
+
+## [x] Phase A — Balance push (already-shipped mods) — SHIPPED `2026.08.29-4`
+- **Files:** `src/config.js`, `src/affixes.js`.
+- **Fork proc ↓:** `LOOT.mods.powers.fork` → `common 0.005, enhanced 0.01,
+  rare 0.015, prismatic 0.02, singularity 0.025` (was 0.01…0.05).
+- **Desync cap:** add `LOOT.mods.desyncMaxStacks: 50`; in `desyncOnHit`'s BUILD
+  branch, cap `fault.stacks` at it (consume path unchanged). Update the Desync
+  `inspect`/`debugLines` if they imply "no cap".
+- **Verify:** Fork proc reads the new values; a same-type Desync chain caps at 50
+  and the consume still fires; existing self-test green; no behavior change beyond
+  these two numbers. **Ship.**
+
+## [ ] Phase B — Corruption (Setter) + the fault-tick hook
+- **Files:** `src/affixes.js` (register `corruption`; pure helpers), `src/config.js`
+  (`LOOT.mods.powers.corruption` + `LOOT.mods.corruption` params), `src/enemies.js`
+  (fault-tick loop + spread-on-death), `src/game.js` (call the tick from
+  `updateGame` if not folded into `updateEnemies`), `src/ui.js` (tooltip via the
+  generic mod rows — likely no change), `src/main.js` (dumpFaults is generic).
+- **Corruption (fault):** a hit from a Corruption carrier adds `power` stacks
+  (`power` = stacks/hit, from the rarity table `1/2/3/4/6`), capped at
+  `corruption.maxStacks` (50). Stamp `corruptedAt = game.time` when the fault is
+  first created (Rootkit needs the age). Stacks never decay.
+- **Tick (per second, applied continuously):** each frame, for every enemy with a
+  Corruption fault, deal `stacks * dt` damage (× Rootkit ramp — Phase C; ×1 here)
+  via `damageEnemy(game, enemy, null, dmg, dotCtx)`. Provide the pure amount from
+  affixes.js `corruptionTickDamage(enemy, game, dt)`; enemies.js applies it.
+- **Spread on death:** in `damageEnemy`'s death branch (after `onKill`), if the
+  dead enemy had Corruption, transfer `floor(stacks * corruption.spreadFrac[0.5])`
+  to the nearest `corruption.spreadTargets` (1) alive enemy within
+  `corruption.spreadRadiusTiles`. This is in enemies.js (needs positions); use an
+  affixes.js helper for the amount. **One target only** — do not spread to many
+  (that's the Malware transformer later; multi-target base = exponential blowup).
+- **Config:** `powers.corruption {common:1, enhanced:2, rare:3, prismatic:4,
+  singularity:6}` (integer stacks/hit); `corruption {maxStacks:50, spreadFrac:0.5,
+  spreadTargets:1, spreadRadiusTiles:2}`.
+- **Landmines:** null-source tick routing (above); DoT must NOT re-add faults or
+  proc anything; `corruptedAt` set once (not reset on re-hit); spread runs once per
+  death, transferred stacks don't chain; perf — the tick only touches enemies that
+  have faults.
+- **Debug:** `inspect`/`debugLines` show Corruption stacks + current DPS + seconds
+  corrupted.
+- **Verify:** carrier hits stack Corruption to 50; DoT ticks and kills a low-HP
+  enemy; the killed enemy transfers ~½ stacks to ONE neighbor; Exposed on the same
+  enemy amplifies the Corruption ticks (routing proof); no Fork/Desync side-effects
+  from ticks; console clean. **Ship.**
+
+## [ ] Phase C — Rootkit (Transformer: lifetime ramp)
+- **Files:** `src/affixes.js`, `src/config.js`.
+- **Behavior:** Corruption tick damage ×= `1 + min(rootkitCap, rampPerSec *
+  secondsCorrupted)`. `rootkitCap` = strongest Rootkit power on the board (0 if
+  none), cached in `game.modNetwork.rootkit` by Rootkit's `onNetworkChange`.
+  `secondsCorrupted = game.time - fault.corruptedAt`. No Rootkit ⇒ ramp 0 ⇒ ×1.
+- **Config:** `powers.rootkit {common:1.0, enhanced:1.25, rare:1.5, prismatic:1.75,
+  singularity:2.0}` (the ramp CAP = +100%…+200%); `rootkit.rampPerSec: 0.05`.
+- **Landmines:** network-wide via the cache (not per-tower); ramp reads the fault's
+  age, so Phase B must have stamped `corruptedAt`; cap is mandatory.
+- **Verify:** with a Rootkit on board, a long-lived Corrupted enemy's tick DPS
+  climbs 5%/s to the cap; without Rootkit, flat; anti-swarm→anti-boss shift visible
+  in `dumpFaults` DPS over time. **Ship.**
+
+## [ ] Phase D — Backdoor (Bridge → Exposed, Rare+)
+- **Files:** `src/affixes.js`, `src/config.js`, `src/enemies.js` (sync in the tick).
+- **Behavior:** while `game.modNetwork.backdoor` (strongest ratio on board, 0 if
+  none) > 0 and an enemy has Corruption, keep its Exposed stacks at least
+  `min(exposedCap 20, floor(corruptionStacks * ratio))` — top up in the fault-tick.
+  Reuses Exposed's existing damage-taken application (and via the null-source tick
+  routing, Corruption ticks then benefit from that Exposed — the intended loop).
+- **Config:** `powers.backdoor {rare:0.3, prismatic:0.35, singularity:0.4}` (no
+  common/enhanced — `powerForRarity` returns undefined there so it only rolls
+  Rare+). Ratios are tuned so 50 Corruption ⇒ ≤20 Exposed (no wasted rarity).
+- **Landmines:** network-wide cache; don't let Backdoor's Exposed floor DROP real
+  Exposed from gear (use max); gate to Rare+.
+- **Verify:** with Backdoor on board, a Corrupted enemy shows Exposed ≈
+  floor(corr×ratio) capped at 20, the melt loop raises Corruption tick damage, and
+  a common/enhanced Backdoor never rolls. **Ship.**
+
+## Benchmark (after Phase D is playable)
+Run the mods.md §9 method (Rare benchmark, 6–8 builds × 5 encounters, the
+120–140 / 90–105 / 65–85% health bands, gear opportunity cost). Corruption's flat
+50-cap DPS vs the HP curve is the first thing to measure (mods.md §9 observations).

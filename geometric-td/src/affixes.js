@@ -112,15 +112,19 @@ function strongestModPower(source, id) {
 
 function startDesync(enemy, towerType, powerPerStack) {
   const faults = (enemy.faults ||= {});
-  faults.desync = { stacks: 1, towerType, powerPerStack };
+  faults.desync = {
+    stacks: Math.min(LOOT.mods.desyncMaxStacks, 1),
+    towerType,
+    powerPerStack,
+  };
 }
 
 // Desync is a tower-SEQUENCING Fault (spec §9-11). Same-type hits from Desync
-// carriers build stacks and the strongest participating power wins (a weaker
-// source never lowers it). The first hit of a DIFFERENT tower type consumes the
-// whole sequence and amplifies THAT hit by stacks * powerPerStack — regardless
-// of whether the consumer carries Desync; a consuming carrier then immediately
-// opens a fresh 1-stack sequence of its own type.
+// carriers build stacks to the configured cap and the strongest participating
+// power wins (a weaker source never lowers it). The first hit of a DIFFERENT
+// tower type consumes the whole sequence and amplifies THAT hit by stacks *
+// powerPerStack — regardless of whether the consumer carries Desync; a
+// consuming carrier then immediately opens a fresh 1-stack sequence of its own.
 function desyncOnHit(ctx) {
   if (!ctx?.enemy || !ctx.sourceType) return; // only real tower hits interact
   const sType = ctx.sourceType;
@@ -140,7 +144,7 @@ function desyncOnHit(ctx) {
     if (!fault) {
       startDesync(ctx.enemy, sType, carrierPower); // first hit = stack 1
     } else {
-      fault.stacks += 1;
+      fault.stacks = Math.min(LOOT.mods.desyncMaxStacks, fault.stacks + 1);
       // Stronger same-type source raises active power; weaker never lowers it.
       if (carrierPower > fault.powerPerStack) fault.powerPerStack = carrierPower;
     }

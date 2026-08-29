@@ -897,7 +897,12 @@ BALANCE_LAB_PLAN.md  approved Balance Lab L0-L7 plan
   plan + phase tracker for behavioral gear "mods" (Faults/Protocols): data model
   (`item.mods`), registry/hook/cache architecture, the performance contract, the
   Mod Lab debug harness, and the one-mod-per-ship phase list. Requirements source
-  is `plans/affixes.md`. P0 foundation shipped 2026.08.28-1.
+  is `plans/affixes.md`. Full system (P0–P8 + balance) shipped by 2026.08.29-3.
+- `mods.md` — **the forward design space** for new mods: the Setter/Rewarder/
+  Amplifier/Bridge role framework, a role matrix for every archetype (Exposed/
+  Throttle/Desync/Corruption/Array/Fork/Broadcast/Cascade/Overclock), the
+  cross-archetype bridge map, and the accepted build queue (Corruption archetype,
+  Overclock archetype, Cascade). `[BUILT]`/`[NEXT]`/`[IDEA]` tags mark status.
 - `GAME_BRIEF.md` — original feature specification.
 - `PWA_HOMESCREEN_PLAN.md` — phased plan to make the game an installable,
   offline-capable home-screen app (iOS + Android) with an in-game install
