@@ -629,3 +629,363 @@ Architecture notes that apply to the whole batch:
 Run the mods.md §9 method (Rare benchmark, 6–8 builds × 5 encounters, the
 120–140 / 90–105 / 65–85% health bands, gear opportunity cost). Corruption's flat
 50-cap DPS vs the HP curve is the first thing to measure (mods.md §9 observations).
+
+---
+
+# Batch 3 — Overclock archetype (+ Batch 4 Cascade, Batch 5 depth)
+
+Forward design + first-pass numbers live in **`mods.md`** (§3.8 Cascade split,
+§3.9 Overclock incl. Hyperthread, §5 hooks, §7 numbers, §8 build queue). Read
+mods.md for mechanics; this section is the build steps. Same rules as every prior
+phase: **one phase per version-bump ship**, Mod-Lab-verified, delegated to Codex,
+orchestrator reviews the diff for intent + bumps/commits/pushes. **All numbers in
+`config.js LOOT.mods`.**
+
+## Delegation — Codex plugin (supersedes the old `.mcp.json` MCP path)
+Codex now runs via the **OpenAI Codex plugin companion** (see HANDOFF "Delegating
+work to Codex"). Orchestrator invokes one fresh thread per phase (a cold read of
+that phase's section here):
+```
+node "C:/Users/fthia/.claude/plugins/cache/openai-codex/codex/1.0.6/scripts/codex-companion.mjs" \
+  task "--model <gpt-5.6-sol|gpt-5.6-terra> --effort high --write <phase prompt>"
+```
+- **Sol High** (`gpt-5.6-sol`) = Opus-tier phases: anything that **introduces a new
+  hook** (Overclock/`onWaveStart`; both Cascades/`onLevelUp`+`onMasteryUp`), plus
+  **Thermal** (state-dependent aura), **Malware** (spread guard), **Relay** (hop +
+  dedupe).
+- **Terra High** (`gpt-5.6-terra`) = Sonnet-tier phases: the mechanically-straight
+  mods (Hyperthread, Nonvolatile, Turbo, Domino, Power Surge, Overexpose, Painted,
+  Buffer Overflow, Overvolt, Payload, Quarantine, Inheritance, Warm Boot, Signal
+  Boost, Receiver).
+- Companion runs in repo root `C:\Projects\First-Game` (git-safe) and
+  non-interactive (no approval relay; sandbox is the boundary). `--write` for
+  build phases; read-only for orchestrator verification. Stage only the listed
+  files; never `git add -A`.
+
+## Whole-batch architecture notes (all apply)
+- **Runtime tower state** (Overclock stacks, etc.) lives on the tower object as a
+  `_`-prefixed field (like `_surgeActive`/`_broadcast`), **runtime-only, never
+  saved**. Reset points are explicit hooks, not per-frame scans.
+- **Self-only tower mods** (Hyperthread, Turbo, Painted, Overvolt, Signal Boost,
+  Receiver, Inheritance) read the wearer's own `tower.gearMods` (already refreshed
+  in `onNetworkChange` before `refreshTowerStats` — the P4 ordering fix). They do
+  NOT go on `game.modNetwork`.
+- **Network-wide rule mods** (Overexpose, Buffer Overflow, Malware, Relay, and the
+  Nonvolatile retain fraction) cache their **strongest on-board power** on
+  `game.modNetwork.<id>` in that mod's `onNetworkChange`, exactly like Rootkit/
+  Backdoor in Batch 2. The tick / consume / aura reads the cache.
+- **New hooks** are minimal explicit calls at functions that already run — NOT a
+  bus. Wire them once in P0-style:
+  - `onWaveStart(game)` — call from `game.js` at the point a new wave begins
+    (find the wave-advance site; there is exactly one). Iterate towers that carry
+    an interested mod. Used by Overclock (reset), Nonvolatile (retain), Thermal.
+  - `onLevelUp(game, tower)` — call from the **paid** in-battle upgrade path in
+    `towers.js` (the function that spends money to raise `tower.level`), AFTER the
+    level is applied. Used by Upgrade Cascade.
+  - `onMasteryUp(game, tower)` — call from `towers.js updateTowers` at the SAME
+    detection point the mastery surge uses (`masteryRankFor(xp) > tower._masteryRank`).
+    Used by Mastery Cascade.
+- **recomputeStats already takes `game`** and rebuilds from base every call; fold
+  new self-only multipliers into the documented chain (AFFIXES_PLAN §3c) — Overclock
+  fire-rate sits with surge near the END; never mutate base stats.
+- affixes.js must **not** import enemies.js/towers.js/game.js (cycle). Cross-module
+  needs use the injection pattern (`setForkSpawner`) or pure exported calc helpers
+  the caller invokes (`faultMovementMult`, `corruptionTickDamage`).
+
+## [ ] B3-P1 — Overclock (Setter) — **Sol High** (introduces `onWaveStart`)
+- **Files:** `src/affixes.js` (register `overclock`; `onKill` stack handler;
+  `onWaveStart` reset; pure `overclockFireRateMult(tower)` helper), `src/config.js`
+  (`LOOT.mods.powers.overclock` + `LOOT.mods.overclock` params), `src/towers.js`
+  (`recomputeStats` applies the fire-rate mult; recompute the tower on stack change),
+  `src/game.js` (call `onWaveStart(game)` at wave start).
+- **Behavior:** a tower carrying Overclock tracks `tower._overclock = {stacks:0,
+  lastStackAt:-Infinity}` (runtime-only). On a **killing blow it lands** (`onKill`,
+  `ctx.source === tower` and `ctx.canProc`), if `game.time - lastStackAt >=
+  killCooldownSec` (0.5s), add 1 stack, set `lastStackAt = game.time`, and recompute
+  that tower's stats. Fire-rate bonus = `min(cap, stacks * perKill)`. **Resets
+  stacks to 0 at wave start** (`onWaveStart`). No Overclock ⇒ helper returns 1.
+- **Config:** `powers.overclock` per-rarity `{perKill, cap}`:
+  `common {0.02,0.40}, enhanced {0.025,0.45}, rare {0.03,0.50}, prismatic {0.035,0.55},
+  singularity {0.04,0.60}`; `overclock {killCooldownSec:0.5}`.
+- **Landmines:** the 0.5s cooldown uses **game.time** (so AoE multi-kills in one
+  frame add at most one stack — this is the point; Hyperthread later removes it);
+  killing-blow only (not any hit); stacks are per-tower and runtime-only (never
+  saved); recompute ONLY on stack change / wave reset, never per frame; wave-start
+  hook must fire exactly once per wave for every tower. Fire-rate folds into the
+  existing recompute chain near surge (§3c) — do not touch base.
+- **Verify:** a firing tower's kills raise `_overclock.stacks` (one per ≥0.5s),
+  `fireInterval` shrinks by the bonus, caps at the rarity cap; a second wave resets
+  stacks to 0 and restores base fire rate; a non-Overclock tower is unaffected;
+  `dumpFaults`/a console read shows stacks; self-test green; console clean. **Ship.**
+
+## [ ] B3-P2 — Hyperthread (Transformer, AoE, Rare+) — **Terra High**
+- **Files:** `src/affixes.js`, `src/config.js`.
+- **Behavior:** self-only. If the tower's own `gearMods` carries Hyperthread, its
+  Overclock ignores the 0.5s cooldown (**one stack per kill**, so a Rocket splash
+  that kills 5 adds up to 5 stacks that frame, still bounded by the cap), and raises
+  the Overclock **cap** by the Hyperthread `capBonus`. Read in the Overclock
+  `onKill` path (cooldown skip) and in `overclockFireRateMult` (cap bump).
+- **Config:** `powers.hyperthread {rare:{capBonus:0.0}, prismatic:{capBonus:0.05},
+  singularity:{capBonus:0.10}}` (no common/enhanced → `powerForRarity` returns
+  undefined there, so it only rolls Rare+, like Backdoor).
+- **Landmines:** self-only (never network cache); Rare+ gate via the undefined-power
+  trick; still capped (removing the cooldown must not remove the cap — AoE just
+  reaches cap faster); a tower with Hyperthread but no Overclock does nothing.
+- **Verify:** with Overclock+Hyperthread on one tower, an AoE multi-kill adds
+  multiple stacks in a frame (vs single-stack without Hyperthread); cap raised by
+  capBonus; common/enhanced never rolls it; self-test green. **Ship.**
+
+## [ ] B3-P3 — Nonvolatile (Transformer, retain) — **Terra High**
+- **Files:** `src/affixes.js`, `src/config.js`.
+- **Behavior:** network-wide (strongest retain fraction on board, cached
+  `game.modNetwork.nonvolatile` in its `onNetworkChange`, 0 if none). At wave start,
+  BEFORE Overclock's reset zeroes stacks — or by making the reset itself read the
+  cache — each Overclock tower keeps `floor(stacks * retainFrac)` instead of 0.
+  Cleanest: Overclock's `onWaveStart` reset computes
+  `newStacks = floor(oldStacks * game.modNetwork.nonvolatile)` (0 ⇒ full reset).
+- **Config:** `powers.nonvolatile {common:0.10, enhanced:0.15, rare:0.20,
+  prismatic:0.25, singularity:0.30}`.
+- **Landmines:** ordering — retain must read stacks BEFORE they're cleared; it's the
+  strongest board-wide fraction (not per-tower), matching mods.md §5; recompute the
+  towers whose stacks changed after the wave reset so fire rate reflects carried
+  stacks.
+- **Verify:** with a Nonvolatile on board, an Overclock tower at N stacks starts the
+  next wave at `floor(N*frac)` (fire rate reflects it); without Nonvolatile, resets
+  to 0; self-test green. **Ship.**
+
+## [ ] B3-P4 — Turbo (Amplifier) — **Terra High**
+- **Files:** `src/affixes.js`, `src/config.js`.
+- **Behavior:** self-only. A tower carrying Turbo raises its own Overclock `perKill`
+  and `cap` by the Turbo values (read in the Overclock stack-add + fire-rate helper).
+- **Config:** `powers.turbo` per-rarity `{perKill, cap}` additive:
+  `common {+0.005,+0.10}, enhanced {+0.005,+0.10}, rare {+0.01,+0.15},
+  prismatic {+0.01,+0.20}, singularity {+0.015,+0.20}`.
+- **Landmines:** self-only; additive to the wearer's Overclock params, not network;
+  a Turbo without Overclock does nothing.
+- **Verify:** Overclock+Turbo on one tower ramps faster and caps higher than
+  Overclock alone; self-test green. **Ship.**
+
+## [ ] B3-P5 — Thermal (Bridge → Broadcast) — **Sol High** (state-dependent aura)
+- **Files:** `src/affixes.js`, `src/config.js`, `src/renderer.js` (optional: reuse
+  the broadcast ring when active).
+- **Behavior:** while a Thermal tower is **at max Overclock**, it emits a fire-rate
+  Broadcast of power `thermalPower` to neighbors within `broadcastRadiusTiles`
+  (reusing `applyBroadcastAura`). The aura is **state-dependent** (on/off with the
+  at-max condition), so it must refresh on the **event** of crossing into/out of max
+  Overclock — NOT per frame. Implement: when a tower's Overclock stacks change (the
+  same recompute point from B3-P1), if its at-max state flips, trigger a network
+  refresh so the Thermal contribution enters/leaves the cached `_broadcast.fireRate`
+  of neighbors. Reset with Overclock at wave start.
+- **Config:** `powers.thermal {common:0.06, enhanced:0.08, rare:0.10, prismatic:0.12,
+  singularity:0.15}`.
+- **Landmines:** NO per-frame O(n²) — the aura is recomputed only on the at-max
+  crossing event and on network change; dedupe with normal fireRate Broadcasts
+  (additive is fine); at-max means `stacks*perKill >= cap` (post-Turbo/Hyperthread
+  cap); turning off at wave reset must remove the aura.
+- **Verify:** a neighbor's fire rate rises only while the Thermal tower sits at max
+  Overclock and falls when it drops below / at wave reset; FPS holds on a heavy
+  board; self-test green. **Ship.**
+
+---
+
+# Batch 4 — Cascade archetype (two Setter forms)
+
+Adds `onLevelUp` (paid) and `onMasteryUp` (XP mastery). Both grant one bounded free
+step to an adjacent tower, never recursing. Shared helper `cascadeGrant(game,
+parentTower, kind)` finds one adjacent (radius 1, Chebyshev; Domino widens to 2)
+eligible tower and applies the grant; guarded so a granted step never re-fires
+Cascade (pass a `{triggered:true, canProc:false}`-style flag, or apply the free
+step through a path that doesn't re-enter the hook).
+
+## [ ] B4-P1 — Upgrade Cascade (Setter, paid) — **Sol High** (introduces `onLevelUp`)
+- **Files:** `src/affixes.js` (register `upgradeCascade`; `onLevelUp` handler;
+  `cascadeGrant` helper), `src/config.js` (`powers.upgradeCascade`, `cascade`
+  params), `src/towers.js` (fire `onLevelUp(game, tower)` from the paid-upgrade
+  function after the level is applied; expose a way to grant a free level that does
+  NOT re-enter `onLevelUp`).
+- **Behavior:** when the player **buys** an in-battle level-up on a tower carrying
+  Upgrade Cascade, roll `chance`; on success grant **exactly one** free level to one
+  adjacent tower whose level is `< parent.level` (cap at parent), no currency, then
+  recompute. The free level must **not** re-trigger Cascade.
+- **Config:** `powers.upgradeCascade {common:0.12, enhanced:0.15, rare:0.18,
+  prismatic:0.20, singularity:0.25}`; `cascade {radiusTiles:1}`.
+- **Landmines:** find the single paid-upgrade site in towers.js; the free level is
+  applied via a code path that skips the hook (recursion guard — mods.md "never
+  re-triggers"); respect the level cap and per-tower max level; adjacent = radius 1;
+  choose one target deterministically (e.g. lowest-level eligible, then nearest).
+- **Verify:** buying a level on the carrier sometimes grants one free level to a
+  neighbor (≤ parent), spends no money, and the granted level never chains; chance
+  matches rarity; self-test green. **Ship.**
+
+## [ ] B4-P2 — Mastery Cascade (Setter, XP) — **Sol High** (introduces `onMasteryUp`)
+- **Files:** `src/affixes.js` (register `masteryCascade`; `onMasteryUp` handler),
+  `src/config.js` (`powers.masteryCascade`), `src/towers.js` (fire
+  `onMasteryUp(game, tower)` at the mastery rank-up detection point; expose a
+  free-mastery-rank grant that does NOT re-enter the hook).
+- **Behavior:** when a tower carrying Mastery Cascade **ranks up from XP**, roll
+  `chance`; on success grant **exactly one** free mastery rank to one adjacent tower
+  whose mastery rank is `< parent rank` (cap at parent), then recompute. The free
+  rank must not re-trigger Cascade. **A free mastery rank** (per the locked design),
+  not XP.
+- **Config:** `powers.masteryCascade {common:0.12, enhanced:0.15, rare:0.18,
+  prismatic:0.20, singularity:0.25}`.
+- **Landmines:** the rank-up detection point already exists for the surge — hook in
+  next to it, do not duplicate detection; granting a mastery rank must go through
+  whatever the mastery system treats as authoritative (rank field / XP threshold) so
+  it persists correctly and updates stats; recursion guard as above; radius 1.
+- **Verify:** an XP rank-up on the carrier sometimes grants one free mastery rank to
+  a neighbor (≤ parent rank), no chain; without the mod nothing happens; self-test
+  green. **Ship.**
+
+## [ ] B4-P3 — Domino (Amplifier) — **Terra High**
+- **Files:** `src/affixes.js`, `src/config.js`.
+- **Behavior:** self-only. A tower carrying Domino raises its own Cascade `chance`
+  (both forms) by `+chance` and widens the grant radius to 2. Read in
+  `cascadeGrant` (radius) and in the two hook handlers (chance).
+- **Config:** `powers.domino` per-rarity `{chance, radius}`:
+  `common {+0.04,1}, enhanced {+0.04,2}, rare {+0.05,2}, prismatic {+0.05,2},
+  singularity {+0.06,2}`.
+- **Landmines:** applies to whichever Cascade form(s) the wearer holds; radius is a
+  set (to 2), not additive; still one target, still no recursion.
+- **Verify:** with Domino, Cascade chance is higher and can reach a radius-2 neighbor;
+  self-test green. **Ship.**
+
+## [ ] B4-P4 — Power Surge (Rewarder) — **Terra High**
+- **Files:** `src/affixes.js`, `src/config.js`, possibly `src/towers.js` (reuse
+  `applyLevelUpSurge`).
+- **Behavior:** self-only on the Cascade **parent**. When this tower's Cascade grants
+  a level/rank (either form), the **receiver** also gets a brief damage surge —
+  reuse the existing `applyLevelUpSurge` visuals/buff (or a lighter variant) scaled
+  by the Power Surge power.
+- **Config:** `powers.powerSurge {common:0.20, enhanced:0.25, rare:0.30,
+  prismatic:0.40, singularity:0.50}` (surge damage bonus; duration from
+  `VFX.levelUp.buffDuration` or a Power Surge param).
+- **Landmines:** the surge is applied to the RECEIVER, not the parent; only fires on
+  an actual Cascade grant; runtime-only buff (no save); speed-compensate the VFX like
+  the existing surge.
+- **Verify:** a Cascade grant gives the receiver a temporary damage bump + surge
+  visual; magnitude scales with rarity; self-test green. **Ship.**
+
+---
+
+# Batch 5 — Depth on shipped archetypes
+
+Each its own ship. No new hooks (except none needed). Order flexible; **Warm Boot
+must ship after Batch 3** (needs Overclock). Grouped by archetype for review.
+
+## [ ] B5 Exposed
+### [ ] Overexpose (Amplifier, network-wide) — **Terra High**
+- Register `overexpose` (protocol, network-wide). Cache strongest `{perStackBonus,
+  capBonus}` on `game.modNetwork.overexpose` in its `onNetworkChange`. Exposed's
+  damage-taken application reads `basePerStack + perStackBonus` and `baseCap +
+  capBonus`. **Backdoor's `min(20, …)` top-up must read the raised cap**, not a
+  hardcoded 20.
+- Config: `powers.overexpose` per-rarity `{perStack, cap}` additive:
+  `{+0.005,+5},{+0.005,+5},{+0.01,+10},{+0.01,+10},{+0.015,+15}`.
+- Verify: Exposed per-stack % and cap rise with an Overexpose on board; Backdoor
+  respects the new cap; none ⇒ base 2%/cap 20.
+
+### [ ] Painted (Rewarder, self) — **Terra High**
+- Register `painted` (self). In `damageEnemy`, if the attacking tower carries Painted
+  AND the target has an Exposed fault, multiply that hit by `1 + power`. Composes
+  with Exposed's own damage-taken mult and Desync/typeMult via the shared `ctx`.
+- Config: `powers.painted {0.08,0.12,0.16,0.20,0.25}`.
+- Verify: a Painted tower deals +power% to Exposed enemies only; non-Painted towers
+  unaffected; stacks multiplicatively with Exposed.
+
+## [ ] B5 Desync
+### [ ] Buffer Overflow (Amplifier, network-wide) — **Terra High**
+- Cache strongest `{stacksPerHit, cap}` on `game.modNetwork.bufferOverflow`. Desync's
+  build branch adds `stacksPerHit` (was +1) and caps at `cap` (raises the 50 cap).
+- Config: `powers.bufferOverflow` `{+2,60},{+2,65},{+3,70},{+3,72},{+4,75}`.
+- Verify: same-type Desync builds faster and caps higher with the mod; consume
+  unchanged; none ⇒ +1/cap 50.
+
+### [ ] Overvolt (Rewarder, self) — **Terra High**
+- Self. When a tower carrying Overvolt **consumes** Desync of `>= threshold` stacks,
+  that consuming hit is a guaranteed crit (through the normal crit path).
+- Config: `powers.overvolt {threshold}` `{25,22,20,18,15}`.
+- Verify: consuming ≥threshold with Overvolt always crits; below threshold normal;
+  non-Overvolt consume normal.
+
+### [ ] Payload (Bridge → Corruption, self) — **Terra High**
+- Self. When a tower carrying Payload **consumes** Desync, also apply
+  `floor(consumedStacks * ratio)` Corruption to the target (reusing the Corruption
+  fault + its tick). Corruption cap 50 applies.
+- Config: `powers.payload {ratio}` `{0.5,0.6,0.75,0.9,1.0}`.
+- Verify: a Payload consume applies Corruption ≈ consumed×ratio; that Corruption
+  then ticks/spreads normally; no Payload ⇒ no Corruption from consume.
+
+## [ ] B5 Corruption
+### [ ] Malware (Transformer, spread, Rare+) — **Sol High** (exponential guard)
+- Network-wide (strongest on board cached `game.modNetwork.malware`). While active,
+  Corruption death-spread transfers **100% to up to N** nearest enemies (was ½ to 1).
+  **Exponential-blowup guard (mandatory):** transferred Corruption is marked so it
+  does not itself re-spread within the same death chain (a generation/`spreadDepth`
+  flag on the transferred stacks, or transferred stacks are flagged non-spreading),
+  and the per-death target count is hard-capped at N. This is the whole reason base
+  Corruption is one-target — do not let dense waves chain-explode.
+- Config: `powers.malware {rare:{targets:2}, prismatic:{targets:3},
+  singularity:{targets:3}}` transfer 1.0 (no common/enhanced → Rare+).
+- Verify: with Malware, a Corrupted death spreads full stacks to up to N neighbors,
+  but a wave of Corrupted enemies does NOT exponentially blow up (guard holds); Rare+
+  only; none ⇒ base ½-to-1.
+
+### [ ] Quarantine (Rewarder, capped economy) — **Terra High**
+- Register `quarantine`. The first `capPerWave` (5) **Corrupted** enemies killed each
+  wave grant `+credits` each (network-wide reward; per-wave counter reset in
+  `onWaveStart`). Uses the wave-start hook from Batch 3.
+- Config: `powers.quarantine {credits}` `{4,6,8,10,12}`, `quarantine {capPerWave:5}`.
+- Verify: first 5 Corrupted kills/wave pay out, the 6th does not, counter resets next
+  wave; non-Corrupted kills never pay; economy pulse fires.
+
+## [ ] B5 Fork
+### [ ] Inheritance (Rewarder, self) — **Terra High**
+- Self on the Fork carrier. `spawnForkTower` spawns the forked tower `+level` higher
+  (still `<= parent.level`, **levels only, never gear/mods** — no Fork inheritance).
+- Config: `powers.inheritance {level}` `{+1,+1,+1,+1,+2}`.
+- Verify: forked tower spawns at `min(parent, parent - levelBelowParent + inherit)`;
+  never carries gear/mods; still can't chain Fork.
+
+### [ ] Warm Boot (Bridge → Overclock, self) — **Terra High** (ships after Batch 3)
+- Self on the Fork carrier. When a Fork spawn happens, grant the **parent**
+  `stacks` Overclock stacks (respecting the Overclock cap; no-op if the parent has no
+  Overclock `_overclock` state — create it if Overclock semantics allow, else only
+  add when present). Reuses Overclock's stack field.
+- Config: `powers.warmBoot {stacks}` `{2,3,4,5,6}`.
+- Verify: a Fork proc adds Overclock stacks to the parent (capped); no Overclock on
+  parent ⇒ no error; scales with rarity.
+
+## [ ] B5 Broadcast
+### [ ] Signal Boost (Amplifier, self) — **Terra High**
+- Self. A tower carrying Signal Boost raises **its own** Broadcast power and radius
+  for the auras it emits (read when building this source's aura contribution in
+  `onNetworkChange`).
+- Config: `powers.signalBoost {power, radius}` `{+0.01,0},{+0.015,0},{+0.02,+1},
+  {+0.025,+1},{+0.03,+1}`.
+- Verify: a Broadcast source with Signal Boost projects stronger/farther; other
+  sources unaffected.
+
+### [ ] Receiver (Rewarder, self) — **Terra High**
+- Self. A tower carrying Receiver gains `+power` extra effect from every Broadcast it
+  sits under — applied in `recomputeStats` after the aura terms
+  (`_broadcast.* *= (1 + receiverPower)` on the wearer only).
+- Config: `powers.receiver {0.10,0.15,0.20,0.25,0.30}`.
+- Verify: a Receiver tower under auras gets amplified aura effect; a tower under no
+  aura is unaffected; only the wearer benefits.
+
+### [ ] Relay (Transformer, Rare+) — **Sol High** (one hop + source-dedupe)
+- Network-wide. A Relay tower **re-emits** the Broadcasts it receives to its own
+  neighbors — **exactly ONE hop** (Singularity: two), and a tower **never receives
+  the same source twice** (dedupe by originating source id). Built in the
+  `onNetworkChange` aura pass as a bounded second propagation, not per frame.
+- Config: `powers.relay {fraction, hops}` `{—},{—},{0.6,1},{0.8,1},{1.0,2}` (Rare+).
+- Verify: a Relay re-broadcasts received auras one hop at `fraction` strength; no
+  source double-counts (dedupe); mesh layouts do NOT multiply without bound; Rare+
+  only.
+
+## Benchmark (after Batch 3–5 land, per mods.md §9)
+Rare benchmark, 6–8 builds × 5 encounters, health bands, gear opportunity cost.
+New builds to add to the mods.md §9 set: *Tempo* (Overclock + Nonvolatile + Turbo,
+and an AoE variant with Hyperthread), *Cascade economy* (Upgrade + Mastery + Domino),
+*Network* (Broadcast + Receiver + Relay).

@@ -55,8 +55,8 @@ Numbers are in §7. Names are placeholders.
 | Role | Name | Mechanic | Status |
 |---|---|---|---|
 | Setter | **Exposed** | Hits add stacks; +2%/stack damage taken (cap 20) | `[BUILT]` |
-| Amplifier | **Overexpose** | Raises Exposed per-stack % and cap | `[IDEA]` |
-| Rewarder | **Painted** | +X% damage to enemies that have Exposed | `[IDEA]` |
+| Amplifier | **Overexpose** | Raises Exposed per-stack % and cap (network-wide) | `[NEXT]` |
+| Rewarder | **Painted** | +X% damage (this tower) to enemies that have Exposed | `[NEXT]` |
 | Bridge → Corruption | **Backdoor** | Corrupted enemies gain Exposed = 0.3–0.4× their Corruption, tuned to stay ≤ the Exposed cap 20 at 50 Corruption so no rarity is wasted (Rare+). Future Transformer-tier could raise the Exposed cap instead | `[NEXT]` |
 | Bridge (spread) | **Chain Reaction** | An Exposed enemy's death spreads some Exposed to neighbors | `[IDEA]` |
 
@@ -72,9 +72,9 @@ Numbers are in §7. Names are placeholders.
 | Role | Name | Mechanic | Status |
 |---|---|---|---|
 | Setter | **Desync** | Same-type builds stacks (**base cap 50**); a different type consumes for burst | `[BUILT]` + cap `[NEXT]` |
-| Amplifier | **Buffer Overflow** | Same-type hits add **+2**; raises cap 50 → 75 | `[IDEA]` |
-| Rewarder | **Overvolt** | Consuming **≥20** Desync guarantees a crit (commitment, not free) | `[IDEA]` |
-| Bridge → Corruption | **Payload** | The consume applies Corruption equal to consumed stacks | `[IDEA]` |
+| Amplifier | **Buffer Overflow** | Same-type hits add **+2**; raises cap 50 → 75 | `[NEXT]` |
+| Rewarder | **Overvolt** | Consuming **≥20** Desync guarantees a crit (commitment, not free) | `[NEXT]` |
+| Bridge → Corruption | **Payload** | The consume applies Corruption equal to consumed stacks | `[NEXT]` |
 
 > **Locked change:** base Desync gets a **cap of 50** (contradiction fixed —
 > scaling mods need a cap; Desync's reset is switching types). Buffer Overflow is
@@ -83,11 +83,11 @@ Numbers are in §7. Names are placeholders.
 ### 3.4 CORRUPTION — contagious damage-over-time  `[NEXT archetype]`
 | Role | Name | Mechanic | Status |
 |---|---|---|---|
-| Setter | **Corruption** | Hits add Corruption; each second deal damage **equal to** current Corruption; on death **transfer 50% to ONE** nearby enemy; no decay | `[NEXT]` |
-| Transformer (lifetime) | **Rootkit** | Corruption damage +5% per second the enemy has been Corrupted, up to a cap → anti-swarm becomes anti-boss | `[NEXT]` |
-| Transformer (spread) | **Malware** | Death transfers **100% to up to 3** nearby enemies (Rare+) | `[IDEA]` |
-| Rewarder | **Quarantine** | The first **5** Corrupted enemies killed **each wave** grant +credits (capped) | `[IDEA]` |
-| Bridge → Exposed | **Backdoor** | see 3.1 (Rare+) | `[NEXT]` |
+| Setter | **Corruption** | Hits add Corruption; each second deal damage **equal to** current Corruption; on death **transfer 50% to ONE** nearby enemy; no decay | `[BUILT]` |
+| Transformer (lifetime) | **Rootkit** | Corruption damage +5% per second the enemy has been Corrupted, up to a cap → anti-swarm becomes anti-boss | `[BUILT]` |
+| Transformer (spread) | **Malware** | Death transfers **100% to up to 3** nearby enemies (Rare+) | `[NEXT]` |
+| Rewarder | **Quarantine** | The first **5** Corrupted enemies killed **each wave** grant +credits (capped) | `[NEXT]` |
+| Bridge → Exposed | **Backdoor** | see 3.1 (Rare+) | `[BUILT]` |
 
 > **Locked identity:** `stack → damage → death → transfer to ONE`. It's a
 > *contagion*, not a generic DoT. No-decay is fine **because propagation is one
@@ -109,8 +109,8 @@ Numbers are in §7. Names are placeholders.
 |---|---|---|---|
 | Setter | **Fork** | Kills have a **low** % to spawn a free gearless same-type tower nearby (≤2 tiles), one level below parent | `[BUILT]` (proc `[NEXT]`↓) |
 | Amplifier | **Replication** | Small additive proc bump (kept low); slightly larger radius | `[IDEA]` |
-| Rewarder | **Inheritance** | Forked towers spawn **one level higher** — **levels ONLY, never gear/mods** | `[IDEA]` |
-| Bridge → Overclock | **Warm Boot** | A Fork spawn grants the PARENT some Overclock stacks | `[IDEA]` |
+| Rewarder | **Inheritance** | Forked towers spawn **one level higher** — **levels ONLY, never gear/mods** | `[NEXT]` |
+| Bridge → Overclock | **Warm Boot** | A Fork spawn grants the PARENT some Overclock stacks | `[NEXT]` |
 
 > **Locked change:** base Fork proc drops to the **0.5–2.5%** band (shipped at
 > 1–5%). **Inheritance is levels-only, hard rule** — never gear/mod inheritance,
@@ -120,36 +120,46 @@ Numbers are in §7. Names are placeholders.
 | Role | Name | Mechanic | Status |
 |---|---|---|---|
 | Setter | **Damage / Fire Rate / Range / Critical Broadcast** | Aura buffs nearby towers | `[BUILT]` |
-| Amplifier | **Signal Boost** | +this tower's Broadcast radius / power | `[IDEA]` |
-| Rewarder | **Receiver** | +X% extra effect from every Broadcast this tower sits under | `[IDEA]` |
-| Transformer | **Relay** | Re-emits received Broadcasts to neighbors — **exactly ONE hop**, and a tower **never receives the same source twice** (dedupe). Singularity: two hops | `[IDEA]` |
+| Amplifier | **Signal Boost** | +this tower's Broadcast radius / power (self-only) | `[NEXT]` |
+| Rewarder | **Receiver** | +X% extra effect from every Broadcast this tower sits under (self-only) | `[NEXT]` |
+| Transformer | **Relay** | Re-emits received Broadcasts to neighbors — **exactly ONE hop**, and a tower **never receives the same source twice** (dedupe). Singularity: two hops | `[NEXT]` |
 
 > **Locked change:** Relay is **one hop + source-dedupe**, or mesh layouts become
 > accidental multiplication machines.
 
 ### 3.8 CASCADE — level economy  `[NEXT]`
+**Two Setter forms**, one per way a tower gains a level:
 | Role | Name | Mechanic | Status |
 |---|---|---|---|
-| Setter | **Cascade** | On this tower's in-battle level-up, **~20%** to grant **exactly one** free level to one adjacent tower (≤ parent level). **The free level never re-triggers Cascade** | `[NEXT]` |
-| Amplifier | **Domino** | Higher chance; radius 2 | `[IDEA]` |
-| Rewarder | **Power Surge** | A Cascade-granted level also gives the receiver a brief damage surge | `[IDEA]` |
+| Setter (paid) | **Upgrade Cascade** | On this tower's **player-bought** in-battle level-up, **~20%** to grant **exactly one** free level to one adjacent tower (≤ parent level). **The free level never re-triggers Cascade** | `[NEXT]` |
+| Setter (mastery) | **Mastery Cascade** | On this tower's **XP-driven mastery rank-up**, **~20%** to grant **exactly one** free mastery rank to one adjacent tower (≤ parent rank). **The free rank never re-triggers Cascade** | `[NEXT]` |
+| Amplifier | **Domino** | Higher chance; radius 2 — applies to **both** forms | `[NEXT]` |
+| Rewarder | **Power Surge** | A Cascade-granted level/rank also gives the receiver a brief damage surge — **both** forms | `[NEXT]` |
 | Bridge → Overclock | **Clock Multiplier** | A Cascade level grants Overclock stacks | `[IDEA]` |
 
-> **Locked change:** 20% (perceptible) but **strictly one free level, no
+> **Locked change:** 20% (perceptible) but **strictly one free level/rank, no
 > recursion** — bounded instead of the awkward "rare but huge" 5%.
+> **Split (locked):** Cascade is **two mods** — *Upgrade Cascade* fires when the
+> player **buys** an in-battle level-up (hook `onLevelUp`), *Mastery Cascade* fires
+> when a tower **ranks up from XP** (hook `onMasteryUp`, the same detection point as
+> the mastery surge in `towers.js updateTowers`). Domino/Power Surge enhance
+> whichever form(s) the carrier holds.
 
 ### 3.9 OVERCLOCK — ramping tower power  `[NEXT archetype]`
 | Role | Name | Mechanic | Status |
 |---|---|---|---|
 | Setter | **Overclock** | +X% fire rate when this tower lands a **killing blow**, **max one stack every 0.5s** (so AoE wipes don't dump 12 stacks); capped; **resets at wave start** | `[NEXT]` |
+| Transformer (AoE) | **Hyperthread** | **Removes the 0.5s kill-cooldown** on the wearer → **one stack per kill**, so AoE towers (Rocket) ramp fast; +cap at higher rarity. **Self-only, Rare+** | `[NEXT]` |
 | Transformer (retain) | **Nonvolatile** | Retains a **fraction** of Overclock stacks through the wave reset (e.g. 30% of 20 → 6 carried) — per-wave power becomes cross-wave progression | `[NEXT]` |
-| Amplifier | **Turbo** | Higher per-kill % and cap | `[IDEA]` |
+| Amplifier | **Turbo** | Higher per-kill % and cap | `[NEXT]` |
 | Rewarder | **Redline** | **Threshold** rewards, not another multiplier: 10 OC → +crit chance · 20 → +crit damage · 30 → +1 pierce | `[IDEA]` |
-| Bridge → Broadcast | **Thermal** | At max Overclock, emit a fire-rate Broadcast | `[IDEA]` |
+| Bridge → Broadcast | **Thermal** | At max Overclock, emit a fire-rate Broadcast | `[NEXT]` |
 
 > **Locked change:** Overclock triggers on the **killing blow with a 0.5s internal
-> cooldown**, so it isn't just a Rocket/AoE mod. Redline uses **thresholds** so
-> Overclock progression is milestone-exciting, not "everything ↑."
+> cooldown**, so it isn't just a Rocket/AoE mod. **Hyperthread** is the Transformer
+> that *removes* that cooldown (single-target tempo → AoE tempo) — deliberately
+> gated **Rare+** and **self-only** so it modifies only the tower wearing it. Redline
+> uses **thresholds** so Overclock progression is milestone-exciting, not "everything ↑."
 
 ---
 
@@ -178,10 +188,12 @@ dip into a second.
 
 ## 5. New hooks required (for the `[NEXT]` set)
 
-- **onWaveStart(game)** — Overclock reset, Nonvolatile partial retain.
-- **onLevelUp(game, tower)** — Cascade (in-battle level, distinct from mastery surge).
-- **fault-tick** — per-second pass over `enemy.faults` (Corruption damage, Rootkit
-  ramp, Backdoor sync); only iterates enemies that have faults.
+- **onWaveStart(game)** — Overclock reset, Nonvolatile partial retain, Thermal aura reset.
+- **onLevelUp(game, tower)** — Upgrade Cascade (player-bought in-battle level).
+- **onMasteryUp(game, tower)** — Mastery Cascade (XP-driven mastery rank-up; wire at
+  the same detection point as the mastery surge in `towers.js updateTowers`).
+- **fault-tick** `[BUILT]` — per-second pass over `enemy.faults` (Corruption damage,
+  Rootkit ramp, Backdoor sync); only iterates enemies that have faults.
 
 Open decision (recommendation): **Fault modifiers (Rootkit, Backdoor, Malware)
 act network-wide** (your build applies everywhere); **tower modifiers
@@ -212,19 +224,19 @@ mod in isolation. `—` = doesn't roll at that rarity.
 | Mod | Common | Enhanced | Rare | Prismatic | Singularity | Notes |
 |---|---|---|---|---|---|---|
 | Exposed (dmg taken/stack) | 2% | 2% | 2% | 2% | 2% | cap 20 (global) |
-| Overexpose (+/stack, +cap) | +0.5%,+5 | +0.5%,+5 | +1%,+10 | +1%,+10 | +1.5%,+15 | `[IDEA]` |
-| Painted (+dmg vs Exposed) | 8% | 12% | 16% | 20% | 25% | `[IDEA]` |
+| Overexpose (+/stack, +cap) | +0.5%,+5 | +0.5%,+5 | +1%,+10 | +1%,+10 | +1.5%,+15 | `[NEXT]` network-wide |
+| Painted (+dmg vs Exposed) | 8% | 12% | 16% | 20% | 25% | `[NEXT]` self |
 | Throttle (slow/stack) | 2% | 2% | 2% | 2% | 2% | cap 50% (global) |
 | Bottleneck (+slow/stack, cap) | +0.5%,55% | +0.5%,55% | +1%,60% | +1%,60% | +1.5%,70% | `[IDEA]` |
 | Sitting Duck (+dmg per 10% slow) | 4% | 6% | 8% | 10% | 12% | `[IDEA]` |
 | Desync (bonus/stack) | 1% | 1.5% | 2% | 2.5% | 3% | **cap 50** |
-| Buffer Overflow (stacks/hit, cap) | +2, 60 | +2, 65 | +3, 70 | +3, 72 | +4, 75 | `[IDEA]` — top end adds burst, not just cap |
-| Overvolt (crit at ≥ N Desync) | 25 | 22 | 20 | 18 | 15 | `[IDEA]` |
-| Payload (Corruption = consumed ×) | 0.5 | 0.6 | 0.75 | 0.9 | 1.0 | `[IDEA]` |
+| Buffer Overflow (stacks/hit, cap) | +2, 60 | +2, 65 | +3, 70 | +3, 72 | +4, 75 | `[NEXT]` — top end adds burst, not just cap |
+| Overvolt (crit at ≥ N Desync) | 25 | 22 | 20 | 18 | 15 | `[NEXT]` self |
+| Payload (Corruption = consumed ×) | 0.5 | 0.6 | 0.75 | 0.9 | 1.0 | `[NEXT]` self |
 | Corruption (stacks/hit) | 1 | 2 | 3 | 4 | 6 | dmg/s = stacks; cap 50; transfer 50%→1 |
 | Rootkit (cap on +%/s ramp @5%/s) | +100% | +125% | +150% | +175% | +200% | Transformer |
-| Malware (targets, transfer) | — | — | 2 @100% | 3 @100% | 3 @100% | Transformer, Rare+ |
-| Quarantine (+credits/kill, cap/wave) | 4, 5 | 6, 5 | 8, 5 | 10, 5 | 12, 5 | `[IDEA]` capped |
+| Malware (targets, transfer) | — | — | 2 @100% | 3 @100% | 3 @100% | `[NEXT]` Transformer, Rare+, spread guard |
+| Quarantine (+credits/kill, cap/wave) | 4, 5 | 6, 5 | 8, 5 | 10, 5 | 12, 5 | `[NEXT]` capped |
 | Backdoor (Exposed = Corruption ×) | — | — | 0.3 | 0.35 | 0.4 | Bridge, Rare+ — capped so it never wastes vs Exposed cap 20 |
 
 ### Protocols
@@ -235,17 +247,22 @@ mod in isolation. `—` = doesn't roll at that rarity.
 | Quorum (@6+ same-type: +crit) | 8pp | 10pp | 12pp | 13pp | 15pp | `[IDEA]` |
 | Fork (proc) | 0.5% | 1% | 1.5% | 2% | 2.5% | **revised down** |
 | Replication (+proc, +radius) | +0.5% | +0.5% | +1%,+1 | +1%,+1 | +1.5%,+1 | `[IDEA]` |
-| Inheritance (forked level) | +1 | +1 | +1 | +1 | +2 | levels only, ≤ parent |
+| Inheritance (forked level) | +1 | +1 | +1 | +1 | +2 | `[NEXT]` levels only, ≤ parent |
+| Warm Boot (OC stacks to parent on fork) | 2 | 3 | 4 | 5 | 6 | `[NEXT]` Bridge→Overclock |
 | Dmg/FireRate/Range Broadcast | 4% | 6% | 8% | 10% | 13% | radius 3 |
 | Critical Broadcast (pp) | 2 | 3 | 4 | 5 | 6 | radius 3 |
-| Receiver (+received-aura effect) | 10% | 15% | 20% | 25% | 30% | `[IDEA]` |
-| Signal Boost (+power, +radius) | +1pp | +1.5pp | +2pp,+1 | +2.5pp,+1 | +3pp,+1 | `[IDEA]` |
-| Relay (fraction, hops) | — | — | 0.6, 1 | 0.8, 1 | 1.0, 2 | Transformer, Rare+, dedupe src |
-| Cascade (chance, levels) | 12% | 15% | 18% | 20% | 25% | exactly 1 level, radius 1, no recursion |
-| Domino (+chance, radius) | +4%,1 | +4%,2 | +5%,2 | +5%,2 | +6%,2 | `[IDEA]` |
-| Overclock (+firerate/kill, cap) | 2%,40% | 2.5%,45% | 3%,50% | 3.5%,55% | 4%,60% | 0.5s kill CD, reset @wave |
-| Nonvolatile (retain fraction) | 10% | 15% | 20% | 25% | 30% | Transformer |
-| Turbo (+per-kill, +cap) | +0.5%,+10% | +0.5%,+10% | +1%,+15% | +1%,+20% | +1.5%,+20% | `[IDEA]` |
+| Receiver (+received-aura effect) | 10% | 15% | 20% | 25% | 30% | `[NEXT]` self |
+| Signal Boost (+power, +radius) | +1pp | +1.5pp | +2pp,+1 | +2.5pp,+1 | +3pp,+1 | `[NEXT]` self |
+| Relay (fraction, hops) | — | — | 0.6, 1 | 0.8, 1 | 1.0, 2 | `[NEXT]` Transformer, Rare+, dedupe src |
+| Upgrade Cascade (chance) | 12% | 15% | 18% | 20% | 25% | `[NEXT]` on paid level-up; 1 free level, radius 1, no recursion |
+| Mastery Cascade (chance) | 12% | 15% | 18% | 20% | 25% | `[NEXT]` on XP mastery rank-up; 1 free rank, radius 1, no recursion |
+| Domino (+chance, radius) | +4%,1 | +4%,2 | +5%,2 | +5%,2 | +6%,2 | `[NEXT]` applies to both Cascade forms |
+| Power Surge (surge dmg on Cascade grant) | +20% | +25% | +30% | +40% | +50% | `[NEXT]` brief surge on the receiver, both forms |
+| Overclock (+firerate/kill, cap) | 2%,40% | 2.5%,45% | 3%,50% | 3.5%,55% | 4%,60% | `[NEXT]` 0.5s kill CD, reset @wave |
+| Hyperthread (removes 0.5s CD, +cap) | — | — | +0% cap | +5% cap | +10% cap | `[NEXT]` Transformer, Rare+, self; 1 stack/kill |
+| Nonvolatile (retain fraction) | 10% | 15% | 20% | 25% | 30% | `[NEXT]` Transformer |
+| Turbo (+per-kill, +cap) | +0.5%,+10% | +0.5%,+10% | +1%,+15% | +1%,+20% | +1.5%,+20% | `[NEXT]` Amplifier |
+| Thermal (fire-rate aura @max OC) | 6% | 8% | 10% | 12% | 15% | `[NEXT]` Bridge→Broadcast, radius 3, only at max Overclock |
 | Redline (thresholds fixed 10/20/30) | — | — | +8% cc / +20% cd / +1 pierce | +10% cc / +25% cd / +1 pierce | +12% cc / +30% cd / +1 pierce | `[IDEA]` Rare+ |
 
 ---
@@ -253,16 +270,25 @@ mod in isolation. `—` = doesn't roll at that rarity.
 ## 8. Build queue (locked)
 
 Each its own version-bump ship, Mod-Lab-verified:
-0. **Balance push** (§6): Fork proc ↓, Desync cap 50 — quick, on already-shipped mods.
+0. **Balance push** (§6): Fork proc ↓, Desync cap 50 — `[BUILT]` `2026.08.29-4`.
 1. **Corruption archetype** — Corruption (Setter) → Rootkit (Transformer) →
-   Backdoor (Bridge). Adds the fault-tick hook.
-2. **Overclock archetype** — Overclock (Setter) → Nonvolatile (Transformer/retain).
-   Adds onWaveStart.
-3. **Cascade** (Setter). Adds onLevelUp.
+   Backdoor (Bridge). Fault-tick hook. `[BUILT]` `2026.08.29-5..-7`.
+2. **Overclock archetype** (Batch 3) — Overclock (Setter) → Hyperthread
+   (Transformer/AoE) → Nonvolatile (Transformer/retain) → Turbo (Amplifier) →
+   Thermal (Bridge→Broadcast). Adds `onWaveStart`.
+3. **Cascade archetype** (Batch 4) — Upgrade Cascade (Setter) + Mastery Cascade
+   (Setter) → Domino (Amplifier) → Power Surge (Rewarder). Adds `onLevelUp` +
+   `onMasteryUp`.
+4. **Depth batch** (Batch 5) — Overexpose · Painted (Exposed); Buffer Overflow ·
+   Overvolt · Payload (Desync); Malware · Quarantine (Corruption); Inheritance ·
+   Warm Boot (Fork); Signal Boost · Receiver · Relay (Broadcast). Warm Boot ships
+   after Batch 3 (needs Overclock). No new hooks except where a mod notes one.
 
 `[IDEA]` rows stay here as room to grow — pull one in when a built archetype wants
-depth. Kept "largely as written" per review: **Rootkit, Payload, Quorum,
-Nonvolatile**.
+depth. Deferred `[IDEA]`: Overclock/Redline, Cascade/Clock Multiplier, Array
+depth (Cluster/Quorum/Mesh), Fork/Replication, Throttle depth, Exposed/Chain
+Reaction. Build order + per-phase specs (with landmines) live in **`AFFIXES_PLAN.md`
+Batch 3–5**.
 
 ---
 

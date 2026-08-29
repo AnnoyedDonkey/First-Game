@@ -54,8 +54,14 @@ null-source `damageEnemy` so Exposed/fields amplify it, death transfers ½ to on
 neighbor), **Rootkit** (Transformer: tick ramps +5%/s of Corrupted lifetime to a
 +100–200% cap — anti-swarm→anti-boss), and **Backdoor** (Bridge, Rare+: Corrupted
 enemies gain Exposed = 0.3–0.4×, closing the melt loop). Corruption has a "C" pip.
-Design space + role framework + numbers in `mods.md`. Next `[IDEA]`/`[NEXT]`
-batches: Overclock archetype, Cascade. Per-mod balance tuning pending playtest. Broadcast = a tower aura: `affixes.js applyBroadcastAura`
+Design space + role framework + numbers in `mods.md`. **Planned next (specs in
+`AFFIXES_PLAN.md` Batch 3–5, 21 mods):** Batch 3 Overclock archetype (Overclock →
+Hyperthread/AoE → Nonvolatile → Turbo → Thermal, adds `onWaveStart`); Batch 4
+Cascade split into **Upgrade Cascade** (paid level-up, `onLevelUp`) + **Mastery
+Cascade** (XP rank-up, `onMasteryUp`) → Domino → Power Surge; Batch 5 depth
+(Overexpose, Painted, Buffer Overflow, Overvolt, Payload, Malware, Quarantine,
+Inheritance, Warm Boot, Signal Boost, Receiver, Relay). Per-mod balance tuning
+pending playtest. Broadcast = a tower aura: `affixes.js applyBroadcastAura`
 adds a source's power to nearby towers' `_broadcast.{damage,fireRate,range,crit}`
 (rebuilt on network change, read by `recomputeStats`; radius ring in renderer).
 `onNetworkChange` refreshes `gearMods` before Protocol hooks read it (ordering
@@ -529,9 +535,35 @@ has the architecture and deferred follow-ups.
 
 ## Delegating work to Codex (local, same machine)
 
-Codex is installed as the desktop app and wired up as an **MCP server**, so a
-Claude session can hand it a scoped task and get the result back. Used for the
-whole `2026.08.10-11` tower-intro build (five phases from
+**CURRENT PATH (2026-08-29): the OpenAI Codex plugin.** Codex is now driven via
+the installed **Codex plugin** (`@openai/codex` CLI, on PATH) through its companion
+helper, which **supersedes the old `.mcp.json` MCP wrapper** below (kept for
+history). The orchestrator invokes one **fresh thread per phase** (a cold read of
+the phase's plan section), choosing the model per HANDOFF's Terra/Sol split:
+```
+node "C:/Users/fthia/.claude/plugins/cache/openai-codex/codex/<ver>/scripts/codex-companion.mjs" \
+  task "--model <gpt-5.6-sol|gpt-5.6-terra> --effort high --write <phase prompt>"
+```
+- `--model gpt-5.6-sol` = Opus-tier work (new hooks, tricky recursion/aura/dedupe);
+  `--model gpt-5.6-terra` = Sonnet-tier mechanical phases. `--effort` accepts
+  none/minimal/low/medium/high/xhigh. **The model+effort are honored** — verified by
+  reading the recorded `"model"`/`"reasoning_effort"` in the Codex session log under
+  `~/.codex/sessions/…` (the model's SELF-reported slug is unreliable/confabulated —
+  trust the session log, not the model's word).
+- `--write` for build phases; omit (read-only default) for orchestrator probes. The
+  companion runs in repo root `C:\Projects\First-Game` (git-safe) and
+  **non-interactive**, so the old approval-relay problem is moot (no `approval-policy`
+  needed; the sandbox is still the boundary). Check readiness with
+  `codex-companion.mjs setup --json`.
+- The `codex:codex-rescue` subagent is the plugin's own supported entry point, but
+  for a multi-phase build the orchestrator calls the companion `task` helper directly
+  so it controls model/effort per phase and reviews each diff between calls.
+- **Everything below about reviewing Codex's diffs for intent, its browser blindness,
+  git `cwd` at the repo root, and staging an explicit file list still applies** — only
+  the transport changed.
+
+**LEGACY PATH (superseded — kept for history).** Codex was previously wired up as an
+**MCP server**, used for the whole `2026.08.10-11` tower-intro build (five phases from
 `TOWER_INTRO_CARDS_PLAN.md`); this is the record of how, and what to watch.
 
 **Setup that already exists** (machine-specific, deliberately NOT committed):
