@@ -8,8 +8,8 @@ import { rollKillDrop } from "./loot.js";
 import { emitHitSparks, emitDeathShards, emitCoins } from "./particles.js";
 import {
   addFaultStacks, applyCorruptionStacks, backdoorExposedFloor,
-  corruptionSpreadAmount, corruptionTickDamage, faultMovementMult,
-  getFaultStacks, onHit, onKill,
+  corruptionSpreadAmount, corruptionSpreadTargets, corruptionTickDamage,
+  faultMovementMult, getFaultStacks, onHit, onKill,
 } from "./affixes.js";
 
 let nextEnemyId = 1;
@@ -169,15 +169,16 @@ export function enemyPosition(enemy, grid) {
 // infected enemy dies. Stacks are applied directly, never through onHit, so a
 // transfer cannot proc or recursively spread by itself.
 function spreadCorruptionOnDeath(game, enemy) {
-  const amount = corruptionSpreadAmount(enemy);
+  const amount = corruptionSpreadAmount(enemy, game); // Malware: 100% instead of 50%
   const cfg = LOOT.mods.corruption;
-  if (amount <= 0 || cfg.spreadTargets <= 0) return;
+  const targets = corruptionSpreadTargets(game);      // Malware: N instead of 1
+  if (amount <= 0 || targets <= 0) return;
 
   const origin = enemyPosition(enemy, game.grid);
   const radius = cfg.spreadRadiusTiles * game.grid.tileSize;
   const radiusSq = radius * radius;
   const selected = [];
-  for (let n = 0; n < cfg.spreadTargets; n++) {
+  for (let n = 0; n < targets; n++) {
     let nearest = null;
     let nearestDistSq = radiusSq;
     for (const candidate of game.enemies) {

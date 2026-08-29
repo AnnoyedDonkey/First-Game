@@ -490,6 +490,41 @@ export const LOOT = {
         common: 0.20, enhanced: 0.25, rare: 0.30,
         prismatic: 0.40, singularity: 0.50,
       },
+      // --- Batch 5 depth mods ---
+      // Exposed depth: Overexpose (network-wide: +Exposed per-stack % and cap);
+      // Painted (self: +damage vs Exposed enemies).
+      overexpose: {
+        common: { perStack: 0.005, cap: 5 }, enhanced: { perStack: 0.005, cap: 5 },
+        rare: { perStack: 0.01, cap: 10 }, prismatic: { perStack: 0.01, cap: 10 },
+        singularity: { perStack: 0.015, cap: 15 },
+      },
+      painted: { common: 0.08, enhanced: 0.12, rare: 0.16, prismatic: 0.20, singularity: 0.25 },
+      // Desync depth: Buffer Overflow (network-wide: +stacks/hit, raises cap);
+      // Overvolt (self: consume >= threshold guarantees a crit); Payload (self:
+      // consume also applies Corruption = floor(consumed * ratio)).
+      bufferOverflow: {
+        common: { stacksPerHit: 2, cap: 60 }, enhanced: { stacksPerHit: 2, cap: 65 },
+        rare: { stacksPerHit: 3, cap: 70 }, prismatic: { stacksPerHit: 3, cap: 72 },
+        singularity: { stacksPerHit: 4, cap: 75 },
+      },
+      overvolt: { common: 25, enhanced: 22, rare: 20, prismatic: 18, singularity: 15 },
+      payload: { common: 0.5, enhanced: 0.6, rare: 0.75, prismatic: 0.9, singularity: 1.0 },
+      // Corruption depth: Malware (network-wide, Rare+: death spreads 100% to N
+      // enemies); Quarantine (network-wide: first N Corrupted kills/wave pay credits).
+      malware: { rare: { targets: 2 }, prismatic: { targets: 3 }, singularity: { targets: 3 } },
+      quarantine: { common: 4, enhanced: 6, rare: 8, prismatic: 10, singularity: 12 },
+      // Fork depth: Inheritance (self: forked tower +level, <= parent); Warm Boot
+      // (self: a Fork spawn grants the parent Overclock stacks).
+      inheritance: { common: 1, enhanced: 1, rare: 1, prismatic: 1, singularity: 2 },
+      warmBoot: { common: 2, enhanced: 3, rare: 4, prismatic: 5, singularity: 6 },
+      // Broadcast depth: Signal Boost (self: +this tower's aura power/radius);
+      // Receiver (self: +effect from every aura this tower sits under).
+      signalBoost: {
+        common: { power: 0.01, radius: 0 }, enhanced: { power: 0.015, radius: 0 },
+        rare: { power: 0.02, radius: 1 }, prismatic: { power: 0.025, radius: 1 },
+        singularity: { power: 0.03, radius: 1 },
+      },
+      receiver: { common: 0.10, enhanced: 0.15, rare: 0.20, prismatic: 0.25, singularity: 0.30 },
       nonvolatile: {
         common: 0.10, enhanced: 0.15, rare: 0.20,
         prismatic: 0.25, singularity: 0.30,
@@ -525,6 +560,7 @@ export const LOOT = {
     rootkit: { rampPerSec: 0.05 },
     overclock: { killCooldownSec: 0.5 },
     cascade: { radiusTiles: 1 }, // base Cascade grant radius (Domino widens it)
+    quarantineCapPerWave: 5,     // Quarantine pays credits for at most N Corrupted kills/wave
     arrayExtraSourceBonus: 0.01,
     // Array damage bonus = min(sameTypeCount, arrayMaxTowers) × effectivePower.
     // The cap keeps a same-type tower spam from scaling without bound (and from

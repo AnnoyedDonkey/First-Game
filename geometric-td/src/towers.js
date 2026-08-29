@@ -112,9 +112,17 @@ function forkTileNear(game, cx, cy) {
 // network is rebuilt.
 function spawnForkTower(game, parent) {
   const tile = forkTileNear(game, parent.tileX, parent.tileY);
-  if (!tile) return;
+  if (!tile) return false;
   const cfg = LOOT.mods.fork;
-  const level = Math.max(cfg.minLevel, (parent.level || 1) - cfg.levelBelowParent);
+  // Inheritance (self Rewarder): forked tower spawns higher, never above the parent
+  // or the type cap. Levels ONLY — the tower stays gearless (no Fork -> no chains).
+  let inherit = 0;
+  for (const m of parent.gearMods?.inheritance || []) {
+    if (Number.isFinite(m.power) && m.power > inherit) inherit = m.power;
+  }
+  const base = Math.max(cfg.minLevel, (parent.level || 1) - cfg.levelBelowParent);
+  const ceiling = Math.min(parent.level || 1, getTowerLevelCap(parent.type));
+  const level = Math.min(ceiling, base + Math.round(inherit));
   const tower = createTower(parent.type, tile.x, tile.y, game.grid, null, parent.ownerId);
   tower.level = level;
   tower._forkCreated = true;
@@ -126,6 +134,7 @@ function spawnForkTower(game, parent) {
     kind: "ring", x: tower.pos.x, y: tower.pos.y,
     color: tower.def.color, radius: game.grid.tileSize * 0.6, ttl: 0.35, maxTtl: 0.35,
   });
+  return true;
 }
 setForkSpawner(spawnForkTower);
 setTowerStatRecomputer((game, tower) => recomputeStats(tower, game.grid, game));
@@ -739,7 +748,7 @@ function fireShot(game, tower, target, targetPos, damageScale) {
   // One recursion context per originating shot, reused for every pierced or
   // splashed victim. Triggered effects derive their own guarded context.
   const hitCtx = {
-    source: tower, sourceType: tower.type, triggered: false, canProc: true,
+    source: tower, sourceType: tower.type, triggered: false, canProc: true, crit,
   };
   // While a level-up surge is active, the tower's shots glow gold. Only the
   // def-colored visuals are retinted; white-hot cores (railgun/crit) stay white.

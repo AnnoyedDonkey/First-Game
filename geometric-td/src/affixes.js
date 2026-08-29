@@ -59,17 +59,35 @@ function sourceHasMod(source, id) {
   return !!source?.gearMods?.[id]?.length;
 }
 
+// Overexpose (network-wide Amplifier) raises Exposed's per-stack % and cap.
+function exposedTuning(game) {
+  const cfg = LOOT.mods.powers.exposed;
+  const oe = game?.modNetwork?.overexpose;
+  return {
+    perStack: cfg.perStack + (oe?.perStack || 0),
+    maxStacks: cfg.maxStacks + (oe?.cap || 0),
+  };
+}
+
 function exposedOnHit(ctx) {
   if (!ctx?.enemy || !Number.isFinite(ctx.damage)) return;
-  const cfg = LOOT.mods.powers.exposed;
+  const tune = exposedTuning(ctx.game);
 
   // The applying hit benefits from its own stack: add first, then read the
   // enemy's current stack total for the centralized damage multiplier.
   if (sourceHasMod(ctx.source, "exposed")) {
-    addFaultStacks(ctx.enemy, "exposed", 1, cfg.maxStacks);
+    addFaultStacks(ctx.enemy, "exposed", 1, tune.maxStacks);
   }
   const stacks = getFaultStacks(ctx.enemy, "exposed");
-  if (stacks > 0) ctx.damage *= 1 + stacks * cfg.perStack;
+  if (stacks > 0) ctx.damage *= 1 + stacks * tune.perStack;
+}
+
+// Painted (self Rewarder): this tower deals +power% to any enemy that has Exposed.
+function paintedOnHit(ctx) {
+  if (!ctx?.enemy || !Number.isFinite(ctx.damage)) return;
+  const power = strongestModPower(ctx.source, "painted");
+  if (power <= 0) return;
+  if (getFaultStacks(ctx.enemy, "exposed") > 0) ctx.damage *= 1 + power;
 }
 
 function throttleMaxStacks() {
@@ -124,7 +142,13 @@ function forkOnKill(ctx) {
   if (power <= 0) return;
   const rng = ctx.game.rng || Math.random;
   if (rng() >= power) return;
-  forkSpawner?.(ctx.game, ctx.source);
+  const spawned = forkSpawner?.(ctx.game, ctx.source);
+  // Warm Boot (self Bridge -> Overclock): a successful Fork spawn feeds the parent
+  // some Overclock stacks (no-op if the parent carries no Overclock).
+  if (spawned) {
+    const wb = strongestModPower(ctx.source, "warmBoot"); // stored power == stacks
+    if (wb > 0) addOverclockStacks(ctx.game, ctx.source, Math.round(wb));
+  }
 }
 
 // Desync tracks the strongest active per-stack power in the sequence, so a
@@ -310,6 +334,48 @@ function cascadeRollAndGrant(game, parent, kind) {
   cascadeGrantApplier?.(game, parent, kind, p.radius, p.withSurge);
 }
 
+// Resolve the strongest per-rarity config object carried by ANY tower on the board
+// for `modId` (network-wide rule mods: Overexpose/Buffer Overflow/Malware). Ranks by
+// `rankKey`; returns the winning config entry or null.
+function strongestConfigOnBoard(game, modId, table, rankKey) {
+  let best = null;
+  for (const t of game?.towers || []) {
+    if (!sourceHasMod(t, modId)) continue;
+    for (const item of Object.values(t.gear || {})) {
+      const cfg = table[item?.rarity];
+      if (!cfg) continue;
+      if ((item?.mods || []).some((m) => m?.id === modId) &&
+          (!best || cfg[rankKey] > best[rankKey])) best = cfg;
+    }
+  }
+  return best;
+}
+
+// Resolve the strongest per-rarity config carried by ONE tower (self-only mods:
+// Signal Boost, Inheritance, Warm Boot). Ranks by `rankKey`.
+function selfStrongestConfig(tower, modId, table, rankKey) {
+  if (!sourceHasMod(tower, modId)) return null;
+  let best = null;
+  for (const item of Object.values(tower.gear || {})) {
+    const cfg = table[item?.rarity];
+    if (!cfg) continue;
+    if ((item?.mods || []).some((m) => m?.id === modId) &&
+        (!best || cfg[rankKey] > best[rankKey])) best = cfg;
+  }
+  return best;
+}
+
+// Add Overclock stacks to a tower (Warm Boot). Respects Overclock presence + the
+// tower's recompute + Thermal crossing, like a kill would.
+function addOverclockStacks(game, tower, n) {
+  if (n <= 0 || !overclockParams(tower)) return;
+  const state = tower._overclock || { stacks: 0, lastStackAt: -Infinity };
+  state.stacks = Math.max(0, state.stacks || 0) + n;
+  tower._overclock = state;
+  towerStatRecomputer?.(game, tower);
+  maybeSyncThermal(game, tower);
+}
+
 function startDesync(enemy, towerType, powerPerStack) {
   const faults = (enemy.faults ||= {});
   faults.desync = {
@@ -325,6 +391,15 @@ function startDesync(enemy, towerType, powerPerStack) {
 // tower type consumes the whole sequence and amplifies THAT hit by stacks *
 // powerPerStack — regardless of whether the consumer carries Desync; a
 // consuming carrier then immediately opens a fresh 1-stack sequence of its own.
+// Buffer Overflow (network-wide Amplifier): more stacks per same-type hit, higher cap.
+function desyncBuild(game) {
+  const bo = game?.modNetwork?.bufferOverflow;
+  return {
+    stacksPerHit: bo?.stacksPerHit || 1,
+    cap: bo?.cap || LOOT.mods.desyncMaxStacks,
+  };
+}
+
 function desyncOnHit(ctx) {
   if (!ctx?.enemy || !ctx.sourceType) return; // only real tower hits interact
   const sType = ctx.sourceType;
@@ -334,17 +409,34 @@ function desyncOnHit(ctx) {
   if (fault && sType !== fault.towerType) {
     // CONSUME: amplify this hit (composes multiplicatively with Exposed via the
     // shared ctx.damage), clear the sequence, then maybe start a new one.
-    if (Number.isFinite(ctx.damage)) ctx.damage *= 1 + fault.stacks * fault.powerPerStack;
+    const consumed = fault.stacks;
+    if (Number.isFinite(ctx.damage)) ctx.damage *= 1 + consumed * fault.powerPerStack;
+    // Overvolt (self Rewarder): consuming >= threshold stacks guarantees a crit —
+    // adds a crit's worth of damage if this hit wasn't already a crit.
+    const overvolt = strongestModPower(ctx.source, "overvolt"); // stored power == threshold
+    if (overvolt > 0 && consumed >= overvolt && ctx.crit !== true &&
+        Number.isFinite(ctx.damage) && ctx.source) {
+      ctx.damage *= 1 + (ctx.source.critDamage || 0);
+      ctx.crit = true;
+    }
+    // Payload (self Bridge -> Corruption): the consume also applies Corruption
+    // equal to floor(consumed * ratio) to the target.
+    const payload = strongestModPower(ctx.source, "payload"); // stored power == ratio
+    if (payload > 0) {
+      const stacks = Math.floor(consumed * payload);
+      if (stacks > 0) applyCorruptionStacks(ctx.enemy, stacks, ctx.game?.time ?? 0);
+    }
     clearFault(ctx.enemy, "desync");
     if (carrierPower > 0) startDesync(ctx.enemy, sType, carrierPower);
     return;
   }
   // BUILD: only Desync carriers accumulate stacks.
   if (carrierPower > 0) {
+    const build = desyncBuild(ctx.game);
     if (!fault) {
       startDesync(ctx.enemy, sType, carrierPower); // first hit = stack 1
     } else {
-      fault.stacks = Math.min(LOOT.mods.desyncMaxStacks, fault.stacks + 1);
+      fault.stacks = Math.min(build.cap, fault.stacks + build.stacksPerHit);
       // Stronger same-type source raises active power; weaker never lowers it.
       if (carrierPower > fault.powerPerStack) fault.powerPerStack = carrierPower;
     }
@@ -382,17 +474,23 @@ export function corruptionTickDamage(enemy, game, dt) {
   return (fault.stacks || 0) * dt * (1 + ramp);
 }
 
-export function corruptionSpreadAmount(enemy) {
-  return Math.floor(
-    getFaultStacks(enemy, "corruption") * LOOT.mods.corruption.spreadFrac
-  );
+// Malware (network-wide Transformer, Rare+): death spreads 100% (not 50%) to N (not
+// 1) nearest enemies. The transfer is still one-shot per death (never re-entrant), so
+// there is no exponential blow-up — the spread is bounded by N per kill.
+export function corruptionSpreadAmount(enemy, game = null) {
+  const frac = game?.modNetwork?.malware ? 1.0 : LOOT.mods.corruption.spreadFrac;
+  return Math.floor(getFaultStacks(enemy, "corruption") * frac);
+}
+
+export function corruptionSpreadTargets(game) {
+  return game?.modNetwork?.malware?.targets || LOOT.mods.corruption.spreadTargets;
 }
 
 export function backdoorExposedFloor(enemy, game) {
   const ratio = game?.modNetwork?.backdoor || 0;
   if (ratio <= 0) return 0;
   return Math.min(
-    LOOT.mods.powers.exposed.maxStacks,
+    exposedTuning(game).maxStacks, // respects Overexpose's raised cap
     Math.floor(getFaultStacks(enemy, "corruption") * ratio)
   );
 }
@@ -406,18 +504,22 @@ function applyBroadcastAura(game, modId, field) {
   const towers = game.towers || [];
   if (towers.length === 0) return;
   const ts = game.grid?.tileSize || 0;
-  const radius = LOOT.mods.broadcastRadiusTiles * ts;
-  const r2 = radius * radius;
+  const baseRadius = LOOT.mods.broadcastRadiusTiles * ts;
   const selfBuffs = LOOT.mods.broadcastSelfBuffs;
   for (const source of towers) {
     const power = strongestModPower(source, modId);
     if (power <= 0) continue;
+    // Signal Boost (self Amplifier): raises THIS source's aura power + radius.
+    const sb = selfStrongestConfig(source, "signalBoost", LOOT.mods.powers.signalBoost, "power");
+    const effPower = power + (sb?.power || 0);
+    const radius = baseRadius + (sb?.radius || 0) * ts;
+    const r2 = radius * radius;
     source._broadcastRadius = radius; // drives the selection aura ring
     for (const target of towers) {
       if (target === source && !selfBuffs) continue;
       const dx = target.pos.x - source.pos.x;
       const dy = target.pos.y - source.pos.y;
-      if (dx * dx + dy * dy <= r2) target._broadcast[field] += power;
+      if (dx * dx + dy * dy <= r2) target._broadcast[field] += effPower;
     }
   }
 }
@@ -453,6 +555,25 @@ function rebuildArrayNetwork(game) {
       type, count, effectiveCount, sources, strongestPower, effectivePower,
       bonus: effectiveCount * effectivePower,
     };
+  }
+}
+
+// Quarantine (network-wide Rewarder): the first N Corrupted enemies killed each wave
+// pay credits to every wallet (economy pulse). Counts any Corrupted death — including
+// a Corruption-tick kill (null source) — capped per wave; the counter resets in the
+// mod's onWaveStart.
+function quarantineOnKill(ctx) {
+  const game = ctx?.game;
+  if (!game) return;
+  const credits = game.modNetwork?.quarantine || 0;
+  if (credits <= 0) return;
+  if (getFaultStacks(ctx.enemy, "corruption") <= 0) return;
+  const used = game._quarantineKills || 0;
+  if (used >= LOOT.mods.quarantineCapPerWave) return;
+  game._quarantineKills = used + 1;
+  for (const id of Object.keys(game.wallets || {})) {
+    game.wallets[id] += credits;
+    if (game.totalEarned) game.totalEarned[id] = (game.totalEarned[id] || 0) + credits;
   }
 }
 
@@ -902,6 +1023,123 @@ export const MODS = Object.freeze({
         strongest = Math.max(strongest, strongestModPower(tower, "nonvolatile"));
       }
       game.modNetwork.nonvolatile = strongest;
+    },
+  }),
+  // --- Batch 5 depth mods ---
+  overexpose: Object.freeze({
+    id: "overexpose", category: "protocol",
+    nameKey: "mod.overexpose.name", name: "Overexpose", descKey: "mod.overexpose.desc",
+    description: "Raises Exposed to +{power}% extra damage per stack and its cap by +{cap} stacks.",
+    descriptionParams(mod) {
+      const t = LOOT.mods.powers.overexpose; let c = t.rare;
+      if (Number.isFinite(mod?.power)) c = Object.values(t).find((e) => e.perStack === mod.power) || c;
+      return { power: Number.isFinite(mod?.power) ? mod.power : c.perStack, cap: c.cap };
+    },
+    powerForRarity(rarity) { return LOOT.mods.powers.overexpose[rarity]?.perStack; },
+    onNetworkChange(game) {
+      game.modNetwork.overexpose = strongestConfigOnBoard(game, "overexpose", LOOT.mods.powers.overexpose, "cap") || null;
+    },
+  }),
+  painted: Object.freeze({
+    id: "painted", category: "protocol",
+    nameKey: "mod.painted.name", name: "Painted", descKey: "mod.painted.desc",
+    description: "This tower deals +{power}% damage to enemies that are Exposed.",
+    descriptionParams(mod) { return { power: mod?.power }; },
+    powerForRarity(rarity) { return LOOT.mods.powers.painted[rarity]; },
+    onHit: paintedOnHit,
+  }),
+  bufferOverflow: Object.freeze({
+    id: "bufferOverflow", category: "protocol", powerFormat: "flat", powerSuffix: "",
+    nameKey: "mod.bufferOverflow.name", name: "Buffer Overflow", descKey: "mod.bufferOverflow.desc",
+    description: "Desync builds +{power} stacks per same-type hit and its cap rises to {cap}.",
+    descriptionParams(mod) {
+      const t = LOOT.mods.powers.bufferOverflow; let c = t.rare;
+      if (Number.isFinite(mod?.power)) c = Object.values(t).find((e) => e.stacksPerHit === mod.power) || c;
+      return { power: Number.isFinite(mod?.power) ? mod.power : c.stacksPerHit, cap: c.cap };
+    },
+    powerForRarity(rarity) { return LOOT.mods.powers.bufferOverflow[rarity]?.stacksPerHit; },
+    onNetworkChange(game) {
+      game.modNetwork.bufferOverflow = strongestConfigOnBoard(game, "bufferOverflow", LOOT.mods.powers.bufferOverflow, "cap") || null;
+    },
+  }),
+  overvolt: Object.freeze({
+    id: "overvolt", category: "protocol", powerFormat: "flat", powerSuffix: "",
+    nameKey: "mod.overvolt.name", name: "Overvolt", descKey: "mod.overvolt.desc",
+    description: "Consuming {power} or more Desync stacks guarantees a critical hit.",
+    descriptionParams(mod) { return { power: mod?.power }; },
+    powerForRarity(rarity) { return LOOT.mods.powers.overvolt[rarity]; },
+  }),
+  payload: Object.freeze({
+    id: "payload", category: "protocol",
+    nameKey: "mod.payload.name", name: "Payload", descKey: "mod.payload.desc",
+    description: "Consuming Desync also applies Corruption equal to {power}% of the consumed stacks.",
+    descriptionParams(mod) { return { power: mod?.power }; },
+    powerForRarity(rarity) { return LOOT.mods.powers.payload[rarity]; },
+  }),
+  malware: Object.freeze({
+    id: "malware", category: "protocol", powerFormat: "flat", powerSuffix: "",
+    nameKey: "mod.malware.name", name: "Malware", descKey: "mod.malware.desc",
+    description: "On death, Corrupted enemies pass 100% of their Corruption to {power} nearby enemies.",
+    descriptionParams(mod) { return { power: mod?.power }; },
+    powerForRarity(rarity) { return LOOT.mods.powers.malware[rarity]?.targets; },
+    onNetworkChange(game) {
+      game.modNetwork.malware = strongestConfigOnBoard(game, "malware", LOOT.mods.powers.malware, "targets") || null;
+    },
+  }),
+  quarantine: Object.freeze({
+    id: "quarantine", category: "protocol", powerFormat: "flat", powerSuffix: "◆",
+    nameKey: "mod.quarantine.name", name: "Quarantine", descKey: "mod.quarantine.desc",
+    description: "The first {cap} Corrupted enemies killed each wave grant +{power} credits.",
+    descriptionParams(mod) { return { power: mod?.power, cap: LOOT.mods.quarantineCapPerWave }; },
+    powerForRarity(rarity) { return LOOT.mods.powers.quarantine[rarity]; },
+    onNetworkChange(game) {
+      let s = 0;
+      for (const t of game.towers || []) s = Math.max(s, strongestModPower(t, "quarantine"));
+      game.modNetwork.quarantine = s;
+    },
+    onWaveStart(game) { game._quarantineKills = 0; },
+    onKill: quarantineOnKill,
+  }),
+  inheritance: Object.freeze({
+    id: "inheritance", category: "protocol", powerFormat: "flat", powerSuffix: "",
+    nameKey: "mod.inheritance.name", name: "Inheritance", descKey: "mod.inheritance.desc",
+    description: "Towers created by this tower's Fork spawn +{power} level higher (never above this tower).",
+    descriptionParams(mod) { return { power: mod?.power }; },
+    powerForRarity(rarity) { return LOOT.mods.powers.inheritance[rarity]; },
+  }),
+  warmBoot: Object.freeze({
+    id: "warmBoot", category: "protocol", powerFormat: "flat", powerSuffix: "",
+    nameKey: "mod.warmBoot.name", name: "Warm Boot", descKey: "mod.warmBoot.desc",
+    description: "When this tower's Fork spawns a tower, it gains {power} Overclock stacks.",
+    descriptionParams(mod) { return { power: mod?.power }; },
+    powerForRarity(rarity) { return LOOT.mods.powers.warmBoot[rarity]; },
+  }),
+  signalBoost: Object.freeze({
+    id: "signalBoost", category: "protocol",
+    nameKey: "mod.signalBoost.name", name: "Signal Boost", descKey: "mod.signalBoost.desc",
+    description: "Raises this tower's Broadcast auras by +{power} points and their radius by +{radius} tiles.",
+    descriptionParams(mod) {
+      const t = LOOT.mods.powers.signalBoost; let c = t.rare;
+      if (Number.isFinite(mod?.power)) c = Object.values(t).find((e) => e.power === mod.power) || c;
+      return { power: Number.isFinite(mod?.power) ? mod.power : c.power, radius: c.radius };
+    },
+    powerForRarity(rarity) { return LOOT.mods.powers.signalBoost[rarity]?.power; },
+  }),
+  receiver: Object.freeze({
+    id: "receiver", category: "protocol",
+    nameKey: "mod.receiver.name", name: "Receiver", descKey: "mod.receiver.desc",
+    description: "This tower gains +{power}% extra effect from every Broadcast aura it sits under.",
+    descriptionParams(mod) { return { power: mod?.power }; },
+    powerForRarity(rarity) { return LOOT.mods.powers.receiver[rarity]; },
+    // Runs LAST (registered last) so every aura is already resolved on _broadcast.
+    onNetworkChange(game) {
+      for (const t of game.towers || []) {
+        const p = strongestModPower(t, "receiver");
+        if (p <= 0 || !t._broadcast) continue;
+        const m = 1 + p;
+        t._broadcast.damage *= m; t._broadcast.fireRate *= m;
+        t._broadcast.range *= m; t._broadcast.crit *= m;
+      }
     },
   }),
 });
