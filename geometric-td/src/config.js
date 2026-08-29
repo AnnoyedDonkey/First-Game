@@ -462,6 +462,34 @@ export const LOOT = {
         common: 0.06, enhanced: 0.08, rare: 0.10,
         prismatic: 0.12, singularity: 0.15,
       },
+      // Cascade (level economy). Two Setter forms share the same chance table:
+      // Upgrade Cascade fires on a PAID in-battle level-up (grants a free level to
+      // a neighbour), Mastery Cascade fires on an XP mastery RANK-UP (grants a free
+      // in-battle mastery rank). Both: exactly one grant, radius 1, <= parent, no
+      // recursion. Domino raises the chance and extends the radius; Power Surge adds
+      // a brief surge to the receiver.
+      upgradeCascade: {
+        common: 0.12, enhanced: 0.15, rare: 0.18,
+        prismatic: 0.20, singularity: 0.25,
+      },
+      masteryCascade: {
+        common: 0.12, enhanced: 0.15, rare: 0.18,
+        prismatic: 0.20, singularity: 0.25,
+      },
+      domino: {
+        common: { chance: 0.04, radius: 1 },
+        enhanced: { chance: 0.04, radius: 2 },
+        rare: { chance: 0.05, radius: 2 },
+        prismatic: { chance: 0.05, radius: 2 },
+        singularity: { chance: 0.06, radius: 2 },
+      },
+      // Power Surge stores a nominal strength per rarity; the granted surge currently
+      // reuses the standard level-up surge (VFX.levelUp) — magnitude tuning is a
+      // deferred pass. Presence is what matters (see affixes.js cascadeParams).
+      powerSurge: {
+        common: 0.20, enhanced: 0.25, rare: 0.30,
+        prismatic: 0.40, singularity: 0.50,
+      },
       nonvolatile: {
         common: 0.10, enhanced: 0.15, rare: 0.20,
         prismatic: 0.25, singularity: 0.30,
@@ -496,6 +524,7 @@ export const LOOT = {
     },
     rootkit: { rampPerSec: 0.05 },
     overclock: { killCooldownSec: 0.5 },
+    cascade: { radiusTiles: 1 }, // base Cascade grant radius (Domino widens it)
     arrayExtraSourceBonus: 0.01,
     // Array damage bonus = min(sameTypeCount, arrayMaxTowers) × effectivePower.
     // The cap keeps a same-type tower spam from scaling without bound (and from

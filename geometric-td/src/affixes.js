@@ -107,6 +107,15 @@ export function setNetworkRefresher(fn) {
   networkRefresher = fn;
 }
 
+// Cascade grants a free level / mastery rank to a neighbour. The geometry,
+// eligibility (caps, ranks), and tower mutation live in towers.js; affixes.js only
+// decides IF a grant fires and with what radius/surge. towers.js injects the
+// applier here (fn(game, parent, kind, radiusTiles, withSurge)).
+let cascadeGrantApplier = null;
+export function setCascadeGrantApplier(fn) {
+  cascadeGrantApplier = fn;
+}
+
 function forkOnKill(ctx) {
   // canProc===false marks a triggered (non-primary) hit — Fork never chains off
   // those, and forked towers are gearless so they can't carry Fork anyway.
@@ -265,6 +274,40 @@ function maybeSyncThermal(game, tower) {
   if (active === !!tower._thermalActive) return;
   tower._thermalActive = active;
   networkRefresher?.(game);
+}
+
+// Resolve a Cascade parent's grant parameters for one form ("level" -> Upgrade
+// Cascade, "mastery" -> Mastery Cascade). Returns { chance, radius, withSurge } or
+// null when the parent doesn't carry that form's Cascade. Domino (self-only) raises
+// the chance and widens the radius; Power Surge (self-only) flags the receiver surge.
+function cascadeParams(parent, kind) {
+  const modId = kind === "mastery" ? "masteryCascade" : "upgradeCascade";
+  const base = strongestModPower(parent, modId); // stored power == the chance
+  if (base <= 0) return null;
+  let chance = base;
+  let radius = LOOT.mods.cascade.radiusTiles;
+  if (sourceHasMod(parent, "domino")) {
+    let best = null;
+    for (const item of Object.values(parent.gear || {})) {
+      const cfg = LOOT.mods.powers.domino[item?.rarity];
+      if (!cfg) continue;
+      if ((item?.mods || []).some((m) => m?.id === "domino") &&
+          (!best || cfg.chance > best.chance)) best = cfg;
+    }
+    if (best) { chance += best.chance; radius = Math.max(radius, best.radius); }
+  }
+  return { chance, radius, withSurge: sourceHasMod(parent, "powerSurge") };
+}
+
+// Shared roll+grant for both Cascade forms. The granted step is applied directly in
+// towers.js (never via the paid-upgrade / XP path), so it CANNOT re-enter these
+// hooks — the "no recursion" guarantee.
+function cascadeRollAndGrant(game, parent, kind) {
+  const p = cascadeParams(parent, kind);
+  if (!p) return;
+  const rng = game.rng || Math.random;
+  if (rng() >= p.chance) return;
+  cascadeGrantApplier?.(game, parent, kind, p.radius, p.withSurge);
 }
 
 function startDesync(enemy, towerType, powerPerStack) {
@@ -781,6 +824,65 @@ export const MODS = Object.freeze({
       applyThermalAura(game);
     },
   }),
+  upgradeCascade: Object.freeze({
+    id: "upgradeCascade",
+    category: "protocol",
+    nameKey: "mod.upgradeCascade.name",
+    name: "Upgrade Cascade",
+    descKey: "mod.upgradeCascade.desc",
+    description: "When you buy a level-up on this tower, {power}% chance to grant a free level to an adjacent tower.",
+    descriptionParams(mod) {
+      return { power: mod?.power };
+    },
+    powerForRarity(rarity) {
+      return LOOT.mods.powers.upgradeCascade[rarity];
+    },
+    onLevelUp(game, parent) {
+      cascadeRollAndGrant(game, parent, "level");
+    },
+  }),
+  masteryCascade: Object.freeze({
+    id: "masteryCascade",
+    category: "protocol",
+    nameKey: "mod.masteryCascade.name",
+    name: "Mastery Cascade",
+    descKey: "mod.masteryCascade.desc",
+    description: "When this tower ranks up from XP, {power}% chance to grant a free mastery rank to an adjacent tower.",
+    descriptionParams(mod) {
+      return { power: mod?.power };
+    },
+    powerForRarity(rarity) {
+      return LOOT.mods.powers.masteryCascade[rarity];
+    },
+    onMasteryUp(game, parent) {
+      cascadeRollAndGrant(game, parent, "mastery");
+    },
+  }),
+  domino: Object.freeze({
+    id: "domino",
+    category: "protocol",
+    nameKey: "mod.domino.name",
+    name: "Domino",
+    descKey: "mod.domino.desc",
+    description: "Raises this tower's Cascade chance by +{power}% and extends its reach to adjacent-of-adjacent towers.",
+    descriptionParams(mod) {
+      return { power: mod?.power };
+    },
+    powerForRarity(rarity) {
+      return LOOT.mods.powers.domino[rarity]?.chance;
+    },
+  }),
+  powerSurge: Object.freeze({
+    id: "powerSurge",
+    category: "protocol",
+    nameKey: "mod.powerSurge.name",
+    name: "Power Surge",
+    descKey: "mod.powerSurge.desc",
+    description: "A tower that receives a Cascade level or rank from this tower also gets a brief power surge.",
+    powerForRarity(rarity) {
+      return LOOT.mods.powers.powerSurge[rarity];
+    },
+  }),
   nonvolatile: Object.freeze({
     id: "nonvolatile",
     category: "protocol",
@@ -853,6 +955,18 @@ export function onWaveStart(game) {
       if (handler) handler(game, tower);
     }
   }
+}
+
+// Cascade hooks are per-tower: the ONE tower that just gained a level/rank. Only
+// its own mods are consulted. Fired from towers.js (paid upgrade / mastery rank-up).
+export function onLevelUp(game, tower) {
+  if (!game || !tower) return;
+  for (const id of Object.keys(tower.gearMods || {})) MODS[id]?.onLevelUp?.(game, tower);
+}
+
+export function onMasteryUp(game, tower) {
+  if (!game || !tower) return;
+  for (const id of Object.keys(tower.gearMods || {})) MODS[id]?.onMasteryUp?.(game, tower);
 }
 
 // Movement-affecting Faults compose multiplicatively. The enemy loop calls

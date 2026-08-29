@@ -18,8 +18,8 @@ import {
   aggregateGear, aggregateMods, masteryRankFor, normalizeGear, xpToNextMastery,
 } from "./equipment.js";
 import {
-  onNetworkChange, overclockFireRateMult, setForkSpawner,
-  setNetworkRefresher, setTowerStatRecomputer,
+  onLevelUp, onMasteryUp, onNetworkChange, overclockFireRateMult,
+  setCascadeGrantApplier, setForkSpawner, setNetworkRefresher, setTowerStatRecomputer,
 } from "./affixes.js";
 
 let nextTowerId = 1;
@@ -130,6 +130,7 @@ function spawnForkTower(game, parent) {
 setForkSpawner(spawnForkTower);
 setTowerStatRecomputer((game, tower) => recomputeStats(tower, game.grid, game));
 setNetworkRefresher(refreshModNetwork); // Thermal: rebuild auras + stats on an at-max crossing
+setCascadeGrantApplier(applyCascadeGrant); // Cascade: grant a free level/rank to a neighbour
 
 // Live stats = base stats scaled by level (compound growth per level).
 // SPECIALTY bonuses are PERMANENT: they follow the highest level the
@@ -153,14 +154,18 @@ function recomputeStats(tower, grid, game = null) {
     for (const mod of tower.gearMods[id]) tower._modEntries.push({ id, power: mod.power });
   }
 
-  // Mastery: permanent damage from banked XP (see masteryRankFor).
+  // Mastery: permanent damage from banked XP (see masteryRankFor). _bonusMasteryRank
+  // is an in-battle rank granted by Mastery Cascade (runtime-only, not saved; a fresh
+  // tower has none). _masteryRank stays the pure XP-derived value for the rank-up
+  // detection in updateTowers; the bonus only feeds the damage term.
   tower._masteryRank = masteryRankFor(tower.xp);
+  const effectiveMasteryRank = tower._masteryRank + (tower._bonusMasteryRank || 0);
 
   tower.damage =
     def.baseDamage *
     Math.pow(1 + g.damageGrowth, lv) *
     Math.pow(1 + (spec.damageGrowth || 0), specLv) *
-    (1 + g.mastery.damagePerRank * tower._masteryRank) *
+    (1 + g.mastery.damagePerRank * effectiveMasteryRank) *
     getTowerDamageMult(tower.type) *
     (1 + gs.damage / 100);
   tower.range =
@@ -347,6 +352,7 @@ export function tryUpgradeTower(game, tower, ownerId = game.localPlayerId) {
   tower.level += 1;
   tower.invested += cost;
   recomputeStats(tower, game.grid, game);
+  onLevelUp(game, tower); // Upgrade Cascade: may grant a free level to a neighbour
 
   game.effects.push({
     kind: "ring",
@@ -551,6 +557,38 @@ export function applyLevelUpSurge(game, tower) {
   game.coopEventSink?.({ kind: "levelUp", towerId: tower.id });
 }
 
+// Cascade applier (injected into affixes.js). Grants ONE free in-battle step to the
+// best eligible neighbour within `radiusTiles` (Chebyshev): lowest level/rank first,
+// then nearest. "level" bumps tower.level (<= parent, <= type cap); "mastery" bumps
+// a runtime _bonusMasteryRank (<= parent's effective rank). The step is applied
+// DIRECTLY here — never via tryUpgradeTower or XP — so it can't re-fire the Cascade
+// hooks (the no-recursion guarantee). Optional Power Surge on the receiver.
+function applyCascadeGrant(game, parent, kind, radiusTiles, withSurge) {
+  const parentRank = masteryRankFor(parent.xp) + (parent._bonusMasteryRank || 0);
+  let best = null, bestKey = Infinity, bestDist = Infinity;
+  for (const t of game.towers) {
+    if (t === parent) continue;
+    const d = Math.max(Math.abs(t.tileX - parent.tileX), Math.abs(t.tileY - parent.tileY));
+    if (d > radiusTiles) continue;
+    let key;
+    if (kind === "level") {
+      if (t.level >= parent.level || t.level >= getTowerLevelCap(t.type)) continue;
+      key = t.level;
+    } else {
+      const rank = masteryRankFor(t.xp) + (t._bonusMasteryRank || 0);
+      if (rank >= parentRank) continue;
+      key = rank;
+    }
+    if (key < bestKey || (key === bestKey && d < bestDist)) { best = t; bestKey = key; bestDist = d; }
+  }
+  if (!best) return false;
+  if (kind === "level") best.level += 1;
+  else best._bonusMasteryRank = (best._bonusMasteryRank || 0) + 1;
+  if (withSurge) applyLevelUpSurge(game, best); // recomputes + VFX
+  else recomputeStats(best, game.grid, game);
+  return true;
+}
+
 export function updateTowers(game, dt) {
   for (const tower of game.towers) {
     // Rank up live: kills mid-battle can push a tower over its next mastery
@@ -565,6 +603,7 @@ export function updateTowers(game, dt) {
       // rank-up if they've never seen it. First one this frame wins.
       game.pendingFirstMastery ??= tower.type;
       applyLevelUpSurge(game, tower);
+      onMasteryUp(game, tower); // Mastery Cascade: may grant a free rank to a neighbour
     } else if (masteryRankFor(tower.xp) !== tower._masteryRank) {
       // Rank changed without going up (e.g. a re-anchored mastery start): keep
       // stats honest but skip the celebration.
