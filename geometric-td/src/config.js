@@ -413,8 +413,8 @@ export const LOOT = {
   // ---- Behavioral gear modifiers (AFFIXES_PLAN) ----
   // Spec rarity names map onto the shipped names: uncommon -> enhanced,
   // epic -> prismatic, and
-  // legendary -> singularity. Exposed is global per-stack in v1, so it has
-  // no rarity table even though generated items still store that power.
+  // legendary -> singularity. Exposed and Throttle are global per-stack in
+  // v1, so they have no rarity tables even though items store their power.
   mods: {
     testDropRate: 0.5,
     powers: {
@@ -426,7 +426,7 @@ export const LOOT = {
         common: 0.01, enhanced: 0.015, rare: 0.02,
         prismatic: 0.025, singularity: 0.03,
       },
-      throttle: { perStack: 0.02, maxSlow: 0.5 },
+      throttle: { perStack: 0.02, maxSlow: 0.50 },
       exposed: { perStack: 0.02, maxStacks: 20 },
       fork: {
         common: 0.01, enhanced: 0.02, rare: 0.03,

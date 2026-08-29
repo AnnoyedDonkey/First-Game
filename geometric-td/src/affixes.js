@@ -71,7 +71,55 @@ function exposedOnHit(ctx) {
   if (stacks > 0) ctx.damage *= 1 + stacks * cfg.perStack;
 }
 
+function throttleMaxStacks() {
+  const cfg = LOOT.mods.powers.throttle;
+  return Math.ceil(cfg.maxSlow / cfg.perStack);
+}
+
+function throttleOnHit(ctx) {
+  if (!ctx?.enemy || !sourceHasMod(ctx.source, "throttle")) return;
+  addFaultStacks(ctx.enemy, "throttle", 1, throttleMaxStacks());
+}
+
 export const MODS = Object.freeze({
+  throttle: Object.freeze({
+    id: "throttle",
+    category: "fault",
+    nameKey: "mod.throttle.name",
+    name: "Throttle",
+    descKey: "mod.throttle.desc",
+    description: "Hits from this tower slow the target by {power}% per stack, up to {maxSlow}% total.",
+    descriptionParams(mod) {
+      const maxSlow = LOOT.mods.powers.throttle.maxSlow;
+      return {
+        power: Number.isFinite(mod?.power) ? mod.power : LOOT.mods.powers.throttle.perStack,
+        maxSlow: Math.round(maxSlow * 10000) / 100,
+      };
+    },
+    // Like Exposed, v1 uses one global per-stack value. It is still stored on
+    // every item so the mod data shape remains uniform across future scaling.
+    powerForRarity() {
+      return LOOT.mods.powers.throttle.perStack;
+    },
+    movementMult(fault) {
+      const cfg = LOOT.mods.powers.throttle;
+      const penalty = Math.min(cfg.maxSlow, (fault.stacks || 0) * cfg.perStack);
+      return 1 - penalty;
+    },
+    inspect(fault) {
+      const cfg = LOOT.mods.powers.throttle;
+      return {
+        ...fault,
+        movementPenalty: Math.min(cfg.maxSlow, (fault.stacks || 0) * cfg.perStack),
+      };
+    },
+    debugLines(fault) {
+      const cfg = LOOT.mods.powers.throttle;
+      const penalty = Math.min(cfg.maxSlow, (fault.stacks || 0) * cfg.perStack);
+      return [`Stacks: ${fault.stacks || 0}`, `Movement penalty: -${Math.round(penalty * 10000) / 100}%`];
+    },
+    onHit: throttleOnHit,
+  }),
   exposed: Object.freeze({
     id: "exposed",
     category: "fault",
@@ -141,6 +189,18 @@ export function onHit(ctx) {
 
 export function onKill(ctx) {
   return dispatchCombatHook("onKill", ctx);
+}
+
+// Movement-affecting Faults compose multiplicatively. The enemy loop calls
+// this once for the enemy it is already updating; no tower scan is involved.
+export function faultMovementMult(enemy) {
+  if (!enemy?.faults) return 1;
+  let mult = 1;
+  for (const id in enemy.faults) {
+    const movementMult = MODS[id]?.movementMult;
+    if (movementMult) mult *= movementMult(enemy.faults[id]);
+  }
+  return mult;
 }
 
 export function inspectFaults(enemy) {

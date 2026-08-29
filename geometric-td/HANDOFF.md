@@ -33,11 +33,14 @@ not a bus), recursion ctx threaded through `damageEnemy`/`projectiles`,
 Array/Broadcast cached on `game.modNetwork`/`tower._broadcast` (rebuilt on
 place/sell/gear-change via `refreshModNetwork`; `recomputeStats` now takes `game`).
 On-device testing via a **Mod Lab** panel gated behind Settings→DEBUG MODE. Built
-one-mod-per-ship (each its own version bump) via Codex. **P0 foundation + P1
-Exposed shipped (`2026.08.28-2`); NEXT = P2 Throttle.** Exposed = a Fault: hits
-from an Exposed-carrier stack +2%/stack damage-taken on the enemy (cap 20), all
-via an `affixes.js` `onHit` handler (enemies.js untouched); generic `enemy.faults`
-store + helpers now exist for the remaining Faults.
+one-mod-per-ship (each its own version bump) via Codex. **Shipped through
+`2026.08.28-3`: P0 foundation, P1 Exposed, P2 Throttle. NEXT = P3 Desync.**
+Faults so far: Exposed (+2%/stack damage-taken, cap 20) and Throttle (−2%/stack
+speed, cap 50%) — both stack via an `affixes.js onHit` handler; Throttle's
+movement effect is a generic `faultMovementMult(enemy)` read once in
+`enemies.js updateEnemies` (composes multiplicatively with Slow-tower slow).
+Generic `enemy.faults` store + helpers (`addFaultStacks(enemy,id,amount,maxStacks
+,meta)` etc.) back all Faults.
 
 ### Tower tray icons + firing preview (`2026.08.23-6` .. `-11`)
 The bottom-HUD tower tray shows a **live micro-sim per tower** (its real shape +

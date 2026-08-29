@@ -306,16 +306,23 @@ Legend for per-mod sections: **Files** (what Codex touches) · **Behavior** ·
   Damage taken: +40%", console clean. (`dumpFaults` reads the real-play module
   `game`; returned null only in a synthetic test that bypassed `startLevel`.)
 
-### [ ] P2 — Throttle (Fault) — movement control
-- **Behavior:** +1 stack/hit; −2%/stack speed; cap 50% slow. Effective speed
-  computed from base × modifiers so removing Throttle restores speed (spec §21) —
-  do NOT mutate `enemy.speedTilesPerSec` base. Apply in `updateEnemies` movement
-  alongside `slowFactor`/field speed.
-- **Config:** `LOOT.mods.powers.throttle {perStack, maxSlow}`.
-- **Landmines:** interaction with existing Slow-tower `slowFactor` — decide
-  stack/compose rule (recommend multiplicative, both cap-limited); document it.
-  Boss caps deferred (spec §21).
-- **Verify:** speed drops and restores exactly; coexists with Slow tower.
+### [x] P2 — Throttle (Fault) — SHIPPED `2026.08.28-3`
+- **Behavior:** +1 stack/hit from a Throttle-carrier; −2%/stack speed; cap 50%
+  (25 stacks). Effective speed computed from base × modifiers so removing Throttle
+  restores speed (spec §21) — `enemy.speedTilesPerSec` base never mutated.
+- **Config:** `LOOT.mods.powers.throttle {perStack:0.02, maxSlow:0.50}` (global,
+  like Exposed; item still stores a power).
+- **As built:** stack application in `throttleOnHit` (affixes.js); the movement
+  effect is a single generic `faultMovementMult(enemy)` helper called once in
+  `enemies.js updateEnemies` next to `slowFactor`/`fieldSpeed` — no Throttle-
+  specific branch in enemies.js. Composition with Slow-tower slow is
+  **multiplicative** (independent factors). `addFaultStacks(enemy,id,amount,
+  maxStacks,meta)` — cap is passed by the caller (throttle passes
+  `ceil(maxSlow/perStack)`).
+- **Verified in-browser:** `faultMovementMult` = 0.98/0.8/0.5(cap)/capped; a live
+  enemy's per-second advance halved at cap (67.2→33.6) and restored to 67.2 on
+  clear with base speed untouched; Slow×Throttle = 0.5×0.9 = 0.45 exactly;
+  Exposed regression intact; console clean.
 
 ### [ ] P3 — Desync (Fault) — the tricky one (spec §9–11)
 - **Behavior:** sequencing mechanic. First hit from a Desync-carrier = 1 stack,

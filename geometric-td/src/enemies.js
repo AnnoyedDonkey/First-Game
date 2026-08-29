@@ -6,7 +6,7 @@ import { ENEMIES, ECONOMY, VFX, LOOT } from "./config.js";
 import { getMoneyMult, getXpMult, getSkillShardFindMult } from "./progression.js";
 import { rollKillDrop } from "./loot.js";
 import { emitHitSparks, emitDeathShards, emitCoins } from "./particles.js";
-import { onHit, onKill } from "./affixes.js";
+import { faultMovementMult, onHit, onKill } from "./affixes.js";
 
 let nextEnemyId = 1;
 
@@ -54,13 +54,17 @@ export function updateEnemies(game, dt) {
     if (!e.alive) continue;
 
     const slow = game.time < e.slowUntil ? e.slowFactor : 1;
+    // Slow-tower and Fault movement modifiers compose multiplicatively. Their
+    // independent caps remain independent, so their combined slow can exceed
+    // either effect's cap without mutating the enemy's base speed.
+    const faultSpeed = faultMovementMult(e);
     // Field tile under the enemy right now: speed pad / tar scales movement;
     // weak / shield is stashed for damageEnemy to read this frame.
     const fpos = grid.positionOnPath(e.distance);
     const field = grid.fieldAt(Math.floor(fpos.x / grid.tileSize), Math.floor(fpos.y / grid.tileSize));
     e._fieldDmg = field ? field.damageMult : 1;
     const fieldSpeed = field ? field.speedMult : 1;
-    e.distance += e.speedTilesPerSec * slow * fieldSpeed * grid.tileSize * dt;
+    e.distance += e.speedTilesPerSec * slow * faultSpeed * fieldSpeed * grid.tileSize * dt;
     if (e.hitFlash > 0) e.hitFlash -= dt;
 
     // Regenerators heal while alive (and pulse a soft ring).
