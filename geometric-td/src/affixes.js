@@ -142,7 +142,20 @@ function overclockParams(tower) {
       if (configured.perKill === perKill) cap = Math.max(cap, configured.cap);
     }
   }
-  return cap > 0 ? { perKill, cap } : null;
+  // Hyperthread is self-only and its Rare power is deliberately 0, so its
+  // presence comes from gearMods while its cap bonus comes from the carrying
+  // item's rarity (never from the stored power magnitude).
+  let hyperthreadCapBonus = 0;
+  if (sourceHasMod(tower, "hyperthread")) {
+    for (const item of Object.values(tower.gear || {})) {
+      const configured = LOOT.mods.powers.hyperthread[item?.rarity];
+      if (!configured) continue;
+      if ((item?.mods || []).some((mod) => mod?.id === "hyperthread")) {
+        hyperthreadCapBonus = Math.max(hyperthreadCapBonus, configured.capBonus);
+      }
+    }
+  }
+  return cap > 0 ? { perKill, cap: cap + hyperthreadCapBonus } : null;
 }
 
 function overclockOnKill(ctx) {
@@ -153,7 +166,7 @@ function overclockOnKill(ctx) {
   if (!Number.isFinite(now)) return;
   const state = tower._overclock || { stacks: 0, lastStackAt: -Infinity };
   const lastStackAt = Number.isFinite(state.lastStackAt) ? state.lastStackAt : -Infinity;
-  if (now - lastStackAt < LOOT.mods.overclock.killCooldownSec) return;
+  if (!sourceHasMod(tower, "hyperthread") && now - lastStackAt < LOOT.mods.overclock.killCooldownSec) return;
 
   state.stacks = Math.max(0, state.stacks || 0) + 1;
   state.lastStackAt = now;
@@ -634,6 +647,22 @@ export const MODS = Object.freeze({
     },
     onKill: overclockOnKill,
     onWaveStart: overclockOnWaveStart,
+  }),
+  hyperthread: Object.freeze({
+    id: "hyperthread",
+    category: "protocol",
+    nameKey: "mod.hyperthread.name",
+    name: "Hyperthread",
+    descKey: "mod.hyperthread.desc",
+    description: "Overclock gains a stack on every kill instead of once per 0.5s, and raises the Overclock cap by +{power}%.",
+    descriptionParams(mod) {
+      return {
+        power: Number.isFinite(mod?.power) ? mod.power : LOOT.mods.powers.hyperthread.rare.capBonus,
+      };
+    },
+    powerForRarity(rarity) {
+      return LOOT.mods.powers.hyperthread[rarity]?.capBonus;
+    },
   }),
 });
 
