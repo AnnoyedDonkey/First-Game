@@ -81,6 +81,53 @@ function throttleOnHit(ctx) {
   addFaultStacks(ctx.enemy, "throttle", 1, throttleMaxStacks());
 }
 
+// Desync tracks the strongest active per-stack power in the sequence, so a
+// carrier's contribution is the MAX Desync power among its equipped mods.
+function strongestModPower(source, id) {
+  const list = source?.gearMods?.[id];
+  if (!Array.isArray(list)) return 0;
+  let max = 0;
+  for (const m of list) if (Number.isFinite(m.power) && m.power > max) max = m.power;
+  return max;
+}
+
+function startDesync(enemy, towerType, powerPerStack) {
+  const faults = (enemy.faults ||= {});
+  faults.desync = { stacks: 1, towerType, powerPerStack };
+}
+
+// Desync is a tower-SEQUENCING Fault (spec §9-11). Same-type hits from Desync
+// carriers build stacks and the strongest participating power wins (a weaker
+// source never lowers it). The first hit of a DIFFERENT tower type consumes the
+// whole sequence and amplifies THAT hit by stacks * powerPerStack — regardless
+// of whether the consumer carries Desync; a consuming carrier then immediately
+// opens a fresh 1-stack sequence of its own type.
+function desyncOnHit(ctx) {
+  if (!ctx?.enemy || !ctx.sourceType) return; // only real tower hits interact
+  const sType = ctx.sourceType;
+  const carrierPower = strongestModPower(ctx.source, "desync");
+  const fault = getFault(ctx.enemy, "desync");
+
+  if (fault && sType !== fault.towerType) {
+    // CONSUME: amplify this hit (composes multiplicatively with Exposed via the
+    // shared ctx.damage), clear the sequence, then maybe start a new one.
+    if (Number.isFinite(ctx.damage)) ctx.damage *= 1 + fault.stacks * fault.powerPerStack;
+    clearFault(ctx.enemy, "desync");
+    if (carrierPower > 0) startDesync(ctx.enemy, sType, carrierPower);
+    return;
+  }
+  // BUILD: only Desync carriers accumulate stacks.
+  if (carrierPower > 0) {
+    if (!fault) {
+      startDesync(ctx.enemy, sType, carrierPower); // first hit = stack 1
+    } else {
+      fault.stacks += 1;
+      // Stronger same-type source raises active power; weaker never lowers it.
+      if (carrierPower > fault.powerPerStack) fault.powerPerStack = carrierPower;
+    }
+  }
+}
+
 export const MODS = Object.freeze({
   throttle: Object.freeze({
     id: "throttle",
@@ -150,6 +197,37 @@ export const MODS = Object.freeze({
       return [`Stacks: ${fault.stacks || 0}`, `Damage taken: +${Math.round(bonus * 10000) / 100}%`];
     },
     onHit: exposedOnHit,
+  }),
+  desync: Object.freeze({
+    id: "desync",
+    category: "fault",
+    nameKey: "mod.desync.name",
+    name: "Desync",
+    descKey: "mod.desync.desc",
+    description: "Consecutive hits from this tower type build Desync; a hit from another tower type consumes it and deals +{power}% more damage per stack.",
+    descriptionParams(mod) {
+      return {
+        power: Number.isFinite(mod?.power) ? mod.power : LOOT.mods.powers.desync.rare,
+      };
+    },
+    // Desync scales with rarity (spec §5): the item's rolled power IS the
+    // per-stack bonus, so it must come from the per-rarity table, not a global.
+    powerForRarity(rarity) {
+      return LOOT.mods.powers.desync[rarity];
+    },
+    inspect(fault) {
+      return { ...fault, pendingBonus: (fault.stacks || 0) * (fault.powerPerStack || 0) };
+    },
+    debugLines(fault) {
+      const pct = (v) => Math.round((v || 0) * 10000) / 100;
+      return [
+        `Stacks: ${fault.stacks || 0}`,
+        `Tower Type: ${fault.towerType || "—"}`,
+        `Power: +${pct(fault.powerPerStack)}% per stack`,
+        `Next different-type hit: +${pct((fault.stacks || 0) * (fault.powerPerStack || 0))}%`,
+      ];
+    },
+    onHit: desyncOnHit,
   }),
 });
 

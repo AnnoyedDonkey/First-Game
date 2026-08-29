@@ -34,13 +34,16 @@ Array/Broadcast cached on `game.modNetwork`/`tower._broadcast` (rebuilt on
 place/sell/gear-change via `refreshModNetwork`; `recomputeStats` now takes `game`).
 On-device testing via a **Mod Lab** panel gated behind Settings→DEBUG MODE. Built
 one-mod-per-ship (each its own version bump) via Codex. **Shipped through
-`2026.08.28-3`: P0 foundation, P1 Exposed, P2 Throttle. NEXT = P3 Desync.**
-Faults so far: Exposed (+2%/stack damage-taken, cap 20) and Throttle (−2%/stack
-speed, cap 50%) — both stack via an `affixes.js onHit` handler; Throttle's
-movement effect is a generic `faultMovementMult(enemy)` read once in
-`enemies.js updateEnemies` (composes multiplicatively with Slow-tower slow).
-Generic `enemy.faults` store + helpers (`addFaultStacks(enemy,id,amount,maxStacks
-,meta)` etc.) back all Faults.
+`2026.08.28-4`: P0 foundation, P1 Exposed, P2 Throttle, P3 Desync — all three
+Faults done. NEXT = P4 Damage Broadcast (first Protocol, builds the aura
+system).** Faults: Exposed (+2%/stack damage-taken, cap 20), Throttle (−2%/stack
+speed, cap 50%), Desync (tower-sequencing — same-type carrier hits build stacks
+w/ strongest-power-wins; a different-type hit consumes for +stacks×power and
+clears; rarity-scaled 0.01→0.03). All stack via `affixes.js onHit` handlers;
+Throttle's movement effect is a generic `faultMovementMult(enemy)` read once in
+`enemies.js updateEnemies`. Generic `enemy.faults` store + helpers back all
+Faults. (P3 was built directly in a Claude session, not Codex, which was
+rate-limited that day — pattern unchanged.)
 
 ### Tower tray icons + firing preview (`2026.08.23-6` .. `-11`)
 The bottom-HUD tower tray shows a **live micro-sim per tower** (its real shape +

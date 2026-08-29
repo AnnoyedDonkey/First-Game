@@ -324,7 +324,24 @@ Legend for per-mod sections: **Files** (what Codex touches) · **Behavior** ·
   clear with base speed untouched; Slow×Throttle = 0.5×0.9 = 0.45 exactly;
   Exposed regression intact; console clean.
 
-### [ ] P3 — Desync (Fault) — the tricky one (spec §9–11)
+### [x] P3 — Desync (Fault) — SHIPPED `2026.08.28-4` (built directly, Codex was rate-limited)
+- **As built:** `desyncOnHit` in affixes.js. `enemy.faults.desync = {stacks,
+  towerType, powerPerStack}`. Same-type carrier hits build stacks and the
+  strongest participating power wins (weaker never lowers); the first
+  different-type hit (any tower, carrier or not) consumes and amplifies THAT hit
+  by `stacks × powerPerStack` (composes multiplicatively with Exposed via shared
+  `ctx.damage`), clears, and a consuming carrier opens a fresh 1-stack sequence.
+  Same-type non-carrier / sourceless hits are no-ops. **First rarity-scaled mod:**
+  `powerForRarity` reads `LOOT.mods.powers.desync` (0.01→0.03), item stores the
+  rolled power. Config table already existed (P0 scaffold) — only affixes.js
+  changed.
+- **Verified in-browser (full §39 checklist):** start=1; same-type accrues;
+  stronger 0.01→0.02 upgrades, weaker 0.01 never downgrades; non-carrier
+  different-type consume = +6% then cleared; carrier-consumer restarts at 1×3%;
+  same-type non-carrier no-op; per-rarity power (rare 0.02 / sing 0.03); save
+  round-trip keeps power; §30 debug lines correct; Exposed+Throttle regressions
+  intact; self-test green; console clean.
+- (original spec retained below)
 - **Behavior:** sequencing mechanic. First hit from a Desync-carrier = 1 stack,
   records `towerType` + active `powerPerStack`. Same-type hits add stacks; a
   **stronger** same-type Desync raises active power, a weaker one never lowers it
