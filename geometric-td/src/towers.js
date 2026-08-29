@@ -15,8 +15,9 @@ import {
 } from "./progression.js";
 import { emitHitSparks, emitLevelUpSplash } from "./particles.js";
 import {
-  aggregateGear, masteryRankFor, normalizeGear, xpToNextMastery,
+  aggregateGear, aggregateMods, masteryRankFor, normalizeGear, xpToNextMastery,
 } from "./equipment.js";
+import { onNetworkChange } from "./affixes.js";
 
 let nextTowerId = 1;
 const rosterCounters = {}; // per-rosterPrefix counters for names like Laser-01
@@ -72,14 +73,21 @@ export function createTower(
 // Re-apply skill-tree modifiers to every deployed tower (used after
 // buying a skill so the effect is immediate).
 export function refreshTowerStats(game) {
-  for (const t of game.towers) recomputeStats(t, game.grid);
+  for (const t of game.towers) recomputeStats(t, game.grid, game);
+}
+
+// Placement/removal/gear changes are the only times Protocol relationships
+// are resolved. The hook rebuilds caches, then every tower reads them in O(1).
+export function refreshModNetwork(game) {
+  onNetworkChange(game);
+  refreshTowerStats(game);
 }
 
 // Live stats = base stats scaled by level (compound growth per level).
 // SPECIALTY bonuses are PERMANENT: they follow the highest level the
 // tower has EVER reached (maxUnlockedLevel), so a maxed veteran keeps
 // its full specialty even while re-leveling from 1 in a new battle.
-function recomputeStats(tower, grid) {
+function recomputeStats(tower, grid, game = null) {
   const def = tower.def;
   const g = TOWER_UPGRADES;
   const spec = g.specialties[tower.type] || {};
@@ -91,6 +99,11 @@ function recomputeStats(tower, grid) {
   const gs = gear.stats;
   tower.gearStats = gs;
   tower.gearUniques = gear.uniques;
+  tower.gearMods = aggregateMods(tower.gear);
+  tower._modEntries = [];
+  for (const id in tower.gearMods) {
+    for (const mod of tower.gearMods[id]) tower._modEntries.push({ id, power: mod.power });
+  }
 
   // Mastery: permanent damage from banked XP (see masteryRankFor).
   tower._masteryRank = masteryRankFor(tower.xp);
@@ -153,6 +166,17 @@ function recomputeStats(tower, grid) {
   tower.xpGainMult = 1 + gs.xpGain / 100;
   tower.shardFindMult = 1 + gs.shardFind / 100;
   tower.bountyMult = 1 + gs.bounty / 100;
+
+  // Canonical effective-stat order: base -> level growth -> specialty ->
+  // mastery -> global skills -> normal gear -> Array -> Broadcast -> conduit
+  // -> surge. Enemy-side Faults never enter this tower pipeline.
+  const array = game?.modNetwork?.array?.[tower.type];
+  const arrayBonus = (array?.count || 0) * (array?.effectivePower || 0);
+  const broadcast = tower._broadcast || {};
+  tower.damage *= (1 + arrayBonus) * (1 + (broadcast.damage || 0));
+  tower.fireInterval /= 1 + (broadcast.fireRate || 0);
+  tower.range *= 1 + (broadcast.range || 0);
+  tower.critChance = Math.min(1, tower.critChance + (broadcast.crit || 0));
 
   // Conduit build tile: a tower standing on one gains its multipliers. Applied
   // last so it scales the fully-computed stats; recomputeStats runs on every
@@ -272,7 +296,7 @@ export function tryUpgradeTower(game, tower, ownerId = game.localPlayerId) {
   game.wallets[ownerId] -= cost;
   tower.level += 1;
   tower.invested += cost;
-  recomputeStats(tower, game.grid);
+  recomputeStats(tower, game.grid, game);
 
   game.effects.push({
     kind: "ring",
@@ -315,6 +339,7 @@ export function placeTower(
   const veteran = takeRosterUnit(type, deployedNames, game.players?.[ownerId]?.roster);
   const tower = createTower(type, tileX, tileY, game.grid, veteran, ownerId);
   game.towers.push(tower);
+  refreshModNetwork(game);
   (game.typesUsed ||= new Set()).add(type); // B5: survives sells, unlike scanning game.towers
 
   // Placement flash so building feels responsive.
@@ -344,6 +369,7 @@ export function sellTower(game, tower, ownerId = game.localPlayerId) {
   const refund = sellValueOf(tower);
   game.wallets[ownerId] += refund;
   game.towers = game.towers.filter((t) => t !== tower);
+  refreshModNetwork(game);
   game.effects.push({
     kind: "ring",
     x: tower.pos.x,
@@ -470,7 +496,7 @@ function triggerLevelUpSurge(game, tower) {
 export function applyLevelUpSurge(game, tower) {
   tower._surgeUntil = game.time + VFX.levelUp.buffDuration;
   tower._surgeActive = true;
-  recomputeStats(tower, game.grid); // refreshes _masteryRank AND applies the surge buff
+  recomputeStats(tower, game.grid, game); // refreshes _masteryRank AND applies the surge buff
   triggerLevelUpSurge(game, tower);
   game.coopEventSink?.({ kind: "levelUp", towerId: tower.id });
 }
@@ -492,13 +518,13 @@ export function updateTowers(game, dt) {
     } else if (masteryRankFor(tower.xp) !== tower._masteryRank) {
       // Rank changed without going up (e.g. a re-anchored mastery start): keep
       // stats honest but skip the celebration.
-      recomputeStats(tower, game.grid);
+      recomputeStats(tower, game.grid, game);
     }
 
     // Expire the surge boost when its timer runs out (recompute drops the buff).
     if (tower._surgeActive && game.time >= tower._surgeUntil) {
       tower._surgeActive = false;
-      recomputeStats(tower, game.grid);
+      recomputeStats(tower, game.grid, game);
     }
 
     tower.cooldown -= dt;
@@ -621,6 +647,11 @@ function fireShot(game, tower, target, targetPos, damageScale) {
   const rng = game.rng || Math.random;
   const crit = rng() < tower.critChance;
   const damage = tower.damage * damageScale * (crit ? 1 + tower.critDamage : 1);
+  // One recursion context per originating shot, reused for every pierced or
+  // splashed victim. Triggered effects derive their own guarded context.
+  const hitCtx = {
+    source: tower, sourceType: tower.type, triggered: false, canProc: true,
+  };
   // While a level-up surge is active, the tower's shots glow gold. Only the
   // def-colored visuals are retinted; white-hot cores (railgun/crit) stay white.
   const shotColor = tower._surgeActive ? VFX.levelUp.color : def.color;
@@ -664,7 +695,7 @@ function fireShot(game, tower, target, targetPos, damageScale) {
     });
     for (const victim of victims) {
       if (crit) emitCritVfx(game, tower, victim.pos.x, victim.pos.y);
-      damageEnemy(game, victim.enemy, tower, damage);
+      damageEnemy(game, victim.enemy, tower, damage, hitCtx);
     }
 
   } else if (tower.type === "railgun") {
@@ -733,7 +764,7 @@ function fireShot(game, tower, target, targetPos, damageScale) {
       const ramp = hasUnique(tower, "cascadeRail")
         ? 1 + i * LOOT.combat.cascadeDamageRamp / 100
         : 1;
-      damageEnemy(game, v.enemy, tower, damage * ramp);
+      damageEnemy(game, v.enemy, tower, damage * ramp, hitCtx);
     }
     game.springGrid.applyShock(
       tower.pos.x + dirX * tower.range * 0.5,
@@ -743,11 +774,11 @@ function fireShot(game, tower, target, targetPos, damageScale) {
 
   } else if (tower.type === "pulse") {
     // Slow homing orb that explodes on impact (see projectiles.js).
-    spawnPulseOrb(game, tower, target, { damage, crit, color: shotColor });
+    spawnPulseOrb(game, tower, target, { damage, crit, color: shotColor, ctx: hitCtx });
 
   } else if (tower.type === "rocket") {
     // Global-range artillery: lob an explosive rocket at the target.
-    spawnRocket(game, tower, target, { damage, crit, color: shotColor });
+    spawnRocket(game, tower, target, { damage, crit, color: shotColor, ctx: hitCtx });
 
   } else if (tower.type === "slow") {
     // Instant zap: light damage + slow debuff.
@@ -795,7 +826,7 @@ function fireShot(game, tower, target, targetPos, damageScale) {
       );
     }
     if (crit) emitCritVfx(game, tower, targetPos.x, targetPos.y);
-    damageEnemy(game, target, tower, damage);
+    damageEnemy(game, target, tower, damage, hitCtx);
   }
 
   if (eventSink) {

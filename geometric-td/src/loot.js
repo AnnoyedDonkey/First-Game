@@ -11,12 +11,13 @@
 //
 // Item shape (LOOT_DESIGN.md §11):
 //   { id, slot, rarity, towerType, ilvl, reqLevel, reqMastery,
-//     affixes: [{ stat, value }, ...], unique }
+//     affixes: [{ stat, value }, ...], mods: [{ id, power }, ...], unique }
 //   towerType: null = universal (any tower); else locked to one type.
 //   unique:    null, a minor id (Prismatic), or a named id (Singularity).
 // ============================================================
 
 import { LOOT } from "./config.js";
+import { MODS } from "./affixes.js";
 
 // The four typed slots (§4a) and the five tower types gear can lock to.
 export const SLOTS = ["optic", "emitter", "capacitor", "frame"];
@@ -247,6 +248,20 @@ function affixCountFor(rarity, rng) {
   return Array.isArray(c) ? c[0] + Math.floor(rng() * (c[1] - c[0] + 1)) : c;
 }
 
+// P0's registry is empty, so this returns before consuming RNG and generated
+// loot stays behaviorally unchanged. Once a definition ships, its rolled
+// power comes from config and is stored on the item permanently.
+function rollMods(rarity, rng, pinned) {
+  if (Array.isArray(pinned)) {
+    return pinned.map((mod) => ({ id: mod.id, power: mod.power }));
+  }
+  const ids = Object.keys(MODS);
+  if (ids.length === 0 || rng() >= LOOT.mods.testDropRate) return [];
+  const id = pick(ids, rng);
+  const power = LOOT.mods.powers[id]?.[rarity];
+  return Number.isFinite(power) ? [{ id, power }] : [];
+}
+
 // Derive the career-maxLevel requirement for common/enhanced from ilvl
 // (1..reqLevelMax). Rare+ gate on Mastery instead, so their reqLevel is 0.
 function reqLevelFor(rarity, ilvl) {
@@ -325,6 +340,7 @@ export function generateItem(opts = {}) {
     reqLevel: reqLevelFor(rarity, ilvl),
     reqMastery: g.reqMastery[rarity],
     affixes,
+    mods: rollMods(rarity, rng, opts.mods),
     unique,
   };
 }
@@ -335,9 +351,11 @@ export function generateItem(opts = {}) {
 export function itemLabel(item) {
   const lock = item.towerType ? item.towerType : "universal";
   const aff = item.affixes.map((a) => `${a.stat} ${a.value}`).join(", ");
+  const mods = (item.mods || []).map((mod) => `${mod.id} ${mod.power}`).join(", ");
   const uniq = item.unique ? ` {${item.unique}}` : "";
   const req = item.reqMastery ? `★${item.reqMastery}` : `Lv${item.reqLevel}`;
-  return `[${item.rarity}] ${item.slot}/${lock} ilvl${item.ilvl} req${req} — ${aff}${uniq}`;
+  return `[${item.rarity}] ${item.slot}/${lock} ilvl${item.ilvl} req${req} — ${aff}` +
+    `${mods ? ` / MOD ${mods}` : ""}${uniq}`;
 }
 
 // Batch-generate and assert the design's invariants (§4b/§4c/§11). Returns a
@@ -348,6 +366,7 @@ export function lootSelfTest(n = 20000, seed = 12345) {
   const g = LOOT.gen;
   const byRarity = {};
   const bySlot = {};
+  const registeredMods = new Set(Object.keys(MODS));
   let universalCount = 0;
 
   for (let i = 0; i < n; i++) {
@@ -363,6 +382,15 @@ export function lootSelfTest(n = 20000, seed = 12345) {
     if (!RARITIES.includes(it.rarity)) throw new Error(`bad rarity: ${it.rarity}`);
     if (it.towerType !== null && !TOWER_TYPES.includes(it.towerType)) {
       throw new Error(`bad towerType: ${it.towerType}`);
+    }
+    if (!Array.isArray(it.mods)) throw new Error("mods must be an array");
+    if (registeredMods.size === 0 && it.mods.length !== 0) {
+      throw new Error("empty mod registry produced a mod");
+    }
+    for (const mod of it.mods) {
+      if (!registeredMods.has(mod.id) || !Number.isFinite(mod.power)) {
+        throw new Error(`bad mod: ${mod.id}`);
+      }
     }
 
     // Affix count matches rarity (§4b).

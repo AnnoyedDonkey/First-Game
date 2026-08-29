@@ -14,14 +14,19 @@ import {
   GAME_SPEED_SKILL, LEADERBOARD, NARRATIVE,
 } from "./config.js";
 import { levelMilestonesFor, updateMilestoneResults } from "./milestones.js";
-import { loadSave, writeSave, clearSave } from "./save.js";
+import {
+  loadSave, writeSave, clearSave, backfillItemSaveDefaults,
+  snapshotSaveForModLab, restoreModLabSaveSnapshot, hasModLabSaveSnapshot,
+} from "./save.js";
 import { setActiveLang, t } from "./i18n.js";
 import { dropIlvl, generateGuaranteedDrop, generateItem, RARITIES } from "./loot.js";
 import {
   canEquipItem, emptyGear, GEAR_SLOTS, masteryRankFor, normalizeGear,
 } from "./equipment.js";
+import { getMod } from "./affixes.js";
 
 let state = loadSave();
+let gearChangeHandler = null;
 migrateSkills();
 // Belt-and-suspenders alongside save.js's DEFAULT_SAVE merge: GitHub
 // Pages can briefly serve a stale save.js from one file while ui.js/
@@ -68,6 +73,7 @@ state.skills ||= {};
 migrateSkillGraph(); // fold pre-per-tower skills into the new tower branches
 migrateFreeSkillRoots(); // refund formerly paid branch-head unlocks once
 backfillGear();
+backfillItemMods();
 migrateRosterNames();
 state.narrativeSeen ||= {};
 backfillNarrativeSeen(); // P2: spare existing players a retroactive story dump
@@ -88,6 +94,20 @@ setActiveLang(state.lang);
 function backfillGear() {
   state.roster ||= [];
   for (const rec of state.roster) rec.gear = normalizeGear(rec.gear);
+}
+
+// Items live in four save branches. Default the additive field in memory but
+// do not write a migration: older bytes remain untouched until the player next
+// performs an ordinary save-producing action.
+function backfillItemMods() {
+  const visit = (item) => backfillItemSaveDefaults(item);
+  for (const item of state.stash || []) visit(item);
+  for (const item of state.pendingLoot || []) visit(item);
+  for (const item of state.store?.stock || []) visit(item);
+  for (const rec of state.roster || []) {
+    const gear = normalizeGear(rec.gear);
+    for (const slot of GEAR_SLOTS) visit(gear[slot]);
+  }
 }
 
 // Older saves stored skills as an array of owned ids; tiers store
@@ -262,6 +282,12 @@ function backfillTowerIntros() {
 
 export function getProgress() {
   return state;
+}
+
+// Main installs the one live-battle bridge; menu-only consumers can equip
+// normally without importing or owning a game object.
+export function setGearChangeHandler(fn) {
+  gearChangeHandler = typeof fn === "function" ? fn : null;
 }
 
 // ---------- Skill tree (5 tiers per skill) ----------
@@ -525,6 +551,54 @@ export function setDebugMode(on) {
   writeSave(state);
 }
 
+// On-device Mod Lab safety: the save module keeps the original serialized
+// bytes under a separate key, so restore remains exact across reloads.
+export function snapshotModLabSave() {
+  return snapshotSaveForModLab();
+}
+
+export function hasModLabSnapshot() {
+  return hasModLabSaveSnapshot();
+}
+
+export function restoreModLabSave() {
+  const raw = restoreModLabSaveSnapshot();
+  if (raw === null) return { ok: false, reason: "missing" };
+  state = loadSave();
+  backfillGear();
+  backfillItemMods();
+  return { ok: true, bytes: raw.length };
+}
+
+// Shared by the console handles and on-device Lab. A pinned id is allowed even
+// before it exists in MODS; the resulting item is inert but exercises storage,
+// equip, tooltip, and save plumbing ahead of the behavior phase.
+export function debugSpawnMod(id, powerOrRarity = "common", options = {}) {
+  const modId = typeof id === "string" ? id.trim() : "";
+  if (!/^[A-Za-z0-9_-]+$/.test(modId)) return { ok: false, reason: "modId" };
+  const rarity = typeof powerOrRarity === "string"
+    ? powerOrRarity
+    : (options.rarity || "common");
+  if (!RARITIES.includes(rarity)) return { ok: false, reason: "rarity" };
+  const power = typeof powerOrRarity === "number"
+    ? powerOrRarity
+    : LOOT.mods.powers[modId]?.[rarity];
+  if (!Number.isFinite(power)) return { ok: false, reason: "power" };
+  const slot = options.slot || GEAR_SLOTS[0];
+  const towerType = options.towerType ?? null;
+  if (!GEAR_SLOTS.includes(slot) || (towerType !== null && !Object.hasOwn(TOWERS, towerType))) {
+    return { ok: false, reason: "item" };
+  }
+  const item = generateItem({
+    rarity, slot, towerType, ilvl: options.ilvl,
+    mods: [{ id: modId, power }],
+  });
+  state.stash ||= [];
+  state.stash.push(item);
+  writeSave(state);
+  return { ok: true, item, registered: !!getMod(modId) };
+}
+
 // UI language. getLang/setLang persist the choice and re-point the i18n
 // engine (which re-applies static markup and notifies UI to re-render).
 export function getLang() {
@@ -594,9 +668,10 @@ function safeWhole(value, min, max = Number.MAX_SAFE_INTEGER) {
 function validCoopItem(item) {
   const fields = [
     "id", "slot", "rarity", "towerType", "ilvl", "reqLevel",
-    "reqMastery", "affixes", "unique",
+    "reqMastery", "affixes", "mods", "unique",
   ];
-  if (!exactKeys(item, fields) ||
+  const legacyFields = fields.filter((field) => field !== "mods");
+  if ((!exactKeys(item, fields) && !exactKeys(item, legacyFields)) ||
       typeof item.id !== "string" || item.id.length < 1 ||
       item.id.trim() !== item.id ||
       item.id.length > COOP.progressionExchange.maxItemIdLength ||
@@ -605,7 +680,8 @@ function validCoopItem(item) {
       !safeWhole(item.ilvl, 1, LOOT.gen.ilvlMax) ||
       !safeWhole(item.reqLevel, 0, LOOT.gen.reqLevelMax) ||
       !safeWhole(item.reqMastery, 0, TOWER_UPGRADES.mastery.maxRanks) ||
-      !Array.isArray(item.affixes)) return false;
+      !Array.isArray(item.affixes) ||
+      (item.mods !== undefined && !Array.isArray(item.mods))) return false;
 
   const expectedLevel = item.rarity === "common" || item.rarity === "enhanced"
     ? Math.max(1, Math.min(
@@ -633,6 +709,13 @@ function validCoopItem(item) {
     const upper = Math.round(hi * (item.towerType === null ? 1 : LOOT.gen.restrictedRollBonus));
     if (affix.value < lo || affix.value > upper) return false;
     seenStats.add(affix.stat);
+  }
+
+  const seenMods = new Set();
+  for (const mod of item.mods || []) {
+    if (!exactKeys(mod, ["id", "power"]) || typeof mod.id !== "string" ||
+        !getMod(mod.id) || !Number.isFinite(mod.power) || seenMods.has(mod.id)) return false;
+    seenMods.add(mod.id);
   }
 
   const minor = LOOT.gen.uniques.minor.find((unique) => unique.id === item.unique);
@@ -1160,6 +1243,7 @@ export function buyAutoJunkTier() {
 // { item, dest: "equipped"|"junked"|"stash"|"pending", towerName?, value?,
 // displaced? } for the end-of-battle summary. Callers writeSave.
 function bankEarnedItem(item) {
+  backfillItemSaveDefaults(item);
   if (!(LOOT.autoEquip?.enabled ?? false)) {
     state.pendingLoot.push(structuredClone(item));
     return { item, dest: "pending" };
@@ -1169,6 +1253,7 @@ function bankEarnedItem(item) {
     rec.gear = normalizeGear(rec.gear);
     const previous = rec.gear[item.slot];
     rec.gear[item.slot] = structuredClone(item);
+    gearChangeHandler?.(rec.name);
     const placement = { item, dest: "equipped", towerName: rec.name };
     if (previous) placement.displaced = addToStashOrPending(previous);
     return placement;
@@ -1212,6 +1297,7 @@ export function recordRunLoot(game) {
 // Equipment writes are intentionally small and independent from the stash
 // (P4). The returned previous item lets a later UI move it back to storage.
 export function equipItem(towerName, item) {
+  backfillItemSaveDefaults(item);
   const rec = state.roster.find((r) => r.name === towerName);
   const check = canEquipItem(rec, item);
   if (!check.ok) return check;
@@ -1219,6 +1305,7 @@ export function equipItem(towerName, item) {
   const previous = rec.gear[item.slot];
   rec.gear[item.slot] = structuredClone(item);
   writeSave(state);
+  gearChangeHandler?.(towerName);
   return { ok: true, item: rec.gear[item.slot], previous };
 }
 
@@ -1229,6 +1316,7 @@ export function unequipItem(towerName, slot) {
   const previous = rec.gear[slot];
   rec.gear[slot] = null;
   writeSave(state);
+  gearChangeHandler?.(towerName);
   return { ok: true, previous };
 }
 
@@ -1246,6 +1334,7 @@ export function debugGrantGear(towerName, options = {}) {
   const previous = rec.gear[item.slot];
   rec.gear[item.slot] = structuredClone(item);
   writeSave(state);
+  gearChangeHandler?.(towerName);
   return { ok: true, item: rec.gear[item.slot], previous, generated: item };
 }
 
@@ -1403,6 +1492,7 @@ export function resetProgress() {
   state.endlessRewards ||= {};
   state.seenLoot ||= [];
   backfillGear();
+  backfillItemMods();
   migrateRosterNames();
 }
 

@@ -14,7 +14,7 @@ const ORB = {
 
 export function spawnPulseOrb(game, tower, targetEnemy, shot) {
   const start = { x: tower.pos.x, y: tower.pos.y };
-  game.projectiles.push({
+  const projectile = {
     kind: "orb",
     x: start.x,
     y: start.y,
@@ -26,14 +26,18 @@ export function spawnPulseOrb(game, tower, targetEnemy, shot) {
     splashRadius: tower.splashRadius,
     color: shot.color || tower.def.color, // gold while the tower is surging (level-up buff)
     sourceTower: tower,
-  });
+  };
+  // Combat-only recursion context must not ride the serialized co-op cosmetic
+  // projectile payload (it contains a live tower reference).
+  Object.defineProperty(projectile, "_hitCtx", { value: shot.ctx, writable: true });
+  game.projectiles.push(projectile);
 }
 
 // A rocket: like a pulse orb but faster and launched from ANYWHERE at the
 // target (the Rocket Launcher has global range). Explodes with splash on
 // impact via the shared explode() below.
 export function spawnRocket(game, tower, targetEnemy, shot) {
-  game.projectiles.push({
+  const projectile = {
     kind: "rocket",
     x: tower.pos.x,
     y: tower.pos.y,
@@ -45,7 +49,9 @@ export function spawnRocket(game, tower, targetEnemy, shot) {
     splashRadius: tower.splashRadius,
     color: shot.color || tower.def.color, // gold while the tower is surging (level-up buff)
     sourceTower: tower,
-  });
+  };
+  Object.defineProperty(projectile, "_hitCtx", { value: shot.ctx, writable: true });
+  game.projectiles.push(projectile);
 }
 
 export function updateProjectiles(game, dt) {
@@ -114,7 +120,7 @@ function explode(game, orb) {
       const dx = pos.x - orb.x;
       const dy = pos.y - orb.y;
       if (dx * dx + dy * dy <= orb.splashRadius * orb.splashRadius) {
-        damageEnemy(game, e, orb.sourceTower, orb.damage);
+        damageEnemy(game, e, orb.sourceTower, orb.damage, orb._hitCtx);
       }
     }
   }
@@ -133,6 +139,10 @@ function explodeBomblets(game, orb) {
   const radius = orb.splashRadius * LOOT.combat.fractalRadius / 100;
   const damage = orb.damage * LOOT.combat.fractalDamage / 100;
   const sourceAimAngle = orb.cosmetic ? orb.sourceAimAngle : orb.sourceTower.aimAngle;
+  const hitCtx = orb.cosmetic ? null : {
+    source: orb.sourceTower, sourceType: orb.sourceTower.type,
+    triggered: true, canProc: false,
+  };
   for (let i = 0; i < count; i++) {
     const angle = (Math.PI * 2 * i) / count + sourceAimAngle;
     const x = orb.x + Math.cos(angle) * offset;
@@ -149,7 +159,7 @@ function explodeBomblets(game, orb) {
       const dx = pos.x - x;
       const dy = pos.y - y;
       if (dx * dx + dy * dy <= radius * radius) {
-        damageEnemy(game, enemy, orb.sourceTower, damage);
+        damageEnemy(game, enemy, orb.sourceTower, damage, hitCtx);
       }
     }
   }

@@ -410,6 +410,50 @@ export const LOOT = {
     cascadeDamageRamp: 15,       // added damage per victim already pierced
   },
 
+  // ---- Behavioral gear modifiers (AFFIXES_PLAN P0) ----
+  // Spec rarity names map onto the shipped names: uncommon -> enhanced,
+  // epic -> prismatic, and
+  // legendary -> singularity. The empty P0 registry leaves this inert.
+  mods: {
+    testDropRate: 0.5,
+    powers: {
+      array: {
+        common: 0.03, enhanced: 0.05, rare: 0.07,
+        prismatic: 0.09, singularity: 0.12,
+      },
+      desync: {
+        common: 0.01, enhanced: 0.015, rare: 0.02,
+        prismatic: 0.025, singularity: 0.03,
+      },
+      throttle: { perStack: 0.02, maxSlow: 0.5 },
+      exposed: { perStack: 0.02, maxStacks: 20 },
+      fork: {
+        common: 0.01, enhanced: 0.02, rare: 0.03,
+        prismatic: 0.04, singularity: 0.05,
+      },
+      damageBroadcast: {
+        common: 0.08, enhanced: 0.12, rare: 0.16,
+        prismatic: 0.20, singularity: 0.25,
+      },
+      fireRateBroadcast: {
+        common: 0.08, enhanced: 0.12, rare: 0.16,
+        prismatic: 0.20, singularity: 0.25,
+      },
+      rangeBroadcast: {
+        common: 0.08, enhanced: 0.12, rare: 0.16,
+        prismatic: 0.20, singularity: 0.25,
+      },
+      critBroadcast: {
+        common: 0.04, enhanced: 0.06, rare: 0.08,
+        prismatic: 0.10, singularity: 0.12,
+      },
+    },
+    arrayExtraSourceBonus: 0.01,
+    broadcastRadiusTiles: 3,
+    broadcastSelfBuffs: false,
+    fork: { levelBelowParent: 1, minLevel: 1 },
+  },
+
   // ---- Item generator (P2, see LOOT_DESIGN.md §4-§6 + loot.js) ----
   // Everything the pure generator rolls from. loot.js is logic only; every
   // number a designer would tune lives here.

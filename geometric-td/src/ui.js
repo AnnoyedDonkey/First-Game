@@ -5,7 +5,7 @@
 import {
   TOWERS, ENEMIES, SKILLS, SKILL_VALUES, TOWER_UPGRADES, LOOT,
   SKILL_BRANCH_COLORS, SKILL_TREE_VIEWBOX, FEEDBACK, TUTORIAL, NARRATIVE,
-  SHAPE_SIDES, VFX, COOP, DEBUG,
+  SHAPE_SIDES, VFX, COOP, DEBUG, TOWER_SKILL_LAYOUT,
 } from "./config.js";
 import {
   onTutorialChange, isTutorialActive, currentStep as currentTutorialStep,
@@ -37,20 +37,24 @@ import {
   getPlayerName, hasPlayerName,
   getBarksEnabled, setBarksEnabled,
   getVisualEffectsMode, setVisualEffectsMode as saveVisualEffectsMode,
-  getDebugMode, setDebugMode,
+  getDebugMode, setDebugMode, debugSpawnMod,
+  snapshotModLabSave, restoreModLabSave, hasModLabSnapshot,
+  seedRoster, seedSkills,
   getLang, setLang,
 } from "./progression.js";
 import { setVisualEffectsMode as applyVisualEffectsMode } from "./performance.js";
 import { t, tf, onLangChange } from "./i18n.js";
 import {
-  canEquipItem, GEAR_SLOTS, normalizeGear, masteryRankFor as gearMasteryRankFor,
+  canEquipItem, GEAR_SLOTS, normalizeGear, itemMods,
+  masteryRankFor as gearMasteryRankFor,
 } from "./equipment.js";
 import {
   isEnabled as lbEnabled, getNickname, setNickname,
   fetchAllBoards, publishAllLocalBests,
 } from "./leaderboard.js";
 import { WORLDS } from "./levels.js";
-import { RARITIES } from "./loot.js";
+import { RARITIES, SLOTS, TOWER_TYPES } from "./loot.js";
+import { getMod } from "./affixes.js";
 import { enemyPosition } from "./enemies.js";
 import { ENEMY_LOOK } from "./renderer.js";
 import {
@@ -119,6 +123,12 @@ const el = {
   settingsLanguage: document.getElementById("settings-language"),
   settingsReset: document.getElementById("settings-reset"),
   settingsClose: document.getElementById("settings-close"),
+  settingsModLab: document.getElementById("settings-mod-lab"),
+  modLabOverlay: document.getElementById("mod-lab-overlay"),
+  modLabForm: document.getElementById("mod-lab-form"),
+  modLabStatus: document.getElementById("mod-lab-status"),
+  modLabRestore: document.getElementById("mod-lab-restore"),
+  modLabClose: document.getElementById("mod-lab-close"),
   worldPrev: document.getElementById("world-prev"),
   worldNext: document.getElementById("world-next"),
   worldName: document.getElementById("world-name"),
@@ -1326,7 +1336,99 @@ function renderSettings() {
   settingValue(el.settingsEffects, effectModeLabel(effects), effects !== "reduced");
   settingValue(el.settingsDebug, debugEnabled ? on : off, debugEnabled);
   settingValue(el.settingsLanguage, getLang() === "fr" ? "FR" : "EN");
+  el.settingsModLab.classList.toggle("hidden", !debugEnabled);
+  if (!debugEnabled) el.modLabOverlay.classList.add("hidden");
 }
+
+function optionList(values, label) {
+  return values.map((value) =>
+    `<option value="${value}">${escapeHtml(label ? label(value) : value.toUpperCase())}</option>`
+  ).join("");
+}
+
+function masteryXpForRank(rank) {
+  if (rank <= 0) return 0;
+  const m = TOWER_UPGRADES.mastery;
+  return m.xpStart + m.baseXpPerRank * rank + m.xpRankIncrement * rank * (rank - 1) / 2;
+}
+
+function renderModLab() {
+  const maxCareerLevel = TOWER_UPGRADES.maxLevel + TOWER_SKILL_LAYOUT.levelSteps;
+  const modIds = Object.keys(LOOT.mods.powers);
+  el.modLabForm.innerHTML =
+    `<div class="mod-lab-section"><div class="settings-section-label">SPAWN MOD GEAR</div>` +
+    `<label>MOD ID<input id="mod-lab-id" list="mod-lab-ids" value="${modIds[0] || "_test"}" autocomplete="off"></label>` +
+    `<datalist id="mod-lab-ids">${optionList(modIds)}</datalist>` +
+    `<div class="mod-lab-grid"><label>RARITY<select id="mod-lab-rarity">${optionList(RARITIES)}</select></label>` +
+    `<label>POWER (DECIMAL)<input id="mod-lab-power" type="number" step="any" placeholder="CONFIG VALUE"></label>` +
+    `<label>SLOT<select id="mod-lab-slot">${optionList(SLOTS)}</select></label>` +
+    `<label>TOWER TYPE<select id="mod-lab-tower"><option value="">UNIVERSAL</option>${optionList(TOWER_TYPES, (type) => TOWERS[type].name.toUpperCase())}</select></label></div>` +
+    `<button id="mod-lab-spawn" class="big-button" type="button">SPAWN TO STASH</button></div>` +
+    `<div class="mod-lab-section"><div class="settings-section-label">SEED TEST ROSTER</div>` +
+    `<div class="mod-lab-grid"><label>MAX LEVEL<input id="mod-lab-level" type="number" min="1" max="${maxCareerLevel}" value="${maxCareerLevel}"></label>` +
+    `<label>MASTERY RANK<input id="mod-lab-mastery" type="number" min="0" max="${TOWER_UPGRADES.mastery.maxRanks}" value="${TOWER_UPGRADES.mastery.maxRanks}"></label></div>` +
+    `<button id="mod-lab-seed" class="big-button" type="button">SEED ALL 5 TYPES</button></div>`;
+
+  document.getElementById("mod-lab-spawn").addEventListener("click", () => {
+    const id = document.getElementById("mod-lab-id").value;
+    const rarity = document.getElementById("mod-lab-rarity").value;
+    const rawPower = document.getElementById("mod-lab-power").value.trim();
+    const powerOrRarity = rawPower === "" ? rarity : Number(rawPower);
+    const result = debugSpawnMod(id, powerOrRarity, {
+      rarity,
+      slot: document.getElementById("mod-lab-slot").value,
+      towerType: document.getElementById("mod-lab-tower").value || null,
+    });
+    el.modLabStatus.textContent = result.ok
+      ? `${result.item.mods[0].id.toUpperCase()} GEAR ADDED TO STASH`
+      : `COULD NOT SPAWN: ${result.reason.toUpperCase()}`;
+  });
+
+  document.getElementById("mod-lab-seed").addEventListener("click", () => {
+    const maxLevel = Math.max(1, Math.min(
+      maxCareerLevel, Number(document.getElementById("mod-lab-level").value) || 1
+    ));
+    const mastery = Math.max(0, Math.min(
+      TOWER_UPGRADES.mastery.maxRanks,
+      Number(document.getElementById("mod-lab-mastery").value) || 0
+    ));
+    seedRoster(TOWER_TYPES.map((type) => ({
+      type, maxLevel, xp: masteryXpForRank(mastery),
+    })));
+    const skills = {};
+    for (const [id, def] of Object.entries(SKILLS)) {
+      if (!def.free) skills[id] = skillMaxTier(id);
+    }
+    seedSkills(skills);
+    el.modLabStatus.textContent = `SEEDED 5 TYPES · LV ${maxLevel} · STAR ${mastery}`;
+  });
+  el.modLabRestore.disabled = !hasModLabSnapshot();
+}
+
+function openModLab() {
+  if (!getDebugMode()) return;
+  snapshotModLabSave();
+  renderModLab();
+  el.modLabStatus.textContent = "REAL SAVE SNAPSHOT SECURED";
+  el.settingsOverlay.classList.add("hidden");
+  el.modLabOverlay.classList.remove("hidden");
+}
+
+function closeModLab() {
+  el.modLabOverlay.classList.add("hidden");
+  if (getDebugMode()) el.settingsOverlay.classList.remove("hidden");
+}
+
+el.settingsModLab.addEventListener("click", openModLab);
+el.modLabClose.addEventListener("click", closeModLab);
+el.modLabRestore.addEventListener("click", () => {
+  const result = restoreModLabSave();
+  if (!result.ok) {
+    el.modLabStatus.textContent = "NO SAVE SNAPSHOT TO RESTORE";
+    return;
+  }
+  location.reload();
+});
 
 function resetSettingsConfirm() {
   if (settingsResetTimer) clearTimeout(settingsResetTimer);
@@ -1650,6 +1752,23 @@ function affixLabel(def, stat) {
   return ((def && def.name) || stat).replace(/ %| \+N$/, "");
 }
 
+function modName(id) {
+  const def = getMod(id);
+  const fallback = def?.name || id.replace(/([a-z])([A-Z])/g, "$1 $2").toUpperCase();
+  return def?.nameKey ? t(def.nameKey, fallback) : fallback;
+}
+
+function modPower(power) {
+  return Math.round(power * 10000) / 100;
+}
+
+function modDescription(id) {
+  const def = getMod(id);
+  if (!def) return "No behavior is registered for this debug mod yet.";
+  const fallback = def.description || "Behavioral gear modifier.";
+  return def.descKey ? t(def.descKey, fallback) : fallback;
+}
+
 const AFFIX_DESCRIPTIONS = {
   range: "Increases the tower's targeting range.",
   critChance: "Increases the chance that each hit is a critical hit.",
@@ -1695,7 +1814,9 @@ function bindTraitDisclosures(root = el.gearSheet) {
     btn.addEventListener("click", () => {
       const description = btn.dataset.traitKind === "unique"
         ? uniqueDescription(btn.dataset.traitKey)
-        : AFFIX_DESCRIPTIONS[btn.dataset.traitKey] || "This characteristic improves the listed tower stat.";
+        : btn.dataset.traitKind === "mod"
+          ? modDescription(btn.dataset.traitKey)
+          : AFFIX_DESCRIPTIONS[btn.dataset.traitKey] || "This characteristic improves the listed tower stat.";
       const detail = btn.closest(".gear-affix").querySelector(".gear-trait-desc");
       const opening = detail.classList.contains("hidden");
       detail.textContent = description;
@@ -1713,6 +1834,9 @@ function itemAffixSummary(item) {
   for (const a of item.affixes || []) {
     const def = affixDef(a.stat);
     parts.push(`${affixLabel(def, a.stat)} +${a.value}${def && def.int ? "" : "%"}`);
+  }
+  for (const mod of itemMods(item)) {
+    parts.push(`MOD ${modName(mod.id)} +${modPower(mod.power)}%`);
   }
   return parts.join(" / ");
 }
@@ -1735,6 +1859,15 @@ function itemAffixRowsHtml(item) {
       `<div class="gear-affix"><div class="gear-affix-main">` +
       traitToggleHtml(affixLabel(def, a.stat), "affix", a.stat) +
       `<span class="val">+${a.value}${def && def.int ? "" : "%"}</span>` +
+      `</div><div class="gear-trait-desc hidden"></div></div>`
+    );
+  }
+  for (const mod of itemMods(item)) {
+    const def = getMod(mod.id);
+    rows.push(
+      `<div class="gear-affix mod ${def?.category || "unregistered"}"><div class="gear-affix-main">` +
+      traitToggleHtml(`MOD: ${modName(mod.id)}`, "mod", mod.id) +
+      `<span class="val">+${modPower(mod.power)}%</span>` +
       `</div><div class="gear-trait-desc hidden"></div></div>`
     );
   }

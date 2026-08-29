@@ -5,6 +5,15 @@
 // ============================================================
 
 const KEY = "geometric-td-save-v1";
+const MOD_LAB_SNAPSHOT_KEY = `${KEY}-mod-lab-snapshot`;
+
+// Nested item defaults cannot be supplied by the top-level DEFAULT_SAVE merge.
+// progression.js applies this in memory after loadSave(); it deliberately does
+// not rewrite an old save merely because its gear predates behavioral mods.
+export function backfillItemSaveDefaults(item) {
+  if (item && typeof item === "object" && !Array.isArray(item.mods)) item.mods = [];
+  return item;
+}
 
 const DEFAULT_SAVE = {
   version: 1,
@@ -60,4 +69,27 @@ export function writeSave(state) {
 
 export function clearSave() {
   localStorage.removeItem(KEY);
+  localStorage.removeItem(MOD_LAB_SNAPSHOT_KEY);
+}
+
+// The Mod Lab keeps its safety copy under a separate localStorage key so the
+// real save bytes can be restored exactly, even after a reload mid-test.
+export function snapshotSaveForModLab() {
+  const existing = localStorage.getItem(MOD_LAB_SNAPSHOT_KEY);
+  if (existing !== null) return existing;
+  const raw = localStorage.getItem(KEY) ?? JSON.stringify(structuredClone(DEFAULT_SAVE));
+  localStorage.setItem(MOD_LAB_SNAPSHOT_KEY, raw);
+  return raw;
+}
+
+export function restoreModLabSaveSnapshot() {
+  const raw = localStorage.getItem(MOD_LAB_SNAPSHOT_KEY);
+  if (raw === null) return null;
+  localStorage.setItem(KEY, raw);
+  localStorage.removeItem(MOD_LAB_SNAPSHOT_KEY);
+  return raw;
+}
+
+export function hasModLabSaveSnapshot() {
+  return localStorage.getItem(MOD_LAB_SNAPSHOT_KEY) !== null;
 }

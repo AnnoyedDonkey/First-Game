@@ -6,6 +6,7 @@ import { ENEMIES, ECONOMY, VFX, LOOT } from "./config.js";
 import { getMoneyMult, getXpMult, getSkillShardFindMult } from "./progression.js";
 import { rollKillDrop } from "./loot.js";
 import { emitHitSparks, emitDeathShards, emitCoins } from "./particles.js";
+import { onHit, onKill } from "./affixes.js";
 
 let nextEnemyId = 1;
 
@@ -177,8 +178,14 @@ function awardKillXp(enemy, killer, pool) {
 
 // Apply damage from a tower (or splash). Handles death: bounty money,
 // contributor-weighted XP, kill count, and a death burst.
-export function damageEnemy(game, enemy, sourceTower, amount) {
+export function damageEnemy(game, enemy, sourceTower, amount, ctx = null) {
   if (!enemy.alive) return;
+  const hitCtx = ctx || {
+    source: sourceTower,
+    sourceType: sourceTower ? sourceTower.type : null,
+    triggered: false,
+    canProc: true,
+  };
 
   // Damage-type counters: enemies resist / are weak to specific towers
   // (ENEMIES[type].damageMult keyed by the tower's damageType).
@@ -211,6 +218,15 @@ export function damageEnemy(game, enemy, sourceTower, amount) {
   // Field tiles: a weak zone (damageMult > 1) or shield zone (< 1) under the
   // enemy right now, refreshed each frame in updateEnemies.
   dmg *= enemy._fieldDmg || 1;
+
+  // Behavioral mods receive the final pre-health damage and may amend it.
+  // The same shot context is reused across pierced/splashed victims; these
+  // transient fields are overwritten for each synchronous hook dispatch.
+  hitCtx.game = game;
+  hitCtx.enemy = enemy;
+  hitCtx.damage = dmg;
+  onHit(hitCtx);
+  if (Number.isFinite(hitCtx.damage)) dmg = hitCtx.damage;
 
   enemy.health -= dmg;
   enemy.hitFlash = 0.1;
@@ -245,6 +261,7 @@ export function damageEnemy(game, enemy, sourceTower, amount) {
   }
 
   enemy.alive = false;
+  onKill(hitCtx);
   game.kills = (game.kills || 0) + 1; // B5 milestone tracking
   const isBoss = enemy.type === "boss";
   for (const ownerId of Object.keys(game.wallets)) {

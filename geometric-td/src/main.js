@@ -6,7 +6,7 @@ import { DEBUG, TOWERS, RESULT_ROASTS, NARRATIVE } from "./config.js";
 import { LEVELS } from "./levels.js";
 import { createGame, updateGame, startNextWave } from "./game.js";
 import {
-  towerAt, seedRosterCounters, refreshTowerStats,
+  towerAt, seedRosterCounters, refreshTowerStats, refreshModNetwork,
 } from "./towers.js";
 import {
   getProgress, getSkillPoints, shouldShowTowerGuide, markTowerGuideSeen,
@@ -15,7 +15,7 @@ import {
   shouldShowBeat, markBeatSeen, shouldShowEnemyIntro, markEnemyIntroSeen,
   shouldShowTowerIntro, markTowerIntroSeen, isTowerUnlocked,
   shouldShowTowerBark, markTowerBarkSeen, getBarksEnabled,
-  getVisualEffectsMode, getDebugMode,
+  getVisualEffectsMode, getDebugMode, debugSpawnMod, setGearChangeHandler,
 } from "./progression.js";
 import { render } from "./renderer.js";
 import { bindCanvasInput } from "./input.js";
@@ -52,8 +52,6 @@ const TILE_SIZE = 64; // internal render resolution per tile
 // Debug handle for the loot generator (P2) — console-testable per
 // LOOT_DESIGN.md, e.g. `loot.lootSelfTest()` or
 // `loot.generateItem({ rarity: 'rare', ilvl: 60 })` in DevTools.
-window.loot = loot;
-
 const canvas = document.getElementById("game-canvas");
 const ctx = canvas.getContext("2d");
 const gameArea = document.getElementById("game-area");
@@ -66,14 +64,40 @@ let game = null;
 let overlayShown = false;
 let barkState = null; // in-battle bark driver state (P3-revival), reset per startLevel
 
+function spawnMod(id, powerOrRarity, options) {
+  return debugSpawnMod(id, powerOrRarity, options);
+}
+
+function dumpFaults(enemyIndex = 0) {
+  const enemy = game?.enemies?.[enemyIndex];
+  if (!enemy) return null;
+  return {
+    enemyIndex, id: enemy.id, health: enemy.health,
+    faults: structuredClone(enemy.faults || {}),
+  };
+}
+
+function dumpArray(type) {
+  const cached = game?.modNetwork?.array?.[type];
+  return cached ? structuredClone(cached) : {
+    type, count: 0, sources: 0, strongestPower: 0, effectivePower: 0, bonus: 0,
+  };
+}
+
+// Both console surfaces expose the same P0 shells. spawnMod pins an inert mod
+// while the registry is empty, exercising generation, storage, and tooltip UI.
+window.loot = { ...loot, spawnMod, dumpFaults, dumpArray };
+
 function refreshDeployedGear(towerName) {
   if (!game) return;
   const rec = getProgress().roster.find((r) => r.name === towerName);
   const tower = game.towers.find((t) => t.name === towerName);
   if (!rec || !tower) return;
   tower.gear = structuredClone(rec.gear);
-  refreshTowerStats(game);
+  refreshModNetwork(game);
 }
+
+setGearChangeHandler(refreshDeployedGear);
 
 // Temporary P3 console bridge until P4 adds the stash/equip screens.
 // Examples:
@@ -82,20 +106,17 @@ function refreshDeployedGear(towerName) {
 window.gear = {
   roster: () => getProgress().roster,
   equip(towerName, item) {
-    const result = equipItem(towerName, item);
-    if (result.ok) refreshDeployedGear(towerName);
-    return result;
+    return equipItem(towerName, item);
   },
   unequip(towerName, slot) {
-    const result = unequipItem(towerName, slot);
-    if (result.ok) refreshDeployedGear(towerName);
-    return result;
+    return unequipItem(towerName, slot);
   },
   grant(towerName, options = {}) {
-    const result = debugGrantGear(towerName, options);
-    if (result.ok) refreshDeployedGear(towerName);
-    return result;
+    return debugGrantGear(towerName, options);
   },
+  spawnMod,
+  dumpFaults,
+  dumpArray,
 };
 
 function startLevel(level, endless = false) {

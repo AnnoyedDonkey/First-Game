@@ -12,7 +12,33 @@ export function emptyGear() {
 }
 
 export function normalizeGear(gear) {
-  return { ...emptyGear(), ...(gear || {}) };
+  const normalized = { ...emptyGear(), ...(gear || {}) };
+  for (const slot of GEAR_SLOTS) {
+    const item = normalized[slot];
+    if (item && !Array.isArray(item.mods)) item.mods = [];
+  }
+  return normalized;
+}
+
+// Old saves have no behavioral-mod field. All readers go through this safe
+// default rather than assuming a migration has rewritten every stored item.
+export function itemMods(item) {
+  return item && Array.isArray(item.mods) ? item.mods : [];
+}
+
+// Parallel to aggregateGear: behavioral mods stay out of the tower's normal
+// stat-roll sums and are grouped by id for hook/network consumers.
+export function aggregateMods(gear) {
+  const grouped = {};
+  for (const slot of GEAR_SLOTS) {
+    const item = gear && gear[slot];
+    if (!item) continue;
+    for (const mod of itemMods(item)) {
+      if (!mod || typeof mod.id !== "string") continue;
+      (grouped[mod.id] ||= []).push({ power: mod.power });
+    }
+  }
+  return grouped;
 }
 
 // The XP where Mastery begins. Defaults to the config value (the level-5
