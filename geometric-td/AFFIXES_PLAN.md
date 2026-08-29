@@ -436,7 +436,20 @@ Legend for per-mod sections: **Files** (what Codex touches) · **Behavior** ·
 - **Verify:** spec §14 examples 1–3 reproduce (15% / 24% / 54%); adding/selling a
   tower updates all same-type towers; gear change updates.
 
-### [ ] P7 — Fork (Protocol) — on-kill spawn (spec §17)
+### [x] P7 — Fork (Protocol) — SHIPPED `2026.08.28-8` (built directly, Codex rate-limited) — COMPLETES the initial 9-mod scope
+- **As built:** `forkOnKill` in affixes.js (proc-gated on the kill; guarded by
+  `ctx.canProc` so triggered hits don't fork). Spawning needs towers.js, so
+  towers.js injects `spawnForkTower` via `setForkSpawner` (no import cycle).
+  `spawnForkTower` drops a FREE (`invested:0`) same-type gearless tower
+  (`createTower(..., null)`) at level `max(minLevel, parent.level −
+  levelBelowParent)` on the nearest legal empty tile (`forkTileNear`), flags
+  `_forkCreated`, and rebuilds the network (new tower shifts Array/Broadcast).
+  No tile free ⇒ nothing (never queued). Gearless ⇒ can't carry Fork ⇒ no chains.
+- **Verified in-browser (rng forced to proc):** exactly 1 same-type tower spawns
+  at level 2 (parent 3), gearless, `_modEntries` empty, `invested` 0, on a legal
+  empty tile; a zero-bounty kill shows `walletDelta 0` (no cost); the forked
+  tower's own kill does NOT chain; a `canProc:false` hit does NOT fork; self-test
+  green; console clean.
 - **Behavior:** on a kill by a Fork-carrier, `power` chance to spawn a free
   same-type tower in a nearby legal empty build tile, one in-level upgrade level
   below the parent (min 1). No currency. Spawned tower flagged Fork-created,

@@ -17,7 +17,7 @@ import { emitHitSparks, emitLevelUpSplash } from "./particles.js";
 import {
   aggregateGear, aggregateMods, masteryRankFor, normalizeGear, xpToNextMastery,
 } from "./equipment.js";
-import { onNetworkChange } from "./affixes.js";
+import { onNetworkChange, setForkSpawner } from "./affixes.js";
 
 let nextTowerId = 1;
 const rosterCounters = {}; // per-rosterPrefix counters for names like Laser-01
@@ -82,6 +82,46 @@ export function refreshModNetwork(game) {
   onNetworkChange(game);
   refreshTowerStats(game);
 }
+
+// Nearest legal empty build tile to (cx,cy) — Fork's spawn target. Bounded scan
+// of the board, run only on a proc'd kill (never per frame).
+function forkTileNear(game, cx, cy) {
+  const grid = game.grid;
+  let best = null, bestD = Infinity;
+  for (let y = 0; y < grid.height; y++) {
+    for (let x = 0; x < grid.width; x++) {
+      if (!grid.isBuildable(x, y) || towerAt(game, x, y)) continue;
+      const d = (x - cx) * (x - cx) + (y - cy) * (y - cy);
+      if (d > 0 && d < bestD) { bestD = d; best = { x, y }; }
+    }
+  }
+  return best;
+}
+
+// Fork Protocol (spec §17): on a proc'd kill, drop a FREE same-type tower on the
+// nearest legal empty tile, one in-level level below the parent (min 1), no cost
+// and no gear (so it can't itself carry Fork -> no chains). Nothing happens if no
+// tile is free (never queued for later). Injected into affixes.js to dodge the
+// import cycle. Adding the tower shifts Array counts / Broadcast auras, so the
+// network is rebuilt.
+function spawnForkTower(game, parent) {
+  const tile = forkTileNear(game, parent.tileX, parent.tileY);
+  if (!tile) return;
+  const cfg = LOOT.mods.fork;
+  const level = Math.max(cfg.minLevel, (parent.level || 1) - cfg.levelBelowParent);
+  const tower = createTower(parent.type, tile.x, tile.y, game.grid, null, parent.ownerId);
+  tower.level = level;
+  tower._forkCreated = true;
+  tower.invested = 0; // free -> no sell refund
+  game.towers.push(tower);
+  (game.typesUsed ||= new Set()).add(parent.type);
+  refreshModNetwork(game);
+  game.effects.push({
+    kind: "ring", x: tower.pos.x, y: tower.pos.y,
+    color: tower.def.color, radius: game.grid.tileSize * 0.6, ttl: 0.35, maxTtl: 0.35,
+  });
+}
+setForkSpawner(spawnForkTower);
 
 // Live stats = base stats scaled by level (compound growth per level).
 // SPECIALTY bonuses are PERMANENT: they follow the highest level the

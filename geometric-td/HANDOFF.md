@@ -33,11 +33,14 @@ not a bus), recursion ctx threaded through `damageEnemy`/`projectiles`,
 Array/Broadcast cached on `game.modNetwork`/`tower._broadcast` (rebuilt on
 place/sell/gear-change via `refreshModNetwork`; `recomputeStats` now takes `game`).
 On-device testing via a **Mod Lab** panel gated behind Settings→DEBUG MODE. Built
-one-mod-per-ship (each its own version bump) via Codex. **Shipped through
-`2026.08.28-7`: P0 foundation, all 3 Faults, all 4 Broadcasts, and P6 Array
-(per-type damage bonus = count × [strongest Array power + 1pp/extra source],
-cached in `game.modNetwork.array`, recalced on network change). NEXT = P7 Fork
-(last mod: on-kill free-tower spawn).** Broadcast = a tower aura: `affixes.js applyBroadcastAura`
+one-mod-per-ship (each its own version bump) via Codex. ****INITIAL 9-MOD SCOPE COMPLETE, shipped through `2026.08.28-8`:** P0 foundation +
+3 Faults (Exposed/Throttle/Desync) + 4 Broadcasts (damage/fireRate/range/crit) +
+Array + Fork. Fork = on a proc'd kill, spawn a free gearless same-type tower one
+level below the parent on the nearest legal tile (towers.js `spawnForkTower`,
+injected into affixes.js via `setForkSpawner`; guarded by `ctx.canProc` so it
+can't chain). **Only P8 (optional polish/VFX/tuning) remains.** To add a NEW mod:
+register a definition + hook in `src/affixes.js`, add its numbers to
+`config.js LOOT.mods`; drop/store/tooltip/Mod-Lab are already generic. Broadcast = a tower aura: `affixes.js applyBroadcastAura`
 adds a source's power to nearby towers' `_broadcast.{damage,fireRate,range,crit}`
 (rebuilt on network change, read by `recomputeStats`; radius ring in renderer).
 `onNetworkChange` refreshes `gearMods` before Protocol hooks read it (ordering

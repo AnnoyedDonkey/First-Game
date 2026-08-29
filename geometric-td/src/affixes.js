@@ -82,6 +82,24 @@ function throttleOnHit(ctx) {
   addFaultStacks(ctx.enemy, "throttle", 1, throttleMaxStacks());
 }
 
+// Fork spawns a live tower, which needs towers.js machinery. To avoid an import
+// cycle (towers.js imports this module), towers.js injects its spawner here.
+let forkSpawner = null;
+export function setForkSpawner(fn) {
+  forkSpawner = fn;
+}
+
+function forkOnKill(ctx) {
+  // canProc===false marks a triggered (non-primary) hit — Fork never chains off
+  // those, and forked towers are gearless so they can't carry Fork anyway.
+  if (!ctx?.source || !ctx.game || ctx.canProc === false) return;
+  const power = strongestModPower(ctx.source, "fork");
+  if (power <= 0) return;
+  const rng = ctx.game.rng || Math.random;
+  if (rng() >= power) return;
+  forkSpawner?.(ctx.game, ctx.source);
+}
+
 // Desync tracks the strongest active per-stack power in the sequence, so a
 // carrier's contribution is the MAX Desync power among its equipped mods.
 function strongestModPower(source, id) {
@@ -367,6 +385,21 @@ export const MODS = Object.freeze({
     onNetworkChange(game) {
       rebuildArrayNetwork(game);
     },
+  }),
+  fork: Object.freeze({
+    id: "fork",
+    category: "protocol",
+    nameKey: "mod.fork.name",
+    name: "Fork",
+    descKey: "mod.fork.desc",
+    description: "Kills have a {power}% chance to create a free lower-level copy of this tower nearby.",
+    descriptionParams(mod) {
+      return { power: Number.isFinite(mod?.power) ? mod.power : LOOT.mods.powers.fork.rare };
+    },
+    powerForRarity(rarity) {
+      return LOOT.mods.powers.fork[rarity];
+    },
+    onKill: forkOnKill,
   }),
 });
 
