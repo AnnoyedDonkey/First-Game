@@ -419,8 +419,8 @@ export const LOOT = {
     testDropRate: 0.5,
     powers: {
       array: {
-        common: 0.03, enhanced: 0.05, rare: 0.07,
-        prismatic: 0.09, singularity: 0.12,
+        common: 0.015, enhanced: 0.025, rare: 0.035,
+        prismatic: 0.045, singularity: 0.06,
       },
       desync: {
         common: 0.01, enhanced: 0.015, rare: 0.02,
@@ -433,26 +433,32 @@ export const LOOT = {
         prismatic: 0.04, singularity: 0.05,
       },
       damageBroadcast: {
-        common: 0.08, enhanced: 0.12, rare: 0.16,
-        prismatic: 0.20, singularity: 0.25,
+        common: 0.04, enhanced: 0.06, rare: 0.08,
+        prismatic: 0.10, singularity: 0.13,
       },
       fireRateBroadcast: {
-        common: 0.08, enhanced: 0.12, rare: 0.16,
-        prismatic: 0.20, singularity: 0.25,
+        common: 0.04, enhanced: 0.06, rare: 0.08,
+        prismatic: 0.10, singularity: 0.13,
       },
       rangeBroadcast: {
-        common: 0.08, enhanced: 0.12, rare: 0.16,
-        prismatic: 0.20, singularity: 0.25,
+        common: 0.04, enhanced: 0.06, rare: 0.08,
+        prismatic: 0.10, singularity: 0.13,
       },
       critBroadcast: {
-        common: 0.04, enhanced: 0.06, rare: 0.08,
-        prismatic: 0.10, singularity: 0.12,
+        common: 0.02, enhanced: 0.03, rare: 0.04,
+        prismatic: 0.05, singularity: 0.06,
       },
     },
     arrayExtraSourceBonus: 0.01,
+    // Array damage bonus = min(sameTypeCount, arrayMaxTowers) × effectivePower.
+    // The cap keeps a same-type tower spam from scaling without bound (and from
+    // lagging the board with huge rosters).
+    arrayMaxTowers: 10,
     broadcastRadiusTiles: 3,
     broadcastSelfBuffs: false,
-    fork: { levelBelowParent: 1, minLevel: 1 },
+    // Fork spawns on the nearest legal empty tile within maxRadiusTiles
+    // (Chebyshev) of the parent; set 1 for strictly-adjacent only.
+    fork: { levelBelowParent: 1, minLevel: 1, maxRadiusTiles: 2 },
   },
 
   // ---- Item generator (P2, see LOOT_DESIGN.md §4-§6 + loot.js) ----

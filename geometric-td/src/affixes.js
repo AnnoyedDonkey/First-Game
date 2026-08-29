@@ -195,7 +195,14 @@ function rebuildArrayNetwork(game) {
     // The +1pp per EXTRA source raises the per-tower power (spec §13) — it is
     // NOT added to the final bonus afterward.
     const effectivePower = strongestPower + (sources - 1) * LOOT.mods.arrayExtraSourceBonus;
-    net[type] = { type, count, sources, strongestPower, effectivePower, bonus: count * effectivePower };
+    // The tower count is capped for the bonus (config arrayMaxTowers) so spamming
+    // same-type towers can't scale Array without bound. `count` stays the true
+    // count for display; `effectiveCount` drives the damage bonus.
+    const effectiveCount = Math.min(count, LOOT.mods.arrayMaxTowers);
+    net[type] = {
+      type, count, effectiveCount, sources, strongestPower, effectivePower,
+      bonus: effectiveCount * effectivePower,
+    };
   }
 }
 

@@ -87,9 +87,12 @@ export function refreshModNetwork(game) {
 // of the board, run only on a proc'd kill (never per frame).
 function forkTileNear(game, cx, cy) {
   const grid = game.grid;
+  const maxR = LOOT.mods.fork.maxRadiusTiles ?? 2; // stay LOCAL to the parent
   let best = null, bestD = Infinity;
   for (let y = 0; y < grid.height; y++) {
     for (let x = 0; x < grid.width; x++) {
+      // Chebyshev radius so "N tiles" reads as an N-ring around the parent.
+      if (Math.max(Math.abs(x - cx), Math.abs(y - cy)) > maxR) continue;
       if (!grid.isBuildable(x, y) || towerAt(game, x, y)) continue;
       const d = (x - cx) * (x - cx) + (y - cy) * (y - cy);
       if (d > 0 && d < bestD) { bestD = d; best = { x, y }; }
@@ -211,7 +214,8 @@ function recomputeStats(tower, grid, game = null) {
   // mastery -> global skills -> normal gear -> Array -> Broadcast -> conduit
   // -> surge. Enemy-side Faults never enter this tower pipeline.
   const array = game?.modNetwork?.array?.[tower.type];
-  const arrayBonus = (array?.count || 0) * (array?.effectivePower || 0);
+  // Cached bonus already applies the arrayMaxTowers cap (see rebuildArrayNetwork).
+  const arrayBonus = array?.bonus || 0;
   const broadcast = tower._broadcast || {};
   tower.damage *= (1 + arrayBonus) * (1 + (broadcast.damage || 0));
   tower.fireInterval /= 1 + (broadcast.fireRate || 0);

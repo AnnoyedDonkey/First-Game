@@ -482,6 +482,20 @@ Legend for per-mod sections: **Files** (what Codex touches) · **Behavior** ·
 
 **AFFIX SYSTEM COMPLETE** — P0–P8 all shipped (`2026.08.28-1` … `2026.08.29-1`).
 
+### Balance pass 1 (`2026.08.29-2`) — first playtest feedback
+- **Array cap:** damage bonus now uses `min(sameTypeCount, LOOT.mods.arrayMaxTowers=10)`
+  × effectivePower — spamming same-type towers no longer scales without bound (also
+  a perf guard). `rebuildArrayNetwork` stores `effectiveCount` + capped `bonus`;
+  `recomputeStats` reads `array.bonus`. `count` stays true for display.
+- **Array powers ~halved:** 0.015/0.025/0.035/0.045/0.06 (was 0.03…0.12).
+- **Broadcast powers ~halved:** damage/fireRate/range 0.04/0.06/0.08/0.10/0.13
+  (was 0.08…0.25); crit 0.02/0.03/0.04/0.05/0.06 (was 0.04…0.12).
+- **Fork spawns LOCAL:** `forkTileNear` now caps to `fork.maxRadiusTiles=2`
+  (Chebyshev) around the parent; set 1 for strictly-adjacent. (Confirmed forked
+  towers are gearless → never inherit Fork → no chaining; the "next tile over"
+  was just the nearest legal empty tile when adjacents were path/occupied.)
+- All still config-driven — dial further from `config.js LOOT.mods`.
+
 ---
 
 ## 9. Acceptance (spec §39) — track as phases land
