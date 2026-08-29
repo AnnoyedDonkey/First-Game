@@ -411,7 +411,19 @@ Legend for per-mod sections: **Files** (what Codex touches) · **Behavior** ·
 - **Verify:** each aura buffs the right stat; crit pp adds correctly.
 - **Split note:** may ship as 1, 2, or 3 separate debuts if the player wants.
 
-### [ ] P6 — Array (Protocol) — network count (spec §12–16, §31)
+### [x] P6 — Array (Protocol) — SHIPPED `2026.08.28-7` (built directly, Codex rate-limited)
+- **As built:** `rebuildArrayNetwork(game)` in affixes.js builds
+  `game.modNetwork.array[type] = {type,count,sources,strongestPower,
+  effectivePower,bonus}` per type. `effectivePower = strongest + (sources−1) ×
+  arrayExtraSourceBonus` (the +1pp raises PER-TOWER power, not the final bonus);
+  `recomputeStats` reads `arrayBonus = count × effectivePower`. Rebuilt only on
+  network change; per-type independent. `dumpArray(type)` returns the cache.
+- **Verified in-browser (spec §14):** Ex1 3 lasers/one Array 5% → ×1.15; Ex2
+  5%+7% → ×1.24; Ex3 6 lasers/3%+5%+7% → ×1.54 (on non-carriers too). Per-type:
+  a rocket stayed at its own 1.15, unaffected by the lasers' 0.48. Dynamic recalc:
+  selling a non-carrier 0.54→0.45; selling the STRONGEST carrier drops strongest
+  0.07→0.05 → bonus 0.24. Self-test green; console clean. (`dumpArray` reads the
+  real-play module `game`; synthetic tests read `window.game.modNetwork.array`.)
 - **Behavior:** a tower carrying Array activates it for ALL towers of its type
   (source included in count). `effectivePower = strongestArray +
   (extraSources × 1pp)`; `bonus = sameTypeCount × effectivePower`; applied to

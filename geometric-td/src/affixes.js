@@ -154,6 +154,33 @@ function applyBroadcastAura(game, modId, field) {
   }
 }
 
+// Array is a per-tower-TYPE Protocol (spec §12-16). For each type with at least
+// one Array carrier: effectivePower = strongest Array power + (extra carriers ×
+// arrayExtraSourceBonus); the per-tower damage bonus = (tower count of that type)
+// × effectivePower, applied to EVERY tower of the type. Cached per type and read
+// O(1) by recomputeStats (arrayBonus = count × effectivePower). Rebuilt only on
+// network change.
+function rebuildArrayNetwork(game) {
+  const byType = {};
+  for (const t of game.towers || []) {
+    const e = (byType[t.type] ||= { count: 0, powers: [] });
+    e.count += 1;
+    const p = strongestModPower(t, "array");
+    if (p > 0) e.powers.push(p);
+  }
+  const net = (game.modNetwork.array = {});
+  for (const type in byType) {
+    const { count, powers } = byType[type];
+    if (powers.length === 0) continue; // no Array on this type -> no entry
+    const strongestPower = Math.max(...powers);
+    const sources = powers.length;
+    // The +1pp per EXTRA source raises the per-tower power (spec §13) — it is
+    // NOT added to the final bonus afterward.
+    const effectivePower = strongestPower + (sources - 1) * LOOT.mods.arrayExtraSourceBonus;
+    net[type] = { type, count, sources, strongestPower, effectivePower, bonus: count * effectivePower };
+  }
+}
+
 export const MODS = Object.freeze({
   throttle: Object.freeze({
     id: "throttle",
@@ -322,6 +349,23 @@ export const MODS = Object.freeze({
     },
     onNetworkChange(game) {
       applyBroadcastAura(game, "critBroadcast", "crit");
+    },
+  }),
+  array: Object.freeze({
+    id: "array",
+    category: "protocol",
+    nameKey: "mod.array.name",
+    name: "Array",
+    descKey: "mod.array.desc",
+    description: "All towers of this type gain +{power}% damage for every tower of this type on the battlefield. Additional towers of this type carrying Array add +1% each.",
+    descriptionParams(mod) {
+      return { power: Number.isFinite(mod?.power) ? mod.power : LOOT.mods.powers.array.rare };
+    },
+    powerForRarity(rarity) {
+      return LOOT.mods.powers.array[rarity];
+    },
+    onNetworkChange(game) {
+      rebuildArrayNetwork(game);
     },
   }),
 });
