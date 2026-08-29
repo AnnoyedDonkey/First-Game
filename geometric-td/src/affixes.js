@@ -176,9 +176,12 @@ function overclockOnKill(ctx) {
 
 function overclockOnWaveStart(game, tower) {
   // Do not create runtime state for a fresh carrier. Once a tower has earned a
-  // stack, every wave start explicitly clears it and refreshes derived stats.
+  // stack, every wave start resolves the board-wide Nonvolatile cache and
+  // refreshes derived stats.
   if (!tower?._overclock) return;
-  tower._overclock.stacks = 0;
+  const oldStacks = Math.max(0, tower._overclock.stacks || 0);
+  const frac = game.modNetwork?.nonvolatile || 0;
+  tower._overclock.stacks = Math.floor(oldStacks * frac);
   towerStatRecomputer?.(game, tower);
 }
 
@@ -662,6 +665,27 @@ export const MODS = Object.freeze({
     },
     powerForRarity(rarity) {
       return LOOT.mods.powers.hyperthread[rarity]?.capBonus;
+    },
+  }),
+  nonvolatile: Object.freeze({
+    id: "nonvolatile",
+    category: "protocol",
+    nameKey: "mod.nonvolatile.name",
+    name: "Nonvolatile",
+    descKey: "mod.nonvolatile.desc",
+    description: "Overclock keeps {power}% of its stacks at the start of each wave instead of resetting to zero.",
+    descriptionParams(mod) {
+      return { power: mod?.power };
+    },
+    powerForRarity(rarity) {
+      return LOOT.mods.powers.nonvolatile[rarity];
+    },
+    onNetworkChange(game) {
+      let strongest = 0;
+      for (const tower of game.towers || []) {
+        strongest = Math.max(strongest, strongestModPower(tower, "nonvolatile"));
+      }
+      game.modNetwork.nonvolatile = strongest;
     },
   }),
 });

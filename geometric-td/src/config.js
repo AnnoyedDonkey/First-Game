@@ -449,6 +449,10 @@ export const LOOT = {
         prismatic: { capBonus: 0.05 },
         singularity: { capBonus: 0.10 },
       },
+      nonvolatile: {
+        common: 0.10, enhanced: 0.15, rare: 0.20,
+        prismatic: 0.25, singularity: 0.30,
+      },
       throttle: { perStack: 0.02, maxSlow: 0.50 },
       exposed: { perStack: 0.02, maxStacks: 20 },
       fork: {
