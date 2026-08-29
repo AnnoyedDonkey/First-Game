@@ -33,8 +33,11 @@ not a bus), recursion ctx threaded through `damageEnemy`/`projectiles`,
 Array/Broadcast cached on `game.modNetwork`/`tower._broadcast` (rebuilt on
 place/sell/gear-change via `refreshModNetwork`; `recomputeStats` now takes `game`).
 On-device testing via a **Mod Lab** panel gated behind Settings→DEBUG MODE. Built
-one-mod-per-ship (each its own version bump) via Codex. **P0 foundation shipped
-(invisible — registry empty); NEXT = P1 Exposed.**
+one-mod-per-ship (each its own version bump) via Codex. **P0 foundation + P1
+Exposed shipped (`2026.08.28-2`); NEXT = P2 Throttle.** Exposed = a Fault: hits
+from an Exposed-carrier stack +2%/stack damage-taken on the enemy (cap 20), all
+via an `affixes.js` `onHit` handler (enemies.js untouched); generic `enemy.faults`
+store + helpers now exist for the remaining Faults.
 
 ### Tower tray icons + firing preview (`2026.08.23-6` .. `-11`)
 The bottom-HUD tower tray shows a **live micro-sim per tower** (its real shape +

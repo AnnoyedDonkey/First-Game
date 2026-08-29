@@ -1762,11 +1762,14 @@ function modPower(power) {
   return Math.round(power * 10000) / 100;
 }
 
-function modDescription(id) {
+function modDescription(id, power) {
   const def = getMod(id);
   if (!def) return "No behavior is registered for this debug mod yet.";
   const fallback = def.description || "Behavioral gear modifier.";
-  return def.descKey ? t(def.descKey, fallback) : fallback;
+  const rawParams = def.descriptionParams?.({ id, power }) || {};
+  const params = { ...rawParams };
+  if (Number.isFinite(params.power)) params.power = modPower(params.power);
+  return def.descKey ? tf(def.descKey, fallback, params) : tf("", fallback, params);
 }
 
 const AFFIX_DESCRIPTIONS = {
@@ -1804,8 +1807,9 @@ function uniqueDescription(uniqueId) {
   }
 }
 
-function traitToggleHtml(label, kind, key) {
-  return `<button type="button" class="gear-trait-toggle" data-trait-kind="${kind}" data-trait-key="${key}" aria-expanded="false">` +
+function traitToggleHtml(label, kind, key, power = null) {
+  const powerAttr = Number.isFinite(power) ? ` data-trait-power="${power}"` : "";
+  return `<button type="button" class="gear-trait-toggle" data-trait-kind="${kind}" data-trait-key="${key}"${powerAttr} aria-expanded="false">` +
     `<span>${escapeHtml(label)}</span><span class="gear-trait-arrow" aria-hidden="true">&#8250;</span></button>`;
 }
 
@@ -1815,7 +1819,7 @@ function bindTraitDisclosures(root = el.gearSheet) {
       const description = btn.dataset.traitKind === "unique"
         ? uniqueDescription(btn.dataset.traitKey)
         : btn.dataset.traitKind === "mod"
-          ? modDescription(btn.dataset.traitKey)
+          ? modDescription(btn.dataset.traitKey, Number(btn.dataset.traitPower))
           : AFFIX_DESCRIPTIONS[btn.dataset.traitKey] || "This characteristic improves the listed tower stat.";
       const detail = btn.closest(".gear-affix").querySelector(".gear-trait-desc");
       const opening = detail.classList.contains("hidden");
@@ -1866,7 +1870,7 @@ function itemAffixRowsHtml(item) {
     const def = getMod(mod.id);
     rows.push(
       `<div class="gear-affix mod ${def?.category || "unregistered"}"><div class="gear-affix-main">` +
-      traitToggleHtml(`MOD: ${modName(mod.id)}`, "mod", mod.id) +
+      traitToggleHtml(`MOD: ${modName(mod.id)}`, "mod", mod.id, mod.power) +
       `<span class="val">+${modPower(mod.power)}%</span>` +
       `</div><div class="gear-trait-desc hidden"></div></div>`
     );

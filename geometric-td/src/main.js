@@ -36,6 +36,7 @@ import {
 import { GEAR_SLOTS } from "./equipment.js";
 import { initUpdateCheck } from "./update.js";
 import * as loot from "./loot.js";
+import { faultInspectionLines, inspectFaults } from "./affixes.js";
 import * as tutorial from "./tutorial.js";
 import { startOnboarding, playCards, isOnboardingActive, setCardsSuppressed } from "./onboarding.js";
 import { t, tf } from "./i18n.js";
@@ -71,10 +72,14 @@ function spawnMod(id, powerOrRarity, options) {
 function dumpFaults(enemyIndex = 0) {
   const enemy = game?.enemies?.[enemyIndex];
   if (!enemy) return null;
-  return {
+  const result = {
     enemyIndex, id: enemy.id, health: enemy.health,
-    faults: structuredClone(enemy.faults || {}),
+    faults: inspectFaults(enemy),
   };
+  const lines = [`ENEMY #${enemy.id}`, "", `HP: ${Math.max(0, Math.ceil(enemy.health)).toLocaleString()}`, ""];
+  lines.push(...faultInspectionLines(enemy));
+  console.log(lines.join("\n").trimEnd());
+  return result;
 }
 
 function dumpArray(type) {
@@ -84,8 +89,7 @@ function dumpArray(type) {
   };
 }
 
-// Both console surfaces expose the same P0 shells. spawnMod pins an inert mod
-// while the registry is empty, exercising generation, storage, and tooltip UI.
+// Both console surfaces expose the same mod spawn and inspection tools.
 window.loot = { ...loot, spawnMod, dumpFaults, dumpArray };
 
 function refreshDeployedGear(towerName) {

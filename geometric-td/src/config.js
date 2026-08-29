@@ -410,10 +410,11 @@ export const LOOT = {
     cascadeDamageRamp: 15,       // added damage per victim already pierced
   },
 
-  // ---- Behavioral gear modifiers (AFFIXES_PLAN P0) ----
+  // ---- Behavioral gear modifiers (AFFIXES_PLAN) ----
   // Spec rarity names map onto the shipped names: uncommon -> enhanced,
   // epic -> prismatic, and
-  // legendary -> singularity. The empty P0 registry leaves this inert.
+  // legendary -> singularity. Exposed is global per-stack in v1, so it has
+  // no rarity table even though generated items still store that power.
   mods: {
     testDropRate: 0.5,
     powers: {

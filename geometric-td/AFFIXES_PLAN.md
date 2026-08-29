@@ -284,15 +284,27 @@ Legend for per-mod sections: **Files** (what Codex touches) · **Behavior** ·
 > first prove the network cache. Player's stated interest was **Array** — fine to
 > lead with P6 instead; only P0 must precede everything.
 
-### [ ] P1 — Exposed (Fault) — simplest, proves the fault system
+### [x] P1 — Exposed (Fault) — SHIPPED `2026.08.28-2`
 - **Behavior:** hits from a tower carrying Exposed add +1 stack; +2%/stack damage
   taken; cap 20 (+40% max). Applied in the **centralized** `damageEnemy` (spec
   §22) alongside existing `vulnMult`/`_fieldDmg`.
-- **Config:** `LOOT.mods.powers.exposed {perStack, maxStacks}`.
-- **Landmines:** must read through the SAME damage multiply chain as fields/vuln
-  so every source interacts consistently; don't fork a second damage path.
-- **Verify:** stacks accrue to cap; a second tower's damage is amplified; clearing
-  works; `dumpFaults` shows it.
+- **Config:** `LOOT.mods.powers.exposed {perStack, maxStacks}` (global, not
+  per-rarity — Exposed is intentionally absent from the §5 rarity table; item
+  still stores a `power` so per-rarity scaling can be added later by reading it).
+- **As built:** implemented ENTIRELY as an `onHit` handler in `affixes.js` —
+  `enemies.js` untouched. Order = add the carrier's stack, then amplify this hit
+  by current stacks (so the applying hit benefits from its own stack). Any tower's
+  hit is amplified; only Exposed-carriers add stacks. Generic fault store landed
+  here with the full reusable helper set (`addFaultStacks`/`removeFaultStacks`/
+  `getFault*`/`hasFault`/`clearFault(s)`/`inspectFaults`/`faultInspectionLines`) —
+  Throttle/Desync reuse it. `enemy.faults` is created lazily (fault-free enemies
+  keep no property — perf).
+- **Verified in-browser:** controlled sequence 102/104/…/110 (stack-first then
+  amplify), non-carrier hit amplified with no new stack, cap = 20, fault-free
+  enemies stay propertyless, item `power:0.02` survives save/reload, live firing
+  path drove Exposed to cap, `faultInspectionLines` → "Exposed: / Stacks: 20 /
+  Damage taken: +40%", console clean. (`dumpFaults` reads the real-play module
+  `game`; returned null only in a synthetic test that bypassed `startLevel`.)
 
 ### [ ] P2 — Throttle (Fault) — movement control
 - **Behavior:** +1 stack/hit; −2%/stack speed; cap 50% slow. Effective speed

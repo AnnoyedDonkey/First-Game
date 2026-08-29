@@ -23,7 +23,7 @@ import { dropIlvl, generateGuaranteedDrop, generateItem, RARITIES } from "./loot
 import {
   canEquipItem, emptyGear, GEAR_SLOTS, masteryRankFor, normalizeGear,
 } from "./equipment.js";
-import { getMod } from "./affixes.js";
+import { getMod, modPowerForRarity } from "./affixes.js";
 
 let state = loadSave();
 let gearChangeHandler = null;
@@ -571,8 +571,8 @@ export function restoreModLabSave() {
 }
 
 // Shared by the console handles and on-device Lab. A pinned id is allowed even
-// before it exists in MODS; the resulting item is inert but exercises storage,
-// equip, tooltip, and save plumbing ahead of the behavior phase.
+// before it exists in MODS; registered definitions resolve either a rarity
+// table or a global stored power through the same config-backed path as loot.
 export function debugSpawnMod(id, powerOrRarity = "common", options = {}) {
   const modId = typeof id === "string" ? id.trim() : "";
   if (!/^[A-Za-z0-9_-]+$/.test(modId)) return { ok: false, reason: "modId" };
@@ -582,7 +582,7 @@ export function debugSpawnMod(id, powerOrRarity = "common", options = {}) {
   if (!RARITIES.includes(rarity)) return { ok: false, reason: "rarity" };
   const power = typeof powerOrRarity === "number"
     ? powerOrRarity
-    : LOOT.mods.powers[modId]?.[rarity];
+    : modPowerForRarity(modId, rarity);
   if (!Number.isFinite(power)) return { ok: false, reason: "power" };
   const slot = options.slot || GEAR_SLOTS[0];
   const towerType = options.towerType ?? null;

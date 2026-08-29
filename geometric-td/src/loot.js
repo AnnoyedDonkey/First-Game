@@ -17,7 +17,7 @@
 // ============================================================
 
 import { LOOT } from "./config.js";
-import { MODS } from "./affixes.js";
+import { MODS, modPowerForRarity } from "./affixes.js";
 
 // The four typed slots (§4a) and the five tower types gear can lock to.
 export const SLOTS = ["optic", "emitter", "capacitor", "frame"];
@@ -248,9 +248,8 @@ function affixCountFor(rarity, rng) {
   return Array.isArray(c) ? c[0] + Math.floor(rng() * (c[1] - c[0] + 1)) : c;
 }
 
-// P0's registry is empty, so this returns before consuming RNG and generated
-// loot stays behaviorally unchanged. Once a definition ships, its rolled
-// power comes from config and is stored on the item permanently.
+// Registered mods roll behind the test gate. The registry resolves their
+// config-backed power so global-power mods and rarity tables share one path.
 function rollMods(rarity, rng, pinned) {
   if (Array.isArray(pinned)) {
     return pinned.map((mod) => ({ id: mod.id, power: mod.power }));
@@ -258,7 +257,7 @@ function rollMods(rarity, rng, pinned) {
   const ids = Object.keys(MODS);
   if (ids.length === 0 || rng() >= LOOT.mods.testDropRate) return [];
   const id = pick(ids, rng);
-  const power = LOOT.mods.powers[id]?.[rarity];
+  const power = modPowerForRarity(id, rarity);
   return Number.isFinite(power) ? [{ id, power }] : [];
 }
 
