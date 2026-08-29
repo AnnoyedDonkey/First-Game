@@ -34,9 +34,9 @@ Array/Broadcast cached on `game.modNetwork`/`tower._broadcast` (rebuilt on
 place/sell/gear-change via `refreshModNetwork`; `recomputeStats` now takes `game`).
 On-device testing via a **Mod Lab** panel gated behind Settings→DEBUG MODE. Built
 one-mod-per-ship (each its own version bump) via Codex. **Shipped through
-`2026.08.28-5`: P0 foundation, all 3 Faults (Exposed/Throttle/Desync), and P4
-Damage Broadcast (first Protocol). NEXT = P5 Fire-Rate/Range/Crit Broadcast, then
-P6 Array, P7 Fork.** Broadcast = a tower aura: `affixes.js applyBroadcastAura`
+`2026.08.28-6`: P0 foundation, all 3 Faults (Exposed/Throttle/Desync), and all 4
+Broadcasts (damage/fireRate/range/crit — crit adds percentage POINTS). NEXT =
+P6 Array, then P7 Fork.** Broadcast = a tower aura: `affixes.js applyBroadcastAura`
 adds a source's power to nearby towers' `_broadcast.{damage,fireRate,range,crit}`
 (rebuilt on network change, read by `recomputeStats`; radius ring in renderer).
 `onNetworkChange` refreshes `gearMods` before Protocol hooks read it (ordering

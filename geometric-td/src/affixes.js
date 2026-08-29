@@ -272,6 +272,58 @@ export const MODS = Object.freeze({
       applyBroadcastAura(game, "damageBroadcast", "damage");
     },
   }),
+  fireRateBroadcast: Object.freeze({
+    id: "fireRateBroadcast",
+    category: "protocol",
+    nameKey: "mod.fireRateBroadcast.name",
+    name: "Fire Rate Broadcast",
+    descKey: "mod.fireRateBroadcast.desc",
+    description: "Nearby towers fire +{power}% faster.",
+    descriptionParams(mod) {
+      return { power: Number.isFinite(mod?.power) ? mod.power : LOOT.mods.powers.fireRateBroadcast.rare };
+    },
+    powerForRarity(rarity) {
+      return LOOT.mods.powers.fireRateBroadcast[rarity];
+    },
+    onNetworkChange(game) {
+      applyBroadcastAura(game, "fireRateBroadcast", "fireRate");
+    },
+  }),
+  rangeBroadcast: Object.freeze({
+    id: "rangeBroadcast",
+    category: "protocol",
+    nameKey: "mod.rangeBroadcast.name",
+    name: "Range Broadcast",
+    descKey: "mod.rangeBroadcast.desc",
+    description: "Nearby towers gain +{power}% range.",
+    descriptionParams(mod) {
+      return { power: Number.isFinite(mod?.power) ? mod.power : LOOT.mods.powers.rangeBroadcast.rare };
+    },
+    powerForRarity(rarity) {
+      return LOOT.mods.powers.rangeBroadcast[rarity];
+    },
+    onNetworkChange(game) {
+      applyBroadcastAura(game, "rangeBroadcast", "range");
+    },
+  }),
+  critBroadcast: Object.freeze({
+    id: "critBroadcast",
+    category: "protocol",
+    nameKey: "mod.critBroadcast.name",
+    name: "Critical Broadcast",
+    descKey: "mod.critBroadcast.desc",
+    // Crit is added as percentage POINTS to crit chance (spec §19), not a mult.
+    description: "Nearby towers gain +{power} percentage points of critical hit chance.",
+    descriptionParams(mod) {
+      return { power: Number.isFinite(mod?.power) ? mod.power : LOOT.mods.powers.critBroadcast.rare };
+    },
+    powerForRarity(rarity) {
+      return LOOT.mods.powers.critBroadcast[rarity];
+    },
+    onNetworkChange(game) {
+      applyBroadcastAura(game, "critBroadcast", "crit");
+    },
+  }),
 });
 
 const MOD_IDS = Object.keys(MODS);

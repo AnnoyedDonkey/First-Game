@@ -394,7 +394,15 @@ Legend for per-mod sections: **Files** (what Codex touches) · **Behavior** ·
 - **Verify:** neighbor gains/loses buff on place/sell/move; radius ring shows;
   FPS unaffected.
 
-### [ ] P5 — Fire-Rate / Range / Crit Broadcast (Protocols) — reuse the aura
+### [x] P5 — Fire-Rate / Range / Crit Broadcast — SHIPPED `2026.08.28-6` (built directly, Codex rate-limited)
+- **As built:** three more MODS entries, each an `onNetworkChange` that calls the
+  P4 `applyBroadcastAura` with its field (`fireRate`/`range`/`crit`).
+  `recomputeStats` already applied all four. Crit is percentage POINTS
+  (`critChance += broadcast.crit`), not a mult. affixes.js only.
+- **Verified in-browser:** one source carrying all four broadcasts across its 4
+  slots buffs an ungeared neighbor — fireInterval ×0.862 (=1/1.16), range ×1.16,
+  crit 0→0.08 points, damage 0.16; self-test green; console clean.
+- (Shipped as one debut; could have been split — trivial once the aura existed.)
 - **Behavior:** three more auras on the P4 system. Fire-rate & range are % mults;
   **Crit is percentage POINTS** added to crit chance (spec §19), clamp 1.
 - **Config:** their `powers.*` tables.
