@@ -41,6 +41,8 @@ export const ROGUELIKE = {
   worldCount: 3,
   combatsPerWorld: 3,
   eventsPerWorld: 4,
+  choicesPerScreen: 3,       // encounter cards visible at once
+  bossOfferThreshold: 2,     // remaining encounters at/below which the boss appears
   // Effective depth fed to the existing depth-keyed generators. Every
   // encounter in one world shares a depth; difficulty steps only at worlds.
   worldDepths: [1, 5, 9],
@@ -48,7 +50,7 @@ export const ROGUELIKE = {
   eliteChancePerWorld: [0, 0.34, 0.5],
   // Weighted kinds used for the four non-boss event encounters in each world.
   // Combat/boss are absent: fixed combat slots are built separately and each
-  // boss is entered only through LEAVE AREA.
+  // boss is offered separately once the remaining pool reaches its threshold.
   eventWeights: { gear: 20, farm: 12, shop: 16, event: 12, recovery: 10, upgrade: 20 },
   starterTowers: ["laser", "pulse", "slow"], // the fresh run roster (one each)
   startingSalvage: 0,           // run currency at run start

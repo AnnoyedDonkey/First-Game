@@ -2,7 +2,8 @@
 // ROGUELIKE — run state machine + sandbox (DEBUG-gated mode).
 //
 // A run-based gauntlet layered on the existing TD engine: explore three open
-// worlds, leave each area when ready, and beat its boss to advance. See
+// worlds, clear enough encounters to reveal each boss, then beat it to unlock
+// the next world's exit. See
 // ROGUELIKE_REDESIGN_PLAN.md for the current design and phase map, and
 // ROGUELIKE_SOURCE_EXTRACT.md for the reusable engine systems.
 //
@@ -52,7 +53,7 @@ import { saveRoguelikeRun, loadRoguelikeRun, clearRoguelikeRun } from "./save.js
 // Snapshot schema version — bump if the persisted run shape below changes so a
 // stale snapshot from an older build is ignored rather than mis-restored. This
 // is a schema tag, not a gameplay tunable, so it lives here (not config.js).
-const RUN_SNAPSHOT_VERSION = 2;
+const RUN_SNAPSHOT_VERSION = 3;
 
 // The active run, or null when no run is in progress. Module-local — a page
 // reload abandons the run (acceptable for a DEBUG feature; the save is untouched
@@ -195,6 +196,7 @@ export function startRun(seed = freshSeed()) {
     worldTotal: 0,
     worldTaken: 0,
     bossPending: false,
+    bossDefeated: false,
     maxCoreIntegrity: ROGUELIKE.startingCoreIntegrity,
     coreIntegrity: ROGUELIKE.startingCoreIntegrity, // carries across encounters
     salvage: ROGUELIKE.startingSalvage,
@@ -242,6 +244,7 @@ function serializeRun() {
     worldTaken: run.worldTaken,
     worldTotal: run.worldTotal,
     bossPending: run.bossPending,
+    bossDefeated: run.bossDefeated,
     maxCoreIntegrity: run.maxCoreIntegrity,
     coreIntegrity: run.coreIntegrity,
     salvage: run.salvage,
@@ -289,6 +292,7 @@ export function resumeRun() {
     worldTaken: snap.worldTaken,
     worldTotal: snap.worldTotal,
     bossPending: !!snap.bossPending,
+    bossDefeated: !!snap.bossDefeated,
     maxCoreIntegrity: snap.maxCoreIntegrity,
     coreIntegrity: snap.coreIntegrity,
     salvage: snap.salvage,
@@ -350,6 +354,7 @@ function startWorld() {
   run.worldTaken = 0;
   run.worldTotal = pool.length;
   run.bossPending = false;
+  run.bossDefeated = false;
   run.phase = "choosing";
   run.currentNode = null;
   run.pendingChoice = null;
@@ -393,8 +398,8 @@ function makeNode(kind, depth) {
   return node;
 }
 
-// Consume the active open-area encounter after it resolves. Worlds advance
-// only when their bosses are beaten; an empty pool still leaves LEAVE AREA.
+// Consume the active open-area encounter after it resolves. A defeated boss
+// unlocks the separate leave-to-next-world action; it never consumes the pool.
 function advanceEncounter() {
   const encounterId = run.currentNode?.encounterId;
   const index = run.encounterPool.findIndex((node) => node.encounterId === encounterId);
@@ -416,6 +421,18 @@ function encounterSnapshot() {
     worldTaken: run.worldTaken,
     worldTotal: run.worldTotal,
     remaining: run.encounterPool.length,
+  };
+}
+
+// Pure projection of the current choosing screen. The encounter window is
+// always the head of the pre-shuffled pool, so its visible indices map
+// directly back to chooseNode(index) without any UI-owned flow logic.
+export function getCurrentChoices() {
+  if (!run) return { encounters: [], bossOffered: false, canLeave: false };
+  return {
+    encounters: run.encounterPool.slice(0, ROGUELIKE.choicesPerScreen),
+    bossOffered: !run.bossDefeated && run.encounterPool.length <= ROGUELIKE.bossOfferThreshold,
+    canLeave: run.bossDefeated,
   };
 }
 
@@ -470,7 +487,7 @@ function finishStagedChoiceWithoutAdvance() {
 // Every configured post-battle combat win stages a gear reward (Phase 2,
 // ROGUELIKE.reward.postBattleKinds): onBattleEnd rolls 5 items into
 // run.pendingChoice / run.phase = "reward" (kind:"gear", same as a gear node).
-// The encounter/world transition is already complete; resolving this reward
+// The encounter/boss-state update is already complete; resolving this reward
 // must not consume another pool entry. Farm is excluded by config, and the final
 // boss ends the run without staging a reward.
 //
@@ -503,15 +520,28 @@ export function chooseNode(index) {
   }
 }
 
-// LEAVE AREA is always available while choosing. It does not consume any
-// remaining encounter; defeating this boss alone advances to the next world.
-export function leaveArea() {
+// The world boss stays hidden until the pool reaches its configured threshold.
+// Defeating it unlocks a separate non-combat transition to the next world.
+export function fightBoss() {
   if (!run || run.phase !== "choosing") return { ok: false, reason: "not-choosing" };
+  if (!getCurrentChoices().bossOffered) return { ok: false, reason: "boss-not-offered" };
   if (!launchBattle) return { ok: false, reason: "no-launcher" };
   const node = { kind: "boss", depth: worldDepth(), label: "CORE BREACH — BOSS" };
   run.bossPending = true;
   run.currentNode = node;
   return resolveCombatNode(node);
+}
+
+// A non-final boss unlocks this transition but never performs it implicitly;
+// the player may keep clearing the same world's remaining encounters first.
+export function leaveToNextWorld() {
+  if (!run || run.phase !== "choosing") return { ok: false, reason: "not-choosing" };
+  if (!run.bossDefeated) return { ok: false, reason: "boss-not-defeated" };
+  if (run.worldIndex >= ROGUELIKE.worldCount - 1) return { ok: false, reason: "no-next-world" };
+  run.log.push(`left world ${run.worldIndex + 1}`);
+  run.worldIndex += 1;
+  startWorld();
+  return { ok: true, ...encounterSnapshot() };
 }
 
 // ---------- Combat resolver (normal / elite / farm / boss) ----------
@@ -1011,7 +1041,7 @@ export function pickRunUpgrade(optionIndex) {
 // Called by main.js checkEndState BEFORE any campaign save-write, once the
 // battle has resolved to "won"/"lost". Restores any elite/farm battle
 // modifier, updates carried Core Integrity + Salvage, then either consumes an
-// encounter, starts the next world after a boss, or ends the run. Returns a snapshot
+// encounter, unlocks the next world after a non-final boss, or ends the run. Returns a snapshot
 // descriptor for the caller's overlay; live getters are irrelevant to it, so
 // it stays correct even after the sandbox is turned off on a run-over.
 export function onBattleEnd(game) {
@@ -1036,6 +1066,7 @@ export function onBattleEnd(game) {
     floorCount: ROGUELIKE.worldCount,
     boss: kind === "boss",
     bossWin: false,
+    bossDefeated: run.bossDefeated,
     coreIntegrity: run.coreIntegrity,
     maxCoreIntegrity: run.maxCoreIntegrity,
     salvage: run.salvage,
@@ -1066,10 +1097,16 @@ export function onBattleEnd(game) {
     if (run.worldIndex < ROGUELIKE.worldCount - 1) {
       const clearedDepth = node.depth;
       run.log.push(`cleared world ${run.worldIndex + 1}`);
-      run.worldIndex += 1;
-      startWorld();
-      result.nextWorld = run.worldIndex;
+      run.bossDefeated = true;
+      run.phase = "choosing";
+      run.currentNode = null;
+      run.pendingChoice = null;
+      run.context.coreHealth = run.coreIntegrity;
+      result.bossDefeated = true;
       stagePostBattleReward(kind, clearedDepth, result, completedWorld);
+      if (!result.bonusReward) {
+        persist();
+      }
       return result;
     }
 
@@ -1167,7 +1204,8 @@ export function dailySeed(date = new Date()) {
 //   roguelike.start()            -> begin a run
 //   roguelike.state()            -> inspect run state
 //   roguelike.choose(0)          -> pick an open-area encounter
-//   roguelike.leaveArea()        -> fight the current world's boss
+//   roguelike.fightBoss()        -> fight the current world's offered boss
+//   roguelike.leaveToNextWorld() -> advance after defeating that boss
 //   step(120); checkEndState()   -> resolve a launched battle (existing debug helpers)
 // Non-combat follow-ups (see the resolver contract above) are reached via the
 // module's named exports, e.g. window.roguelike.run().pendingChoice, or by
@@ -1182,6 +1220,8 @@ export function debugHandle() {
       encounters: `${run.worldTaken}/${run.worldTotal}`,
       remaining: run.encounterPool.length,
       bossPending: run.bossPending,
+      bossDefeated: run.bossDefeated,
+      choices: getCurrentChoices(),
       phase: run.phase,
       coreIntegrity: `${run.coreIntegrity}/${run.maxCoreIntegrity}`,
       salvage: run.salvage,
@@ -1192,7 +1232,9 @@ export function debugHandle() {
       log: run.log,
     },
     run: () => run,
-    leaveArea,
+    fightBoss,
+    leaveToNextWorld,
+    getCurrentChoices,
     // Non-combat follow-ups, exposed for console verification:
     pickGearReward,
     shopBuyGear,
