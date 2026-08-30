@@ -255,18 +255,173 @@ reload. No console errors. Report exactly what you did and did NOT verify.
 
 ---
 
+## 3b. PHASE 1b — World-flow revision (windowed choices) — **Sol**
+
+**Supersedes Phase 1's "show all remaining + always-available LEAVE" node map.**
+The player never sees the whole world — each screen offers a WINDOW of 3 cards,
+the boss stays hidden until the world is nearly cleared, and beating the boss
+does NOT auto-advance the world. Runs AFTER Phase 2 lands, so it reconciles with
+Phase 2's onBattleEnd reward code.
+
+**Files (stage exactly these):** `src/roguelike.js`, `src/config.js`,
+`src/roguelike-ui.js`.
+
+### 3b.1 The model
+- Each world still pre-generates its shuffled `encounterPool` (3 combat + 4
+  event) + one boss (boss is NOT a pool entry). New config:
+  `choicesPerScreen: 3` (the window size) and `bossOfferThreshold: 2` (the boss
+  becomes selectable once `encounterPool.length <= this`).
+- New per-world run flag `bossDefeated` (reset false in `startWorld`; persisted).
+- **Choice window each "choosing" screen:**
+  - `visible = encounterPool.slice(0, choicesPerScreen)` — up to 3 remaining
+    encounters (the head of the shuffled pool; picking one removes it, so the
+    window naturally advances).
+  - If `!bossDefeated && encounterPool.length <= bossOfferThreshold`: the **boss**
+    is offered as an ADDITIONAL card (so 2 remaining → 2 enc + boss; 1 → 1 +
+    boss; 0 → boss only). Before the threshold the boss is NOT shown — the player
+    cannot rush it.
+  - If `bossDefeated`: the boss card is gone; instead a **"LEAVE FOR WORLD n+1"**
+    card is always offered alongside the (windowed) remaining encounters. If the
+    pool is empty, only the LEAVE card shows.
+  - The boss card and the LEAVE card are mutually exclusive (boss before defeat,
+    LEAVE after).
+- **New exports** (UI-facing; keep the file's import graph one-directional):
+  - `getCurrentChoices()` → pure read: `{ encounters: encounterPool.slice(0,
+    choicesPerScreen), bossOffered: boolean, canLeave: boolean }`. The UI renders
+    from this — no window logic in the UI.
+  - `fightBoss()` — replaces `leaveArea()`. Guarded: only valid when `bossOffered`
+    (`!bossDefeated && pool.length <= bossOfferThreshold`). Builds + launches the
+    world-boss combat exactly as Phase 1's `leaveArea` did (`currentNode = {
+    kind:"boss", depth: worldDepth(), ... }`, `resolveCombatNode`).
+  - `leaveToNextWorld()` — the new "leave". Guarded: only valid when
+    `bossDefeated`. Advances: `worldIndex++; startWorld()` (non-combat
+    transition, no battle). Returns an `encounterSnapshot()`-style result.
+- **onBattleEnd boss handling (revises Phase 2 §4.2):**
+  - Boss win, NOT the final world: set `bossDefeated = true`, bank salvage, bank
+    Mastery XP (Phase 2, already at the top), stage the post-battle reward
+    (advanceOnResolve:false), and RETURN TO THE SAME WORLD'S MAP — **do NOT
+    `startWorld()` here** (the player mops up or leaves). Result carries
+    `boss:true, bossWin:true, bossDefeated:true, bonusReward`.
+  - Boss win, FINAL world (`worldIndex === worldCount-1`): run WON immediately
+    (run-end screen) — nothing to mop up or leave to. Unchanged win path.
+  - `leaveToNextWorld()` (not a battle) is the ONLY place a non-final world
+    advances now.
+- **Persistence:** add `bossDefeated` to `serializeRun`/`resumeRun`. A reload
+  mid-boss-battle coerces `phase="choosing"` with `bossDefeated` still false (the
+  boss is re-offered because the pool is still ≤ threshold) — no penalty, same
+  clean-pre-battle pattern. `RUN_SNAPSHOT_VERSION` → 3 (shape changed:
+  `bossDefeated` added; old v2 snapshots ignored).
+
+### 3b.2 UI (`roguelike-ui.js`)
+- `renderNodeMap()` drives off `getCurrentChoices()`: render the (≤3) encounter
+  cards; if `bossOffered`, append a boss card wired to `fightBoss()` (battle
+  chrome swap, same as a combat pick); if `canLeave`, append a "LEAVE FOR WORLD
+  {n}" card wired to `leaveToNextWorld()` → `renderNodeMap()`. Keep ABANDON.
+  Remove the old always-present LEAVE AREA card and the "render every
+  encounterPool entry" loop.
+- `onChooseNode` maps a visible index 0..2 to `encounterPool[index]` (the window
+  is the pool head, so the index matches). Boss/LEAVE cards are their own
+  handlers, not `chooseNode`.
+- HUD `worldTaken/worldTotal` still reads fine; the boss/leave states are visible
+  in the cards. (Phase 4 reskins all of this.)
+
+### 3b.3 Done when
+Each choosing screen shows ≤3 encounter cards; the boss appears only at ≤2
+remaining and can be deferred; beating a non-final boss returns to the same world
+(mop up or LEAVE FOR WORLD n+1); the final boss wins the run; determinism +
+sandbox invariant + resume all still hold. `getCurrentChoices()` is a pure read.
+
 ## 4. PHASE 2 — Run Mastery (XP carry) + post-battle 5-gear — **Sol**
 
-(Detailed spec written when Phase 1 lands, incorporating its exact interfaces.)
-Outline: after each battle, bank each deployed tower's earned XP onto its
-`run.roster` record (isolated from the real save), scaled by a run XP→mastery
-multiplier tuned to the ★ targets in §0.4; deployed towers next floor read that
-banked XP → higher Mastery rank → real damage buff (the existing golden
-rank-up surge VFX fires for free). Stage a 1-of-5 gear reward after every combat
-win (reuse the gear-reward flow; `reward.choiceCount=5`). Verify the real save is
-untouched. Files: `src/roguelike.js` (+ read-path confirmation in
-`towers.js`/`progression.js`; edit only if the run roster's banked XP isn't
-already read into the deployed tower's Mastery).
+**Files (stage exactly these):** `src/roguelike.js`, `src/config.js`. No engine
+edit is needed — the read path already works (anchors below). If you find one is
+required, note it explicitly rather than editing silently.
+
+### 4.0 Verified mechanism (re-confirm at these anchors before editing)
+- `towers.js createTower` (~L64): a deployed tower's `xp` is SEEDED from its
+  roster record — `xp: rosterRecord ? rosterRecord.xp : 0`; its `name` is the
+  record's name. So a run roster record carrying XP ⇒ the redeployed tower starts
+  at that Mastery.
+- `towers.js recomputeStats` (~L170): `tower._masteryRank =
+  masteryRankFor(tower.xp)` — Mastery is derived purely from `tower.xp` (no save
+  field). `towers.js` (~L607) fires the golden level-up **surge** mid-battle when
+  `masteryRankFor(tower.xp) > tower._masteryRank` — so a tower whose xp climbs
+  visibly ranks up. `masteryRankFor` is exported from `equipment.js` (and
+  re-exported by `towers.js`); `roguelike.js` may import it from `equipment.js`
+  (it already imports `emptyGear` from there).
+- `enemies.js` (~L233/357): per-kill XP is `enemy.xp * xpPerKillMultiplier *
+  getXpMult()`, split among contributing towers into `tower.xp`. `getXpMult()`
+  returns the RUN context value while a run is active (`progression.js` ~L420).
+- `progression.js syncRoster` (~L904): the CAMPAIGN carry — `rec.xp = t.xp` by
+  name-match. Runs SKIP it (`recordBattleEnd` is gated `!game.isRun`, `game.js`
+  ~L206 and ~L228 — both confirmed guarded; DO NOT touch). Phase 2 adds the
+  run-local equivalent.
+
+### 4.1 Run Mastery carry-over (the isolated write-back)
+- Add `bankRunMasteryXp(game)` in `roguelike.js`, called at the TOP of
+  `onBattleEnd(game)` (right after `restoreBattleModifiers()`, before the
+  win/loss branch — so a win always carries; on a loss the run ends, harmless).
+- For each `t` of `game.towers` owned by the local player, find the EXISTING
+  `run.roster` record by `t.name`. **Do NOT create new records** (a duplicate /
+  forked tower with no record simply doesn't carry — the one-per-type roster
+  towers are the persistent team that climbs). Then:
+  `const earned = Math.max(0, t.xp - rec.xp); rec.xp += Math.round(earned *
+  ROGUELIKE.mastery.xpGainMult);` and carry `rec.maxLevel = Math.max(rec.maxLevel,
+  t.level)`, `rec.kills = t.kills` (mirrors syncRoster; harmless).
+- **NEVER** call `syncRoster` / `recordBattleEnd`, and never touch `state.roster`
+  or the real save. This writes only `run.roster` (already serialized to the
+  rogue key).
+- Config: add `ROGUELIKE.mastery = { xpGainMult: 6 }` (STARTER — Phase 5
+  calibrates to the ★5–8 / ★10–15 / ★30 targets). Comment that this is
+  DECOUPLED from in-battle level eligibility (`baseMults.xpMult` stays `1`, so
+  leveling pacing is unchanged) — it accelerates only the BANKED Mastery XP
+  carried across encounters. The redeployed tower reads the accelerated `rec.xp`
+  next encounter → higher starting Mastery; mid-battle surges still fire on the
+  raw in-battle crossings. No engine change (createTower already reads `rec.xp`).
+- `RUN_SNAPSHOT_VERSION` stays `2` (run shape unchanged — `rec.xp` was always in
+  `run.roster`).
+
+### 4.2 Post-battle 1-of-5 gear reward (unify with the elite bonus)
+- `reward.choiceCount` is already `5` (Phase 1). Generalize the existing
+  elite-only bonus in `onBattleEnd` into a post-battle reward on ANY combat win
+  whose kind is in `ROGUELIKE.reward.postBattleKinds` (default
+  `["normal","elite","boss"]` — **farm excluded**, its payoff is the XP/Mastery).
+  ilvl bonus: elite and boss wins add `reward.eliteIlvlBonus`; normal adds 0.
+  Stage via `run.pendingChoice = { kind:"gear", items, advanceOnResolve:false }`,
+  `run.phase="reward"`, and set `result.bonusReward = { items }` (reuse the exact
+  Phase 1 flow — `pickGearReward` already honors `advanceOnResolve:false` →
+  `finishStagedChoiceWithoutAdvance`).
+- **Ordering** (important):
+  - Non-boss combat win: `advanceEncounter()` (consume) → stage post-battle
+    reward (advanceOnResolve:false) → return with `bonusReward`.
+  - Boss win, NOT the final world: bank salvage + capture the cleared world's
+    `depth` FIRST, then `startWorld()` (advance), THEN stage the post-battle
+    reward at the cleared depth (advanceOnResolve:false) → return `bonusReward`
+    (+ `nextWorld`). The reward resolves → `finishStagedChoiceWithoutAdvance` →
+    the node map shows the NEW world.
+  - Final world boss win: run WON — **no** reward, straight to the run-end screen
+    (unchanged).
+  - Loss: unchanged (run over).
+- The standalone gear NODE stays (choiceCount 5, advanceOnResolve:true) —
+  unchanged, coexists per the approved decision.
+- UI: `roguelike-ui.js onRunBattleEnd` already renders `result.bonusReward` via
+  `renderGearReward` — the unified reward flows through it with no UI change.
+  `renderGearReward`'s "no compatible tower" path already lets the player skip.
+
+### 4.3 Roster getter (for Phase 3 + the summary)
+- Add a pure export `getRunRoster()` → `run.roster.map(r => ({ name, type,
+  masteryRank: masteryRankFor(r.xp||0), xp: r.xp, maxLevel: r.maxLevel,
+  gear: r.gear }))`. Phase 3's VIEW ROSTER screen consumes it. Also enrich
+  `getRunSummary()`'s `roster` entries with `masteryRank`.
+
+### 4.4 Done when
+A run tower's `run.roster` `xp` accumulates across battles (× `xpGainMult`),
+`masteryRankFor(rec.xp)` climbs encounter-to-encounter, and the redeployed tower
+starts at that Mastery. The real save (`state.roster` xp, shards, skill points)
+is byte-identical after a full run (sentinel test). Post-battle 1-of-5 gear
+stages on normal/elite/boss wins but NOT farm; the final boss gives no reward.
+Determinism holds. Report what you did and did NOT verify (you cannot see the
+surge VFX or phone layout).
 
 ## 5. PHASE 3 — VIEW ROSTER screen — **Terra**
 (Spec finalized after Phase 2.) A roster-inspection overlay off the node map:

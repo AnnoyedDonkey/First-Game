@@ -75,6 +75,12 @@ export const ROGUELIKE = {
   },
   baseSpeeds: [2, 4],           // in-battle fast-forward options (fresh account)
 
+  // Accelerates only XP banked back to the run roster between encounters.
+  // In-battle level eligibility stays decoupled at baseMults.xpMult = 1.
+  mastery: {
+    xpGainMult: 6,
+  },
+
   // ---------- Board + path templates (Phase B generator) ----------
   // Every generated encounter shares one grid size. `pathTemplates` is the "small
   // bank of parameterized straight-segment path templates" the plan calls
@@ -223,15 +229,8 @@ export const ROGUELIKE = {
     choiceCount: 5,            // items offered per gear reward
     ilvlBase: 8,
     ilvlPerDepth: 6,
-    eliteIlvlBonus: 12,        // ilvl bump applied to an elite's guaranteed bonus reward (below)
-    // Phase D open-question decision (ROGUELIKE_PLAN.md §9): YES, elites
-    // guarantee a bonus gear reward on top of their already-larger salvage
-    // payout. Implemented as a second "reward" stage offered immediately
-    // after an elite win (roguelike.js onBattleEnd), reusing the exact same
-    // 5-item-choose-1 flow as a "gear" node (just at ilvl+eliteIlvlBonus) — no
-    // new UI screen needed. A toggle (not a hardcoded branch) so it can be
-    // switched off from config alone if it turns out to over-reward elites.
-    eliteBonusReward: true,
+    postBattleKinds: ["normal", "elite", "boss"], // farm excluded; final boss ends before reward staging
+    eliteIlvlBonus: 12,        // ilvl bump applied to Elite and non-final Boss post-battle rewards
     skipSalvage: 10,           // salvage granted for skipping/selling all 5 offers
     // Rarity roll weights by depth band — independent of the campaign's
     // level-number-based gating in loot.js (run worlds aren't campaign

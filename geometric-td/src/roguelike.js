@@ -27,14 +27,14 @@
 // the run's own player roster; the skill/economy getters return fresh-account
 // values while a run is active (progression.js setRunContext); and end-of-battle
 // is intercepted in main.js BEFORE the campaign's recordBattleEnd / telemetry /
-// loot-to-stash ever run. Mastery/XP deliberately do NOT carry across encounters —
-// run power comes from drafted gear + upgrades (Phase D), not a mastery grind.
+// loot-to-stash ever run. Mastery/XP carries only between encounters on the
+// run's own roster records; the real roster and save remain untouched.
 //
 // GEAR-EQUIP NOTE: the account gear UI gates equips on Mastery
 // (equipment.js canEquipItem / LOOT.equipGate.minMastery) because a real
-// tower's Mastery is earned from banked XP. A run roster's XP intentionally
-// never accrues Mastery (see above), so that gate would make every drafted
-// item permanently unequippable in a run. Per ROGUELIKE_SOURCE_EXTRACT.md's
+// tower's Mastery is earned from banked XP. Run rewards still bypass that
+// account-facing equip gate so gear drafting never depends on account UI
+// rules. Per ROGUELIKE_SOURCE_EXTRACT.md's
 // stated reuse angle ("drop the Mastery req-gate, offer gear as draft
 // rewards"), run gear is attached directly to the roster record
 // (`record.gear[slot] = item`) — it bypasses canEquipItem entirely (that's a
@@ -45,7 +45,7 @@
 
 import { ROGUELIKE, TOWERS } from "./config.js";
 import { makeRng, generateItem, rollRarity } from "./loot.js";
-import { emptyGear } from "./equipment.js";
+import { emptyGear, masteryRankFor } from "./equipment.js";
 import { setRunContext } from "./progression.js";
 import { saveRoguelikeRun, loadRoguelikeRun, clearRoguelikeRun } from "./save.js";
 
@@ -151,7 +151,7 @@ function pickBand(bands, depth) {
 // Build the fresh run roster: one unit of each starter tower, level 1, no XP,
 // no gear. Names are unique per type so takeRosterUnit's deployed-name guard
 // works. Gear drafts attach to these records and persist across encounters;
-// XP/maxLevel intentionally stay fresh every encounter.
+// XP/maxLevel start fresh and then bank across this run's encounters.
 function buildStarterRoster() {
   return ROGUELIKE.starterTowers.map((type) => {
     const def = TOWERS[type];
@@ -467,11 +467,12 @@ function finishStagedChoiceWithoutAdvance() {
 //                .unlockedTowers / run.maxCoreIntegrity (effective on the very
 //                next battle) and calls advanceEncounter().
 //
-// An elite win also stages a BONUS "reward" (Phase D, ROGUELIKE.reward.
-// eliteBonusReward): onBattleEnd rolls 3 higher-ilvl gear items into
-// run.pendingChoice / run.phase = "reward" (kind:"gear", same as a gear node)
-// immediately after an elite combat is won. The encounter is already consumed
-// on victory; resolving this bonus must not consume another pool entry.
+// Every configured post-battle combat win stages a gear reward (Phase 2,
+// ROGUELIKE.reward.postBattleKinds): onBattleEnd rolls 5 items into
+// run.pendingChoice / run.phase = "reward" (kind:"gear", same as a gear node).
+// The encounter/world transition is already complete; resolving this reward
+// must not consume another pool entry. Farm is excluded by config, and the final
+// boss ends the run without staging a reward.
 //
 // Every resolver is a pure function of run.rng — no Math.random anywhere in
 // this file.
@@ -579,6 +580,22 @@ function restoreBattleModifiers() {
   if (!backup) return;
   if ("prevContextUnlocked" in backup) run.context.unlockedTowers = backup.prevContextUnlocked;
   if ("prevXpMult" in backup) run.context.mults.xpMult = backup.prevXpMult;
+}
+
+// Run-local equivalent of progression.js syncRoster. Only existing records in
+// the isolated run roster can receive carried XP; forked/duplicate towers with
+// no matching record deliberately do not create persistent run units.
+function bankRunMasteryXp(game) {
+  const localOwnerId = game.progressionOwnerId || game.localPlayerId;
+  for (const tower of game.towers || []) {
+    if (tower.ownerId && tower.ownerId !== localOwnerId) continue;
+    const rec = run.roster.find((candidate) => candidate.name === tower.name);
+    if (!rec) continue;
+    const earned = Math.max(0, tower.xp - rec.xp);
+    rec.xp += Math.round(earned * ROGUELIKE.mastery.xpGainMult);
+    rec.maxLevel = Math.max(rec.maxLevel, tower.level);
+    rec.kills = tower.kills;
+  }
 }
 
 // ---------- Procedural level generator ----------
@@ -1000,6 +1017,7 @@ export function pickRunUpgrade(optionIndex) {
 export function onBattleEnd(game) {
   if (!run) return null;
   restoreBattleModifiers();
+  bankRunMasteryXp(game);
 
   const won = game.phase === "won";
   run.coreIntegrity = Math.max(0, Math.round(game.coreHealth));
@@ -1046,10 +1064,12 @@ export function onBattleEnd(game) {
     result.bossWin = true;
     run.bossPending = false;
     if (run.worldIndex < ROGUELIKE.worldCount - 1) {
+      const clearedDepth = node.depth;
       run.log.push(`cleared world ${run.worldIndex + 1}`);
       run.worldIndex += 1;
       startWorld();
       result.nextWorld = run.worldIndex;
+      stagePostBattleReward(kind, clearedDepth, result, completedWorld);
       return result;
     }
 
@@ -1062,20 +1082,26 @@ export function onBattleEnd(game) {
     return result;
   }
 
-  // A won open-area combat is consumed immediately. Existing Elite bonus gear
-  // is staged afterward and explicitly does not consume a second encounter.
+  // A won open-area combat is consumed before its post-battle reward is staged.
+  // Resolving that reward explicitly does not consume a second encounter.
   const snap = advanceEncounter();
   result.worldTaken = snap.worldTaken;
   result.remaining = snap.remaining;
-  if (kind === "elite" && ROGUELIKE.reward.eliteBonusReward) {
-    const items = rollRewardItems(node.depth, ROGUELIKE.reward.choiceCount, ROGUELIKE.reward.eliteIlvlBonus);
-    run.pendingChoice = { kind: "gear", node: null, items, advanceOnResolve: false };
-    run.phase = "reward";
-    result.bonusReward = { items };
-    run.log.push(`elite clear: bonus gear reward offered (world ${run.worldIndex + 1})`);
-    persist();
-  }
+  stagePostBattleReward(kind, node.depth, result, completedWorld);
   return result;
+}
+
+function stagePostBattleReward(kind, depth, result, completedWorld) {
+  if (!ROGUELIKE.reward.postBattleKinds.includes(kind)) return;
+  const ilvlBonus = kind === "elite" || kind === "boss"
+    ? ROGUELIKE.reward.eliteIlvlBonus
+    : 0;
+  const items = rollRewardItems(depth, ROGUELIKE.reward.choiceCount, ilvlBonus);
+  run.pendingChoice = { kind: "gear", node: null, items, advanceOnResolve: false };
+  run.phase = "reward";
+  result.bonusReward = { items };
+  run.log.push(`${kind} clear: post-battle gear reward offered (world ${completedWorld + 1})`);
+  persist();
 }
 
 // ---------- Run summary + daily seed (Phase E) ----------
@@ -1105,8 +1131,26 @@ export function getRunSummary() {
     extraTowers,
     gearCount,
     upgrades: run.draftedUpgrades.map((u) => u.label),
-    roster: run.roster.map((r) => ({ name: r.name, type: r.type, gearCount: rosterGearCount(r) })),
+    roster: run.roster.map((r) => ({
+      name: r.name,
+      type: r.type,
+      masteryRank: masteryRankFor(r.xp || 0),
+      gearCount: rosterGearCount(r),
+    })),
   };
+}
+
+// Pure roster projection for Phase 3's VIEW ROSTER screen.
+export function getRunRoster() {
+  if (!run) return [];
+  return run.roster.map((r) => ({
+    name: r.name,
+    type: r.type,
+    masteryRank: masteryRankFor(r.xp || 0),
+    xp: r.xp,
+    maxLevel: r.maxLevel,
+    gear: r.gear,
+  }));
 }
 
 // Deterministic uint32 seed from the LOCAL calendar date (not UTC), so every
