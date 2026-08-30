@@ -6,7 +6,7 @@
 // for the resolver contract this file is built against.
 //
 // Shell: one full-screen `#rogue-overlay` (index.html) with a fixed HUD strip
-// (`#rogue-hud`: Core Integrity bar, Salvage, floor progress) above a
+// (`#rogue-hud`: Core Integrity bar, Salvage, world progress) above a
 // scrollable `#rogue-body` that this module repaints per screen (node map,
 // gear reward, shop, event, a generic outcome banner for recovery/event
 // results, and the run-end victory/defeat screen). Content is built via
@@ -133,7 +133,7 @@ function renderRunStart() {
   el.body.innerHTML = `
     <div class="rogue-runstart">
       <div class="rogue-runstart-title">${t("rogue.start.title", "ROGUELIKE GAUNTLET")}</div>
-      <p class="rogue-runstart-sub">${t("rogue.start.sub", "13 floors. Fresh towers. Beat the core breach.")}</p>
+      <p class="rogue-runstart-sub">${tf("rogue.start.worldSub", "{worlds} worlds. Fresh towers. Beat every core breach.", { worlds: ROGUELIKE.worldCount })}</p>
       ${resumeHtml}
       <button class="big-button rogue-wide" type="button" id="rogue-start-new">${t("rogue.start.new", "NEW RUN")}</button>
       <button class="big-button rogue-wide" type="button" id="rogue-start-daily">${t("rogue.start.daily", "DAILY RUN")}</button>
@@ -184,7 +184,7 @@ function renderCurrentScreen() {
 // Called by main.js checkEndState the instant a run battle resolves
 // (game.phase won/lost), BEFORE any campaign save-write. Advances the run
 // (roguelike.onBattleEnd) and shows either the run-end screen or the next
-// floor's node map.
+// world's open-area map.
 export function onRunBattleEnd(game) {
   const result = roguelike.onBattleEnd(game);
   if (!result) return;
@@ -192,17 +192,20 @@ export function onRunBattleEnd(game) {
   showRogueOverlay();
   if (result.runOver) renderRunEnd(result);
   // Elite guaranteed bonus reward (Phase D): onBattleEnd staged a gear choice
-  // instead of advancing the floor — show it exactly like a gear node's
-  // reward screen; picking (or skipping) it advances the floor itself.
+  // after consuming the combat — show it exactly like a gear node's reward.
   else if (result.bonusReward) renderGearReward(result.bonusReward.items);
   else renderNodeMap();
 }
 
-// ---------- HUD strip (Core Integrity bar + Salvage + floor progress) ----------
+// ---------- HUD strip (Core Integrity bar + Salvage + world progress) ----------
 
 function updateHudStrip(run) {
-  el.floor.textContent = tf("rogue.hud.floor", "FLOOR {n} / {total}",
-    { n: run.floorIndex + 1, total: ROGUELIKE.floorCount });
+  el.floor.textContent = tf("rogue.hud.world", "WORLD {n} / {total} · {taken}/{encounters}", {
+    n: run.worldIndex + 1,
+    total: ROGUELIKE.worldCount,
+    taken: run.worldTaken,
+    encounters: run.worldTotal,
+  });
   el.salvage.textContent = `◆ ${run.salvage}`;
   el.coreLabel.textContent = `${run.coreIntegrity}/${run.maxCoreIntegrity}`;
   const pct = run.maxCoreIntegrity > 0
@@ -250,7 +253,7 @@ function nodePreview(node) {
     case "event": return node.event?.desc || t("rogue.node.event", "A risky choice.");
     case "recovery": return t("rogue.node.recovery", "Restore Core Integrity.");
     case "upgrade": return tf("rogue.node.upgrade", "Choose 1 of {n} permanent run upgrades.", { n: ROGUELIKE.runUpgrades.choiceCount });
-    case "boss": return t("rogue.node.boss", "Final battle. Win to complete the run.");
+    case "boss": return t("rogue.node.worldBoss", "World boss. Win to enter the next area.");
     default: return "";
   }
 }
@@ -262,7 +265,7 @@ function renderNodeMap() {
   abandonArmed = false;
   clearTimeout(abandonTimer);
 
-  const cardsHtml = run.choices.map((node, i) => `
+  const cardsHtml = run.encounterPool.map((node, i) => `
     <button class="rogue-node-card rogue-kind-${node.kind}" type="button" data-node="${i}">
       <span class="rogue-node-icon">${KIND_ICON[node.kind] || "?"}</span>
       <span class="rogue-node-text">
@@ -274,17 +277,38 @@ function renderNodeMap() {
 
   el.body.innerHTML = `
     <div class="rogue-panel-title">${t("rogue.map.title", "CHOOSE YOUR ENCOUNTER")}</div>
-    <div class="rogue-node-grid">${cardsHtml}</div>
+    <div class="rogue-node-grid">
+      ${cardsHtml}
+      <button class="rogue-node-card rogue-kind-boss" type="button" id="rogue-leave-area">
+        <span class="rogue-node-icon">${KIND_ICON.boss}</span>
+        <span class="rogue-node-text">
+          <span class="rogue-node-label">${t("rogue.map.leave", "LEAVE AREA")}</span>
+          <span class="rogue-node-preview">${t("rogue.map.leavePreview", "Fight this world's boss. Remaining encounters will be skipped.")}</span>
+        </span>
+      </button>
+    </div>
     <button class="big-button rogue-wide rogue-abandon-btn" type="button" id="rogue-abandon">${t("rogue.abandon", "ABANDON RUN")}</button>
   `;
 
   el.body.querySelectorAll("[data-node]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const i = Number(btn.dataset.node);
-      onChooseNode(i, run.choices[i]);
+      onChooseNode(i, run.encounterPool[i]);
     });
   });
+  document.getElementById("rogue-leave-area").addEventListener("click", onLeaveArea);
   bindAbandonButton(document.getElementById("rogue-abandon"));
+}
+
+function onLeaveArea() {
+  hideRogueOverlay();
+  showBattleChrome();
+  const result = roguelike.leaveArea();
+  if (!result?.ok) {
+    hideBattleChrome();
+    showRogueOverlay();
+    renderNodeMap();
+  }
 }
 
 function bindAbandonButton(btn) {

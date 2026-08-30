@@ -1,9 +1,9 @@
 // ============================================================
 // ROGUELIKE — run state machine + sandbox (DEBUG-gated mode).
 //
-// A run-based gauntlet layered on the existing TD engine: survive procedurally
-// chosen encounters across ROGUELIKE.floorCount floors and beat the final boss
-// to win. See ROGUELIKE_PLAN.md for the full design and phase map, and
+// A run-based gauntlet layered on the existing TD engine: explore three open
+// worlds, leave each area when ready, and beat its boss to advance. See
+// ROGUELIKE_REDESIGN_PLAN.md for the current design and phase map, and
 // ROGUELIKE_SOURCE_EXTRACT.md for the reusable engine systems.
 //
 // PHASE A (foundation, shipped): the run object, the save-sandbox wiring, and
@@ -27,7 +27,7 @@
 // the run's own player roster; the skill/economy getters return fresh-account
 // values while a run is active (progression.js setRunContext); and end-of-battle
 // is intercepted in main.js BEFORE the campaign's recordBattleEnd / telemetry /
-// loot-to-stash ever run. Mastery/XP deliberately do NOT carry across floors —
+// loot-to-stash ever run. Mastery/XP deliberately do NOT carry across encounters —
 // run power comes from drafted gear + upgrades (Phase D), not a mastery grind.
 //
 // GEAR-EQUIP NOTE: the account gear UI gates equips on Mastery
@@ -52,7 +52,7 @@ import { saveRoguelikeRun, loadRoguelikeRun, clearRoguelikeRun } from "./save.js
 // Snapshot schema version — bump if the persisted run shape below changes so a
 // stale snapshot from an older build is ignored rather than mis-restored. This
 // is a schema tag, not a gameplay tunable, so it lives here (not config.js).
-const RUN_SNAPSHOT_VERSION = 1;
+const RUN_SNAPSHOT_VERSION = 2;
 
 // The active run, or null when no run is in progress. Module-local — a page
 // reload abandons the run (acceptable for a DEBUG feature; the save is untouched
@@ -72,6 +72,23 @@ export function isRunActive() { return !!run; }
 
 function pick(arr, rng) {
   return arr[Math.floor(rng() * arr.length)];
+}
+
+function freshSeed() {
+  const values = new Uint32Array(1);
+  if (globalThis.crypto?.getRandomValues) {
+    globalThis.crypto.getRandomValues(values);
+    return values[0];
+  }
+  return Date.now() >>> 0;
+}
+
+function shuffleInPlace(arr, rng) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
 }
 
 // Weighted pick from an object like { normal: 50, elite: 15, ... }. Falls
@@ -133,8 +150,8 @@ function pickBand(bands, depth) {
 
 // Build the fresh run roster: one unit of each starter tower, level 1, no XP,
 // no gear. Names are unique per type so takeRosterUnit's deployed-name guard
-// works. Gear drafts attach to these records and persist across floors;
-// XP/maxLevel intentionally stay fresh every floor.
+// works. Gear drafts attach to these records and persist across encounters;
+// XP/maxLevel intentionally stay fresh every encounter.
 function buildStarterRoster() {
   return ROGUELIKE.starterTowers.map((type) => {
     const def = TOWERS[type];
@@ -167,19 +184,22 @@ function buildRunContext(r) {
 }
 
 // Start a fresh run. `seed` is optional (deterministic runs / future daily
-// seeds); a random one is chosen otherwise. Sets the sandbox context for the
-// whole run and rolls the first floor's choices. Returns the run object.
-export function startRun(seed = (Math.random() * 0x7fffffff) >>> 0) {
+// seeds); a fresh seed is chosen otherwise. Sets the sandbox context for the
+// whole run and opens the first world. Returns the run object.
+export function startRun(seed = freshSeed()) {
   run = {
     seed,
     rng: makeRng(seed),
-    floorIndex: 0,                                  // 0-based; floorCount total
+    worldIndex: 0,
+    encounterPool: [],
+    worldTotal: 0,
+    worldTaken: 0,
+    bossPending: false,
     maxCoreIntegrity: ROGUELIKE.startingCoreIntegrity,
-    coreIntegrity: ROGUELIKE.startingCoreIntegrity, // carries across floors
+    coreIntegrity: ROGUELIKE.startingCoreIntegrity, // carries across encounters
     salvage: ROGUELIKE.startingSalvage,
     roster: buildStarterRoster(),
     unlockedTowers: ROGUELIKE.starterTowers.slice(),
-    choices: [],
     currentNode: null,
     pendingChoice: null,      // staged non-combat resolution (gear/shop/event) — see contract below
     phase: "choosing",        // choosing | battle | reward | shop | event | won | lost
@@ -188,15 +208,14 @@ export function startRun(seed = (Math.random() * 0x7fffffff) >>> 0) {
   };
   run.context = buildRunContext(run);
   setRunContext(run.context);                       // sandbox ON for the whole run
-  rollFloorChoices();
-  persist();                                        // immediately resumable (Phase E)
+  startWorld();
   return run;
 }
 
 // End the run and turn the sandbox OFF, so the campaign/menu see the real save
 // again. Called when a run finishes (win/lose) or the player abandons it.
 export function endRun(reason = "ended") {
-  if (run) run.log.push(`run ${reason} at floor ${run.floorIndex + 1}`);
+  if (run) run.log.push(`run ${reason} in world ${run.worldIndex + 1}`);
   run = null;
   setRunContext(null);
   clearRoguelikeRun();                              // no run to resume anymore
@@ -218,13 +237,16 @@ function serializeRun() {
     v: RUN_SNAPSHOT_VERSION,
     seed: run.seed,
     rngState: run.rng.state ? run.rng.state() : undefined,
-    floorIndex: run.floorIndex,
+    worldIndex: run.worldIndex,
+    encounterPool: run.encounterPool,
+    worldTaken: run.worldTaken,
+    worldTotal: run.worldTotal,
+    bossPending: run.bossPending,
     maxCoreIntegrity: run.maxCoreIntegrity,
     coreIntegrity: run.coreIntegrity,
     salvage: run.salvage,
     roster: run.roster,
     unlockedTowers: run.unlockedTowers,
-    choices: run.choices,
     currentNode: run.currentNode,
     pendingChoice: run.pendingChoice,
     phase: run.phase,
@@ -254,7 +276,7 @@ export function hasResumableRun() {
 
 // Rebuild the run from its snapshot and re-arm the sandbox. Returns the run, or
 // null if there is no valid snapshot. A reload DURING a battle can't rebuild the
-// in-progress combat, so the run drops back to the current floor's node choices
+// in-progress combat, so the run drops back to the current world's open area
 // with no penalty (Core Integrity was persisted pre-battle).
 export function resumeRun() {
   const snap = loadRoguelikeRun();
@@ -262,13 +284,16 @@ export function resumeRun() {
   run = {
     seed: snap.seed,
     rng: makeRng(snap.seed, snap.rngState),
-    floorIndex: snap.floorIndex,
+    worldIndex: snap.worldIndex,
+    encounterPool: snap.encounterPool || [],
+    worldTaken: snap.worldTaken,
+    worldTotal: snap.worldTotal,
+    bossPending: !!snap.bossPending,
     maxCoreIntegrity: snap.maxCoreIntegrity,
     coreIntegrity: snap.coreIntegrity,
     salvage: snap.salvage,
     roster: snap.roster,
     unlockedTowers: snap.unlockedTowers,
-    choices: snap.choices || [],
     currentNode: snap.currentNode || null,
     pendingChoice: snap.pendingChoice || null,
     phase: snap.phase,
@@ -282,10 +307,11 @@ export function resumeRun() {
     speeds: Array.isArray(snap.speeds) ? snap.speeds.slice() : ROGUELIKE.baseSpeeds.slice(),
     mults: snap.mults ? { ...snap.mults } : { ...ROGUELIKE.baseMults },
   };
-  if (run.phase === "battle") {          // abandoned mid-combat — return to choices
+  if (run.phase === "battle") {          // abandoned mid-combat — return to open area
     run.phase = "choosing";
     run.currentNode = null;
     run.pendingChoice = null;
+    run.bossPending = false;
     run._modifierBackup = null;
   }
   setRunContext(run.context);            // re-arm the sandbox for the resumed run
@@ -293,43 +319,43 @@ export function resumeRun() {
   return run;
 }
 
-// ---------- Floors & nodes ----------
+// ---------- Worlds & encounters ----------
 
-// True on the last floor — the boss = the run's win condition.
-function isBossFloor(floorIndex) {
-  return floorIndex >= ROGUELIKE.floorCount - 1;
+function worldDepth(worldIndex = run.worldIndex) {
+  return ROGUELIKE.worldDepths[worldIndex];
 }
 
-// Depth-weighted encounter pool (normal/elite/farm/gear/shop/event/recovery),
-// or a single forced boss node on the final floor. "elite" is stripped from
-// whatever band applies before floor `eliteMinDepth`. A node's kind-specific
-// extra detail (elite modifier / event definition) is rolled here too, at
-// node-generation time, so the SAME seed always produces the SAME choices
-// with the SAME sub-details (determinism the console/UI can rely on) — no
-// re-rolling happens later when a node is actually chosen.
-function rollFloorChoices() {
-  if (isBossFloor(run.floorIndex)) {
-    run.choices = [{ kind: "boss", label: "CORE BREACH — BOSS", depth: run.floorIndex }];
-    return;
+// Build one open area's fixed composition up-front: three combat slots and
+// four weighted event slots with every kind-specific detail already rolled.
+// Stable encounter ids let a staged reward/shop/event remove the correct pool
+// entry even after JSON persistence has broken object identity.
+function startWorld() {
+  const depth = worldDepth();
+  const pool = [];
+  const eliteChance = ROGUELIKE.eliteChancePerWorld[run.worldIndex];
+
+  for (let i = 0; i < ROGUELIKE.combatsPerWorld; i++) {
+    const kind = run.rng() < eliteChance ? "elite" : "normal";
+    pool.push(makeNode(kind, depth));
+  }
+  for (let i = 0; i < ROGUELIKE.eventsPerWorld; i++) {
+    pool.push(makeNode(weightedPick(ROGUELIKE.eventWeights, run.rng), depth));
   }
 
-  const depth = run.floorIndex;
-  const band = pickBand(ROGUELIKE.nodeWeights.bands, depth);
-  const weights = { ...band.weights };
-  if (depth < ROGUELIKE.eliteMinDepth) delete weights.elite;
-
-  const chosenKinds = [];
-  for (let i = 0; i < ROGUELIKE.choicesPerFloor; i++) {
-    // Prefer a kind not already offered this floor (nicer variety), but allow
-    // a repeat rather than loop forever on a narrow weight table.
-    let kind = weightedPick(weights, run.rng);
-    for (let attempt = 0; attempt < 3 && chosenKinds.includes(kind); attempt++) {
-      kind = weightedPick(weights, run.rng);
-    }
-    chosenKinds.push(kind);
-  }
-
-  run.choices = chosenKinds.map((kind) => makeNode(kind, depth));
+  shuffleInPlace(pool, run.rng);
+  pool.forEach((node, index) => {
+    node.encounterId = `w${run.worldIndex}-e${index}`;
+  });
+  run.encounterPool = pool;
+  run.worldTaken = 0;
+  run.worldTotal = pool.length;
+  run.bossPending = false;
+  run.phase = "choosing";
+  run.currentNode = null;
+  run.pendingChoice = null;
+  run.context.coreHealth = run.coreIntegrity;
+  persist();
+  return run;
 }
 
 function makeNode(kind, depth) {
@@ -367,39 +393,57 @@ function makeNode(kind, depth) {
   return node;
 }
 
-// Advance to the next floor and roll fresh choices. Shared by every resolver
-// that finishes a floor WITHOUT going through onBattleEnd (recovery resolves
-// immediately; gear/shop/event finish via their follow-up calls). Returns a
-// small snapshot so callers can fold it into their own result descriptor.
-function advanceFloor() {
-  run.floorIndex += 1;
+// Consume the active open-area encounter after it resolves. Worlds advance
+// only when their bosses are beaten; an empty pool still leaves LEAVE AREA.
+function advanceEncounter() {
+  const encounterId = run.currentNode?.encounterId;
+  const index = run.encounterPool.findIndex((node) => node.encounterId === encounterId);
+  if (index >= 0) {
+    run.encounterPool.splice(index, 1);
+    run.worldTaken += 1;
+  }
   run.context.coreHealth = run.coreIntegrity;
   run.phase = "choosing";
   run.currentNode = null;
   run.pendingChoice = null;
-  rollFloorChoices();
   persist();
-  return { floor: run.floorIndex, floorCount: ROGUELIKE.floorCount, choices: run.choices };
+  return encounterSnapshot();
+}
+
+function encounterSnapshot() {
+  return {
+    worldIndex: run.worldIndex,
+    worldTaken: run.worldTaken,
+    worldTotal: run.worldTotal,
+    remaining: run.encounterPool.length,
+  };
+}
+
+function finishStagedChoiceWithoutAdvance() {
+  run.phase = "choosing";
+  run.currentNode = null;
+  run.pendingChoice = null;
+  persist();
+  return encounterSnapshot();
 }
 
 // ---------- Non-combat resolver contract (for the Phase C UI) ----------
-// chooseNode(index) is the single entry point for picking a floor's node.
+// chooseNode(index) is the single entry point for picking an open-area node.
 // What happens next depends on the node's kind:
 //
-//   normal / elite / farm  -> launches a battle (same as Phase A). The floor
+//   normal / elite / farm  -> launches a battle (same as Phase A). The fight
 //   boss                      completes via onBattleEnd(game), called by
 //                              main.js after the battle resolves.
 //
 //   recovery  -> resolves FULLY inside chooseNode: restores Core Integrity
-//                and calls advanceFloor() itself. No follow-up call needed.
-//                Returns { ok, kind:"recovery", restored, coreIntegrity, floor, ... }.
+//                and calls advanceEncounter() itself. No follow-up call needed.
 //
 //   gear      -> STAGES: rolls `reward.choiceCount` items into
 //                run.pendingChoice, sets run.phase = "reward", and returns
 //                { ok, kind:"gear", items }. The UI must then call
 //                pickGearReward(itemIndex, rosterIndex) — or
 //                pickGearReward(-1) to skip/sell all — which attaches the
-//                item (or grants salvage) and calls advanceFloor().
+//                item (or grants salvage) and calls advanceEncounter().
 //
 //   shop      -> STAGES: rolls stock into run.pendingChoice, sets
 //                run.phase = "shop", and returns { ok, kind:"shop", gearStock,
@@ -407,13 +451,13 @@ function advanceFloor() {
 //                shopBuyGear(stockIndex, rosterIndex), shopBuyTowerUnlock(type),
 //                shopBuyRepair(points), and shopReroll() any number of times
 //                (each debits/mutates immediately and returns an updated
-//                snapshot), then MUST call shopLeave() to advance the floor.
+//                snapshot), then MUST call shopLeave() to consume the encounter.
 //
 //   event     -> STAGES: sets run.phase = "event" and returns
 //                { ok, kind:"event", event } (the event's label/desc/options
 //                come straight from the node, already rolled). The UI must
 //                then call resolveEventOption(optionIndex), which applies the
-//                chosen (possibly risky) outcome and calls advanceFloor().
+//                chosen (possibly risky) outcome and calls advanceEncounter().
 //
 //   upgrade   -> STAGES (Phase D): rolls `runUpgrades.choiceCount` distinct
 //                options into run.pendingChoice, sets run.phase = "reward",
@@ -421,21 +465,19 @@ function advanceFloor() {
 //                call pickRunUpgrade(optionIndex) — or pickRunUpgrade(-1) to
 //                skip all for flat salvage — which mutates run.context.mults /
 //                .unlockedTowers / run.maxCoreIntegrity (effective on the very
-//                next battle) and calls advanceFloor().
+//                next battle) and calls advanceEncounter().
 //
 // An elite win also stages a BONUS "reward" (Phase D, ROGUELIKE.reward.
 // eliteBonusReward): onBattleEnd rolls 3 higher-ilvl gear items into
 // run.pendingChoice / run.phase = "reward" (kind:"gear", same as a gear node)
-// immediately after an elite combat is won, BEFORE advancing the floor. The
-// UI's normal pickGearReward(itemIndex, rosterIndex) flow resolves it exactly
-// like a gear node and advances the floor itself; the caller of onBattleEnd
-// can tell this happened via the returned result's `bonusReward` field.
+// immediately after an elite combat is won. The encounter is already consumed
+// on victory; resolving this bonus must not consume another pool entry.
 //
 // Every resolver is a pure function of run.rng — no Math.random anywhere in
 // this file.
 export function chooseNode(index) {
   if (!run || run.phase !== "choosing") return { ok: false, reason: "not-choosing" };
-  const node = run.choices[index];
+  const node = run.encounterPool[index];
   if (!node) return { ok: false, reason: "no-node" };
   run.currentNode = node;
 
@@ -460,6 +502,17 @@ export function chooseNode(index) {
   }
 }
 
+// LEAVE AREA is always available while choosing. It does not consume any
+// remaining encounter; defeating this boss alone advances to the next world.
+export function leaveArea() {
+  if (!run || run.phase !== "choosing") return { ok: false, reason: "not-choosing" };
+  if (!launchBattle) return { ok: false, reason: "no-launcher" };
+  const node = { kind: "boss", depth: worldDepth(), label: "CORE BREACH — BOSS" };
+  run.bossPending = true;
+  run.currentNode = node;
+  return resolveCombatNode(node);
+}
+
 // ---------- Combat resolver (normal / elite / farm / boss) ----------
 
 function resolveCombatNode(node) {
@@ -467,8 +520,8 @@ function resolveCombatNode(node) {
   run.phase = "battle";
   run.context.coreHealth = run.coreIntegrity;      // carry current vitality in
   persist();                                       // snapshot CLEAN pre-modifier state; a
-                                                   // reload mid-battle resumes to this floor's
-                                                   // choices (phase coerced), never mid-combat.
+                                                   // reload mid-battle resumes to this world's
+                                                   // open area (phase coerced), never mid-combat.
 
   run._modifierBackup = null;
   if (node.kind === "elite" && node.modifier) {
@@ -530,7 +583,7 @@ function restoreBattleModifiers() {
 
 // ---------- Procedural level generator ----------
 
-// depth: run.floorIndex (0-based). kind: "normal" | "elite" | "farm" | "boss".
+// depth: ROGUELIKE.worldDepths[worldIndex]. kind: normal/elite/farm/boss.
 // Builds a valid `level` object: straight-segment pathCorners (from a
 // template, optionally mirrored/flipped), in-bounds blockedTiles, and waves
 // composed from the depth-appropriate enemy pool. Does NOT know about `run`
@@ -541,8 +594,8 @@ export function generateCombatLevel(depth, rng, kind) {
   const { corners, blockedTiles } = pickPathLayout(rng);
   const waves = generateWaves(depth, rng, kind);
   return {
-    id: `rogue_floor_${depth + 1}`,
-    name: kind === "boss" ? "CORE BREACH" : `FLOOR ${depth + 1}`,
+    id: `rogue_depth_${depth}`,
+    name: kind === "boss" ? "CORE BREACH" : "ROGUELIKE ENCOUNTER",
     gridWidth: ROGUELIKE.board.gridWidth,
     gridHeight: ROGUELIKE.board.gridHeight,
     startingMoney: ROGUELIKE.startingMoney[kind] ?? ROGUELIKE.startingMoney.normal,
@@ -636,7 +689,7 @@ function generateWaves(depth, rng, kind) {
   return waves;
 }
 
-// Boss floors get a fixed 3-act script (warm-up -> tougher mix -> boss units
+// Boss fights get a fixed 3-act script (warm-up -> tougher mix -> boss units
 // + chaff), scaled by the same depth ramp as everything else plus
 // bossHealthMult/bossBountyMult.
 function generateBossWaves(depth, rng) {
@@ -679,7 +732,7 @@ function rollRewardItems(depth, count, ilvlBonus = 0) {
 
 function resolveGearNode(node) {
   const items = rollRewardItems(node.depth, ROGUELIKE.reward.choiceCount);
-  run.pendingChoice = { kind: "gear", node, items };
+  run.pendingChoice = { kind: "gear", node, items, advanceOnResolve: true };
   run.phase = "reward";
   persist();
   return { ok: true, kind: "gear", items };
@@ -688,12 +741,12 @@ function resolveGearNode(node) {
 // itemIndex = -1 to skip/sell all offered items for flat salvage.
 export function pickGearReward(itemIndex, rosterIndex) {
   if (!run || run.phase !== "reward" || !run.pendingChoice) return { ok: false, reason: "not-reward" };
-  const { items } = run.pendingChoice;
+  const { items, advanceOnResolve = true } = run.pendingChoice;
 
   if (itemIndex === -1) {
     run.salvage += ROGUELIKE.reward.skipSalvage;
-    run.log.push(`skipped gear reward for ${ROGUELIKE.reward.skipSalvage} salvage (floor ${run.floorIndex + 1})`);
-    const snap = advanceFloor();
+    run.log.push(`skipped gear reward for ${ROGUELIKE.reward.skipSalvage} salvage (world ${run.worldIndex + 1})`);
+    const snap = advanceOnResolve ? advanceEncounter() : finishStagedChoiceWithoutAdvance();
     return { ok: true, kind: "gear", skipped: true, salvage: run.salvage, ...snap };
   }
 
@@ -704,8 +757,8 @@ export function pickGearReward(itemIndex, rosterIndex) {
   if (item.towerType && item.towerType !== rec.type) return { ok: false, reason: "towerType" };
 
   rec.gear[item.slot] = item;
-  run.log.push(`equipped ${item.rarity} ${item.slot} on ${rec.name} (floor ${run.floorIndex + 1})`);
-  const snap = advanceFloor();
+  run.log.push(`equipped ${item.rarity} ${item.slot} on ${rec.name} (world ${run.worldIndex + 1})`);
+  const snap = advanceOnResolve ? advanceEncounter() : finishStagedChoiceWithoutAdvance();
   return { ok: true, kind: "gear", equipped: { item, rosterIndex }, ...snap };
 }
 
@@ -756,7 +809,7 @@ export function shopBuyGear(stockIndex, rosterIndex) {
   run.salvage -= entry.price;
   rec.gear[entry.item.slot] = entry.item;
   entry.bought = true;
-  run.log.push(`bought ${entry.item.rarity} ${entry.item.slot} for ${entry.price} salvage (floor ${run.floorIndex + 1})`);
+  run.log.push(`bought ${entry.item.rarity} ${entry.item.slot} for ${entry.price} salvage (world ${run.worldIndex + 1})`);
   persist();
   return { ok: true, kind: "shop", bought: "gear", salvage: run.salvage };
 }
@@ -771,7 +824,7 @@ export function shopBuyTowerUnlock(type) {
   run.salvage -= offer.price;
   offer.bought = true;
   run.unlockedTowers.push(type);           // same array reference as run.context.unlockedTowers
-  run.log.push(`unlocked ${type} for ${offer.price} salvage (floor ${run.floorIndex + 1})`);
+  run.log.push(`unlocked ${type} for ${offer.price} salvage (world ${run.worldIndex + 1})`);
   persist();
   return { ok: true, kind: "shop", bought: "tower", type, salvage: run.salvage };
 }
@@ -788,7 +841,7 @@ export function shopBuyRepair(points) {
 
   run.salvage -= cost;
   run.coreIntegrity += n;
-  run.log.push(`repaired ${n} core integrity for ${cost} salvage (floor ${run.floorIndex + 1})`);
+  run.log.push(`repaired ${n} core integrity for ${cost} salvage (world ${run.worldIndex + 1})`);
   persist();
   return { ok: true, kind: "shop", bought: "repair", restored: n, coreIntegrity: run.coreIntegrity, salvage: run.salvage };
 }
@@ -815,7 +868,7 @@ export function shopReroll() {
 export function shopLeave() {
   const shop = requireShop();
   if (!shop) return { ok: false, reason: "not-shop" };
-  const snap = advanceFloor();
+  const snap = advanceEncounter();
   return { ok: true, kind: "shop", left: true, ...snap };
 }
 
@@ -853,9 +906,9 @@ export function resolveEventOption(optionIndex) {
     outcome = opt[rolled] || {};
   }
   applyEventDelta(outcome);
-  run.log.push(`event "${run.pendingChoice.event.label}" -> "${opt.label}"${rolled ? ` (${rolled})` : ""} (floor ${run.floorIndex + 1})`);
+  run.log.push(`event "${run.pendingChoice.event.label}" -> "${opt.label}"${rolled ? ` (${rolled})` : ""} (world ${run.worldIndex + 1})`);
 
-  const snap = advanceFloor();
+  const snap = advanceEncounter();
   return { ok: true, kind: "event", rolled, salvage: run.salvage, coreIntegrity: run.coreIntegrity, ...snap };
 }
 
@@ -868,9 +921,9 @@ function resolveRecoveryNode() {
   const restore = Math.max(cfg.restoreFlatMin, Math.round(missing * cfg.restoreFraction));
   const applied = Math.max(0, Math.min(missing, restore));
   run.coreIntegrity += applied;
-  run.log.push(`recovery: +${applied} core integrity (floor ${run.floorIndex + 1})`);
+  run.log.push(`recovery: +${applied} core integrity (world ${run.worldIndex + 1})`);
 
-  const snap = advanceFloor();
+  const snap = advanceEncounter();
   return { ok: true, kind: "recovery", restored: applied, coreIntegrity: run.coreIntegrity, ...snap };
 }
 
@@ -922,8 +975,8 @@ export function pickRunUpgrade(optionIndex) {
 
   if (optionIndex === -1) {
     run.salvage += ROGUELIKE.runUpgrades.skipSalvage;
-    run.log.push(`skipped upgrade for ${ROGUELIKE.runUpgrades.skipSalvage} salvage (floor ${run.floorIndex + 1})`);
-    const snap = advanceFloor();
+    run.log.push(`skipped upgrade for ${ROGUELIKE.runUpgrades.skipSalvage} salvage (world ${run.worldIndex + 1})`);
+    const snap = advanceEncounter();
     return { ok: true, kind: "upgrade", skipped: true, salvage: run.salvage, ...snap };
   }
 
@@ -932,16 +985,16 @@ export function pickRunUpgrade(optionIndex) {
 
   applyRunUpgrade(upgrade);
   run.draftedUpgrades.push({ id: upgrade.id, label: upgrade.label });
-  run.log.push(`drafted upgrade "${upgrade.label}" (floor ${run.floorIndex + 1})`);
-  const snap = advanceFloor();
+  run.log.push(`drafted upgrade "${upgrade.label}" (world ${run.worldIndex + 1})`);
+  const snap = advanceEncounter();
   return { ok: true, kind: "upgrade", applied: upgrade, ...snap };
 }
 
 // ---------- End of battle ----------
 // Called by main.js checkEndState BEFORE any campaign save-write, once the
 // battle has resolved to "won"/"lost". Restores any elite/farm battle
-// modifier, updates carried Core Integrity + Salvage, then either advances
-// the floor (rolling new choices) or ends the run. Returns a snapshot
+// modifier, updates carried Core Integrity + Salvage, then either consumes an
+// encounter, starts the next world after a boss, or ends the run. Returns a snapshot
 // descriptor for the caller's overlay; live getters are irrelevant to it, so
 // it stays correct even after the sandbox is turned off on a run-over.
 export function onBattleEnd(game) {
@@ -953,11 +1006,18 @@ export function onBattleEnd(game) {
 
   const node = run.currentNode;
   const kind = node?.kind || "normal";
+  const completedWorld = run.worldIndex;
   const result = {
     won,
-    floor: run.floorIndex,
-    floorCount: ROGUELIKE.floorCount,
+    worldIndex: completedWorld,
+    world: completedWorld,
+    worldCount: ROGUELIKE.worldCount,
+    worldTaken: run.worldTaken,
+    worldTotal: run.worldTotal,
+    floor: completedWorld,
+    floorCount: ROGUELIKE.worldCount,
     boss: kind === "boss",
+    bossWin: false,
     coreIntegrity: run.coreIntegrity,
     maxCoreIntegrity: run.maxCoreIntegrity,
     salvage: run.salvage,
@@ -969,48 +1029,52 @@ export function onBattleEnd(game) {
   if (!won || run.coreIntegrity <= 0) {
     run.phase = "lost";
     result.runOver = true;
-    run.log.push(`lost on floor ${run.floorIndex + 1}`);
+    run.log.push(`lost in world ${run.worldIndex + 1}`);
     setRunContext(null);                 // sandbox OFF — run is over
     clearRoguelikeRun();                 // a lost run is not resumable
     return result;
   }
 
-  // Win: bank salvage for the cleared floor (kind-specific table).
+  // Win: bank salvage for the cleared encounter (kind-specific table).
   const rewardCfg = ROGUELIKE.salvageRewards[kind] || ROGUELIKE.salvageRewards.normal;
-  const gain = rewardCfg.base + rewardCfg.perDepth * run.floorIndex;
+  const gain = rewardCfg.base + rewardCfg.perDepth * node.depth;
   run.salvage += gain;
   result.salvage = run.salvage;
   result.salvageGained = gain;
 
-  // Elite guaranteed bonus reward (Phase D §9 decision, ROGUELIKE.reward.
-  // eliteBonusReward): stage a higher-ilvl 3-item gear choice on top of the
-  // salvage above, using the exact same staged-reward shape as a "gear" node
-  // (run.pendingChoice.kind = "gear", run.phase = "reward"). Do NOT
-  // advanceFloor() here — pickGearReward() does that once the player resolves
-  // this bonus, same as it does for a real gear node.
-  if (kind === "elite" && ROGUELIKE.reward.eliteBonusReward) {
-    const items = rollRewardItems(run.floorIndex, ROGUELIKE.reward.choiceCount, ROGUELIKE.reward.eliteIlvlBonus);
-    run.pendingChoice = { kind: "gear", node: null, items };
-    run.phase = "reward";
-    result.bonusReward = { items };
-    run.log.push(`elite clear: bonus gear reward offered (floor ${run.floorIndex + 1})`);
-    persist();                           // resume into the staged bonus reward
-    return result;
-  }
-
   if (kind === "boss") {
+    result.bossWin = true;
+    run.bossPending = false;
+    if (run.worldIndex < ROGUELIKE.worldCount - 1) {
+      run.log.push(`cleared world ${run.worldIndex + 1}`);
+      run.worldIndex += 1;
+      startWorld();
+      result.nextWorld = run.worldIndex;
+      return result;
+    }
+
     run.phase = "won";
     result.runOver = true;
     result.runWon = true;
-    run.log.push(`WON the run on floor ${run.floorIndex + 1}`);
+    run.log.push(`WON the run in world ${run.worldIndex + 1}`);
     setRunContext(null);                 // sandbox OFF — run is over
     clearRoguelikeRun();                 // a completed run is not resumable
     return result;
   }
 
-  // Advance to the next floor and offer fresh choices.
-  const snap = advanceFloor();
-  result.nextFloor = snap.floor;
+  // A won open-area combat is consumed immediately. Existing Elite bonus gear
+  // is staged afterward and explicitly does not consume a second encounter.
+  const snap = advanceEncounter();
+  result.worldTaken = snap.worldTaken;
+  result.remaining = snap.remaining;
+  if (kind === "elite" && ROGUELIKE.reward.eliteBonusReward) {
+    const items = rollRewardItems(node.depth, ROGUELIKE.reward.choiceCount, ROGUELIKE.reward.eliteIlvlBonus);
+    run.pendingChoice = { kind: "gear", node: null, items, advanceOnResolve: false };
+    run.phase = "reward";
+    result.bonusReward = { items };
+    run.log.push(`elite clear: bonus gear reward offered (world ${run.worldIndex + 1})`);
+    persist();
+  }
   return result;
 }
 
@@ -1030,8 +1094,10 @@ export function getRunSummary() {
   const gearCount = run.roster.reduce((sum, r) => sum + rosterGearCount(r), 0);
   return {
     seed: run.seed,
-    floor: run.floorIndex + 1,
-    floorCount: ROGUELIKE.floorCount,
+    world: run.worldIndex + 1,
+    worldCount: ROGUELIKE.worldCount,
+    floor: run.worldIndex + 1,
+    floorCount: ROGUELIKE.worldCount,
     coreIntegrity: run.coreIntegrity,
     maxCoreIntegrity: run.maxCoreIntegrity,
     salvage: run.salvage,
@@ -1056,7 +1122,8 @@ export function dailySeed(date = new Date()) {
 // A run can be driven entirely from DevTools until the Phase C UI lands:
 //   roguelike.start()            -> begin a run
 //   roguelike.state()            -> inspect run state
-//   roguelike.choose(0)          -> pick a floor node
+//   roguelike.choose(0)          -> pick an open-area encounter
+//   roguelike.leaveArea()        -> fight the current world's boss
 //   step(120); checkEndState()   -> resolve a launched battle (existing debug helpers)
 // Non-combat follow-ups (see the resolver contract above) are reached via the
 // module's named exports, e.g. window.roguelike.run().pendingChoice, or by
@@ -1067,17 +1134,21 @@ export function debugHandle() {
     choose: (i = 0) => chooseNode(i),
     end: () => endRun("abandoned"),
     state: () => run && {
-      floor: `${run.floorIndex + 1}/${ROGUELIKE.floorCount}`,
+      world: `${run.worldIndex + 1}/${ROGUELIKE.worldCount}`,
+      encounters: `${run.worldTaken}/${run.worldTotal}`,
+      remaining: run.encounterPool.length,
+      bossPending: run.bossPending,
       phase: run.phase,
       coreIntegrity: `${run.coreIntegrity}/${run.maxCoreIntegrity}`,
       salvage: run.salvage,
-      choices: run.choices.map((c) => c.label),
+      encounterPool: run.encounterPool.map((c) => c.label),
       unlockedTowers: run.unlockedTowers,
       roster: run.roster.map((r) => ({ name: r.name, gear: r.gear })),
       pendingChoice: run.pendingChoice,
       log: run.log,
     },
     run: () => run,
+    leaveArea,
     // Non-combat follow-ups, exposed for console verification:
     pickGearReward,
     shopBuyGear,

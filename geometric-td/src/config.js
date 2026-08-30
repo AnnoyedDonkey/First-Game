@@ -25,21 +25,31 @@ export const DEBUG = {
 };
 
 // ---------- Roguelike run mode (DEBUG-gated) ----------
-// A run-based gauntlet layered on the engine: survive procedurally chosen
-// encounters across `floorCount` floors and beat the final boss to win. See
+// A run-based gauntlet layered on the engine: explore open worlds and beat
+// each world's boss to advance. See
 // ROGUELIKE_PLAN.md for the full design and phase map. EVERY tunable lives here
 // — never hardcode a run number in roguelike.js.
 //
 // Phase A (foundation) seeded the run state machine + sandbox values. Phase B
 // (this fill) adds the procedural generator's tunables: path templates, per-
-// depth difficulty ramp, node-type weights, enemy composition pools, gear
+// depth difficulty ramp, encounter composition, enemy composition pools, gear
 // reward/shop tables, the event table, and elite modifiers. Numbers are
 // starter values picked to stay close to Phase A's already-verified
 // placeholder envelope (same linear healthPerDepth/bossHealthMult) to keep
 // risk low — Phase D is the dedicated balance/playtest pass.
 export const ROGUELIKE = {
-  floorCount: 13,               // total floors; the last is the boss = win
-  choicesPerFloor: 3,           // encounter options offered per floor
+  worldCount: 3,
+  combatsPerWorld: 3,
+  eventsPerWorld: 4,
+  // Effective depth fed to the existing depth-keyed generators. Every
+  // encounter in one world shares a depth; difficulty steps only at worlds.
+  worldDepths: [1, 5, 9],
+  // Per-world chance that each fixed combat is upgraded to an Elite.
+  eliteChancePerWorld: [0, 0.34, 0.5],
+  // Weighted kinds used for the four non-boss event encounters in each world.
+  // Combat/boss are absent: fixed combat slots are built separately and each
+  // boss is entered only through LEAVE AREA.
+  eventWeights: { gear: 20, farm: 12, shop: 16, event: 12, recovery: 10, upgrade: 20 },
   starterTowers: ["laser", "pulse", "slow"], // the fresh run roster (one each)
   startingSalvage: 0,           // run currency at run start
   startingCoreIntegrity: 40,    // carried run vitality pool (also each combat's core HP)
@@ -66,11 +76,11 @@ export const ROGUELIKE = {
   baseSpeeds: [2, 4],           // in-battle fast-forward options (fresh account)
 
   // ---------- Board + path templates (Phase B generator) ----------
-  // Every generated floor shares one grid size. `pathTemplates` is the "small
+  // Every generated encounter shares one grid size. `pathTemplates` is the "small
   // bank of parameterized straight-segment path templates" the plan calls
   // for — each is a hand-authored, engine-valid (expandPathCorners-safe)
   // corner list on this grid, plus a pool of off-path tiles it's safe to
-  // additionally block. generateCombatLevel() picks one template per floor
+  // additionally block. generateCombatLevel() picks one template per encounter
   // and may mirror it horizontally / flip it vertically (an affine reflection
   // of an axis-aligned polyline is still axis-aligned, so this can never
   // produce an invalid path) for extra layout variety without any free-form
@@ -149,57 +159,29 @@ export const ROGUELIKE = {
   // verified placeholder (healthPerDepth/bossHealthMult) to keep this fill
   // low-risk; Phase D is the dedicated tuning pass.
   difficulty: {
-    healthPerDepth: 0.24,     // +24% enemy HP per floor of depth (depth 0 = floor 1). Softened
-                              // 2026-08-29 (player: too hard past floor 3-4 with a fresh roster).
-    bountyPerDepth: 0.12,     // +12% bounty per floor of depth
+    healthPerDepth: 0.24,     // +24% enemy HP per effective depth (worldDepths selects it)
+    bountyPerDepth: 0.12,     // +12% bounty per effective depth
     eliteHealthMult: 1.5,
     eliteBountyMult: 1.45,
     eliteCountMult: 1.2,
-    bossHealthMult: 4.5,      // extra HP multiplier on the boss floor (softened w/ the ramp)
+    bossHealthMult: 4.5,      // extra HP multiplier on each world boss
     bossBountyMult: 2.2,
     farmHealthMult: 0.5,      // XP Farm: weak enemies...
     farmBountyMult: 1.2,
     farmCountMult: 1.8,       // ...but more of them, for lots of quick kills
     farmXpMult: 2.5,          // temporary run.context.mults.xpMult multiplier for farm battles only
     baseWaveCount: 3,
-    wavesPerDepthEvery: 4,    // +1 wave every N floors of depth
+    wavesPerDepthEvery: 4,    // +1 wave every N steps of effective depth
     maxWaves: 5,
-    bossWaveCount: 3,         // boss floors always get a fixed 3-wave script
+    bossWaveCount: 3,         // boss fights use a fixed 3-wave script
     baseGroupCount: 6,        // base enemies per spawn group (was 7 — fewer for the fresh roster)
-    groupCountPerDepth: 0.6,  // + this many per floor of depth (was 0.9 — gentler count ramp)
+    groupCountPerDepth: 0.6,  // + this many per effective depth
     spawnIntervalBase: 0.65,  // seconds between spawns within a group
     spawnIntervalPerDepth: -0.015, // spawns get slightly faster with depth
     spawnIntervalMin: 0.35,
     groupStartDelayStep: 1.4, // stagger between distinct-type groups in the same wave
-    bossUnitCount: 2,         // "boss" enemy-type units in the boss floor's final wave
+    bossUnitCount: 2,         // "boss" enemy-type units in the boss fight's final wave
   },
-
-  // ---------- Node / encounter-type weights per depth band (Phase B/D) ----------
-  // `bands` are checked in order; the first with `depth <= maxDepth` applies
-  // (depth = run.floorIndex, 0-based). "elite" is stripped from whatever band
-  // applies whenever depth < eliteMinDepth. The final floor always forces a
-  // single "boss" node (see roguelike.js isBossFloor) — boss never appears in
-  // these weight tables.
-  //
-  // Phase D draft-cadence decision (ROGUELIKE_PLAN.md §9): "upgrade" (a
-  // draftable run-upgrade, see runUpgrades below) is offered as ONE MORE node
-  // kind in this same weighted pool, exactly like "gear" — NOT a forced pick
-  // every floor. That keeps the existing 3-choices-per-floor UI/resolver
-  // pattern intact (no new flow to build) and preserves player agency: a
-  // floor might offer 0-2 upgrade choices depending on the roll. Weight is
-  // comparable to "gear" (slightly lower — a permanent stat/economy boost is
-  // more valuable per-node than one item), so across a ~12-floor run a typical
-  // seed offers on the order of 4-6 upgrade nodes total, of which the player
-  // can pick however many they choose to walk into.
-  nodeWeights: {
-    bands: [
-      { maxDepth: 1, weights: { normal: 40, farm: 15, gear: 16, event: 13, upgrade: 16 } },
-      { maxDepth: 4, weights: { normal: 26, elite: 13, farm: 10, gear: 17, shop: 12, event: 7, upgrade: 17 } },
-      { maxDepth: 8, weights: { normal: 18, elite: 20, farm: 8, gear: 15, shop: 12, event: 8, recovery: 9, upgrade: 10 } },
-      { maxDepth: Infinity, weights: { normal: 13, elite: 25, farm: 5, gear: 15, shop: 12, event: 7, recovery: 12, upgrade: 11 } },
-    ],
-  },
-  eliteMinDepth: 3,             // no elite node before this floor of depth
 
   // Modifiers an Elite node's combat applies on top of the normal ramp. One is
   // chosen (via run.rng) at node-generation time, so its label is visible
@@ -217,14 +199,14 @@ export const ROGUELIKE = {
 
   // ---------- Enemy composition pools per depth band (Phase B/D) ----------
   // Leans on the resist matrix (BALANCE.enemies damageMult, config.js ~L352) so
-  // different floors reward different towers rather than "biggest number
+  // different worlds reward different towers rather than "biggest number
   // wins": fast (energy-weak) rewards Laser early; armored (energy-resist,
   // pulse/rail-weak) is the intro to needing Pulse instead of just Laser;
   // splitter (pulse/blast-weak, rail-resist) is safely answerable with the
   // starter Pulse tower alone, so it's pulled forward into band2 as a teaching
   // moment ("don't dump everything into Laser") well before Railgun/Rocket are
   // purchasable; regenerator (energy-resist, rail-weak) stays gated to band3+,
-  // arriving roughly when Shop gold (nodeWeights band2 unlocks "shop") makes a
+  // arriving in later worlds, where Trade Posts can make a
   // Railgun purchase realistic.
   enemyTemplates: {
     bands: [
@@ -238,7 +220,7 @@ export const ROGUELIKE = {
 
   // ---------- Gear reward nodes (Phase B/D) ----------
   reward: {
-    choiceCount: 3,            // items offered per gear node
+    choiceCount: 5,            // items offered per gear reward
     ilvlBase: 8,
     ilvlPerDepth: 6,
     eliteIlvlBonus: 12,        // ilvl bump applied to an elite's guaranteed bonus reward (below)
@@ -246,13 +228,13 @@ export const ROGUELIKE = {
     // guarantee a bonus gear reward on top of their already-larger salvage
     // payout. Implemented as a second "reward" stage offered immediately
     // after an elite win (roguelike.js onBattleEnd), reusing the exact same
-    // 3-item-choose-1 flow as a "gear" node (just at ilvl+eliteIlvlBonus) — no
+    // 5-item-choose-1 flow as a "gear" node (just at ilvl+eliteIlvlBonus) — no
     // new UI screen needed. A toggle (not a hardcoded branch) so it can be
     // switched off from config alone if it turns out to over-reward elites.
     eliteBonusReward: true,
-    skipSalvage: 10,           // salvage granted for skipping/selling all 3 offers
+    skipSalvage: 10,           // salvage granted for skipping/selling all 5 offers
     // Rarity roll weights by depth band — independent of the campaign's
-    // level-number-based gating in loot.js (run floors aren't campaign
+    // level-number-based gating in loot.js (run worlds aren't campaign
     // levels), so the run defines its own ramp here.
     rarityWeightsByDepth: [
       { maxDepth: 2, weights: { common: 65, enhanced: 28, rare: 6, prismatic: 1, singularity: 0 } },
@@ -337,7 +319,7 @@ export const ROGUELIKE = {
   },
 
   // ---------- Draftable run upgrades (Phase D — the structural piece) ----------
-  // Offered via the "upgrade" node kind (see nodeWeights above): 3 distinct
+  // Offered via the "upgrade" event kind: 3 distinct
   // options rolled per node (weighted, no repeats within one offer — see
   // roguelike.js weightedSampleDistinct), the player picks 1 (or skips all for
   // flat salvage, matching the gear-node pattern). Each entry is a pure data
@@ -364,8 +346,7 @@ export const ROGUELIKE = {
   //   weight               -> relative pick weight when sampling `choiceCount`
   //                          distinct options from the pool (same shape as
   //                          weightedPick elsewhere in this file).
-  // Sizing: a full run offers roughly 4-6 upgrade nodes (see nodeWeights
-  // comment above), so per-pick deltas are sized close to ONE real-save skill
+  // Sizing: per-pick deltas are close to ONE real-save skill
   // box (ECONOMY_SKILL_SPEC / TOWER_SKILL_SPEC step sizes above: money/xp
   // +10%, interest +2%, tower damage/perk chains +8-10% per box) — slightly
   // above the real per-box size since a run gets far fewer picks than a full
