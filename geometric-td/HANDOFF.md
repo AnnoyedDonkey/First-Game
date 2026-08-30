@@ -20,12 +20,37 @@ en)` looks it up; `lang` save field via `progression.js getLang/setLang`;
 proper nouns** (tower names Laser/Pulse/Slow/Railgun/Rocket, Indy-7,
 Bratwurst-XL, "GEOMETRIC TD").
 
-**Deployed build: `2026.08.29-7`.**
+**Deployed build: `2026.08.29-17`.**
+
+### Roguelike mode (`2026.08.29-16`..`-17`) — DEBUG-gated
+A run-based gauntlet layered on the engine: survive procedurally chosen
+encounters across 13 floors, beat the boss to win. **Behind Settings → DEBUG
+MODE** (invisible to normal players). **Read `ROGUELIKE_PLAN.md` first for any
+roguelike work** — it has the full design + per-phase "AS BUILT" interfaces;
+`ROGUELIKE_SOURCE_EXTRACT.md` is the reusable-systems reference. Phases A–D
+shipped; Phase E (polish + optional run persistence) not built. Locked design:
+procedural floors, run-only "Salvage" currency, carried run-wide "Core
+Integrity" vitality; fresh gearless level-1 roster every run (mastery/XP do NOT
+carry — power comes from drafted gear + `runUpgrades`). New files
+`src/roguelike.js` (run state machine + resolvers), `src/roguelike-ui.js` (all
+screens); all tunables in `config.js ROGUELIKE`. **Sandbox contract (the safety
+guarantee): a run NEVER reads/writes the real save** — fresh roster via the
+co-op-guest roster mechanism; `progression.js setRunContext` shims the gameplay
+getters to fresh-account values while a run is active; end-of-battle intercepted
+in `main.js checkEndState`. **Regression guard: `game.js` win/loss branches gate
+`recordBattleEnd` on `&& !game.isRun`** — do NOT remove (without it a run's
+natural win/loss writes the real save). Difficulty softened in `-17` off a
+player report ("too hard past floor 3–4"); still a first calibration pass
+awaiting real-play feedback. Built via phased cheap-Sonnet agents cold-reading
+`ROGUELIKE_PLAN.md`; Opus-4.8 orchestrator did the risky sandbox phase inline +
+the version bumps + pushes.
 
 ### Affix "mods" system (`2026.08.28-1`..`2026.08.29-7`)
 Behavioral gear modifiers — **Faults** on enemies (Desync/Throttle/Exposed) and
 **Protocols** on towers (Array/Fork/4× Broadcast) — a data-driven foundation for
-a future roguelike (roguelike NOT built here). **Read `AFFIXES_PLAN.md` first for
+the roguelike mode (NOW BUILT — see the Roguelike subsection above and
+`ROGUELIKE_PLAN.md`; the run-upgrade drafts reuse this mod/affix foundation).
+**Read `AFFIXES_PLAN.md` first for
 any mod work.** New `item.mods:[{id,power}]` field, SEPARATE from the shipped
 `item.affixes` stat-rolls (never merge). Registry `src/affixes.js`, all knobs
 `config.js LOOT.mods`, minimal explicit hooks (`onHit`/`onKill`/`onNetworkChange`,
@@ -943,6 +968,14 @@ BALANCE_LAB_PLAN.md  approved Balance Lab L0-L7 plan
   Throttle/Desync/Corruption/Array/Fork/Broadcast/Cascade/Overclock), the
   cross-archetype bridge map, and the accepted build queue (Corruption archetype,
   Overclock archetype, Cascade). `[BUILT]`/`[NEXT]`/`[IDEA]` tags mark status.
+- `ROGUELIKE_PLAN.md` — **read this first for any roguelike work.** The full
+  design + phase map with per-phase "AS BUILT" interfaces (run state machine,
+  the save-sandbox contract + the `!game.isRun` regression guard, procedural
+  generator, encounter resolvers, the UI contract, and the draftable
+  run-upgrades). Phases A–D shipped through `2026.08.29-17`; Phase E not built.
+- `ROGUELIKE_SOURCE_EXTRACT.md` — data-faithful snapshot of every reusable
+  engine system (towers, enemies + resist matrix, gear/loot, economy, map
+  modifiers) with file:line anchors — the reference the roguelike build assumed.
 - `GAME_BRIEF.md` — original feature specification.
 - `PWA_HOMESCREEN_PLAN.md` — phased plan to make the game an installable,
   offline-capable home-screen app (iOS + Android) with an in-game install
