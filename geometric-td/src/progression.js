@@ -27,6 +27,21 @@ import { getMod, modPowerForRarity } from "./affixes.js";
 
 let state = loadSave();
 let gearChangeHandler = null;
+
+// ---------- Roguelike run sandbox ----------
+// While a roguelike run is active, the gameplay skill/economy getters below
+// return RUN values (a fresh account plus any drafted run upgrades) instead of
+// the real save's, so a run battle behaves as a clean slate WITHOUT reading or
+// writing the save. roguelike.js sets this for the whole run and clears it when
+// the run ends. `mults` holds one value per shimmed getter (defaults =
+// fresh-account base; see roguelike.js buildRunContext); `unlockedTowers` and
+// `speeds` back the two non-numeric shims. Campaign/co-op run with ctx = null,
+// so their behavior is byte-for-byte unchanged. Declared here — above the
+// module-init backfills that call the shimmed getters — to avoid a TDZ error.
+let activeRunContext = null;
+export function setRunContext(ctx) { activeRunContext = ctx || null; }
+export function getRunContext() { return activeRunContext; }
+
 migrateSkills();
 // Belt-and-suspenders alongside save.js's DEFAULT_SAVE merge: GitHub
 // Pages can briefly serve a stale save.js from one file while ui.js/
@@ -355,6 +370,7 @@ export function buySkill(id) {
 // base-cap XP threshold for every tower, so unlocking higher levels never nerfs
 // a veteran's mastery ranks.
 export function getTowerLevelCap(type) {
+  if (activeRunContext) return activeRunContext.mults.towerLevelCap;
   const base = TOWER_UPGRADES.maxLevel;
   if (!type) return base;
   return base + ownedSkillCount(`${type}_lvl`);
@@ -368,6 +384,7 @@ function ecoSum(key) {
 
 // Cash interest applied each wave-clear (game.js): floor(money*rate), capped.
 export function getInterestRate() {
+  if (activeRunContext) return activeRunContext.mults.interestRate;
   return ecoSum("eco_intrate");
 }
 // Cap = a data-driven base (economy.interest.baseCap) PLUS the owned Reserve
@@ -376,11 +393,13 @@ export function getInterestRate() {
 // until Reserve Cap is also purchased. game.js still gates on rate > 0, so the
 // base never grants interest to a player who hasn't bought Compound Yield.
 export function getInterestCap() {
+  if (activeRunContext) return activeRunContext.mults.interestCap;
   return (ECONOMY.interest?.baseCap || 0) + ecoSum("eco_intcap");
 }
 
 // Account-wide shard-find multiplier (composes with per-tower gear shardFind).
 export function getSkillShardFindMult() {
+  if (activeRunContext) return activeRunContext.mults.shardFindMult;
   return 1 + ecoSum("eco_shard");
 }
 
@@ -389,18 +408,22 @@ export function getSkillShardFindMult() {
 // maxed capacitor roughly halves the wind-up. The `railPen` id/value are legacy
 // (the perk used to stretch beam length before the ray became unlimited).
 export function getRailChargeSpeedMult() {
+  if (activeRunContext) return activeRunContext.mults.railChargeSpeedMult;
   return 1 + SKILL_VALUES.railPen * ownedSkillCount("railPen");
 }
 
 export function getMoneyMult() {
+  if (activeRunContext) return activeRunContext.mults.moneyMult;
   return 1 + ecoSum("eco_money");
 }
 
 export function getXpMult() {
+  if (activeRunContext) return activeRunContext.mults.xpMult;
   return 1 + ecoSum("eco_xp");
 }
 
 export function getCoreBonus() {
+  if (activeRunContext) return activeRunContext.mults.coreBonus;
   return SKILL_VALUES.coreHealth * getSkillTier("coreHealth");
 }
 
@@ -408,6 +431,7 @@ export function getCoreBonus() {
 // base speeds plus each owned Game Acceleration tier (ids gameSpeed6..gameSpeed16).
 // Read live so a freshly-bought tier applies on the next battle without a reload.
 export function getUnlockedSpeeds() {
+  if (activeRunContext) return activeRunContext.speeds.slice();
   const base = (GAME_SPEED_SKILL?.base ?? [2, 4]).slice();
   const owned = (GAME_SPEED_SKILL?.tiers ?? [])
     .filter((t) => (state.skills[`gameSpeed${t.mult}`] | 0) >= 1)
@@ -419,6 +443,7 @@ export function getUnlockedSpeeds() {
 // The Slow tower's chain feeds duration instead (getSlowDurationMult), so it
 // contributes no damage here.
 export function getTowerDamageMult(type) {
+  if (activeRunContext) return activeRunContext.mults.towerDamageMult;
   const spec = TOWER_SKILL_SPEC[type];
   if (!spec || spec.stat !== "damage") return 1;
   return 1 + spec.damageStep * ownedSkillCount(`${type}_dmg`);
@@ -613,6 +638,7 @@ export function setLang(lang) {
 // Late towers are campaign rewards: the Railgun for clearing World 1
 // (level 5), the Rocket Launcher for clearing World 2 (level 10).
 export function isTowerUnlocked(type) {
+  if (activeRunContext) return activeRunContext.unlockedTowers.includes(type);
   if (type === "railgun") return state.completedLevels.includes("level_005");
   if (type === "rocket") return state.completedLevels.includes("level_010");
   return true;
@@ -620,6 +646,7 @@ export function isTowerUnlocked(type) {
 
 // The Slow tower's damage chain feeds slow-effect duration.
 export function getSlowDurationMult() {
+  if (activeRunContext) return activeRunContext.mults.slowDurationMult;
   const spec = TOWER_SKILL_SPEC.slow;
   return 1 + spec.damageStep * ownedSkillCount("slow_dmg");
 }
@@ -627,21 +654,25 @@ export function getSlowDurationMult() {
 // The Slow tower's third chain (Slow Potency) feeds slow-effect strength
 // (% speed reduction), same shape as getRailChargeSpeedMult above.
 export function getSlowPotencyMult() {
+  if (activeRunContext) return activeRunContext.mults.slowPotencyMult;
   return 1 + SKILL_VALUES.slowPot * ownedSkillCount("slowPot");
 }
 
 // The Laser tower's third chain (Rapid Fire) feeds fire-rate multiplier.
 export function getLaserFireRateMult() {
+  if (activeRunContext) return activeRunContext.mults.laserFireRateMult;
   return 1 + SKILL_VALUES.laserRate * ownedSkillCount("laserRate");
 }
 
 // The Pulse tower's third chain (Blast Radius) feeds splash-radius multiplier.
 export function getPulseBlastRadiusMult() {
+  if (activeRunContext) return activeRunContext.mults.pulseBlastRadiusMult;
   return 1 + SKILL_VALUES.pulseBlast * ownedSkillCount("pulseBlast");
 }
 
 // The Rocket tower's third chain (Payload Yield) feeds splash-radius multiplier.
 export function getRocketBlastRadiusMult() {
+  if (activeRunContext) return activeRunContext.mults.rocketBlastRadiusMult;
   return 1 + SKILL_VALUES.rocketBlast * ownedSkillCount("rocketBlast");
 }
 

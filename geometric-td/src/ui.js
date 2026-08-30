@@ -1307,6 +1307,29 @@ function appendGlobalMenuButtons() {
 
   el.menuActions.appendChild(introRow);
 
+  // ROGUELIKE entry (ROGUELIKE_PLAN.md Phase C) — DEBUG-gated exactly like
+  // MOD LAB (settings-mod-lab, below): only visible while getDebugMode() is
+  // true. Its own row so it never gets mistaken for a normal menu entry.
+  // Tap wiring is registered from main.js via onRoguelikeButtonTap — this
+  // module never imports roguelike.js/roguelike-ui.js directly (keeps the
+  // import graph one-directional; see roguelike-ui.js's file header).
+  if (getDebugMode()) {
+    const rogueRow = document.createElement("div");
+    rogueRow.className = "menu-actions-row";
+    const rogueBtn = document.createElement("button");
+    rogueBtn.className = "level-button skill-entry rogue-entry";
+    rogueBtn.innerHTML = `<span>${t("menu.roguelike", "ROGUELIKE")}</span><span class="level-done">DEBUG</span>`;
+    rogueBtn.addEventListener("click", () => { if (roguelikeTapHandler) roguelikeTapHandler(); });
+    rogueRow.appendChild(rogueBtn);
+    el.menuActions.appendChild(rogueRow);
+  }
+}
+
+// Registered by main.js (mirrors onWaveButtonTap etc.) — this module never
+// imports roguelike-ui.js directly, see appendGlobalMenuButtons above.
+let roguelikeTapHandler = null;
+export function onRoguelikeButtonTap(handler) {
+  roguelikeTapHandler = handler;
 }
 
 // ---------- Settings overlay ----------
@@ -1461,6 +1484,10 @@ el.settingsEffects.addEventListener("click", () => {
 el.settingsDebug.addEventListener("click", () => {
   setDebugMode(!getDebugMode());
   renderSettings();
+  // The ROGUELIKE menu entry is gated the same way as MOD LAB — re-render the
+  // (already-open, underneath) main menu so toggling debug here reflects
+  // immediately instead of needing a menu close/reopen.
+  if (menuCtx) renderWorld();
 });
 el.settingsLanguage.addEventListener("click", () => {
   setLang(getLang() === "fr" ? "en" : "fr");

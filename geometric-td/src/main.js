@@ -27,7 +27,7 @@ import {
   initSpeedControls, onExitButtonTap, openLeaderboard,
   openGearPanel, showMilestoneToast, updateTutorialOverlay, maybeShowTileInfo,
   showBark, updateStoryOverlay, levelNameFor, milestoneLabelFor,
-  initCoopDebugControls, setCoopHudMode,
+  initCoopDebugControls, setCoopHudMode, onRoguelikeButtonTap,
 } from "./ui.js";
 import { getNickname, submitScore, isEnabled as lbEnabled } from "./leaderboard.js";
 import {
@@ -41,6 +41,8 @@ import * as tutorial from "./tutorial.js";
 import { startOnboarding, playCards, isOnboardingActive, setCardsSuppressed } from "./onboarding.js";
 import { t, tf } from "./i18n.js";
 import * as coop from "./coop.js";
+import * as roguelike from "./roguelike.js";
+import { initRoguelikeUI, enterRoguelike, onRunBattleEnd } from "./roguelike-ui.js";
 import { initLobbyMenu } from "./lobby.js";
 import {
   getPerformanceSnapshot, resetFrameRateMonitor, sampleFrameRate,
@@ -210,6 +212,48 @@ function startLevel(level, endless = false) {
     }
   }
 }
+
+// Launch a roguelike run battle: a trimmed startLevel with no campaign
+// narrative/tutorial/tower-guide hooks. The run context (roguelike.js) makes
+// createGame deploy the run's fresh roster and carry Core Integrity, and turns
+// on the progression sandbox for the fight. End-of-battle is intercepted in
+// checkEndState so it routes to the run instead of the campaign result screen.
+function startRoguelikeBattle(level, runContext) {
+  setCoopHudMode(false);
+  game = createGame(level, TILE_SIZE, false, runContext);
+  resetFrameRateMonitor(performance.now());
+  overlayShown = false;
+  barkState = { bossBarked: false, introSpottedAt: {} }; // unused in runs (updateBarks bails on isRun)
+  hideOverlay();
+  uiState.selectedType = null;
+  uiState.selectedDef = null;
+  uiState.selectedTower = null;
+  uiState.hoverTile = null;
+  window.game = game;
+  window.step = (seconds) => {
+    for (let i = 0; i < seconds * 60 && game; i++) updateGame(game, 1 / 60);
+  };
+  canvas.width = level.gridWidth * TILE_SIZE;
+  canvas.height = level.gridHeight * TILE_SIZE;
+  fitCanvas();
+}
+roguelike.setBattleLauncher(startRoguelikeBattle);
+
+// Phase C UI: node-map/gear/shop/event/run-end screens (src/roguelike-ui.js).
+// Returning to the menu needs main.js's own goToMainMenu (owns `game`/canvas
+// state and the real startLevel callback showLevelSelect needs) — passed in
+// rather than imported by roguelike-ui.js, to keep that module's import graph
+// one-directional (see its file header).
+initRoguelikeUI(() => {
+  game = null;
+  window.game = null;
+  goToMainMenu();
+});
+onRoguelikeButtonTap(() => enterRoguelike());
+
+// Console handle so a full run is drivable from DevTools:
+//   roguelike.start(); roguelike.choose(0); step(180); checkEndState();
+window.roguelike = roguelike.debugHandle();
 
 // Size the canvas element to the largest rectangle that fits the
 // game area without distorting the grid.
@@ -588,6 +632,36 @@ let exitConfirming = false;
 
 onExitButtonTap(() => {
   if (!game || overlayShown || exitConfirming) return;
+  // Roguelike run: abandon without touching the real save (NO forfeitBattle,
+  // which syncs the roster/shards into the save). Just end the run and return.
+  if (game.isRun) {
+    exitConfirming = true;
+    showOverlay({
+      title: t("rogue.exit.title", "ABANDON RUN?"),
+      subtitle: t("rogue.exit.subtitle",
+        "The run ends here. Your account progress is untouched."),
+      type: "loss",
+      buttons: [
+        {
+          text: t("rogue.exit.action", "ABANDON RUN"),
+          onTap: () => {
+            exitConfirming = false;
+            roguelike.endRun("abandoned");
+            game = null;
+            window.game = null;
+            hideOverlay();
+            showLevelSelect(LEVELS, getProgress().completedLevels, startLevel);
+          },
+        },
+        {
+          text: t("ui.cancel", "CANCEL"),
+          onTap: () => { exitConfirming = false; hideOverlay(); },
+          secondary: true,
+        },
+      ],
+    });
+    return;
+  }
   if (coop.isGuest(game)) {
     leaveCoopSession();
     return;
@@ -668,6 +742,15 @@ onExitButtonTap(() => {
 function checkEndState() {
   if (overlayShown) return;
   if (game.phase !== "won" && game.phase !== "lost") return;
+
+  // Roguelike run: route to the run BEFORE any campaign save-write (no
+  // recordBattleEnd, no telemetry, no loot-to-stash, no skill point). The run
+  // carries Core Integrity + Salvage and advances the floor or ends the run.
+  if (game.isRun) {
+    overlayShown = true;
+    onRunBattleEnd(game);
+    return;
+  }
 
   overlayShown = true;
   submitRun(runTelemetry(game, game.phase), game); // best-effort, never blocks
@@ -772,6 +855,11 @@ function checkEndState() {
   }
 }
 
+// Debug handle: start a run and immediately show the node-map UI (same path
+// the DEBUG-gated menu button uses) — a full run is playable from the
+// console via window.startRun(seed) without needing the real button.
+window.startRun = (seed) => enterRoguelike(seed);
+
 // Debug handle: run the end-of-battle resolution from the console. Needed
 // for headless bot sims — checkEndState normally only runs in frame(),
 // and rAF is paused while the tab is hidden.
@@ -793,7 +881,7 @@ window.updateBarks = () => updateBarks(game);
 // pause the battle and play as a story card instead. Both paths stay gated
 // by the one STORY BANTER toggle (getBarksEnabled).
 function updateBarks(game) {
-  if (!game || game.endless || !NARRATIVE.enabled || !barkState) return;
+  if (!game || game.isRun || game.endless || !NARRATIVE.enabled || !barkState) return;
   // A card is already up (and the sim is frozen behind it) — do nothing this
   // frame rather than stomping it or firing ticker barks nobody can see.
   // Nothing is lost: the same enemies are still on the field next frame.

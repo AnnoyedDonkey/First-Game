@@ -24,6 +24,289 @@ export const DEBUG = {
   coopLocal: false,    // fake a second local player for Phase 1 wallet/owner testing
 };
 
+// ---------- Roguelike run mode (DEBUG-gated) ----------
+// A run-based gauntlet layered on the engine: survive procedurally chosen
+// encounters across `floorCount` floors and beat the final boss to win. See
+// ROGUELIKE_PLAN.md for the full design and phase map. EVERY tunable lives here
+// — never hardcode a run number in roguelike.js.
+//
+// Phase A (foundation) seeded the run state machine + sandbox values. Phase B
+// (this fill) adds the procedural generator's tunables: path templates, per-
+// depth difficulty ramp, node-type weights, enemy composition pools, gear
+// reward/shop tables, the event table, and elite modifiers. Numbers are
+// starter values picked to stay close to Phase A's already-verified
+// placeholder envelope (same linear healthPerDepth/bossHealthMult) to keep
+// risk low — Phase D is the dedicated balance/playtest pass.
+export const ROGUELIKE = {
+  floorCount: 13,               // total floors; the last is the boss = win
+  choicesPerFloor: 3,           // encounter options offered per floor
+  starterTowers: ["laser", "pulse", "slow"], // the fresh run roster (one each)
+  startingSalvage: 0,           // run currency at run start
+  startingCoreIntegrity: 30,    // carried run vitality pool (also each combat's core HP)
+
+  // Fresh-account baseline the sandbox feeds the shimmed progression getters
+  // during a run battle (see progression.js setRunContext). Phase D raises these
+  // via drafted run upgrades; for now every run battle plays as a clean slate.
+  baseMults: {
+    towerLevelCap: 5,           // TOWER_UPGRADES.maxLevel — no cap skills owned
+    moneyMult: 1,
+    interestRate: 0,            // interest is off until an upgrade grants it
+    interestCap: 50,            // ECONOMY.interest.baseCap
+    xpMult: 1,
+    towerDamageMult: 1,
+    slowDurationMult: 1,
+    slowPotencyMult: 1,
+    laserFireRateMult: 1,
+    pulseBlastRadiusMult: 1,
+    rocketBlastRadiusMult: 1,
+    railChargeSpeedMult: 1,
+    shardFindMult: 1,
+    coreBonus: 0,
+  },
+  baseSpeeds: [2, 4],           // in-battle fast-forward options (fresh account)
+
+  // ---------- Board + path templates (Phase B generator) ----------
+  // Every generated floor shares one grid size. `pathTemplates` is the "small
+  // bank of parameterized straight-segment path templates" the plan calls
+  // for — each is a hand-authored, engine-valid (expandPathCorners-safe)
+  // corner list on this grid, plus a pool of off-path tiles it's safe to
+  // additionally block. generateCombatLevel() picks one template per floor
+  // and may mirror it horizontally / flip it vertically (an affine reflection
+  // of an axis-aligned polyline is still axis-aligned, so this can never
+  // produce an invalid path) for extra layout variety without any free-form
+  // path synthesis.
+  board: { gridWidth: 8, gridHeight: 12 },
+  blockedTileCountRange: [1, 4],  // rng picks how many blockedCandidates to actually block
+  mirrorChance: 0.5,              // chance to mirror the template horizontally (x -> w-1-x)
+  flipChance: 0.5,                // chance to flip the template vertically (y -> h-1-y)
+
+  pathTemplates: [
+    {
+      id: "switchback",
+      corners: [
+        { x: 0, y: 0 }, { x: 6, y: 0 }, { x: 6, y: 3 }, { x: 1, y: 3 },
+        { x: 1, y: 6 }, { x: 6, y: 6 }, { x: 6, y: 9 }, { x: 1, y: 9 }, { x: 1, y: 11 },
+      ],
+      blockedCandidates: [
+        { x: 3, y: 1 }, { x: 4, y: 1 }, { x: 3, y: 4 }, { x: 4, y: 4 },
+        { x: 3, y: 7 }, { x: 4, y: 7 }, { x: 2, y: 2 }, { x: 5, y: 2 }, { x: 2, y: 10 }, { x: 5, y: 10 },
+      ],
+    },
+    {
+      id: "coil",
+      corners: [
+        { x: 2, y: 0 }, { x: 2, y: 2 }, { x: 6, y: 2 }, { x: 6, y: 4 }, { x: 1, y: 4 },
+        { x: 1, y: 6 }, { x: 7, y: 6 }, { x: 7, y: 8 }, { x: 2, y: 8 }, { x: 2, y: 11 },
+      ],
+      blockedCandidates: [
+        { x: 4, y: 0 }, { x: 5, y: 0 }, { x: 4, y: 1 }, { x: 0, y: 3 }, { x: 4, y: 3 },
+        { x: 5, y: 5 }, { x: 3, y: 5 }, { x: 5, y: 7 }, { x: 4, y: 9 }, { x: 5, y: 9 }, { x: 0, y: 9 }, { x: 0, y: 10 },
+      ],
+    },
+    {
+      id: "stairs",
+      corners: [
+        { x: 0, y: 0 }, { x: 0, y: 1 }, { x: 2, y: 1 }, { x: 2, y: 3 }, { x: 4, y: 3 },
+        { x: 4, y: 5 }, { x: 6, y: 5 }, { x: 6, y: 7 }, { x: 3, y: 7 }, { x: 3, y: 9 },
+        { x: 7, y: 9 }, { x: 7, y: 11 },
+      ],
+      blockedCandidates: [
+        { x: 1, y: 0 }, { x: 5, y: 1 }, { x: 0, y: 2 }, { x: 5, y: 2 }, { x: 1, y: 4 },
+        { x: 0, y: 5 }, { x: 2, y: 5 }, { x: 1, y: 6 }, { x: 5, y: 6 }, { x: 0, y: 7 },
+        { x: 1, y: 8 }, { x: 5, y: 8 }, { x: 0, y: 9 }, { x: 5, y: 10 },
+      ],
+    },
+    {
+      id: "spine",
+      corners: [
+        { x: 7, y: 0 }, { x: 7, y: 2 }, { x: 0, y: 2 }, { x: 0, y: 5 }, { x: 7, y: 5 },
+        { x: 7, y: 8 }, { x: 0, y: 8 }, { x: 0, y: 11 }, { x: 7, y: 11 },
+      ],
+      blockedCandidates: [
+        { x: 3, y: 0 }, { x: 4, y: 0 }, { x: 3, y: 1 }, { x: 4, y: 1 }, { x: 2, y: 3 },
+        { x: 3, y: 3 }, { x: 4, y: 3 }, { x: 5, y: 3 }, { x: 2, y: 4 }, { x: 5, y: 4 },
+        { x: 3, y: 6 }, { x: 4, y: 6 }, { x: 2, y: 9 }, { x: 5, y: 9 }, { x: 3, y: 10 }, { x: 4, y: 10 },
+      ],
+    },
+    {
+      id: "boxcar",
+      corners: [
+        { x: 0, y: 0 }, { x: 4, y: 0 }, { x: 4, y: 4 }, { x: 7, y: 4 },
+        { x: 7, y: 7 }, { x: 2, y: 7 }, { x: 2, y: 11 },
+      ],
+      blockedCandidates: [
+        { x: 1, y: 1 }, { x: 2, y: 1 }, { x: 6, y: 2 }, { x: 2, y: 3 }, { x: 5, y: 5 },
+        { x: 6, y: 5 }, { x: 0, y: 5 }, { x: 4, y: 6 }, { x: 0, y: 8 }, { x: 5, y: 8 }, { x: 4, y: 9 }, { x: 5, y: 9 },
+      ],
+    },
+  ],
+
+  // Per-battle starting money by encounter kind.
+  startingMoney: { normal: 140, elite: 160, boss: 220, farm: 130 },
+
+  // ---------- Difficulty ramp (Phase B/D) ----------
+  // Linear per-depth ramp — deliberately the same shape as Phase A's already-
+  // verified placeholder (healthPerDepth/bossHealthMult) to keep this fill
+  // low-risk; Phase D is the dedicated tuning pass.
+  difficulty: {
+    healthPerDepth: 0.35,     // +35% enemy HP per floor of depth (depth 0 = floor 1)
+    bountyPerDepth: 0.12,     // +12% bounty per floor of depth
+    eliteHealthMult: 1.5,
+    eliteBountyMult: 1.45,
+    eliteCountMult: 1.2,
+    bossHealthMult: 6,        // extra HP multiplier on the boss floor
+    bossBountyMult: 2.2,
+    farmHealthMult: 0.5,      // XP Farm: weak enemies...
+    farmBountyMult: 1.2,
+    farmCountMult: 1.8,       // ...but more of them, for lots of quick kills
+    farmXpMult: 2.5,          // temporary run.context.mults.xpMult multiplier for farm battles only
+    baseWaveCount: 3,
+    wavesPerDepthEvery: 4,    // +1 wave every N floors of depth
+    maxWaves: 5,
+    bossWaveCount: 3,         // boss floors always get a fixed 3-wave script
+    baseGroupCount: 7,        // base enemies per spawn group
+    groupCountPerDepth: 0.9,  // + this many per floor of depth
+    spawnIntervalBase: 0.65,  // seconds between spawns within a group
+    spawnIntervalPerDepth: -0.015, // spawns get slightly faster with depth
+    spawnIntervalMin: 0.35,
+    groupStartDelayStep: 1.4, // stagger between distinct-type groups in the same wave
+    bossUnitCount: 2,         // "boss" enemy-type units in the boss floor's final wave
+  },
+
+  // ---------- Node / encounter-type weights per depth band (Phase B) ----------
+  // `bands` are checked in order; the first with `depth <= maxDepth` applies
+  // (depth = run.floorIndex, 0-based). "elite" is stripped from whatever band
+  // applies whenever depth < eliteMinDepth. The final floor always forces a
+  // single "boss" node (see roguelike.js isBossFloor) — boss never appears in
+  // these weight tables.
+  nodeWeights: {
+    bands: [
+      { maxDepth: 1, weights: { normal: 50, farm: 15, gear: 20, event: 15 } },
+      { maxDepth: 4, weights: { normal: 35, elite: 15, farm: 10, gear: 20, shop: 12, event: 8 } },
+      { maxDepth: 8, weights: { normal: 25, elite: 20, farm: 8, gear: 18, shop: 12, event: 8, recovery: 9 } },
+      { maxDepth: Infinity, weights: { normal: 18, elite: 25, farm: 5, gear: 18, shop: 12, event: 7, recovery: 15 } },
+    ],
+  },
+  eliteMinDepth: 3,             // no elite node before this floor of depth
+
+  // Modifiers an Elite node's combat applies on top of the normal ramp. One is
+  // chosen (via run.rng) at node-generation time, so its label is visible
+  // before the player commits. `restrictTowerCount` narrows run.context's
+  // battle-only unlocked-tower set; the rest post-process the generated
+  // level's wave groups. See roguelike.js applyEliteModifier*.
+  eliteModifiers: [
+    { id: "jammed", label: "SIGNAL JAMMED", desc: "Only 2 tower types allowed this fight.", restrictTowerCount: 2 },
+    { id: "overclocked", label: "OVERCLOCKED", desc: "Enemies move noticeably faster.", enemySpeedMult: 1.3 },
+    { id: "hardened", label: "HARDENED PLATING", desc: "Enemies are extra tough.", extraHealthMult: 1.25 },
+    { id: "swarm", label: "SWARM PROTOCOL", desc: "More enemies per wave.", extraCountMult: 1.35 },
+  ],
+
+  // ---------- Enemy composition pools per depth band (Phase B/D) ----------
+  enemyTemplates: {
+    bands: [
+      { maxDepth: 1, pool: ["basic", "fast"] },
+      { maxDepth: 4, pool: ["basic", "fast", "armored"] },
+      { maxDepth: 8, pool: ["fast", "armored", "splitter", "regenerator", "basic"] },
+      { maxDepth: Infinity, pool: ["armored", "splitter", "regenerator", "fast"] },
+    ],
+    typesPerWaveRange: [1, 2], // rng picks 1-2 distinct types per wave (clamped to pool size)
+  },
+
+  // ---------- Gear reward nodes (Phase B/D) ----------
+  reward: {
+    choiceCount: 3,            // items offered per gear node
+    ilvlBase: 8,
+    ilvlPerDepth: 6,
+    eliteIlvlBonus: 12,        // (reserved for elite-guaranteed reward nodes, Phase D)
+    skipSalvage: 10,           // salvage granted for skipping/selling all 3 offers
+    // Rarity roll weights by depth band — independent of the campaign's
+    // level-number-based gating in loot.js (run floors aren't campaign
+    // levels), so the run defines its own ramp here.
+    rarityWeightsByDepth: [
+      { maxDepth: 2, weights: { common: 65, enhanced: 28, rare: 6, prismatic: 1, singularity: 0 } },
+      { maxDepth: 5, weights: { common: 45, enhanced: 32, rare: 18, prismatic: 4, singularity: 1 } },
+      { maxDepth: 9, weights: { common: 25, enhanced: 30, rare: 28, prismatic: 13, singularity: 4 } },
+      { maxDepth: Infinity, weights: { common: 12, enhanced: 22, rare: 32, prismatic: 24, singularity: 10 } },
+    ],
+  },
+
+  // ---------- Shop nodes (Phase B/D) ----------
+  shop: {
+    stockSize: 4,
+    ilvlBase: 12,
+    ilvlPerDepth: 6,
+    rarityWeights: { common: 50, enhanced: 32, rare: 14, prismatic: 3, singularity: 1 },
+    priceByRarity: { common: 16, enhanced: 38, rare: 80, prismatic: 160, singularity: 280 },
+    rerollCost: 12,
+    towerUnlockPrice: { railgun: 120, rocket: 140 },
+    coreRepairPointPrice: 5,   // salvage per Core Integrity point
+    coreRepairMaxPoints: 12,   // max points purchasable per shop visit
+  },
+
+  // ---------- Recovery nodes (Phase B/D) ----------
+  // Resolves immediately (no follow-up choice) — see roguelike.js resolveRecoveryNode.
+  recovery: {
+    restoreFraction: 0.5,     // restore this fraction of missing Core Integrity
+    restoreFlatMin: 6,        // ...but never less than this many points
+  },
+
+  // ---------- Choice/event nodes (Phase B/D) ----------
+  // A risk/reward table. One event is chosen (via run.rng) at node-generation
+  // time. Each option either applies flat deltas directly, or (when `risky`)
+  // rolls `chance` and applies its `success`/`failure` delta object. Deltas:
+  // `salvageDelta`, `coreIntegrityDelta` (clamped so an event alone can never
+  // drop Core Integrity below 1 — only combat losses end a run),
+  // `maxCoreIntegrityDelta`.
+  events: [
+    {
+      id: "cache", label: "SALVAGE CACHE", desc: "A dormant supply drone drifts in the wreckage.",
+      options: [
+        { label: "SIPHON SAFELY", desc: "+12 salvage, guaranteed.", salvageDelta: 12 },
+        {
+          label: "OVERLOAD IT", desc: "50% chance of a big haul — or a shock to the core.",
+          risky: true, chance: 0.5,
+          success: { salvageDelta: 32 }, failure: { coreIntegrityDelta: -4 },
+        },
+      ],
+    },
+    {
+      id: "coolant", label: "COOLANT LEAK", desc: "A ruptured line - vent it or patch it.",
+      options: [
+        { label: "VENT IT", desc: "-3 core integrity, +18 salvage.", coreIntegrityDelta: -3, salvageDelta: 18 },
+        { label: "PATCH IT", desc: "+4 core integrity, no salvage.", coreIntegrityDelta: 4 },
+      ],
+    },
+    {
+      id: "signal", label: "ROGUE SIGNAL", desc: "An encrypted beacon. Investigate?",
+      options: [
+        {
+          label: "INVESTIGATE", desc: "50% +26 salvage / 50% -5 core integrity.",
+          risky: true, chance: 0.5,
+          success: { salvageDelta: 26 }, failure: { coreIntegrityDelta: -5 },
+        },
+        { label: "IGNORE", desc: "Move on. No effect.", salvageDelta: 0 },
+      ],
+    },
+    {
+      id: "vault", label: "BURIED VAULT", desc: "Sensors ping a heavier cache - but it's guarded.",
+      options: [
+        { label: "CRACK IT OPEN", desc: "+40 salvage, -6 core integrity.", salvageDelta: 40, coreIntegrityDelta: -6 },
+        { label: "LEAVE IT", desc: "No effect.", salvageDelta: 0 },
+      ],
+    },
+  ],
+
+  // ---------- Salvage rewards for combat kinds (Phase B/D) ----------
+  salvageRewards: {
+    normal: { base: 12, perDepth: 4 },
+    elite: { base: 24, perDepth: 6 },
+    boss: { base: 60, perDepth: 0 },
+    farm: { base: 6, perDepth: 2 },
+  },
+
+  runUpgrades: {},              // Phase D: draftable per-run deltas -> baseMults
+};
+
 // ---------- Runtime performance ----------
 // AUTO visual quality watches rendered frames on each device independently;
 // it is deliberately local-only and never enters a co-op snapshot. Simulation

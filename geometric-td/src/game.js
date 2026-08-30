@@ -25,7 +25,7 @@ import { updateParticles } from "./particles.js";
 import { createSpringGrid } from "./springgrid.js";
 import { generateEndlessWave } from "./endless.js";
 
-export function createGame(level, tileSize, endless = false) {
+export function createGame(level, tileSize, endless = false, runContext = null) {
   const grid = createGridModel(level, tileSize);
   const ownerIds = DEBUG.coopLocal
     ? [DEFAULT_OWNER_ID, "debug-guest"]
@@ -55,12 +55,22 @@ export function createGame(level, tileSize, endless = false) {
     totalEarned[ownerId] = 0;
   }
 
+  // Roguelike run: the local player deploys the run's OWN roster (fresh,
+  // level-1, gearless units that persist across floors) instead of the real
+  // save's veterans. Same mechanism the co-op guest uses (an explicit roster
+  // on the player). placeTower reads game.players[ownerId].roster.
+  if (runContext) {
+    players[DEFAULT_OWNER_ID].roster = runContext.roster;
+  }
+
   const game = {
     level,
     grid,
     time: 0,                       // total game time in seconds
     phase: "ready",
     endless,                       // true = waves never stop (see endless.js)
+    isRun: !!runContext,           // true = roguelike run battle (see roguelike.js)
+    runContext: runContext || null,
     ownerIds,
     players,
     wallets,
@@ -80,8 +90,8 @@ export function createGame(level, tileSize, endless = false) {
     typesUsed: new Set(),            // tower types ever placed this run — survives sells (B5)
     milestoneResults: new Set(),     // latched campaign-milestone ids attained this run (B5)
     newMilestoneToasts: [],          // toast texts main.js drains each frame (B5)
-    coreHealth: level.coreHealth + getCoreBonus(),
-    maxCoreHealth: level.coreHealth + getCoreBonus(),
+    coreHealth: runContext ? runContext.coreHealth : level.coreHealth + getCoreBonus(),
+    maxCoreHealth: runContext ? runContext.coreHealth : level.coreHealth + getCoreBonus(),
     waveIndex: 0,                  // 0-based; wave 1 is index 0
     totalWaves: level.waves.length,
     enemies: [],
@@ -193,7 +203,11 @@ export function updateGame(game, dt) {
       // object so main.js's end-of-battle overlay can read it without
       // calling this (save-writing) function a second time.
       game.endlessResult = recordEndlessResult(game);
-    } else if (!game.coop) {
+    } else if (!game.coop && !game.isRun) {
+      // Roguelike runs must NOT write the real save (roster/skill points/etc.).
+      // main.js checkEndState routes run end-of-battle to roguelike.onBattleEnd
+      // instead. Without this guard, recordBattleEnd fires here (inside the sim,
+      // before checkEndState) and leaks the run into the account save.
       recordBattleEnd(game, false); // towers keep their XP even in defeat
     }
     return;
@@ -209,7 +223,9 @@ export function updateGame(game, dt) {
     queueMilestoneToasts(game);
     if (!game.endless && game.waveIndex >= game.totalWaves) {
       game.phase = "won";
-      if (!game.coop) recordBattleEnd(game, true); // roster + 1 skill point, saved
+      // Runs skip the campaign save-write (see the loss branch above); their
+      // win is handled by roguelike.onBattleEnd via main.js checkEndState.
+      if (!game.coop && !game.isRun) recordBattleEnd(game, true); // roster + 1 skill point, saved
     } else if (game.autoStartNextWave) {
       game.phase = "countdown";
       game.countdown = game.timeBetweenWaves;

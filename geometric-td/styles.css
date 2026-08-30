@@ -1602,6 +1602,208 @@ html[data-lang="fr"] #story-lang-toggle .lang-fr {
 #mod-lab-restore { color: var(--neon-yellow); border-color: rgba(255, 226, 74, .5); }
 #mod-lab-restore:disabled { opacity: .35; }
 
+/* ---------- Roguelike run mode (Phase C UI, DEBUG-gated) ----------
+   src/roguelike-ui.js repaints #rogue-body per screen (node map, gear
+   reward, shop, event, a generic outcome banner, run-end). #rogue-hud is a
+   fixed strip above it: floor progress + Salvage, then the Core Integrity
+   bar. Menu entry point is .rogue-entry below (appendGlobalMenuButtons,
+   ui.js) — same DEBUG gate as MOD LAB. */
+.rogue-entry { border-color: var(--neon-red) !important; }
+
+#rogue-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 42;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+#rogue-overlay.hidden { display: none; }
+
+#rogue-hud {
+  flex-shrink: 0;
+  padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
+  border-bottom: 1px solid var(--panel-border);
+  background: var(--panel);
+}
+#rogue-hud-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+}
+#rogue-floor { color: var(--neon-cyan); text-shadow: 0 0 8px rgba(53, 224, 255, .5); }
+#rogue-salvage { color: var(--neon-yellow); text-shadow: 0 0 8px rgba(255, 226, 74, .5); }
+#rogue-core-row { display: flex; align-items: center; gap: 8px; }
+#rogue-core-label { font-size: 10px; color: var(--text-dim); letter-spacing: 1px; min-width: 52px; }
+#rogue-core-track {
+  flex: 1;
+  height: 10px;
+  border-radius: 5px;
+  border: 1px solid var(--panel-border);
+  background: rgba(255, 255, 255, .03);
+  overflow: hidden;
+}
+#rogue-core-fill {
+  height: 100%;
+  width: 100%;
+  background: var(--neon-green);
+  box-shadow: 0 0 8px rgba(74, 255, 161, .6);
+  transition: width .35s ease;
+}
+#rogue-core-fill.mid { background: var(--neon-yellow); box-shadow: 0 0 8px rgba(255, 226, 74, .6); }
+#rogue-core-fill.low { background: var(--neon-red); box-shadow: 0 0 8px rgba(255, 74, 94, .7); }
+@media (prefers-reduced-motion: reduce) { #rogue-core-fill { transition: none; } }
+
+#rogue-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 16px calc(24px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 560px;
+  width: 100%;
+  margin-inline: auto;
+  box-sizing: border-box;
+}
+
+.rogue-panel-title {
+  text-align: center;
+  font-size: 17px;
+  letter-spacing: 3px;
+  color: var(--neon-magenta);
+  text-shadow: 0 0 12px rgba(255, 63, 212, .5);
+}
+.rogue-panel-sub {
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+  margin-top: -8px;
+}
+
+/* Node-choice cards */
+.rogue-node-grid { display: flex; flex-direction: column; gap: 10px; }
+.rogue-node-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  font-family: inherit;
+  min-height: 64px;
+  padding: 10px 14px;
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+}
+.rogue-node-card:active { transform: scale(0.98); }
+.rogue-node-icon { font-size: 22px; flex-shrink: 0; filter: drop-shadow(0 0 6px rgba(255, 255, 255, .25)); }
+.rogue-node-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.rogue-node-label { font-size: 13px; letter-spacing: 1px; color: var(--neon-cyan); }
+.rogue-node-preview { font-size: 10.5px; color: var(--text-dim); line-height: 1.35; }
+
+.rogue-kind-elite { border-color: rgba(255, 74, 94, .5); }
+.rogue-kind-boss { border-color: rgba(255, 226, 74, .6); box-shadow: 0 0 14px rgba(255, 226, 74, .18); }
+.rogue-kind-shop { border-color: rgba(74, 255, 161, .4); }
+.rogue-kind-event { border-color: rgba(53, 224, 255, .4); }
+
+.rogue-wide { width: 100%; }
+.rogue-secondary { color: var(--text-dim); border-color: var(--panel-border); text-shadow: none; }
+
+.rogue-abandon-btn { color: var(--neon-red); border-color: var(--neon-red); margin-top: 4px; }
+.rogue-abandon-btn.armed { background: var(--neon-red); color: var(--bg); text-shadow: none; }
+
+/* Item cards (shared: gear reward + shop) */
+.rogue-gear-grid { display: flex; flex-direction: column; gap: 12px; }
+.rogue-item-card {
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 10px;
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.rogue-item-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  letter-spacing: 1px;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed currentColor;
+}
+.rogue-item-lock { font-size: 9px; letter-spacing: 1px; color: var(--text-dim); }
+.rogue-item-affixes { display: flex; flex-direction: column; gap: 2px; }
+.rogue-item-affix { font-size: 10.5px; color: var(--text); }
+.rogue-item-mod { font-size: 10.5px; color: var(--neon-magenta); }
+.rogue-item-note { font-size: 10px; color: var(--text-dim); text-align: center; }
+.rogue-item-targets { display: flex; flex-direction: column; gap: 6px; }
+.rogue-target-btn { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px; }
+.rogue-target-sub { font-size: 9px; opacity: 0.75; letter-spacing: .5px; }
+
+/* Shop */
+.rogue-roster-tabs { display: flex; gap: 8px; }
+.rogue-roster-tab {
+  flex: 1;
+  font-family: inherit;
+  min-height: 38px;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-dim);
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+.rogue-roster-tab.active { color: var(--rc, var(--neon-cyan)); border-color: var(--rc, var(--neon-cyan)); background: rgba(255, 255, 255, .04); }
+.rogue-shop-label { font-size: 10px; letter-spacing: 1.5px; color: var(--text-dim); }
+.rogue-shop-unlocks { display: flex; flex-direction: column; gap: 8px; }
+.rogue-shop-repair-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; }
+.rogue-shop-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.rogue-shop-actions #rogue-reroll { flex: 1 1 auto; }
+.rogue-shop-actions #rogue-leave { flex: 1 1 100%; }
+
+/* Event */
+.rogue-event-options { display: flex; flex-direction: column; gap: 10px; }
+.rogue-event-option {
+  text-align: left;
+  font-family: inherit;
+  padding: 12px 14px;
+  border: 1px solid var(--neon-cyan);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 52px;
+}
+.rogue-event-opt-label { display: block; color: var(--neon-cyan); font-size: 12px; letter-spacing: 1px; }
+.rogue-event-opt-desc { display: block; font-size: 10.5px; color: var(--text-dim); margin-top: 3px; }
+
+/* Outcome banner (recovery / event result) + run-end (victory / defeat) */
+.rogue-outcome, .rogue-runend {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 34px 10px;
+  text-align: center;
+}
+.rogue-outcome-title { font-size: 16px; letter-spacing: 2px; color: var(--neon-green); text-shadow: 0 0 10px rgba(74, 255, 161, .5); }
+.rogue-outcome-line { font-size: 12px; letter-spacing: 1px; color: var(--text); }
+.rogue-runend-title { font-size: 22px; letter-spacing: 3px; }
+.rogue-runend.win .rogue-runend-title { color: var(--neon-green); text-shadow: 0 0 14px rgba(74, 255, 161, .6); }
+.rogue-runend.loss .rogue-runend-title { color: var(--neon-red); text-shadow: 0 0 14px rgba(255, 74, 94, .6); }
+.rogue-runend-sub { font-size: 11px; color: var(--text-dim); letter-spacing: .5px; max-width: 340px; }
+.rogue-runend .big-button, .rogue-outcome .big-button { max-width: 320px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rogue-node-card:active { transform: none; }
+}
+
 html[data-lang="fr"] .settings-row { letter-spacing: .4px; }
 html[data-lang="fr"] .settings-help { letter-spacing: .2px; }
 .level-button .level-points {
