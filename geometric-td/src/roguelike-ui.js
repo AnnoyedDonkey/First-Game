@@ -38,6 +38,8 @@ const el = {
   body: document.getElementById("rogue-body"),
   floor: document.getElementById("rogue-floor"),
   salvage: document.getElementById("rogue-salvage"),
+  worldBadge: document.getElementById("rogue-world-badge"),
+  pips: document.getElementById("rogue-pips"),
   coreLabel: document.getElementById("rogue-core-label"),
   coreFill: document.getElementById("rogue-core-fill"),
   hud: document.getElementById("hud"),
@@ -199,13 +201,19 @@ export function onRunBattleEnd(game) {
 
 // ---------- HUD strip (Core Integrity bar + Salvage + world progress) ----------
 
+const ROMAN = ["I", "II", "III", "IV", "V"];
+
 function updateHudStrip(run) {
+  // Per-world neon theme hook read by styles.css ([data-world]).
+  el.overlay.dataset.world = String(run.worldIndex);
+  el.worldBadge.textContent = ROMAN[run.worldIndex] || String(run.worldIndex + 1);
   el.floor.textContent = tf("rogue.hud.world", "WORLD {n} / {total} · {taken}/{encounters}", {
     n: run.worldIndex + 1,
     total: ROGUELIKE.worldCount,
     taken: run.worldTaken,
     encounters: run.worldTotal,
   });
+  renderProgressPips(run);
   el.salvage.textContent = `◆ ${run.salvage}`;
   el.coreLabel.textContent = `${run.coreIntegrity}/${run.maxCoreIntegrity}`;
   const pct = run.maxCoreIntegrity > 0
@@ -214,6 +222,20 @@ function updateHudStrip(run) {
   el.coreFill.style.width = `${pct}%`;
   el.coreFill.classList.toggle("low", pct <= 30);
   el.coreFill.classList.toggle("mid", pct > 30 && pct <= 60);
+}
+
+// Encounter progress for the current world: one pip per encounter (filled as
+// they're cleared) plus a trailing boss pip that lights once the world boss is
+// down. Purely presentational; rebuilt each HUD update.
+function renderProgressPips(run) {
+  const total = run.worldTotal || 0;
+  const taken = run.worldTaken || 0;
+  let html = "";
+  for (let i = 0; i < total; i++) {
+    html += `<span class="rogue-pip${i < taken ? " done" : ""}"></span>`;
+  }
+  html += `<span class="rogue-pip rogue-pip-boss${run.bossDefeated ? " done" : ""}">★</span>`;
+  el.pips.innerHTML = html;
 }
 
 // ---------- Item card (shared by gear-reward + shop screens) ----------

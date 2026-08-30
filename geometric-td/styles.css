@@ -1622,13 +1622,54 @@ html[data-lang="fr"] #story-lang-toggle .lang-fr {
   --rogue-anim-ease: cubic-bezier(.2, .8, .2, 1);
   --rogue-stagger: 60ms;
   --rogue-pulse: 1.6s;
+  /* Per-world neon theme (Phase 4). --rogue-accent drives titles/badges/cards;
+     --rogue-h1/-h2 are the two backdrop glow hues; overridden per [data-world].
+     Default = World 1 (outer-grid cyan/green). */
+  --rogue-accent: var(--neon-cyan);
+  --rogue-h1: 174, 62%, 12%;   /* deep teal glow (H,S,L) */
+  --rogue-h2: 150, 55%, 10%;   /* deep green glow */
   position: fixed;
   inset: 0;
   z-index: 42;
   display: flex;
   flex-direction: column;
-  background: var(--bg);
+  /* Layered backdrop: a warm-cool vignette from two world-hue glows over the
+     base bg. Static (no per-frame cost); the grid texture is a ::before. */
+  background:
+    radial-gradient(120% 80% at 50% -10%, hsla(var(--rogue-h1), .85), transparent 60%),
+    radial-gradient(140% 90% at 50% 110%, hsla(var(--rogue-h2), .9), transparent 62%),
+    var(--bg);
+  overflow: hidden;
 }
+/* Faint perspective grid + vignette floor, drawn behind #rogue-body's cards.
+   Pure gradients — no images, no filters. */
+#rogue-overlay::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    linear-gradient(hsla(0, 0%, 100%, .035) 1px, transparent 1px),
+    linear-gradient(90deg, hsla(0, 0%, 100%, .035) 1px, transparent 1px);
+  background-size: 44px 44px, 44px 44px;
+  -webkit-mask-image: radial-gradient(120% 75% at 50% 8%, #000 0%, transparent 72%);
+          mask-image: radial-gradient(120% 75% at 50% 8%, #000 0%, transparent 72%);
+  opacity: .5;
+}
+/* World themes: shift accent + backdrop hues as the run escalates. */
+#rogue-overlay[data-world="1"] {
+  --rogue-accent: var(--neon-magenta);
+  --rogue-h1: 288, 60%, 13%;   /* violet */
+  --rogue-h2: 320, 58%, 11%;   /* magenta */
+}
+#rogue-overlay[data-world="2"] {
+  --rogue-accent: var(--neon-red);
+  --rogue-h1: 18, 72%, 14%;    /* ember orange */
+  --rogue-h2: 352, 68%, 12%;   /* core-breach red */
+}
+/* Keep HUD + body above the grid layer. */
+#rogue-hud, #rogue-body { position: relative; z-index: 1; }
 #rogue-overlay.hidden { display: none; }
 
 #rogue-hud {
@@ -1959,6 +2000,136 @@ html[data-lang="fr"] #story-lang-toggle .lang-fr {
 .rogue-roster-affixes { display: flex; flex-direction: column; gap: 1px; margin-top: 2px; }
 .rogue-roster-affix { font-size: 9.5px; color: var(--text); overflow-wrap: anywhere; }
 .rogue-roster-mod { font-size: 9.5px; color: var(--neon-magenta); overflow-wrap: anywhere; }
+
+/* ============================================================
+   Phase 4 — visual overhaul (node map). Per-world neon backdrop lives on
+   #rogue-overlay above; below: the glass HUD (world badge + progress pips +
+   restyled meter) and the banner-style encounter cards. Later in the file than
+   the base .rogue-* rules, so these win by source order (same specificity).
+   All static or transform/opacity only; reduced-motion handled at the block
+   near the end of the rogue styles.
+   ============================================================ */
+
+/* HUD as a translucent glass strip with a world-accent top edge. */
+#rogue-hud {
+  background: linear-gradient(180deg, hsla(0, 0%, 100%, .05), transparent 60%), rgba(9, 11, 24, .82);
+  border-bottom: 1px solid var(--panel-border);
+  box-shadow: inset 0 2px 0 -1px var(--rogue-accent), 0 6px 18px -12px #000;
+}
+#rogue-hud-row { align-items: center; }
+#rogue-world-badge {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--rogue-accent);
+  border: 1px solid var(--rogue-accent);
+  border-radius: 6px;
+  padding: 1px 8px;
+  min-width: 20px;
+  text-align: center;
+  text-shadow: 0 0 8px var(--rogue-accent);
+  box-shadow: 0 0 12px -3px var(--rogue-accent), inset 0 0 10px -6px var(--rogue-accent);
+}
+#rogue-floor { color: var(--text-dim); text-shadow: none; letter-spacing: 1.5px; font-size: 11px; }
+
+/* Encounter progress pips (renderProgressPips): dots fill as encounters clear;
+   the trailing ★ lights when the world boss is down. */
+#rogue-pips { display: flex; align-items: center; gap: 5px; margin: 9px 1px 3px; min-height: 10px; }
+.rogue-pip {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid var(--panel-border);
+  background: rgba(255, 255, 255, .04);
+  transition: background .25s ease, box-shadow .25s ease;
+}
+.rogue-pip.done {
+  background: var(--rogue-accent);
+  border-color: var(--rogue-accent);
+  box-shadow: 0 0 8px var(--rogue-accent);
+}
+.rogue-pip-boss {
+  width: auto;
+  height: auto;
+  border: none;
+  background: none;
+  margin-left: auto;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--panel-border);
+}
+.rogue-pip-boss.done {
+  color: var(--neon-yellow);
+  text-shadow: 0 0 10px var(--neon-yellow);
+  background: none;
+  box-shadow: none;
+}
+
+/* Core meter: thicker, rounder, with an inner sheen. */
+#rogue-core-track { height: 12px; border-radius: 6px; background: rgba(0, 0, 0, .35); }
+#rogue-core-fill { background: linear-gradient(90deg, var(--neon-green), #9dffcf); }
+#rogue-salvage {
+  border: 1px solid rgba(255, 226, 74, .35);
+  border-radius: 999px;
+  padding: 2px 10px;
+  background: rgba(255, 226, 74, .06);
+}
+
+/* Per-kind accent colour, consumed by the banner card + medallion below. */
+.rogue-kind-normal { --kind-color: var(--neon-cyan); }
+.rogue-kind-elite { --kind-color: var(--neon-red); }
+.rogue-kind-farm { --kind-color: var(--neon-green); }
+.rogue-kind-gear { --kind-color: var(--neon-yellow); }
+.rogue-kind-shop { --kind-color: var(--neon-green); }
+.rogue-kind-event { --kind-color: var(--neon-cyan); }
+.rogue-kind-recovery { --kind-color: var(--neon-green); }
+.rogue-kind-upgrade { --kind-color: var(--neon-magenta); }
+.rogue-kind-boss { --kind-color: var(--neon-yellow); }
+
+/* Banner-style encounter cards: medallion glyph, kind-tinted title + top edge. */
+.rogue-node-card {
+  position: relative;
+  gap: 14px;
+  min-height: 78px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--kind-color, var(--rogue-accent)) 45%, var(--panel-border));
+  background:
+    linear-gradient(150deg, color-mix(in srgb, var(--kind-color, var(--rogue-accent)) 10%, transparent), transparent 55%),
+    linear-gradient(180deg, rgba(22, 26, 48, .92), rgba(11, 13, 26, .94));
+  overflow: hidden;
+  transition: transform .12s ease, box-shadow .2s ease, border-color .2s ease;
+}
+.rogue-node-card::before {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  height: 3px;
+  background: var(--kind-color, var(--rogue-accent));
+  box-shadow: 0 0 12px var(--kind-color, var(--rogue-accent));
+}
+.rogue-node-card:active { transform: scale(0.985); }
+.rogue-node-icon {
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  filter: none;
+  border: 1px solid var(--kind-color, var(--rogue-accent));
+  background: radial-gradient(circle at 50% 35%, rgba(255, 255, 255, .1), transparent 68%), rgba(0, 0, 0, .35);
+  box-shadow: 0 0 16px -3px var(--kind-color, var(--rogue-accent)), inset 0 0 12px -6px #000;
+}
+.rogue-node-label { color: var(--kind-color, var(--neon-cyan)); font-size: 13.5px; text-shadow: 0 0 8px color-mix(in srgb, var(--kind-color, var(--rogue-accent)) 40%, transparent); }
+.rogue-node-preview { font-size: 10.5px; }
+.rogue-kind-boss { box-shadow: 0 0 20px -6px var(--neon-yellow); }
+.rogue-kind-elite { box-shadow: 0 0 18px -8px var(--neon-red); }
+
+/* Panel titles pick up the live world accent. */
+.rogue-panel-title { color: var(--rogue-accent); text-shadow: 0 0 12px var(--rogue-accent); }
 
 /* Shared fade/slide-up entrance keyframe: node cards, summary rows, and the
    run-start screen all reference this one. */
