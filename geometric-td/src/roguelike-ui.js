@@ -29,7 +29,7 @@
 // ============================================================
 
 import * as roguelike from "./roguelike.js";
-import { ROGUELIKE, TOWERS, LOOT } from "./config.js";
+import { ROGUELIKE, TOWERS, LOOT, TOWER_UPGRADES } from "./config.js";
 import { getMod } from "./affixes.js";
 import { t, tf } from "./i18n.js";
 
@@ -303,6 +303,7 @@ function renderNodeMap() {
       ${cardsHtml}
       ${transitionCardHtml}
     </div>
+    <button class="big-button rogue-wide rogue-secondary" type="button" id="rogue-view-roster">${t("rogue.roster.view", "VIEW ROSTER")}</button>
     <button class="big-button rogue-wide rogue-abandon-btn" type="button" id="rogue-abandon">${t("rogue.abandon", "ABANDON RUN")}</button>
   `;
 
@@ -314,7 +315,69 @@ function renderNodeMap() {
   });
   document.getElementById("rogue-fight-boss")?.addEventListener("click", onFightBoss);
   document.getElementById("rogue-leave-world")?.addEventListener("click", onLeaveToNextWorld);
+  document.getElementById("rogue-view-roster").addEventListener("click", renderRoster);
   bindAbandonButton(document.getElementById("rogue-abandon"));
+}
+
+// ---------- Roster inspection screen (Phase 3) ----------
+// Read-only view of the run's towers: each tower's climbing Mastery ★ rank
+// (getRunRoster, backed by run.roster xp — Phase 2) and its four drafted gear
+// slots. Reuses the item helpers used by the gear-reward/shop screens; never
+// writes any save. BACK returns to the node map.
+
+function rosterGearSlotHtml(gear) {
+  return ["optic", "emitter", "capacitor", "frame"].map((slot) => {
+    const item = gear && gear[slot];
+    if (!item) {
+      return `<div class="rogue-roster-slot rogue-roster-slot-empty">
+        <span class="rogue-roster-slot-name">${escapeHtml(slotLabel(slot))}</span>
+        <span class="rogue-roster-slot-empty-label">${t("rogue.roster.empty", "—")}</span>
+      </div>`;
+    }
+    const color = RARITY_COLOR[item.rarity] || RARITY_COLOR.common;
+    const affixLines = (item.affixes || []).slice(0, 3).map((a) => {
+      const def = affixDef(item.slot, a.stat);
+      const suffix = def && def.int ? "" : "%";
+      return `<div class="rogue-roster-affix">${escapeHtml(affixLabel(def, a.stat))} +${a.value}${suffix}</div>`;
+    }).join("");
+    const modLines = (item.mods || []).map((m) =>
+      `<div class="rogue-roster-mod">${escapeHtml(modLabel(m.id))}</div>`
+    ).join("");
+    return `<div class="rogue-roster-slot" style="border-color:${color}">
+      <span class="rogue-roster-slot-name" style="color:${color}">${escapeHtml(slotLabel(slot))}</span>
+      <span class="rogue-roster-slot-rarity">${escapeHtml(rarityLabel(item.rarity))}</span>
+      <div class="rogue-roster-affixes">${affixLines}${modLines}</div>
+    </div>`;
+  }).join("");
+}
+
+function renderRoster() {
+  const run = roguelike.getRun();
+  if (!run) { renderNodeMap(); return; }
+  updateHudStrip(run);
+  const roster = roguelike.getRunRoster();
+  const perRank = TOWER_UPGRADES.mastery?.damagePerRank || 0;
+
+  const cards = roster.map((r) => {
+    const color = TOWERS[r.type]?.color || "#35e0ff";
+    const dmgPct = Math.round(r.masteryRank * perRank * 100);
+    return `<div class="rogue-roster-card" style="border-color:${color}">
+      <div class="rogue-roster-head">
+        <span class="rogue-roster-name" style="color:${color}">${escapeHtml((r.name || r.type).toUpperCase())}</span>
+        <span class="rogue-roster-mastery">★ ${r.masteryRank}</span>
+      </div>
+      <div class="rogue-roster-sub">${tf("rogue.roster.masteryBonus", "MASTERY +{pct}% DMG", { pct: dmgPct })}</div>
+      <div class="rogue-roster-slots">${rosterGearSlotHtml(r.gear)}</div>
+    </div>`;
+  }).join("");
+
+  el.body.innerHTML = `
+    <div class="rogue-panel-title">${t("rogue.roster.title", "TOWER ROSTER")}</div>
+    <p class="rogue-panel-sub">${t("rogue.roster.sub", "MASTERY CLIMBS AS YOUR TOWERS FIGHT")}</p>
+    <div class="rogue-roster-grid">${cards}</div>
+    <button class="big-button rogue-wide" type="button" id="rogue-roster-back">${t("rogue.roster.back", "BACK")}</button>
+  `;
+  document.getElementById("rogue-roster-back").addEventListener("click", renderNodeMap);
 }
 
 function onFightBoss() {

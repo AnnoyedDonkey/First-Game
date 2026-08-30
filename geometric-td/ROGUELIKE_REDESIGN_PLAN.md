@@ -424,10 +424,51 @@ Determinism holds. Report what you did and did NOT verify (you cannot see the
 surge VFX or phone layout).
 
 ## 5. PHASE 3 — VIEW ROSTER screen — **Terra**
-(Spec finalized after Phase 2.) A roster-inspection overlay off the node map:
-each run tower, its current Mastery ★, and its drafted gear/upgrades. Driven by a
-new pure `roguelike.js` getter. Files: `src/roguelike-ui.js` (+ getter in
-`src/roguelike.js`), `styles.css` (its own block), maybe an `index.html` button.
+
+**Files (stage exactly these):** `src/roguelike-ui.js`, `styles.css`. (No
+`roguelike.js` change — the getter already exists; no `index.html` change — the
+screen renders into the existing `#rogue-body`, like every other rogue screen.)
+
+The user's ask ("look at their roster of towers") is now backed by real run
+Mastery (Phase 2). Add an always-available **VIEW ROSTER** screen.
+
+### 5.1 Data (already available — do NOT add getters)
+`roguelike.getRunRoster()` returns `[{ name, type, masteryRank, xp, maxLevel,
+gear }]` (`gear` is a `{optic,emitter,capacitor,frame}` map of item-or-null).
+Item objects have `{ slot, rarity, towerType?, affixes:[{stat,value}],
+mods:[{id}] }` — the SAME shape the gear-reward/shop screens already render via
+`itemBodyHtml`. Reuse the existing local helpers in `roguelike-ui.js`
+(`RARITY_COLOR`, `SLOT_LABEL`/`slotLabel`, `affixDef`/`affixLabel`, `modLabel`,
+`escapeHtml`, `TOWERS[type].color`/`.name`). Do NOT import `ui.js`.
+
+### 5.2 The screen (`roguelike-ui.js`)
+- Add a **VIEW ROSTER** button to `renderNodeMap()` (a `big-button`, e.g. just
+  above ABANDON RUN). Tapping it calls a new `renderRoster()` that repaints
+  `#rogue-body`. A **BACK** button returns via `renderNodeMap()`.
+- `renderRoster()` lists one card per `getRunRoster()` entry:
+  - Header: tower name + type, tinted with `TOWERS[type].color`; a prominent
+    **★{masteryRank}** badge, and the Mastery damage bonus as text (compute from
+    `TOWER_UPGRADES.mastery.damagePerRank * masteryRank` → `+{pct}% dmg`; import
+    `TOWER_UPGRADES` from `config.js`). Optionally `maxLevel`.
+  - Four slot rows/chips (optic/emitter/capacitor/frame): each shows the equipped
+    item's rarity-colored slot label + its affixes/mods (reuse the compact
+    affix/mod line format from `itemBodyHtml`), or an "empty" placeholder.
+  - Keep it readable at 375px — no horizontal scroll.
+- `updateHudStrip(run)` should still show; call it at the top of `renderRoster()`
+  so the HUD stays consistent.
+
+### 5.3 Styles (`styles.css`, in the `.rogue-*` block)
+New `.rogue-roster-*` classes following the existing `.rogue-item-card` /
+`.rogue-panel-title` visual language (panel bg, panel-border, neon accents).
+Nothing fancy — Phase 4 does the full visual pass; this just needs to be clear
+and phone-safe. Respect `prefers-reduced-motion` (no new perpetual animation).
+
+### 5.4 Done when
+A VIEW ROSTER button on the node map opens a screen showing each run tower's
+Mastery ★ (which climbs across the run) and its four gear slots with
+affixes/mods; BACK returns to the map. No console errors, no horizontal scroll at
+375px, real save untouched (this screen is read-only). New player-facing strings
+use `t("rogue.roster.*", "ENGLISH")` inline fallbacks (orchestrator adds French).
 
 ## 6. PHASE 4 — Visual overhaul — **Terra**
 (Spec finalized after Phase 1/3.) Per-world CSS-neon backdrops, banner-style
