@@ -1,5 +1,15 @@
 # Roguelike Mode — Build Plan
 
+> ⚠️ **SUPERSEDED for current design (2026-08-30).** The original 13-floor
+> gauntlet described here was **redesigned into a 3-world structure** (windowed
+> Dawncaster-style choices, run Mastery that carries, post-battle 1-of-5 gear,
+> neon visual overhaul) in builds `2026.08.30-2`..`-7`. **Read
+> `ROGUELIKE_REDESIGN_PLAN.md` for the current design + per-phase AS-BUILT
+> interfaces.** This file is kept for the Phase A–E history and the original
+> sandbox derivation (still accurate for how the save-sandbox works), but its
+> floor/node model, `floorCount`, and "mastery/XP do NOT carry" statements are
+> no longer true.
+
 **Status:** designed 2026-08-29; **Phases A–E all shipped** (A–D by 2026-08-29,
 E — polish + run persistence — 2026-08-30, build `2026.08.30-1`). See the
 per-phase "AS BUILT" sections (§5b–§5f) for the exact interfaces. Remaining work

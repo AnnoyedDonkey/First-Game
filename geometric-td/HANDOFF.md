@@ -20,39 +20,65 @@ en)` looks it up; `lang` save field via `progression.js getLang/setLang`;
 proper nouns** (tower names Laser/Pulse/Slow/Railgun/Rocket, Indy-7,
 Bratwurst-XL, "GEOMETRIC TD").
 
-**Deployed build: `2026.08.30-1`.**
+**Deployed build: `2026.08.30-7`.**
 
-### Roguelike mode (`2026.08.29-16`..`2026.08.30-1`) — DEBUG-gated
-A run-based gauntlet layered on the engine: survive procedurally chosen
-encounters across 13 floors, beat the boss to win. **Behind Settings → DEBUG
-MODE** (invisible to normal players). **Read `ROGUELIKE_PLAN.md` first for any
-roguelike work** — it has the full design + per-phase "AS BUILT" interfaces;
-`ROGUELIKE_SOURCE_EXTRACT.md` is the reusable-systems reference. **Phases A–E all
-shipped** (E = polish + run persistence, `2026.08.30-1`): run-summary/seed/replay/
-daily on the run-end + a new run-start screen, pizzazz (CSS knobs on
-`#rogue-overlay`, reduced-motion-guarded), and **run persistence** — an
-in-progress run survives a reload. Persistence lives in `save.js` under its OWN
-key `${KEY}-rogue-run` (NEVER the real save object — the byte-identical invariant
-still holds, zero migration risk); `loot.js makeRng(seed, state?)` now exposes
-`rng.state()` so a resumed run continues the exact deterministic stream;
-`roguelike.js resumeRun()` re-arms the sandbox + re-links context arrays and
-coerces a mid-battle reload back to the floor's choices. Remaining roguelike work
-is playtest tuning only. Locked design:
-procedural floors, run-only "Salvage" currency, carried run-wide "Core
-Integrity" vitality; fresh gearless level-1 roster every run (mastery/XP do NOT
-carry — power comes from drafted gear + `runUpgrades`). New files
-`src/roguelike.js` (run state machine + resolvers), `src/roguelike-ui.js` (all
-screens); all tunables in `config.js ROGUELIKE`. **Sandbox contract (the safety
-guarantee): a run NEVER reads/writes the real save** — fresh roster via the
-co-op-guest roster mechanism; `progression.js setRunContext` shims the gameplay
-getters to fresh-account values while a run is active; end-of-battle intercepted
-in `main.js checkEndState`. **Regression guard: `game.js` win/loss branches gate
-`recordBattleEnd` on `&& !game.isRun`** — do NOT remove (without it a run's
-natural win/loss writes the real save). Difficulty softened in `-17` off a
-player report ("too hard past floor 3–4"); still a first calibration pass
-awaiting real-play feedback. Built via phased cheap-Sonnet agents cold-reading
-`ROGUELIKE_PLAN.md`; Opus-4.8 orchestrator did the risky sandbox phase inline +
-the version bumps + pushes.
+### Roguelike mode (`2026.08.29-16`..`2026.08.30-7`) — DEBUG-gated
+A run-based gauntlet layered on the engine. **Behind Settings → DEBUG MODE**
+(invisible to normal players). Originally a 13-floor gauntlet (Phases A–E,
+`..-1`), then **REDESIGNED into a 3-world structure** (builds `2026.08.30-2`..
+`-7`). **For any roguelike work read `ROGUELIKE_REDESIGN_PLAN.md` FIRST** — it is
+the current design + per-phase "AS BUILT" interfaces; `ROGUELIKE_PLAN.md` is the
+superseded original (kept for the A–E history + the sandbox derivation);
+`ROGUELIKE_SOURCE_EXTRACT.md` is the reusable-systems reference.
+
+**The redesign (current shape):**
+- **3 worlds** (not 13 floors). Each world is an open pool of **3 combats + 4
+  events + 1 boss**. Difficulty is banded per world via `ROGUELIKE.worldDepths`
+  `[1,5,9]` (flat within a world, tiered between) — not a continuous ramp.
+- **Windowed "Dawncaster" flow:** each choosing screen offers only
+  `choicesPerScreen` (3) encounter cards; the boss stays hidden until
+  `encounterPool.length <= bossOfferThreshold` (2), then appears as an extra card.
+  Beating a NON-final boss sets `bossDefeated` and stays in the SAME world (mop up
+  or take a LEAVE-FOR-WORLD-n card); the final-world boss wins the run. Key
+  `roguelike.js` exports: `getCurrentChoices()`, `fightBoss()`, `leaveToNextWorld()`.
+- **Run Mastery now CARRIES** (reverses the old "XP does not carry"):
+  `bankRunMasteryXp(game)` at the top of `onBattleEnd` writes each deployed
+  tower's earned XP back to its EXISTING `run.roster` record by name ×
+  `ROGUELIKE.mastery.xpGainMult` (**7**, calibrated to ★5-8 W1 / ★10-15 W2 /
+  up-to-★30 W3). It NEVER touches `state.roster`/`syncRoster`/`recordBattleEnd`;
+  `createTower` already seeds `tower.xp` from the record → higher starting Mastery
+  next encounter + the golden surge fires mid-run.
+- **Post-battle 1-of-5 gear** on every normal/elite/boss win
+  (`reward.postBattleKinds`, farm excluded, final boss none); the standalone
+  gear-cache event still exists. `getRunRoster()` backs a **VIEW ROSTER** screen
+  (each tower's ★ + gear).
+- **Neon visual overhaul:** per-world CSS backdrop on `#rogue-overlay`
+  (`data-world` 0/1/2 → cyan/magenta/red), banner-style cards with medallion +
+  per-kind `--kind-color`, glass HUD with Roman world badge + Salvage pill +
+  encounter-progress pips (`renderProgressPips`). No image assets; uses
+  `color-mix()` (Safari 16.2+, degrades to plain cards).
+- **`RUN_SNAPSHOT_VERSION` is now 3.** Run persistence still lives in `save.js`
+  under its OWN key `${KEY}-rogue-run` (NEVER the real save); `loot.js
+  makeRng(seed, state?)` exposes `rng.state()` for deterministic resume;
+  `resumeRun()` re-arms the sandbox + re-links context arrays and coerces a
+  mid-battle reload back to the world's choices.
+
+**Sandbox contract (the safety guarantee): a run NEVER reads/writes the real
+save** — fresh roster via the co-op-guest roster mechanism; `progression.js
+setRunContext` shims the gameplay getters to fresh-account values while a run is
+active; end-of-battle intercepted in `main.js checkEndState`. **Regression guard:
+`game.js` win/loss branches gate `recordBattleEnd` on `&& !game.isRun`** — do NOT
+remove (without it a run's natural win/loss writes the real save). Re-proven
+byte-identical at every redesign phase. New files `src/roguelike.js` (run state
+machine + resolvers), `src/roguelike-ui.js` (all screens); all tunables in
+`config.js ROGUELIKE`. **Remaining work is real-play tuning only** (mastery
+`xpGainMult`, `startingCoreIntegrity` 40 over a 24-encounter run, per-world
+difficulty — all first-pass, awaiting the user's feedback). Redesign built via
+Codex Sol (gpt-5.6-sol) for the structural/save-safety phases (1, 1b, 2) and
+INLINE by the Opus-4.8 orchestrator for the roster/visual/calibration phases
+(3, 4, 5 — Codex hit its usage limit, and the visual pass needs a browser Codex
+can't reach); orchestrator reviewed each diff, browser-verified, and did the
+version bumps + pushes.
 
 ### Affix "mods" system (`2026.08.28-1`..`2026.08.29-7`)
 Behavioral gear modifiers — **Faults** on enemies (Desync/Throttle/Exposed) and

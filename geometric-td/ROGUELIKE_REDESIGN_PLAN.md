@@ -423,7 +423,15 @@ stages on normal/elite/boss wins but NOT farm; the final boss gives no reward.
 Determinism holds. Report what you did and did NOT verify (you cannot see the
 surge VFX or phone layout).
 
-## 5. PHASE 3 — VIEW ROSTER screen — **Terra**
+## 5. PHASE 3 — VIEW ROSTER screen — AS BUILT (2026-08-30, build `-5`)
+
+Built INLINE by the Opus-4.8 orchestrator (Codex hit its usage limit before
+starting). Shipped exactly to the spec below: a `renderRoster()` in
+`roguelike-ui.js` driven by `getRunRoster()`, a VIEW ROSTER button on the node
+map, per-tower cards (★ rank + `TOWER_UPGRADES.mastery.damagePerRank`-derived
++N% dmg + four gear slots via the existing item helpers), a BACK button, and a
+`.rogue-roster-*` style block. Verified in-browser at 375px (3 cards, ★ + gear
+render, BACK returns, no horizontal scroll, real save untouched). Original spec:
 
 **Files (stage exactly these):** `src/roguelike-ui.js`, `styles.css`. (No
 `roguelike.js` change — the getter already exists; no `index.html` change — the
@@ -470,14 +478,36 @@ affixes/mods; BACK returns to the map. No console errors, no horizontal scroll a
 375px, real save untouched (this screen is read-only). New player-facing strings
 use `t("rogue.roster.*", "ENGLISH")` inline fallbacks (orchestrator adds French).
 
-## 6. PHASE 4 — Visual overhaul — **Terra**
-(Spec finalized after Phase 1/3.) Per-world CSS-neon backdrops, banner-style
-encounter cards (medallion + kind color + preview + footer tab, per the
-reference), restyled HUD (Core meter + Salvage chip + world/encounter pips +
-world badge), rarity-glow item cards, hero run-start/run-end. All tunables in the
-`--rogue-*` custom-property block on `#rogue-overlay`; reduced-motion-guarded;
-no horizontal scroll at 375px. Files: `styles.css`, `src/roguelike-ui.js`,
-`index.html`.
+## 6. PHASE 4 — Visual overhaul — AS BUILT (2026-08-30, build `-6`)
+
+Built INLINE by the Opus-4.8 orchestrator (Codex was rate-limited, and a visual
+pass needs a browser Codex can't reach). Files: `styles.css`, `src/roguelike-ui.js`,
+`index.html`. Verified in-browser at 375px (screenshots) — both world themes read
+correctly, no horizontal scroll, console clean.
+
+- **Per-world backdrop** on `#rogue-overlay`, keyed by a `data-world` attribute
+  set in `updateHudStrip` (0/1/2). Layered radial gradients (two world-hue glows
+  over `--bg`) + a masked perspective grid via `#rogue-overlay::before`. Theme
+  tokens `--rogue-accent` / `--rogue-h1` / `--rogue-h2` are overridden per
+  `[data-world]`: W1 outer-grid cyan/green, W2 ion-storm violet/magenta, W3
+  core-breach ember/red. `--rogue-accent` also drives the panel title, world
+  badge, and pips. No image assets, no filters (mobile-safe); the grid is static.
+- **Banner encounter cards**: `.rogue-node-card` gets a glowing circular
+  medallion (`.rogue-node-icon`), a per-kind accent top edge + tinted background +
+  kind-colored title. Per-kind colour is a `--kind-color` var set on the existing
+  `.rogue-kind-*` classes (combat cyan, elite red, farm/shop/recovery green, gear
+  yellow, upgrade magenta, boss gold). Uses `color-mix()` (Safari 16.2+; older
+  iOS degrades to the plain earlier `.rogue-node-card` rule — still functional).
+- **HUD**: translucent glass strip with a Roman-numeral world badge
+  (`#rogue-world-badge`), a Salvage pill, a thicker core meter, and a NEW
+  encounter-progress pip row (`#rogue-pips` / `renderProgressPips`): one dot per
+  encounter, filling as they clear, plus a trailing ★ that lights on
+  `bossDefeated`. New markup: `#rogue-world-badge` + `#rogue-pips` in `index.html`.
+- Reduced-motion: no new perpetual animation added (transitions only); the
+  existing `@media (prefers-reduced-motion)` block still governs the rogue screens.
+- **NOT done (deferred, optional):** the literal reference "footer tab" on cards,
+  rarity-glow on item cards, and a bespoke hero run-start/run-end treatment — the
+  medallion + accent-bar card reads as a banner without them; revisit if wanted.
 
 ## 7. PHASE 5 — Content & balance calibration — AS BUILT (2026-08-30)
 
