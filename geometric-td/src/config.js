@@ -79,8 +79,16 @@ export const ROGUELIKE = {
 
   // Accelerates only XP banked back to the run roster between encounters.
   // In-battle level eligibility stays decoupled at baseMults.xpMult = 1.
+  // CALIBRATION (Phase 5, 2026-08-30): analytic XP-pool model across the 3
+  // worlds (worldDepths 1/5/9), assuming a focused tower takes ~50% of each
+  // combat's XP and engages all combats + bosses (NO farm nodes, NO +25% XP
+  // upgrade — both of which real play adds on top). At xpGainMult 7 that focused
+  // tower reaches ~★5-6 by end of World 1, ~★14 by World 2, and ~★23 baseline by
+  // World 3 (→ ~★30 with farming/focus) — matching the design targets of ★5-8 /
+  // ★10-15 / up-to-★30. First pass; real playtest is the true signal (bump this
+  // one knob to retune the whole mastery curve).
   mastery: {
-    xpGainMult: 6,
+    xpGainMult: 7,
   },
 
   // ---------- Board + path templates (Phase B generator) ----------

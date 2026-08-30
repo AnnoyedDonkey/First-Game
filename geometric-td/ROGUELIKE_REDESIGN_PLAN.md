@@ -479,11 +479,34 @@ world badge), rarity-glow item cards, hero run-start/run-end. All tunables in th
 no horizontal scroll at 375px. Files: `styles.css`, `src/roguelike-ui.js`,
 `index.html`.
 
-## 7. PHASE 5 — Content & balance tuning — **Terra + orchestrator**
-Per-world enemy pools / difficulty bands / event weights / boss tables, and the
-Phase 2 mastery-curve numbers. Orchestrator calibrates the mastery multiplier and
-world difficulty in-browser (headless XP sim + real-play feel). Files:
-`src/config.js`.
+## 7. PHASE 5 — Content & balance calibration — AS BUILT (2026-08-30)
+
+Done by the orchestrator (Opus 4.8) in-browser — this is the one phase that needs
+real measurement, not a browser-blind Codex agent.
+
+- **Mastery curve calibrated to `xpGainMult: 7`.** Method: an analytic XP-pool
+  measurement in the live engine — generate the world's combats + boss at
+  `worldDepths` [1,5,9], sum `Σ count × ENEMIES[type].xp` per level, assume a
+  focused tower takes ~50% of each combat's pool and engages all combats + bosses
+  (excluding farm nodes' 2.5× and the +25% XP upgrade, which real play adds). At
+  ×7 that tower reaches ~★5–6 by end of World 1, ~★14 by World 2, ~★23 baseline
+  by World 3 (→ ~★30 with farming/focus) — matching the ★5–8 / ★10–15 /
+  up-to-★30 design targets. Bump this single knob to retune the whole curve.
+  (Measured pools: W1 ~1,270 XP, W2 ~2,980, W3 ~4,930 per world including boss.)
+- **Difficulty validated, not changed.** `worldDepths` [1,5,9] already lands each
+  world in a distinct `enemyTemplates`/rarity band (boundaries 1/4/8), giving
+  three escalating tiers with the existing ramp. Concurrent-enemy counts at
+  depth 9 (~11/group, ≤~110 concurrent) stay well under the ~300–400 mobile
+  ceiling; the depth-9 boss (~5.7k HP/unit × 2 + chaff) is beatable by a
+  focused, geared, ★20+ roster. No count/HP retune needed for a first pass.
+- **Content (event weights, salvage, shop/recovery/event tables) left at the
+  Phase 1–2 starter values** — reasonable for a first calibration.
+
+**First calibration pass — real human playtest is the true signal** (per the
+project's balance philosophy: a bot/analytic result is evidence, not proof).
+Expect to retune `mastery.xpGainMult`, `startingCoreIntegrity` (40 across a
+24-encounter run may prove tight or loose), and per-world difficulty off real
+feedback. Files: `src/config.js`.
 
 ---
 
