@@ -42,7 +42,7 @@ export const ROGUELIKE = {
   choicesPerFloor: 3,           // encounter options offered per floor
   starterTowers: ["laser", "pulse", "slow"], // the fresh run roster (one each)
   startingSalvage: 0,           // run currency at run start
-  startingCoreIntegrity: 30,    // carried run vitality pool (also each combat's core HP)
+  startingCoreIntegrity: 40,    // carried run vitality pool (also each combat's core HP)
 
   // Fresh-account baseline the sandbox feeds the shimmed progression getters
   // during a run battle (see progression.js setRunContext). Phase D raises these
@@ -142,19 +142,20 @@ export const ROGUELIKE = {
   ],
 
   // Per-battle starting money by encounter kind.
-  startingMoney: { normal: 140, elite: 160, boss: 220, farm: 130 },
+  startingMoney: { normal: 180, elite: 200, boss: 260, farm: 160 },
 
   // ---------- Difficulty ramp (Phase B/D) ----------
   // Linear per-depth ramp — deliberately the same shape as Phase A's already-
   // verified placeholder (healthPerDepth/bossHealthMult) to keep this fill
   // low-risk; Phase D is the dedicated tuning pass.
   difficulty: {
-    healthPerDepth: 0.35,     // +35% enemy HP per floor of depth (depth 0 = floor 1)
+    healthPerDepth: 0.24,     // +24% enemy HP per floor of depth (depth 0 = floor 1). Softened
+                              // 2026-08-29 (player: too hard past floor 3-4 with a fresh roster).
     bountyPerDepth: 0.12,     // +12% bounty per floor of depth
     eliteHealthMult: 1.5,
     eliteBountyMult: 1.45,
     eliteCountMult: 1.2,
-    bossHealthMult: 6,        // extra HP multiplier on the boss floor
+    bossHealthMult: 4.5,      // extra HP multiplier on the boss floor (softened w/ the ramp)
     bossBountyMult: 2.2,
     farmHealthMult: 0.5,      // XP Farm: weak enemies...
     farmBountyMult: 1.2,
@@ -164,8 +165,8 @@ export const ROGUELIKE = {
     wavesPerDepthEvery: 4,    // +1 wave every N floors of depth
     maxWaves: 5,
     bossWaveCount: 3,         // boss floors always get a fixed 3-wave script
-    baseGroupCount: 7,        // base enemies per spawn group
-    groupCountPerDepth: 0.9,  // + this many per floor of depth
+    baseGroupCount: 6,        // base enemies per spawn group (was 7 — fewer for the fresh roster)
+    groupCountPerDepth: 0.6,  // + this many per floor of depth (was 0.9 — gentler count ramp)
     spawnIntervalBase: 0.65,  // seconds between spawns within a group
     spawnIntervalPerDepth: -0.015, // spawns get slightly faster with depth
     spawnIntervalMin: 0.35,
@@ -173,18 +174,29 @@ export const ROGUELIKE = {
     bossUnitCount: 2,         // "boss" enemy-type units in the boss floor's final wave
   },
 
-  // ---------- Node / encounter-type weights per depth band (Phase B) ----------
+  // ---------- Node / encounter-type weights per depth band (Phase B/D) ----------
   // `bands` are checked in order; the first with `depth <= maxDepth` applies
   // (depth = run.floorIndex, 0-based). "elite" is stripped from whatever band
   // applies whenever depth < eliteMinDepth. The final floor always forces a
   // single "boss" node (see roguelike.js isBossFloor) — boss never appears in
   // these weight tables.
+  //
+  // Phase D draft-cadence decision (ROGUELIKE_PLAN.md §9): "upgrade" (a
+  // draftable run-upgrade, see runUpgrades below) is offered as ONE MORE node
+  // kind in this same weighted pool, exactly like "gear" — NOT a forced pick
+  // every floor. That keeps the existing 3-choices-per-floor UI/resolver
+  // pattern intact (no new flow to build) and preserves player agency: a
+  // floor might offer 0-2 upgrade choices depending on the roll. Weight is
+  // comparable to "gear" (slightly lower — a permanent stat/economy boost is
+  // more valuable per-node than one item), so across a ~12-floor run a typical
+  // seed offers on the order of 4-6 upgrade nodes total, of which the player
+  // can pick however many they choose to walk into.
   nodeWeights: {
     bands: [
-      { maxDepth: 1, weights: { normal: 50, farm: 15, gear: 20, event: 15 } },
-      { maxDepth: 4, weights: { normal: 35, elite: 15, farm: 10, gear: 20, shop: 12, event: 8 } },
-      { maxDepth: 8, weights: { normal: 25, elite: 20, farm: 8, gear: 18, shop: 12, event: 8, recovery: 9 } },
-      { maxDepth: Infinity, weights: { normal: 18, elite: 25, farm: 5, gear: 18, shop: 12, event: 7, recovery: 15 } },
+      { maxDepth: 1, weights: { normal: 40, farm: 15, gear: 16, event: 13, upgrade: 16 } },
+      { maxDepth: 4, weights: { normal: 26, elite: 13, farm: 10, gear: 17, shop: 12, event: 7, upgrade: 17 } },
+      { maxDepth: 8, weights: { normal: 18, elite: 20, farm: 8, gear: 15, shop: 12, event: 8, recovery: 9, upgrade: 10 } },
+      { maxDepth: Infinity, weights: { normal: 13, elite: 25, farm: 5, gear: 15, shop: 12, event: 7, recovery: 12, upgrade: 11 } },
     ],
   },
   eliteMinDepth: 3,             // no elite node before this floor of depth
@@ -199,13 +211,25 @@ export const ROGUELIKE = {
     { id: "overclocked", label: "OVERCLOCKED", desc: "Enemies move noticeably faster.", enemySpeedMult: 1.3 },
     { id: "hardened", label: "HARDENED PLATING", desc: "Enemies are extra tough.", extraHealthMult: 1.25 },
     { id: "swarm", label: "SWARM PROTOCOL", desc: "More enemies per wave.", extraCountMult: 1.35 },
+    { id: "bulwark", label: "BULWARK LINE", desc: "Tougher AND faster — no easy angle.", extraHealthMult: 1.35, enemySpeedMult: 1.15 },
+    { id: "onslaught", label: "ONSLAUGHT", desc: "Far more enemies, each a bit softer.", extraCountMult: 1.6, extraHealthMult: 0.85 },
   ],
 
   // ---------- Enemy composition pools per depth band (Phase B/D) ----------
+  // Leans on the resist matrix (BALANCE.enemies damageMult, config.js ~L352) so
+  // different floors reward different towers rather than "biggest number
+  // wins": fast (energy-weak) rewards Laser early; armored (energy-resist,
+  // pulse/rail-weak) is the intro to needing Pulse instead of just Laser;
+  // splitter (pulse/blast-weak, rail-resist) is safely answerable with the
+  // starter Pulse tower alone, so it's pulled forward into band2 as a teaching
+  // moment ("don't dump everything into Laser") well before Railgun/Rocket are
+  // purchasable; regenerator (energy-resist, rail-weak) stays gated to band3+,
+  // arriving roughly when Shop gold (nodeWeights band2 unlocks "shop") makes a
+  // Railgun purchase realistic.
   enemyTemplates: {
     bands: [
       { maxDepth: 1, pool: ["basic", "fast"] },
-      { maxDepth: 4, pool: ["basic", "fast", "armored"] },
+      { maxDepth: 4, pool: ["basic", "fast", "armored", "splitter"] },
       { maxDepth: 8, pool: ["fast", "armored", "splitter", "regenerator", "basic"] },
       { maxDepth: Infinity, pool: ["armored", "splitter", "regenerator", "fast"] },
     ],
@@ -217,7 +241,15 @@ export const ROGUELIKE = {
     choiceCount: 3,            // items offered per gear node
     ilvlBase: 8,
     ilvlPerDepth: 6,
-    eliteIlvlBonus: 12,        // (reserved for elite-guaranteed reward nodes, Phase D)
+    eliteIlvlBonus: 12,        // ilvl bump applied to an elite's guaranteed bonus reward (below)
+    // Phase D open-question decision (ROGUELIKE_PLAN.md §9): YES, elites
+    // guarantee a bonus gear reward on top of their already-larger salvage
+    // payout. Implemented as a second "reward" stage offered immediately
+    // after an elite win (roguelike.js onBattleEnd), reusing the exact same
+    // 3-item-choose-1 flow as a "gear" node (just at ilvl+eliteIlvlBonus) — no
+    // new UI screen needed. A toggle (not a hardcoded branch) so it can be
+    // switched off from config alone if it turns out to over-reward elites.
+    eliteBonusReward: true,
     skipSalvage: 10,           // salvage granted for skipping/selling all 3 offers
     // Rarity roll weights by depth band — independent of the campaign's
     // level-number-based gating in loot.js (run floors aren't campaign
@@ -304,7 +336,76 @@ export const ROGUELIKE = {
     farm: { base: 6, perDepth: 2 },
   },
 
-  runUpgrades: {},              // Phase D: draftable per-run deltas -> baseMults
+  // ---------- Draftable run upgrades (Phase D — the structural piece) ----------
+  // Offered via the "upgrade" node kind (see nodeWeights above): 3 distinct
+  // options rolled per node (weighted, no repeats within one offer — see
+  // roguelike.js weightedSampleDistinct), the player picks 1 (or skips all for
+  // flat salvage, matching the gear-node pattern). Each entry is a pure data
+  // descriptor; roguelike.js applyRunUpgrade() is the ONLY place that
+  // interprets these fields — no logic lives here:
+  //   mult / delta        -> run.context.mults[mult] += delta (the same
+  //                          fresh-account baseline object progression.js's
+  //                          shimmed getters read all run battle long — see
+  //                          buildRunContext/baseMults above). Effective
+  //                          immediately on the very next tower placed.
+  //   capMult / capDelta   -> a second mults[] field bumped alongside `mult`
+  //                          (used by "interest": raise the rate AND its cap
+  //                          together, or the rate would be wasted).
+  //   maxCoreIntegrityDelta -> run.maxCoreIntegrity += delta, AND heals the
+  //                          same amount now (a permanent vitality raise that
+  //                          doesn't feel like a trap by leaving you at the
+  //                          same absolute HP).
+  //   coreIntegrityDelta   -> a pure heal (no cap change), clamped to max.
+  //   unlockTower          -> pushes onto run.unlockedTowers (same array
+  //                          reference run.context.unlockedTowers already
+  //                          uses — see buildRunContext) — a free alternative
+  //                          to the Shop's paid tower unlock. Filtered out of
+  //                          the offer pool once already unlocked.
+  //   weight               -> relative pick weight when sampling `choiceCount`
+  //                          distinct options from the pool (same shape as
+  //                          weightedPick elsewhere in this file).
+  // Sizing: a full run offers roughly 4-6 upgrade nodes (see nodeWeights
+  // comment above), so per-pick deltas are sized close to ONE real-save skill
+  // box (ECONOMY_SKILL_SPEC / TOWER_SKILL_SPEC step sizes above: money/xp
+  // +10%, interest +2%, tower damage/perk chains +8-10% per box) — slightly
+  // above the real per-box size since a run gets far fewer picks than a full
+  // account grind, so each one should read as a real decision.
+  runUpgrades: {
+    choiceCount: 3,
+    skipSalvage: 8,
+    pool: [
+      { id: "overcharge", label: "OVERCHARGED WEAPONS", desc: "+20% damage, every tower.",
+        mult: "towerDamageMult", delta: 0.20, weight: 16 },
+      { id: "levelcap", label: "OVERCLOCK PROTOCOL", desc: "+1 tower level cap (every tower).",
+        mult: "towerLevelCap", delta: 1, weight: 10 },
+      { id: "laserRate", label: "RAPID CYCLING", desc: "+18% Laser fire rate.",
+        mult: "laserFireRateMult", delta: 0.18, weight: 10 },
+      { id: "pulseBlast", label: "WIDEBAND BLAST", desc: "+18% Pulse splash radius.",
+        mult: "pulseBlastRadiusMult", delta: 0.18, weight: 9 },
+      { id: "rocketBlast", label: "PAYLOAD YIELD", desc: "+18% Rocket splash radius.",
+        mult: "rocketBlastRadiusMult", delta: 0.18, weight: 7 },
+      { id: "slowDuration", label: "STASIS FIELD", desc: "+20% Slow duration.",
+        mult: "slowDurationMult", delta: 0.2, weight: 8 },
+      { id: "slowPotency", label: "DEEP FREEZE", desc: "+15% Slow potency.",
+        mult: "slowPotencyMult", delta: 0.15, weight: 8 },
+      { id: "railCharge", label: "CAPACITOR BANK", desc: "+20% Railgun charge speed.",
+        mult: "railChargeSpeedMult", delta: 0.2, weight: 6 },
+      { id: "money", label: "SALVAGE PROTOCOL", desc: "+15% money per kill.",
+        mult: "moneyMult", delta: 0.15, weight: 13 },
+      { id: "interest", label: "COMPOUND YIELD", desc: "+3% interest per wave (+40 cap).",
+        mult: "interestRate", delta: 0.03, capMult: "interestCap", capDelta: 40, weight: 9 },
+      { id: "xp", label: "COMBAT LEARNING", desc: "+25% tower XP this run.",
+        mult: "xpMult", delta: 0.25, weight: 8 },
+      { id: "corePlating", label: "CORE PLATING", desc: "+8 max Core Integrity, restored now.",
+        maxCoreIntegrityDelta: 8, weight: 11 },
+      { id: "fieldRepair", label: "FIELD REPAIR", desc: "+14 Core Integrity now.",
+        coreIntegrityDelta: 14, weight: 9 },
+      { id: "unlockRailgun", label: "RAILGUN UPLINK", desc: "Unlock the Railgun tower — free.",
+        unlockTower: "railgun", weight: 6 },
+      { id: "unlockRocket", label: "ROCKET UPLINK", desc: "Unlock the Rocket tower — free.",
+        unlockTower: "rocket", weight: 6 },
+    ],
+  },
 };
 
 // ---------- Runtime performance ----------

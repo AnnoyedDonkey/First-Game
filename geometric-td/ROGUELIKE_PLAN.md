@@ -340,6 +340,34 @@ the menu-return callback and registers the button handler.
 `version.js` bump + push to reach the phone). The mode is DEBUG-gated, so it is
 invisible to normal players until DEBUG MODE is on.
 
+## 5e. Phase D — AS BUILT (2026-08-29)
+
+Content, rewards & balance shipped in `config.js` + `roguelike.js` +
+`roguelike-ui.js` (3 files).
+- **Draftable run-upgrades wired (the structural piece):** `ROGUELIKE.runUpgrades`
+  pool (data-only), a new `"upgrade"` node kind. `resolveUpgradeNode` stages 3
+  distinct options; `pickRunUpgrade(i)` (`-1` = skip for salvage) →
+  `applyRunUpgrade` mutates the LIVE `run.context.mults` / `.unlockedTowers` /
+  `run.maxCoreIntegrity` the sandbox reads, so the next tower placed feels it.
+  Verified: Laser 8 → 9.2 after a +15% damage draft.
+- Elites grant a guaranteed bonus gear reward on win (`reward.eliteBonusReward`,
+  a second staged reward round in `onBattleEnd`). §9 decisions: upgrade = one more
+  weighted node (not a forced pick); elites guarantee a bonus reward; no mid-run
+  mini-bosses (elites fill that role); daily seeds deferred to Phase E.
+- Content: enemy pools per depth band (resist-matrix-aware), 6 elite modifiers,
+  shop/recovery/event tables, gear/salvage tiers.
+
+### Difficulty softening (2026-08-29, off player report "too hard past floor 3–4")
+Player tested the live Phase C build — which had NO run-upgrades wired at all, so
+towers couldn't build power. Phase D adds that axis; plus an early-ramp softening
+in `config.js ROGUELIKE`: `healthPerDepth 0.35→0.24`, `baseGroupCount 7→6`,
+`groupCountPerDepth 0.9→0.6`, `bossHealthMult 6→4.5`, `startingMoney` +~30% per
+kind, `startingCoreIntegrity 30→40`, early-band `upgrade` node weights up, and
+the flagship `overcharge` draft +15%→+20%. Headless bot check (smart placement,
+**zero upgrades**, naive AI): loss-wall moved from floor 3 to floors 4–6 across 5
+seeds; combats still losable. **First calibration pass — real human playtest is
+the true signal; expect further tuning.**
+
 ## 6. Encounter type → engine mapping (design reference)
 
 | Type | Built from | Depth gate |

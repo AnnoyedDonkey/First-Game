@@ -48,7 +48,7 @@ const el = {
 const COMBAT_KINDS = new Set(["normal", "elite", "farm", "boss"]);
 const KIND_ICON = {
   normal: "⚔", elite: "☠", farm: "⚡", gear: "🎁",
-  shop: "🛒", event: "❓", recovery: "🔧", boss: "👑",
+  shop: "🛒", event: "❓", recovery: "🔧", boss: "👑", upgrade: "🛠",
 };
 const RARITY_COLOR = {
   common: "#b7c0d5", enhanced: "#4affa1", rare: "#35e0ff",
@@ -124,6 +124,10 @@ export function onRunBattleEnd(game) {
   hideBattleChrome();
   showRogueOverlay();
   if (result.runOver) renderRunEnd(result);
+  // Elite guaranteed bonus reward (Phase D): onBattleEnd staged a gear choice
+  // instead of advancing the floor — show it exactly like a gear node's
+  // reward screen; picking (or skipping) it advances the floor itself.
+  else if (result.bonusReward) renderGearReward(result.bonusReward.items);
   else renderNodeMap();
 }
 
@@ -178,6 +182,7 @@ function nodePreview(node) {
     case "shop": return t("rogue.node.shop", "Spend Salvage on gear, unlocks & repairs.");
     case "event": return node.event?.desc || t("rogue.node.event", "A risky choice.");
     case "recovery": return t("rogue.node.recovery", "Restore Core Integrity.");
+    case "upgrade": return tf("rogue.node.upgrade", "Choose 1 of {n} permanent run upgrades.", { n: ROGUELIKE.runUpgrades.choiceCount });
     case "boss": return t("rogue.node.boss", "Final battle. Win to complete the run.");
     default: return "";
   }
@@ -249,6 +254,7 @@ function onChooseNode(i, node) {
     case "gear": renderGearReward(result.items); break;
     case "shop": selectedRosterIndex = 0; renderShop(); break;
     case "event": renderEvent(result.event); break;
+    case "upgrade": renderUpgradeReward(result.options); break;
     case "recovery": {
       const run = roguelike.getRun();
       renderOutcome({
@@ -310,6 +316,37 @@ function renderGearReward(items) {
   });
   document.getElementById("rogue-gear-skip").addEventListener("click", () => {
     roguelike.pickGearReward(-1);
+    renderNodeMap();
+  });
+}
+
+// ---------- Run-upgrade screen (Phase D) ----------
+// Reuses the event screen's option-button classes (.rogue-event-option/-opt-
+// label/-opt-desc) — same "pick one of N labeled choices" shape, no new CSS.
+
+function renderUpgradeReward(options) {
+  const run = roguelike.getRun();
+  updateHudStrip(run);
+  const optionsHtml = options.map((u, i) => `
+    <button class="rogue-event-option" type="button" data-upgrade="${i}">
+      <span class="rogue-event-opt-label">${escapeHtml(u.label)}</span>
+      <span class="rogue-event-opt-desc">${escapeHtml(u.desc)}</span>
+    </button>
+  `).join("");
+  el.body.innerHTML = `
+    <div class="rogue-panel-title">${t("rogue.upgrade.title", "SYSTEM UPGRADE")}</div>
+    <p class="rogue-panel-sub">${t("rogue.upgrade.sub", "PICK ONE — PERMANENT FOR THE REST OF THE RUN")}</p>
+    <div class="rogue-event-options">${optionsHtml}</div>
+    <button class="big-button rogue-secondary rogue-wide" type="button" id="rogue-upgrade-skip">${tf("rogue.upgrade.skip", "SKIP ALL (+{n} SALVAGE)", { n: ROGUELIKE.runUpgrades.skipSalvage })}</button>
+  `;
+  el.body.querySelectorAll("[data-upgrade]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      roguelike.pickRunUpgrade(Number(btn.dataset.upgrade));
+      renderNodeMap();
+    });
+  });
+  document.getElementById("rogue-upgrade-skip").addEventListener("click", () => {
+    roguelike.pickRunUpgrade(-1);
     renderNodeMap();
   });
 }

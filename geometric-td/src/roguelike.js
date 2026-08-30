@@ -9,10 +9,18 @@
 // PHASE A (foundation, shipped): the run object, the save-sandbox wiring, and
 // a single hand-built placeholder encounter.
 //
-// PHASE B (this pass): the real procedural generator + the full encounter
-// pool. Everything tunable lives in config.js ROGUELIKE — no run number is
+// PHASE B (shipped): the real procedural generator + the full encounter pool.
+// Everything tunable lives in config.js ROGUELIKE — no run number is
 // hardcoded here. See the "Non-combat resolver contract" comment below for
-// how the (future) Phase C UI is meant to drive this file.
+// how the Phase C UI drives this file.
+//
+// PHASE D (this pass): draftable run upgrades are now WIRED — the "upgrade"
+// node kind (resolveUpgradeNode/pickRunUpgrade/applyRunUpgrade below) mutates
+// the live run.context.mults/.unlockedTowers/run.maxCoreIntegrity that the
+// sandbox already reads, so a drafted upgrade changes the very next tower's
+// stats. Also: elites now stage a guaranteed bonus gear reward on win (see
+// onBattleEnd), and content/difficulty tables got a balance pass. See
+// ROGUELIKE_PLAN.md §9 for the open-question decisions this pass made.
 //
 // SANDBOX CONTRACT (the reason this mode is safe): a run NEVER reads or writes
 // the real save. Fresh, gearless, level-1 towers come free from placeTower via
@@ -84,6 +92,24 @@ function sampleWithoutReplacement(arr, count, rng) {
     const j = i + Math.floor(rng() * (pool.length - i));
     [pool[i], pool[j]] = [pool[j], pool[i]];
     out.push(pool[i]);
+  }
+  return out;
+}
+
+// `count` distinct entries from `entries` (objects with a `.weight`),
+// weighted without replacement — repeatedly weightedPick over the shrinking
+// pool. Used for run-upgrade offers so the same upgrade never appears twice
+// in one offer, while rarer/stronger picks (lower weight) show up less often.
+function weightedSampleDistinct(entries, count, rng) {
+  const pool = entries.slice();
+  const out = [];
+  const n = Math.min(count, pool.length);
+  for (let i = 0; i < n; i++) {
+    const weights = {};
+    pool.forEach((e, idx) => { weights[idx] = e.weight || 1; });
+    const idx = Number(weightedPick(weights, rng));
+    out.push(pool[idx]);
+    pool.splice(idx, 1);
   }
   return out;
 }
@@ -232,6 +258,9 @@ function makeNode(kind, depth) {
     case "recovery":
       node.label = "REPAIR BAY";
       break;
+    case "upgrade":
+      node.label = "SYSTEM UPGRADE";
+      break;
     default:
       node.label = kind.toUpperCase();
   }
@@ -285,6 +314,22 @@ function advanceFloor() {
 //                then call resolveEventOption(optionIndex), which applies the
 //                chosen (possibly risky) outcome and calls advanceFloor().
 //
+//   upgrade   -> STAGES (Phase D): rolls `runUpgrades.choiceCount` distinct
+//                options into run.pendingChoice, sets run.phase = "reward",
+//                and returns { ok, kind:"upgrade", options }. The UI must then
+//                call pickRunUpgrade(optionIndex) — or pickRunUpgrade(-1) to
+//                skip all for flat salvage — which mutates run.context.mults /
+//                .unlockedTowers / run.maxCoreIntegrity (effective on the very
+//                next battle) and calls advanceFloor().
+//
+// An elite win also stages a BONUS "reward" (Phase D, ROGUELIKE.reward.
+// eliteBonusReward): onBattleEnd rolls 3 higher-ilvl gear items into
+// run.pendingChoice / run.phase = "reward" (kind:"gear", same as a gear node)
+// immediately after an elite combat is won, BEFORE advancing the floor. The
+// UI's normal pickGearReward(itemIndex, rosterIndex) flow resolves it exactly
+// like a gear node and advances the floor itself; the caller of onBattleEnd
+// can tell this happened via the returned result's `bonusReward` field.
+//
 // Every resolver is a pure function of run.rng — no Math.random anywhere in
 // this file.
 export function chooseNode(index) {
@@ -307,6 +352,8 @@ export function chooseNode(index) {
       return resolveEventNode(node);
     case "recovery":
       return resolveRecoveryNode(node);
+    case "upgrade":
+      return resolveUpgradeNode(node);
     default:
       return { ok: false, reason: "unhandled-kind" };
   }
@@ -716,6 +763,67 @@ function resolveRecoveryNode() {
   return { ok: true, kind: "recovery", restored: applied, coreIntegrity: run.coreIntegrity, ...snap };
 }
 
+// ---------- Run-upgrade node (Phase D) ----------
+// The structural piece this pass wires up: drafted upgrades were previously
+// unreachable data (ROGUELIKE.runUpgrades was `{}`). This node stages 3
+// distinct options from ROGUELIKE.runUpgrades.pool; picking one mutates the
+// LIVE run.context (mults / unlockedTowers) or run.maxCoreIntegrity, so the
+// very next tower placed / next battle launched sees the effect — same
+// mechanism the Elite "restricted towers" modifier already proved works
+// (run.context.unlockedTowers/.mults are read fresh by the shimmed
+// progression.js getters on every call, not snapshotted once).
+
+function resolveUpgradeNode(node) {
+  const cfg = ROGUELIKE.runUpgrades;
+  // Drop unlock-tower options for towers already unlocked (nothing to offer).
+  const eligible = cfg.pool.filter((u) => !u.unlockTower || !run.unlockedTowers.includes(u.unlockTower));
+  const options = weightedSampleDistinct(eligible, cfg.choiceCount, run.rng);
+  run.pendingChoice = { kind: "upgrade", node, options };
+  run.phase = "reward";
+  return { ok: true, kind: "upgrade", options };
+}
+
+// Applies one drafted upgrade's data-only effect (see the ROGUELIKE.runUpgrades
+// config comment for the field vocabulary). The ONLY place these fields are
+// interpreted — config.js stays pure data per the cardinal rule.
+function applyRunUpgrade(u) {
+  if (u.mult) run.context.mults[u.mult] = (run.context.mults[u.mult] || 0) + u.delta;
+  if (u.capMult) run.context.mults[u.capMult] = (run.context.mults[u.capMult] || 0) + u.capDelta;
+  if (u.maxCoreIntegrityDelta) {
+    run.maxCoreIntegrity += u.maxCoreIntegrityDelta;
+    run.coreIntegrity = Math.min(run.maxCoreIntegrity, run.coreIntegrity + u.maxCoreIntegrityDelta);
+  }
+  if (u.coreIntegrityDelta) {
+    run.coreIntegrity = Math.min(run.maxCoreIntegrity, run.coreIntegrity + u.coreIntegrityDelta);
+  }
+  if (u.unlockTower && !run.unlockedTowers.includes(u.unlockTower)) {
+    run.unlockedTowers.push(u.unlockTower); // same array reference as run.context.unlockedTowers
+  }
+}
+
+// optionIndex = -1 to skip/decline all offered upgrades for flat salvage.
+export function pickRunUpgrade(optionIndex) {
+  if (!run || run.phase !== "reward" || !run.pendingChoice || run.pendingChoice.kind !== "upgrade") {
+    return { ok: false, reason: "not-upgrade" };
+  }
+  const { options } = run.pendingChoice;
+
+  if (optionIndex === -1) {
+    run.salvage += ROGUELIKE.runUpgrades.skipSalvage;
+    run.log.push(`skipped upgrade for ${ROGUELIKE.runUpgrades.skipSalvage} salvage (floor ${run.floorIndex + 1})`);
+    const snap = advanceFloor();
+    return { ok: true, kind: "upgrade", skipped: true, salvage: run.salvage, ...snap };
+  }
+
+  const upgrade = options[optionIndex];
+  if (!upgrade) return { ok: false, reason: "no-upgrade" };
+
+  applyRunUpgrade(upgrade);
+  run.log.push(`drafted upgrade "${upgrade.label}" (floor ${run.floorIndex + 1})`);
+  const snap = advanceFloor();
+  return { ok: true, kind: "upgrade", applied: upgrade, ...snap };
+}
+
 // ---------- End of battle ----------
 // Called by main.js checkEndState BEFORE any campaign save-write, once the
 // battle has resolved to "won"/"lost". Restores any elite/farm battle
@@ -759,6 +867,21 @@ export function onBattleEnd(game) {
   run.salvage += gain;
   result.salvage = run.salvage;
   result.salvageGained = gain;
+
+  // Elite guaranteed bonus reward (Phase D §9 decision, ROGUELIKE.reward.
+  // eliteBonusReward): stage a higher-ilvl 3-item gear choice on top of the
+  // salvage above, using the exact same staged-reward shape as a "gear" node
+  // (run.pendingChoice.kind = "gear", run.phase = "reward"). Do NOT
+  // advanceFloor() here — pickGearReward() does that once the player resolves
+  // this bonus, same as it does for a real gear node.
+  if (kind === "elite" && ROGUELIKE.reward.eliteBonusReward) {
+    const items = rollRewardItems(run.floorIndex, ROGUELIKE.reward.choiceCount, ROGUELIKE.reward.eliteIlvlBonus);
+    run.pendingChoice = { kind: "gear", node: null, items };
+    run.phase = "reward";
+    result.bonusReward = { items };
+    run.log.push(`elite clear: bonus gear reward offered (floor ${run.floorIndex + 1})`);
+    return result;
+  }
 
   if (kind === "boss") {
     run.phase = "won";
@@ -809,5 +932,6 @@ export function debugHandle() {
     shopReroll,
     shopLeave,
     resolveEventOption,
+    pickRunUpgrade,
   };
 }
