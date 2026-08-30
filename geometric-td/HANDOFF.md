@@ -20,15 +20,24 @@ en)` looks it up; `lang` save field via `progression.js getLang/setLang`;
 proper nouns** (tower names Laser/Pulse/Slow/Railgun/Rocket, Indy-7,
 Bratwurst-XL, "GEOMETRIC TD").
 
-**Deployed build: `2026.08.29-17`.**
+**Deployed build: `2026.08.30-1`.**
 
-### Roguelike mode (`2026.08.29-16`..`-17`) — DEBUG-gated
+### Roguelike mode (`2026.08.29-16`..`2026.08.30-1`) — DEBUG-gated
 A run-based gauntlet layered on the engine: survive procedurally chosen
 encounters across 13 floors, beat the boss to win. **Behind Settings → DEBUG
 MODE** (invisible to normal players). **Read `ROGUELIKE_PLAN.md` first for any
 roguelike work** — it has the full design + per-phase "AS BUILT" interfaces;
-`ROGUELIKE_SOURCE_EXTRACT.md` is the reusable-systems reference. Phases A–D
-shipped; Phase E (polish + optional run persistence) not built. Locked design:
+`ROGUELIKE_SOURCE_EXTRACT.md` is the reusable-systems reference. **Phases A–E all
+shipped** (E = polish + run persistence, `2026.08.30-1`): run-summary/seed/replay/
+daily on the run-end + a new run-start screen, pizzazz (CSS knobs on
+`#rogue-overlay`, reduced-motion-guarded), and **run persistence** — an
+in-progress run survives a reload. Persistence lives in `save.js` under its OWN
+key `${KEY}-rogue-run` (NEVER the real save object — the byte-identical invariant
+still holds, zero migration risk); `loot.js makeRng(seed, state?)` now exposes
+`rng.state()` so a resumed run continues the exact deterministic stream;
+`roguelike.js resumeRun()` re-arms the sandbox + re-links context arrays and
+coerces a mid-battle reload back to the floor's choices. Remaining roguelike work
+is playtest tuning only. Locked design:
 procedural floors, run-only "Salvage" currency, carried run-wide "Core
 Integrity" vitality; fresh gearless level-1 roster every run (mastery/XP do NOT
 carry — power comes from drafted gear + `runUpgrades`). New files

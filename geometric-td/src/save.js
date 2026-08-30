@@ -6,6 +6,12 @@
 
 const KEY = "geometric-td-save-v1";
 const MOD_LAB_SNAPSHOT_KEY = `${KEY}-mod-lab-snapshot`;
+// The DEBUG-gated Roguelike mode persists an in-progress run under its OWN
+// localStorage key, deliberately OUTSIDE the real save object — so a reload can
+// resume a run while the real save stays byte-for-byte untouched (the mode's
+// sandbox contract: a run never reads or writes real progression). Mirrors the
+// Mod Lab snapshot-key pattern below. See roguelike.js serializeRun/resumeRun.
+const ROGUE_RUN_KEY = `${KEY}-rogue-run`;
 
 // Nested item defaults cannot be supplied by the top-level DEFAULT_SAVE merge.
 // progression.js applies this in memory after loadSave(); it deliberately does
@@ -70,6 +76,38 @@ export function writeSave(state) {
 export function clearSave() {
   localStorage.removeItem(KEY);
   localStorage.removeItem(MOD_LAB_SNAPSHOT_KEY);
+  localStorage.removeItem(ROGUE_RUN_KEY); // drop any abandoned roguelike run too
+}
+
+// ---------- Roguelike run persistence (DEBUG-gated mode, Phase E) ----------
+// A tiny, self-contained store for the in-progress run snapshot. NEVER touches
+// the real save object above — a run's whole safety guarantee is that it does
+// not read or write real progression. roguelike.js owns the snapshot shape.
+
+export function saveRoguelikeRun(snapshot) {
+  try {
+    localStorage.setItem(ROGUE_RUN_KEY, JSON.stringify(snapshot));
+  } catch (err) {
+    console.warn("Could not persist roguelike run:", err);
+  }
+}
+
+export function loadRoguelikeRun() {
+  try {
+    const raw = localStorage.getItem(ROGUE_RUN_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (err) {
+    console.warn("Roguelike run unreadable:", err);
+    return null;
+  }
+}
+
+export function clearRoguelikeRun() {
+  try {
+    localStorage.removeItem(ROGUE_RUN_KEY);
+  } catch (err) {
+    console.warn("Could not clear roguelike run:", err);
+  }
 }
 
 // The Mod Lab keeps its safety copy under a separate localStorage key so the

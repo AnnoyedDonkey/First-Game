@@ -1,6 +1,9 @@
 # Roguelike Mode — Build Plan
 
-**Status:** designed 2026-08-29, build NOT started. Read this first for any
+**Status:** designed 2026-08-29; **Phases A–E all shipped** (A–D by 2026-08-29,
+E — polish + run persistence — 2026-08-30, build `2026.08.30-1`). See the
+per-phase "AS BUILT" sections (§5b–§5f) for the exact interfaces. Remaining work
+is playtest balance tuning, not new phases. Read this first for any
 roguelike work. Companion reference: **`ROGUELIKE_SOURCE_EXTRACT.md`** (a
 data-faithful snapshot of every reusable system — towers, enemies, gear,
 economy, map modifiers — with file:line anchors). This plan assumes it.
@@ -367,6 +370,73 @@ the flagship `overcharge` draft +15%→+20%. Headless bot check (smart placement
 **zero upgrades**, naive AI): loss-wall moved from floor 3 to floors 4–6 across 5
 seeds; combats still losable. **First calibration pass — real human playtest is
 the true signal; expect further tuning.**
+
+## 5f. Phase E — AS BUILT (2026-08-30, verified)
+
+Polish + run persistence shipped (build `2026.08.30-1`). Files: `src/roguelike.js`,
+`src/roguelike-ui.js`, `src/save.js`, `src/loot.js`, `styles.css`, `src/version.js`.
+Delegation: the two mechanical UI/CSS phases were built by cold-read **Sonnet**
+agents against a spec file; the save-safety persistence phase was done **inline
+by the Opus-4.8 orchestrator** (per §5's save-safety rule), then everything was
+browser-verified and version-bumped by the orchestrator.
+
+### Polish (Sonnet agents)
+- **Run summary** — `roguelike.js getRunSummary()` (a PURE read of the live run)
+  feeds a rewritten `renderRunEnd`: floor reached, Core Integrity, salvage,
+  towers unlocked, gear drafted count, upgrades taken, and the **seed**. A new
+  `run.draftedUpgrades[]` (`{id,label}`, pushed in `pickRunUpgrade`'s apply
+  branch only) backs the upgrades row.
+- **Seed display / replay / daily** — run-end shows the seed with **COPY SEED**
+  (guarded `navigator.clipboard`, silent no-op on iOS/file://), **REPLAY SEED**
+  (`startRun(seed)` — deterministic re-run), and **DAILY RUN**. New
+  `roguelike.js dailySeed(date=new Date())` = a uint32 from the LOCAL calendar
+  date (`y*10000+(m+1)*100+d`), so a given day reproduces one gauntlet.
+- **Run-start screen** — `enterRoguelike()` with **no** seed now shows
+  `renderRunStart()` (NEW RUN / DAILY RUN + today's seed / BACK, and a **RESUME
+  RUN** button when a snapshot exists); a seed passed in (console/replay/daily)
+  still starts immediately. `window.startRun(seed)` behaviour unchanged.
+- **Pizzazz** — `styles.css` node-card/summary/run-start staggered entrances, a
+  one-shot win/loss run-end reveal, and a low-Core-Integrity glow pulse. All
+  timings are CSS custom properties on `#rogue-overlay`
+  (`--rogue-anim-in/-ease/-stagger/-pulse`); everything is disabled under
+  `@media (prefers-reduced-motion: reduce)`. Transform/opacity/box-shadow only.
+
+### Run persistence (Opus-4.8 inline — the save-safety piece)
+- **Separate localStorage key, real save NEVER touched.** Persistence lives in
+  `save.js` under `${KEY}-rogue-run` (mirrors the Mod Lab snapshot-key pattern),
+  entirely OUTSIDE the real save object — so the sandbox invariant *still holds*
+  (`geometric-td-save-v1` is byte-identical across a full run + reload) and there
+  is **zero migration risk** (no new field on the real save, no backfill). Three
+  helpers: `saveRoguelikeRun/loadRoguelikeRun/clearRoguelikeRun`; `clearSave`
+  also drops the rogue key.
+- **`roguelike.js` serialize/resume.** `serializeRun()` snapshots only plain data
+  + the **rng internal state** — `loot.js makeRng(seed, state?)` now exposes
+  `rng.state()` and accepts a resume `state` (additive/backward-compatible), so a
+  resumed run **continues the exact deterministic stream**. `resumeRun()` rebuilds
+  the run, **re-links** `context.roster`/`context.unlockedTowers` to the run's own
+  arrays (not the serialized copies), coerces a mid-battle reload back to the
+  floor's node choices (no penalty — Core Integrity was persisted pre-battle), and
+  **re-arms `setRunContext`** so a resumed run still never writes the real save.
+  `RUN_SNAPSHOT_VERSION` guards against stale-shape snapshots.
+- **Persist points:** `startRun`, `advanceFloor`, `resolveCombatNode` (the CLEAN
+  pre-modifier state — a transient elite/farm battle modifier is never persisted),
+  the gear/shop/event/upgrade stagers, every shop mutator, and the elite-bonus
+  staging in `onBattleEnd`. **Clear points:** `endRun` (abandon/exit) and the
+  win/loss branches of `onBattleEnd`. UI: `renderRunStart`'s RESUME button →
+  `resumeRun()` → new `renderCurrentScreen()` phase dispatcher.
+- Console: `window.roguelike.hasResumableRun()` / `.resume()`.
+
+**Verified (browser, state/DOM assertions only — no canvas capture):** makeRng
+resume is deterministic; `startRun` writes the rogue key while the real save stays
+byte-identical; sandbox is OFF before resume and re-armed+re-linked after; across a
+real page reload `resumeRun()` restores seed/floor/salvage/roster and the real save
+is still byte-identical; abandon and a loss both clear the key + sandbox; the
+run-start and run-end summary screens render with the expected classes; console
+clean. **Not personally eyeballed (phone job):** the animation feel and the
+run-end summary layout at phone widths.
+
+**Optional not built:** none deferred — persistence WAS built this pass (the §5
+"optional" item). Remaining is pure playtest tuning.
 
 ## 6. Encounter type → engine mapping (design reference)
 

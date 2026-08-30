@@ -1610,7 +1610,18 @@ html[data-lang="fr"] #story-lang-toggle .lang-fr {
    ui.js) — same DEBUG gate as MOD LAB. */
 .rogue-entry { border-color: var(--neon-red) !important; }
 
+/* Phase E pizzazz timing knobs (Agent B) — tune all rogue entrance/pulse
+   motion from one place: --rogue-anim-in is the base entrance duration for
+   node cards, summary rows, and the run-start/run-end screens;
+   --rogue-anim-ease is the shared easing curve; --rogue-stagger is the
+   per-item delay step for staggered lists; --rogue-pulse is the period of
+   the low-Core-Integrity glow pulse. All are inherited by #rogue-body's
+   descendants since they're declared here on the ancestor overlay. */
 #rogue-overlay {
+  --rogue-anim-in: 320ms;
+  --rogue-anim-ease: cubic-bezier(.2, .8, .2, 1);
+  --rogue-stagger: 60ms;
+  --rogue-pulse: 1.6s;
   position: fixed;
   inset: 0;
   z-index: 42;
@@ -1654,8 +1665,21 @@ html[data-lang="fr"] #story-lang-toggle .lang-fr {
   transition: width .35s ease;
 }
 #rogue-core-fill.mid { background: var(--neon-yellow); box-shadow: 0 0 8px rgba(255, 226, 74, .6); }
-#rogue-core-fill.low { background: var(--neon-red); box-shadow: 0 0 8px rgba(255, 74, 94, .7); }
-@media (prefers-reduced-motion: reduce) { #rogue-core-fill { transition: none; } }
+#rogue-core-fill.low {
+  background: var(--neon-red);
+  box-shadow: 0 0 8px rgba(255, 74, 94, .7);
+  /* Gentle glow pulse while critical — box-shadow only, no perpetual blur
+     filter; JS already toggles .low, this just animates while it's set. */
+  animation: rogue-core-pulse var(--rogue-pulse) ease-in-out infinite;
+}
+@keyframes rogue-core-pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(255, 74, 94, .7); }
+  50% { box-shadow: 0 0 15px rgba(255, 74, 94, 1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #rogue-core-fill { transition: none; }
+  #rogue-core-fill.low { animation: none; }
+}
 
 #rogue-body {
   flex: 1;
@@ -1701,8 +1725,17 @@ html[data-lang="fr"] #story-lang-toggle .lang-fr {
   background: var(--panel);
   color: var(--text);
   cursor: pointer;
+  animation: rogue-fade-up-in var(--rogue-anim-in) var(--rogue-anim-ease) backwards;
 }
 .rogue-node-card:active { transform: scale(0.98); }
+/* Cards are re-created every renderNodeMap(), so this plain keyframe
+   re-plays on each render with no JS trigger needed. Stagger the first
+   four; "backwards" fill only holds the 0% (pre-start) state during the
+   delay and doesn't linger after, so it never fights .rogue-node-card:active. */
+.rogue-node-card:nth-child(1) { animation-delay: 0s; }
+.rogue-node-card:nth-child(2) { animation-delay: var(--rogue-stagger); }
+.rogue-node-card:nth-child(3) { animation-delay: calc(var(--rogue-stagger) * 2); }
+.rogue-node-card:nth-child(4) { animation-delay: calc(var(--rogue-stagger) * 3); }
 .rogue-node-icon { font-size: 22px; flex-shrink: 0; filter: drop-shadow(0 0 6px rgba(255, 255, 255, .25)); }
 .rogue-node-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .rogue-node-label { font-size: 13px; letter-spacing: 1px; color: var(--neon-cyan); }
@@ -1800,8 +1833,100 @@ html[data-lang="fr"] #story-lang-toggle .lang-fr {
 .rogue-runend-sub { font-size: 11px; color: var(--text-dim); letter-spacing: .5px; max-width: 340px; }
 .rogue-runend .big-button, .rogue-outcome .big-button { max-width: 320px; }
 
+/* Run summary (getRunSummary(): floor/core/salvage/towers/gear/upgrades/
+   seed rows), shown under the run-end sub-line. flex-wrap on the row plus
+   overflow-wrap on the value keeps long tower/upgrade lists from ever
+   forcing horizontal scroll on a 375px viewport. */
+.rogue-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  max-width: 360px;
+  box-sizing: border-box;
+  padding: 10px 14px;
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  background: var(--panel);
+  text-align: left;
+  animation: rogue-fade-up-in var(--rogue-anim-in) var(--rogue-anim-ease) backwards;
+  animation-delay: calc(var(--rogue-stagger) * 2);
+}
+.rogue-summary-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  column-gap: 10px;
+  row-gap: 2px;
+  font-size: 11px;
+  letter-spacing: .5px;
+  animation: rogue-fade-up-in var(--rogue-anim-in) var(--rogue-anim-ease) backwards;
+}
+.rogue-summary-row:nth-child(1) { animation-delay: calc(var(--rogue-stagger) * 3); }
+.rogue-summary-row:nth-child(2) { animation-delay: calc(var(--rogue-stagger) * 4); }
+.rogue-summary-row:nth-child(3) { animation-delay: calc(var(--rogue-stagger) * 5); }
+.rogue-summary-row:nth-child(4) { animation-delay: calc(var(--rogue-stagger) * 6); }
+.rogue-summary-row:nth-child(5) { animation-delay: calc(var(--rogue-stagger) * 7); }
+.rogue-summary-row:nth-child(6) { animation-delay: calc(var(--rogue-stagger) * 8); }
+.rogue-summary-row:nth-child(7) { animation-delay: calc(var(--rogue-stagger) * 9); }
+.rogue-summary-key { color: var(--text-dim); flex: 0 1 auto; }
+.rogue-summary-val { color: var(--text); text-align: right; flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.rogue-summary-seed .rogue-summary-val { color: var(--neon-cyan); letter-spacing: 1px; }
+
+/* Run-end reveal: win pops in with a bright one-shot glow sweep on the
+   title; loss fades in more subdued. Both play a single iteration (no
+   `infinite`), so there's no ongoing per-frame cost once settled. */
+@keyframes rogue-runend-win-in {
+  0% { opacity: 0; transform: scale(.92); }
+  60% { opacity: 1; transform: scale(1.03); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes rogue-runend-loss-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes rogue-runend-glow-sweep {
+  0%, 100% { text-shadow: 0 0 14px rgba(74, 255, 161, .6); }
+  50% { text-shadow: 0 0 28px rgba(74, 255, 161, .95); }
+}
+.rogue-runend.win { animation: rogue-runend-win-in var(--rogue-anim-in) var(--rogue-anim-ease) backwards; }
+.rogue-runend.loss { animation: rogue-runend-loss-in calc(var(--rogue-anim-in) * 1.6) ease-out backwards; }
+.rogue-runend.win .rogue-runend-title { animation: rogue-runend-glow-sweep 1.1s ease-in-out 1; }
+
+/* Run-start screen (NEW RUN / DAILY RUN / BACK) — light entrance to match
+   the other screens. */
+.rogue-runstart {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 34px 10px;
+  text-align: center;
+  animation: rogue-fade-up-in var(--rogue-anim-in) var(--rogue-anim-ease) backwards;
+}
+.rogue-runstart-title { font-size: 20px; letter-spacing: 3px; color: var(--neon-cyan); text-shadow: 0 0 12px rgba(53, 224, 255, .5); }
+.rogue-runstart-sub { font-size: 12px; color: var(--text-dim); letter-spacing: .5px; max-width: 340px; }
+.rogue-runstart-seed { font-size: 10px; color: var(--text-dim); letter-spacing: 1px; margin-top: -6px; }
+.rogue-runstart .big-button { max-width: 320px; }
+
+/* Shared fade/slide-up entrance keyframe: node cards, summary rows, and the
+   run-start screen all reference this one. */
+@keyframes rogue-fade-up-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .rogue-node-card:active { transform: none; }
+  .rogue-node-card,
+  .rogue-summary,
+  .rogue-summary-row,
+  .rogue-runstart,
+  .rogue-runend.win,
+  .rogue-runend.loss,
+  .rogue-runend.win .rogue-runend-title {
+    animation: none;
+  }
 }
 
 html[data-lang="fr"] .settings-row { letter-spacing: .4px; }

@@ -47,6 +47,12 @@ import { ROGUELIKE, TOWERS } from "./config.js";
 import { makeRng, generateItem, rollRarity } from "./loot.js";
 import { emptyGear } from "./equipment.js";
 import { setRunContext } from "./progression.js";
+import { saveRoguelikeRun, loadRoguelikeRun, clearRoguelikeRun } from "./save.js";
+
+// Snapshot schema version — bump if the persisted run shape below changes so a
+// stale snapshot from an older build is ignored rather than mis-restored. This
+// is a schema tag, not a gameplay tunable, so it lives here (not config.js).
+const RUN_SNAPSHOT_VERSION = 1;
 
 // The active run, or null when no run is in progress. Module-local — a page
 // reload abandons the run (acceptable for a DEBUG feature; the save is untouched
@@ -178,10 +184,12 @@ export function startRun(seed = (Math.random() * 0x7fffffff) >>> 0) {
     pendingChoice: null,      // staged non-combat resolution (gear/shop/event) — see contract below
     phase: "choosing",        // choosing | battle | reward | shop | event | won | lost
     log: [],
+    draftedUpgrades: [],      // { id, label } for every upgrade actually applied this run (Phase E summary)
   };
   run.context = buildRunContext(run);
   setRunContext(run.context);                       // sandbox ON for the whole run
   rollFloorChoices();
+  persist();                                        // immediately resumable (Phase E)
   return run;
 }
 
@@ -191,6 +199,98 @@ export function endRun(reason = "ended") {
   if (run) run.log.push(`run ${reason} at floor ${run.floorIndex + 1}`);
   run = null;
   setRunContext(null);
+  clearRoguelikeRun();                              // no run to resume anymore
+}
+
+// ---------- Run persistence (Phase E) ----------
+// The run is serialized to its OWN localStorage key (save.js, never the real
+// save object) after every out-of-battle state change, so a page reload can
+// resume it. The sandbox contract is preserved: resumeRun re-arms setRunContext
+// so a resumed run STILL never reads or writes real progression. The rng is
+// persisted by its internal state (loot.js makeRng exposes rng.state()), so a
+// resumed run continues the exact same deterministic stream. `context.roster` /
+// `context.unlockedTowers` are NOT stored separately — they are the same array
+// references as run.roster / run.unlockedTowers and are re-linked on restore.
+
+function serializeRun() {
+  if (!run) return null;
+  return {
+    v: RUN_SNAPSHOT_VERSION,
+    seed: run.seed,
+    rngState: run.rng.state ? run.rng.state() : undefined,
+    floorIndex: run.floorIndex,
+    maxCoreIntegrity: run.maxCoreIntegrity,
+    coreIntegrity: run.coreIntegrity,
+    salvage: run.salvage,
+    roster: run.roster,
+    unlockedTowers: run.unlockedTowers,
+    choices: run.choices,
+    currentNode: run.currentNode,
+    pendingChoice: run.pendingChoice,
+    phase: run.phase,
+    draftedUpgrades: run.draftedUpgrades,
+    log: run.log,
+    mults: run.context.mults,
+    speeds: run.context.speeds,
+  };
+}
+
+// Write the current run to storage. No-op without a run. Called after each
+// out-of-battle mutation (see call sites). During a battle only the clean,
+// pre-modifier state is ever persisted (see resolveCombatNode), so a resumed
+// run never inherits a transient elite/farm battle modifier.
+function persist() {
+  if (!run) return;
+  saveRoguelikeRun(serializeRun());
+}
+
+// True when a valid, still-in-progress run snapshot exists (won/lost runs are
+// not resumable — they clear their snapshot on end). Drives the RESUME button.
+export function hasResumableRun() {
+  const snap = loadRoguelikeRun();
+  return !!(snap && snap.v === RUN_SNAPSHOT_VERSION &&
+    snap.phase && snap.phase !== "won" && snap.phase !== "lost");
+}
+
+// Rebuild the run from its snapshot and re-arm the sandbox. Returns the run, or
+// null if there is no valid snapshot. A reload DURING a battle can't rebuild the
+// in-progress combat, so the run drops back to the current floor's node choices
+// with no penalty (Core Integrity was persisted pre-battle).
+export function resumeRun() {
+  const snap = loadRoguelikeRun();
+  if (!snap || snap.v !== RUN_SNAPSHOT_VERSION) return null;
+  run = {
+    seed: snap.seed,
+    rng: makeRng(snap.seed, snap.rngState),
+    floorIndex: snap.floorIndex,
+    maxCoreIntegrity: snap.maxCoreIntegrity,
+    coreIntegrity: snap.coreIntegrity,
+    salvage: snap.salvage,
+    roster: snap.roster,
+    unlockedTowers: snap.unlockedTowers,
+    choices: snap.choices || [],
+    currentNode: snap.currentNode || null,
+    pendingChoice: snap.pendingChoice || null,
+    phase: snap.phase,
+    log: snap.log || [],
+    draftedUpgrades: snap.draftedUpgrades || [],
+  };
+  run.context = {
+    roster: run.roster,                 // re-link: same reference the getters read
+    unlockedTowers: run.unlockedTowers, // re-link: shop/upgrade push onto this
+    coreHealth: run.coreIntegrity,
+    speeds: Array.isArray(snap.speeds) ? snap.speeds.slice() : ROGUELIKE.baseSpeeds.slice(),
+    mults: snap.mults ? { ...snap.mults } : { ...ROGUELIKE.baseMults },
+  };
+  if (run.phase === "battle") {          // abandoned mid-combat — return to choices
+    run.phase = "choosing";
+    run.currentNode = null;
+    run.pendingChoice = null;
+    run._modifierBackup = null;
+  }
+  setRunContext(run.context);            // re-arm the sandbox for the resumed run
+  persist();                             // rewrite the (possibly coerced) snapshot
+  return run;
 }
 
 // ---------- Floors & nodes ----------
@@ -278,6 +378,7 @@ function advanceFloor() {
   run.currentNode = null;
   run.pendingChoice = null;
   rollFloorChoices();
+  persist();
   return { floor: run.floorIndex, floorCount: ROGUELIKE.floorCount, choices: run.choices };
 }
 
@@ -365,6 +466,9 @@ function resolveCombatNode(node) {
   if (!launchBattle) return { ok: false, reason: "no-launcher" };
   run.phase = "battle";
   run.context.coreHealth = run.coreIntegrity;      // carry current vitality in
+  persist();                                       // snapshot CLEAN pre-modifier state; a
+                                                   // reload mid-battle resumes to this floor's
+                                                   // choices (phase coerced), never mid-combat.
 
   run._modifierBackup = null;
   if (node.kind === "elite" && node.modifier) {
@@ -577,6 +681,7 @@ function resolveGearNode(node) {
   const items = rollRewardItems(node.depth, ROGUELIKE.reward.choiceCount);
   run.pendingChoice = { kind: "gear", node, items };
   run.phase = "reward";
+  persist();
   return { ok: true, kind: "gear", items };
 }
 
@@ -623,6 +728,7 @@ function resolveShopNode(node) {
 
   run.pendingChoice = { kind: "shop", node, gearStock, towerOffers };
   run.phase = "shop";
+  persist();
   return {
     ok: true, kind: "shop",
     gearStock, towerOffers,
@@ -651,6 +757,7 @@ export function shopBuyGear(stockIndex, rosterIndex) {
   rec.gear[entry.item.slot] = entry.item;
   entry.bought = true;
   run.log.push(`bought ${entry.item.rarity} ${entry.item.slot} for ${entry.price} salvage (floor ${run.floorIndex + 1})`);
+  persist();
   return { ok: true, kind: "shop", bought: "gear", salvage: run.salvage };
 }
 
@@ -665,6 +772,7 @@ export function shopBuyTowerUnlock(type) {
   offer.bought = true;
   run.unlockedTowers.push(type);           // same array reference as run.context.unlockedTowers
   run.log.push(`unlocked ${type} for ${offer.price} salvage (floor ${run.floorIndex + 1})`);
+  persist();
   return { ok: true, kind: "shop", bought: "tower", type, salvage: run.salvage };
 }
 
@@ -681,6 +789,7 @@ export function shopBuyRepair(points) {
   run.salvage -= cost;
   run.coreIntegrity += n;
   run.log.push(`repaired ${n} core integrity for ${cost} salvage (floor ${run.floorIndex + 1})`);
+  persist();
   return { ok: true, kind: "shop", bought: "repair", restored: n, coreIntegrity: run.coreIntegrity, salvage: run.salvage };
 }
 
@@ -699,6 +808,7 @@ export function shopReroll() {
     item.reqMastery = 0;
     return { item, price: cfg.priceByRarity[rarity], bought: false };
   });
+  persist();
   return { ok: true, kind: "shop", rerolled: true, gearStock: shop.gearStock, salvage: run.salvage };
 }
 
@@ -714,6 +824,7 @@ export function shopLeave() {
 function resolveEventNode(node) {
   run.pendingChoice = { kind: "event", node, event: node.event };
   run.phase = "event";
+  persist();
   return { ok: true, kind: "event", event: node.event };
 }
 
@@ -780,6 +891,7 @@ function resolveUpgradeNode(node) {
   const options = weightedSampleDistinct(eligible, cfg.choiceCount, run.rng);
   run.pendingChoice = { kind: "upgrade", node, options };
   run.phase = "reward";
+  persist();
   return { ok: true, kind: "upgrade", options };
 }
 
@@ -819,6 +931,7 @@ export function pickRunUpgrade(optionIndex) {
   if (!upgrade) return { ok: false, reason: "no-upgrade" };
 
   applyRunUpgrade(upgrade);
+  run.draftedUpgrades.push({ id: upgrade.id, label: upgrade.label });
   run.log.push(`drafted upgrade "${upgrade.label}" (floor ${run.floorIndex + 1})`);
   const snap = advanceFloor();
   return { ok: true, kind: "upgrade", applied: upgrade, ...snap };
@@ -858,6 +971,7 @@ export function onBattleEnd(game) {
     result.runOver = true;
     run.log.push(`lost on floor ${run.floorIndex + 1}`);
     setRunContext(null);                 // sandbox OFF — run is over
+    clearRoguelikeRun();                 // a lost run is not resumable
     return result;
   }
 
@@ -880,6 +994,7 @@ export function onBattleEnd(game) {
     run.phase = "reward";
     result.bonusReward = { items };
     run.log.push(`elite clear: bonus gear reward offered (floor ${run.floorIndex + 1})`);
+    persist();                           // resume into the staged bonus reward
     return result;
   }
 
@@ -889,6 +1004,7 @@ export function onBattleEnd(game) {
     result.runWon = true;
     run.log.push(`WON the run on floor ${run.floorIndex + 1}`);
     setRunContext(null);                 // sandbox OFF — run is over
+    clearRoguelikeRun();                 // a completed run is not resumable
     return result;
   }
 
@@ -896,6 +1012,44 @@ export function onBattleEnd(game) {
   const snap = advanceFloor();
   result.nextFloor = snap.floor;
   return result;
+}
+
+// ---------- Run summary + daily seed (Phase E) ----------
+
+// Count of a roster record's non-null equipped gear slots.
+function rosterGearCount(rec) {
+  return Object.values(rec.gear).filter(Boolean).length;
+}
+
+// A PURE read of the live run for the run-end/summary screens. Returns null
+// when no run is active. Never mutates `run` — safe to call any number of
+// times (e.g. from the console) without side effects.
+export function getRunSummary() {
+  if (!run) return null;
+  const extraTowers = run.unlockedTowers.filter((t) => !ROGUELIKE.starterTowers.includes(t));
+  const gearCount = run.roster.reduce((sum, r) => sum + rosterGearCount(r), 0);
+  return {
+    seed: run.seed,
+    floor: run.floorIndex + 1,
+    floorCount: ROGUELIKE.floorCount,
+    coreIntegrity: run.coreIntegrity,
+    maxCoreIntegrity: run.maxCoreIntegrity,
+    salvage: run.salvage,
+    unlockedTowers: run.unlockedTowers.slice(),
+    extraTowers,
+    gearCount,
+    upgrades: run.draftedUpgrades.map((u) => u.label),
+    roster: run.roster.map((r) => ({ name: r.name, type: r.type, gearCount: rosterGearCount(r) })),
+  };
+}
+
+// Deterministic uint32 seed from the LOCAL calendar date (not UTC), so every
+// player on the same calendar day gets the same "Daily Run" regardless of
+// time of day. Encodes as YYYYMMDD-ish (y*10000 + (m+1)*100 + d); >>> 0 keeps
+// it a uint32 the way startRun/makeRng expect.
+export function dailySeed(date = new Date()) {
+  const y = date.getFullYear(), m = date.getMonth(), d = date.getDate();
+  return ((y * 10000 + (m + 1) * 100 + d) >>> 0);
 }
 
 // ---------- Console/debug handle (verification) ----------
@@ -933,5 +1087,9 @@ export function debugHandle() {
     shopLeave,
     resolveEventOption,
     pickRunUpgrade,
+    getRunSummary,
+    dailySeed,
+    hasResumableRun,
+    resume: () => resumeRun(),
   };
 }

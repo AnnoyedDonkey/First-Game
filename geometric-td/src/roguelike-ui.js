@@ -105,13 +105,80 @@ function exitToMenu() {
 
 // Tapped from the main menu (DEBUG-gated button, ui.js). Also usable from the
 // console (`window.startRun(seed)` in main.js aliases this) with an optional
-// seed for deterministic runs.
+// seed for deterministic runs. With no seed, the player sees the run-start
+// screen (NEW RUN / DAILY RUN / BACK) instead of starting immediately; a
+// provided seed (console/replay/daily) still starts the run right away, same
+// as before this screen existed.
 export function enterRoguelike(seed) {
   el.levelOverlay.classList.add("hidden");
   hideBattleChrome();
+  if (seed === undefined) {
+    showRogueOverlay();
+    renderRunStart();
+    return;
+  }
   roguelike.startRun(seed);
   showRogueOverlay();
   renderNodeMap();
+}
+
+// ---------- Run-start screen ----------
+
+function renderRunStart() {
+  const seed = roguelike.dailySeed();
+  const canResume = roguelike.hasResumableRun();
+  const resumeHtml = canResume
+    ? `<button class="big-button rogue-wide" type="button" id="rogue-start-resume">${t("rogue.start.resume", "RESUME RUN")}</button>`
+    : "";
+  el.body.innerHTML = `
+    <div class="rogue-runstart">
+      <div class="rogue-runstart-title">${t("rogue.start.title", "ROGUELIKE GAUNTLET")}</div>
+      <p class="rogue-runstart-sub">${t("rogue.start.sub", "13 floors. Fresh towers. Beat the core breach.")}</p>
+      ${resumeHtml}
+      <button class="big-button rogue-wide" type="button" id="rogue-start-new">${t("rogue.start.new", "NEW RUN")}</button>
+      <button class="big-button rogue-wide" type="button" id="rogue-start-daily">${t("rogue.start.daily", "DAILY RUN")}</button>
+      <p class="rogue-runstart-seed">${tf("rogue.start.dailySeed", "Today's seed: {seed}", { seed })}</p>
+      <button class="big-button rogue-secondary rogue-wide" type="button" id="rogue-start-back">${t("rogue.start.back", "BACK")}</button>
+    </div>
+  `;
+  if (canResume) {
+    document.getElementById("rogue-start-resume").addEventListener("click", () => {
+      if (roguelike.resumeRun()) { selectedRosterIndex = 0; renderCurrentScreen(); }
+      else renderRunStart(); // snapshot was invalid — fall back to the start screen
+    });
+  }
+  document.getElementById("rogue-start-new").addEventListener("click", () => {
+    roguelike.startRun();
+    renderNodeMap();
+  });
+  document.getElementById("rogue-start-daily").addEventListener("click", () => {
+    roguelike.startRun(roguelike.dailySeed());
+    renderNodeMap();
+  });
+  document.getElementById("rogue-start-back").addEventListener("click", exitToMenu);
+}
+
+// Paint whichever screen matches the live run's phase — used after resumeRun()
+// so a restored run lands where the player left off. Mirrors the routing that
+// onChooseNode / onRunBattleEnd perform for each staged non-combat phase.
+function renderCurrentScreen() {
+  const run = roguelike.getRun();
+  if (!run) { renderRunStart(); return; }
+  const pc = run.pendingChoice;
+  switch (run.phase) {
+    case "reward":
+      if (pc && pc.kind === "upgrade") renderUpgradeReward(pc.options);
+      else if (pc && pc.kind === "gear") renderGearReward(pc.items);
+      else renderNodeMap();
+      break;
+    case "shop": renderShop(); break;
+    case "event":
+      if (pc && pc.event) renderEvent(pc.event);
+      else renderNodeMap();
+      break;
+    default: // choosing (and any coerced-from-battle phase) -> the node map
+      renderNodeMap();
+  }
 }
 
 // Called by main.js checkEndState the instant a run battle resolves
@@ -487,14 +554,44 @@ function renderOutcome({ title, lines }) {
 function renderRunEnd(result) {
   const run = roguelike.getRun();
   if (run) updateHudStrip(run);
+  const s = roguelike.getRunSummary(); // null only if `run` is somehow already gone — fall back to `result`
   const won = result.runWon;
+
+  const summaryHtml = s ? (() => {
+    const towerNames = [...ROGUELIKE.starterTowers, ...s.extraTowers]
+      .map((type) => TOWERS[type]?.name || type).join(", ");
+    const upgradesText = s.upgrades.length ? s.upgrades.join(", ") : t("rogue.summary.none", "—");
+    const row = (key, val) => `
+      <div class="rogue-summary-row">
+        <span class="rogue-summary-key">${key}</span>
+        <span class="rogue-summary-val">${val}</span>
+      </div>`;
+    return `
+      <div class="rogue-summary">
+        ${row(t("rogue.summary.floor", "Floor reached"), `${s.floor}/${s.floorCount}`)}
+        ${row(t("rogue.summary.core", "Core Integrity"), `${s.coreIntegrity}/${s.maxCoreIntegrity}`)}
+        ${row(t("rogue.summary.salvage", "Salvage banked"), s.salvage)}
+        ${row(t("rogue.summary.towers", "Towers unlocked"), escapeHtml(towerNames))}
+        ${row(t("rogue.summary.gear", "Gear drafted"), s.gearCount)}
+        ${row(t("rogue.summary.upgrades", "Upgrades"), escapeHtml(upgradesText))}
+        <div class="rogue-summary-row rogue-summary-seed">
+          <span class="rogue-summary-key">${t("rogue.summary.seed", "Seed")}</span>
+          <span class="rogue-summary-val">${escapeHtml(String(s.seed))}</span>
+        </div>
+      </div>`;
+  })() : "";
+
   el.body.innerHTML = `
     <div class="rogue-runend ${won ? "win" : "loss"}">
       <div class="rogue-runend-title">${won ? t("rogue.end.win", "RUN COMPLETE") : t("rogue.end.loss", "RUN OVER")}</div>
       <p class="rogue-runend-sub">${won
         ? tf("rogue.end.winSub", "Core breached on floor {floor}. Salvage banked: {salvage}.", { floor: result.floor + 1, salvage: result.salvage })
         : tf("rogue.end.lossSub", "Core Integrity fell on floor {floor} of {total}.", { floor: result.floor + 1, total: result.floorCount })}</p>
+      ${summaryHtml}
       <button class="big-button rogue-wide" type="button" id="rogue-newrun">${t("rogue.end.newRun", "NEW RUN")}</button>
+      <button class="big-button rogue-wide" type="button" id="rogue-replay-seed" ${s ? "" : "disabled"}>${t("rogue.end.replaySeed", "REPLAY SEED")}</button>
+      <button class="big-button rogue-secondary rogue-wide" type="button" id="rogue-daily-run">${t("rogue.end.daily", "DAILY RUN")}</button>
+      <button class="big-button rogue-secondary rogue-wide" type="button" id="rogue-copy-seed" ${s ? "" : "disabled"}>${t("rogue.end.copySeed", "COPY SEED")}</button>
       <button class="big-button rogue-secondary rogue-wide" type="button" id="rogue-mainmenu">${t("rogue.end.mainMenu", "MAIN MENU")}</button>
     </div>
   `;
@@ -502,6 +599,34 @@ function renderRunEnd(result) {
     roguelike.startRun();
     renderNodeMap();
   });
+  const replayBtn = document.getElementById("rogue-replay-seed");
+  if (s) {
+    replayBtn.addEventListener("click", () => {
+      roguelike.startRun(s.seed);
+      renderNodeMap();
+    });
+  }
+  document.getElementById("rogue-daily-run").addEventListener("click", () => {
+    roguelike.startRun(roguelike.dailySeed());
+    renderNodeMap();
+  });
+  const copyBtn = document.getElementById("rogue-copy-seed");
+  if (s) {
+    copyBtn.addEventListener("click", () => {
+      const original = copyBtn.textContent;
+      try {
+        const promise = navigator.clipboard?.writeText(String(s.seed));
+        if (promise && promise.then) {
+          promise.then(() => {
+            copyBtn.textContent = t("rogue.end.copied", "COPIED");
+            setTimeout(() => { copyBtn.textContent = original; }, 1500);
+          }).catch(() => {});
+        }
+      } catch (e) {
+        // clipboard unavailable (iOS/file://) — no-op, label stays as-is
+      }
+    });
+  }
   document.getElementById("rogue-mainmenu").addEventListener("click", () => {
     roguelike.endRun("exited");
     exitToMenu();
