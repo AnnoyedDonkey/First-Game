@@ -303,12 +303,93 @@ items).
 
 ---
 
-## PHASE 4 — Broader reuse (DEFERRED) — plan later
+## PHASE 4 — Run-end LOOT showcase + roster consistency — **Codex Sol — AS BUILT (2026-08-30, build `-9`)**
 
-Not started until 1–3 ship and are eyeballed on a phone. Candidates:
-- Run-end "LOOT EARNED"-style grid reusing item tiles.
-- Sharing the tower-card + ★mastery rendering between the campaign gear panel and
-  the run VIEW ROSTER screen.
+**Shipped & orchestrator-verified in-browser.** (4.1) `ui.js tileHtml` moved to
+`gear-visuals.js` as exported `itemTileHtml(item, opts)`; its `isItemSeen`
+dependency became caller-supplied `opts.isNew` (default false). All four campaign
+call sites migrated (triage/stash/store/results); the stash-grid caller passes
+`isNew: item.id && !isItemSeen(item.id)` (Codex's equivalent for the `opts.stashId`
+the plan named — that site has no `opts` var), so the NEW tag is byte-identical.
+Verified live: campaign STASH tiles keep NEW tags, STORE tiles keep price tags,
+all render the glyph + correct rarity class. (4.2) `renderRunEnd` gains a
+rarest-first "ARSENAL BUILT" grid of every non-null `run.roster[].gear` item via
+`itemTileHtml`; tapping a tile opens `renderRunEndItemDetail` (a rogue-local
+reveal-card into `#rogue-body` — NOT `ui.js showItemDetail`, whose `#drop-reveal`
+is z-index 15 < rogue 42), BACK returns via a captured `runEndResult` module var.
+Verified: 5 tiles ordered `rs→rp→rr→re→rc`, tap → "PRISM LENS OPTIC · SINGULARITY"
+detail, BACK returns. (4.3) VIEW ROSTER header now reads `LV {maxLevel} · ★{rank}`.
+Minimal phone-safe CSS added (5-col loot grid ≤300px, reveal-card detail). No
+console errors, no horizontal overflow at 375px, real save untouched. New
+`rogue.end.loot` / `rogue.end.lootDetailBack` strings are inline-English (French
+deferred). Original spec below.
+
+**Goal:** the run-end screen shows a campaign-style rarest-first grid of the
+gear the run built (reusing the campaign's `.item-tile` builder), with tappable
+tiles opening a rogue-local detail card; and the VIEW ROSTER tower header adopts
+the campaign's `LV n · ★rank` idiom. Approved scope (2026-08-30): tappable loot
+tiles → rogue-local detail; 4B included.
+
+**Files (stage exactly these):** `src/gear-visuals.js`, `src/ui.js`,
+`src/roguelike-ui.js`, `styles.css`. (No `roguelike.js` change — read from
+`getRunSummary()` / the run roster.)
+
+### 4.1 Extract the loot-tile builder into `gear-visuals.js`
+- Move `tileHtml(item, opts)` (`ui.js` ~L1852, the `.item-tile` builder: rarity
+  class + `slotGlyph` + corner tag + `modFaultBadgesHtml` + optional NEW tag) into
+  `gear-visuals.js` as exported `itemTileHtml(item, opts)`. **Drop the
+  `isItemSeen` save dependency** — replace the internal `isNew = opts.stashId &&
+  !isItemSeen(item.id)` with `isNew = !!opts.isNew` (caller-supplied). `ui.js`
+  imports it and, at the ONE stash-grid call site that wants the NEW tag, passes
+  `isNew: opts.stashId && !isItemSeen(item.id)` so campaign behavior is
+  byte-identical. All other `tileHtml` call sites (STORE/results/triage) pass no
+  `isNew` and are unchanged. Verify every `tileHtml(` call site in `ui.js` now
+  resolves to the import and renders identical markup.
+- Keep `itemTileHtml` pure: imports it needs (`RARITY_CLASS`, `slotGlyph`,
+  `modFaultBadgesHtml`, `TOWERS`, `t`) are already in `gear-visuals.js`.
+
+### 4.2 Run-end LOOT showcase (`roguelike-ui.js renderRunEnd`)
+- Gather the run's built gear: iterate `roguelike.getRun().roster`, collect every
+  non-null `rec.gear[slot]` into a flat list. Sort rarest-first (mirror the
+  campaign: higher `RARITIES.indexOf(rarity)` = rarer — reuse `RARITY_ORDER` from
+  gear-visuals or `RARITIES` from loot.js; match the campaign's ordering).
+- Render a grid (reuse `.overlay-items`-style / a new `.rogue-loot-grid`) of
+  `itemTileHtml(item, { resultIndex: i })` tiles, placed in the run-end screen
+  (e.g. under the summary, above the buttons). Empty list ⇒ omit the grid.
+- **Tappable → rogue-local detail** (do NOT call `ui.js showItemDetail` — its
+  `#drop-reveal` overlay is z-index 15, BELOW `#rogue-overlay` 42). Add a
+  `renderRunEndItemDetail(item, items)` that repaints `#rogue-body` with a
+  detail card reusing the campaign reveal-card visual vocabulary (`slotGlyph`,
+  `itemTitle`, `rarityLabel`, `slotLabel`, rarity color/glow, affix/mod lines via
+  the existing rogue `itemBodyHtml` or a compact inline list) + a BACK button that
+  returns to `renderRunEnd(result)`. Keep the run-end `result` available (capture
+  it in a module var or pass it through) so BACK can re-render.
+- No horizontal scroll at 375px. Read-only — no save/run-state writes.
+
+### 4.3 Roster consistency (4B, `roguelike-ui.js renderRoster`)
+- The tower card header currently shows `★ {rank}` + a `MASTERY +{pct}% DMG` sub.
+  Add the campaign's compact `LV {maxLevel} · ★{rank}` idiom (the run roster
+  records carry `maxLevel`; `getRunRoster()` already returns it). Keep the card
+  read-only; keep the mastery-bonus sub line. Small text-format change only — no
+  new interactive component.
+
+### 4.4 New strings / i18n
+- Any new strings use `t("rogue.end.loot", "ARSENAL BUILT")`,
+  `t("rogue.end.lootDetailBack", "BACK")`, etc. — inline English fallbacks ONLY.
+  **Do NOT edit `src/lang/fr.js`** (French deferred).
+
+### 4.5 Done when
+Run-end shows a rarest-first grid of the run's equipped gear as campaign-style
+`.item-tile`s; tapping a tile opens a rogue-local detail (BACK returns to
+run-end); VIEW ROSTER headers read `LV n · ★rank`; the campaign results/stash/
+store grids are byte-identical (the `isItemSeen`→`opts.isNew` seam preserved);
+no console errors, no horizontal scroll at 375px, real save untouched. Report
+what you did and did NOT verify (no browser here).
+
+### Deferred beyond Phase 4
+A fully shared interactive tower-card component (campaign gear panel ↔ run roster)
+was considered and NOT done — the interactive-vs-read-only mismatch makes it low
+value. Revisit only if a concrete need appears.
 
 ## Deferred work (orchestrator, after the phases land)
 

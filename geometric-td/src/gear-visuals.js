@@ -145,6 +145,30 @@ export function escapeHtml(s) {
   );
 }
 
+// ---- Item tile shared by stash/store/results and the run-end arsenal ----
+// Callers own stateful concerns such as whether a stash item is unseen; this
+// leaf only renders the caller-supplied opts.isNew flag.
+
+export function itemTileHtml(item, opts = {}) {
+  const color = RARITY_COLOR[item.rarity];
+  const lockLetter = item.towerType ? TOWERS[item.towerType].prefix : "";
+  const isNew = !!opts.isNew;
+  const dataAttr = opts.stashId ? `data-stash-item="${item.id}"`
+    : opts.pendingId ? `data-pending-item="${item.id}"`
+    : opts.storeId ? `data-store-item="${item.id}"`
+    : opts.resultIndex != null ? `data-result-item="${opts.resultIndex}"` : "";
+  const cornerTag = opts.priceTag
+    ? `<span class="price-tag">&#9670;${opts.priceTag}</span>`
+    : lockLetter ? `<span class="lock-dot" style="color:${color}">${lockLetter}</span>` : "";
+  const extraClass = (opts.unaffordable ? " unaffordable" : "") + (opts.tileClass ? ` ${opts.tileClass}` : "");
+  return `<button class="item-tile ${RARITY_CLASS[item.rarity]}${extraClass}" ${dataAttr}>` +
+    slotGlyph(item.slot, color) +
+    cornerTag +
+    modFaultBadgesHtml(item) +
+    (isNew ? `<span class="new-tag">${t("reward.new", "NEW")}</span>` : "") +
+    `</button>`;
+}
+
 // ---- Compare-sheet middle (stat rows + mod rows + unique row) ----
 // Old-vs-new comparison (B4): one row per affix aligned by stat with
 // green/red deltas (affixes present on only one side render greyed on the

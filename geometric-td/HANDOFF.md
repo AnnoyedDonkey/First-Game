@@ -20,9 +20,9 @@ en)` looks it up; `lang` save field via `progression.js getLang/setLang`;
 proper nouns** (tower names Laser/Pulse/Slow/Railgun/Rocket, Indy-7,
 Bratwurst-XL, "GEOMETRIC TD").
 
-**Deployed build: `2026.08.30-8`.**
+**Deployed build: `2026.08.30-9`.**
 
-### Shared gear visuals — roguelike reuse (`2026.08.30-8`)
+### Shared gear visuals — roguelike reuse (`2026.08.30-8`..`-9`)
 The run gear screens now REUSE the campaign's gear presentation instead of their
 own weaker text-only copies. **Read `ROGUELIKE_GEAR_REUSE_PLAN.md`** for the
 3-phase "AS BUILT" record. New leaf module **`src/gear-visuals.js`** holds the
@@ -41,7 +41,15 @@ reward into an OCCUPIED slot opens an in-`#rogue-body` compare (shared
 `compareRowsHtml`, EQUIP NEW / KEEP CURRENT) — the campaign's compare-vs-equipped
 behavior brought into the run; empty slots equip directly. Cannot reuse `ui.js`
 `openCompareSheet`'s overlay directly (its `#gear-sheet-overlay` is z-index 5,
-below `#rogue-overlay`'s 42). **New `t("rogue.gear.compare|equipNew|keepCurrent")`
+below `#rogue-overlay`'s 42). **Phase 4 (`-9`)** further extracted the campaign
+loot-tile builder into `gear-visuals.js` as `itemTileHtml(item, opts)` (the
+`isItemSeen` NEW-tag check became caller-supplied `opts.isNew`); the run-end
+screen now shows a rarest-first "ARSENAL BUILT" grid of the run's equipped gear,
+each tile tapping to a rogue-local reveal-card detail (NOT `ui.js showItemDetail`
+— its `#drop-reveal` is z-index 15 < 42); VIEW ROSTER headers read `LV n · ★rank`.
+A fully shared *interactive* tower-card (campaign gear panel ↔ run roster) was
+deliberately NOT built (read-only-vs-interactive mismatch). **New
+`t("rogue.gear.compare|equipNew|keepCurrent")` and `t("rogue.end.loot|lootDetailBack")`
 strings still need French in `src/lang/fr.js` (deferred TODO).**
 
 ### Roguelike mode (`2026.08.29-16`..`2026.08.30-7`) — DEBUG-gated

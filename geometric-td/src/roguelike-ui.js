@@ -32,9 +32,10 @@ import * as roguelike from "./roguelike.js";
 import { ROGUELIKE, TOWERS, TOWER_UPGRADES } from "./config.js";
 import { t, tf } from "./i18n.js";
 import {
-  RARITY_COLOR, slotLabel, rarityLabel, affixDef, affixLabel,
+  RARITY_COLOR, RARITY_CLASS, RARITY_ORDER,
+  slotLabel, rarityLabel, affixDef, affixLabel,
   modName, modPowerText, slotGlyph, gearTileHtml, gearTileEmptyHtml,
-  escapeHtml, itemTitle, compareRowsHtml,
+  escapeHtml, itemTitle, compareRowsHtml, itemTileHtml,
 } from "./gear-visuals.js";
 
 const el = {
@@ -71,6 +72,7 @@ export function initRoguelikeUI(onExitToMenu) {
 let selectedRosterIndex = 0;
 let abandonArmed = false;
 let abandonTimer = null;
+let runEndResult = null;
 
 // ---------- Small local render helpers (no ui.js import — see header) ----------
 
@@ -388,7 +390,7 @@ function renderRoster() {
     return `<div class="rogue-roster-card" style="border-color:${color}">
       <div class="rogue-roster-head">
         <span class="rogue-roster-name" style="color:${color}">${escapeHtml((r.name || r.type).toUpperCase())}</span>
-        <span class="rogue-roster-mastery">★ ${r.masteryRank}</span>
+        <span class="rogue-roster-mastery">LV ${r.maxLevel} &middot; ★${r.masteryRank}</span>
       </div>
       <div class="rogue-roster-sub">${tf("rogue.roster.masteryBonus", "MASTERY +{pct}% DMG", { pct: dmgPct })}</div>
       <div class="rogue-roster-slots">${rosterGearSlotHtml(r.gear)}</div>
@@ -723,11 +725,51 @@ function renderOutcome({ title, lines }) {
 
 // ---------- Run-end screen (victory / defeat) ----------
 
+function renderRunEndItemDetail(item, items) {
+  if (!item) {
+    if (runEndResult) renderRunEnd(runEndResult);
+    return;
+  }
+  const color = RARITY_COLOR[item.rarity] || RARITY_COLOR.common;
+  const affixLines = (item.affixes || []).map((a) => {
+    const def = affixDef(a.stat);
+    const suffix = def && def.int ? "" : "%";
+    return `<div class="rogue-item-affix">${escapeHtml(affixLabel(def, a.stat))} +${a.value}${suffix}</div>`;
+  }).join("");
+  const modLines = (item.mods || []).map((m) =>
+    `<div class="rogue-item-mod">${escapeHtml(modName(m.id))} ${escapeHtml(modPowerText(m.id, m.power))}</div>`
+  ).join("");
+
+  el.body.innerHTML = `
+    <div class="rogue-loot-detail">
+      <div class="reveal-card ${RARITY_CLASS[item.rarity]}" style="border:1px solid ${color};box-shadow:inset 0 0 24px ${color}44,0 0 34px ${color}55">
+        ${slotGlyph(item.slot, color)}
+      </div>
+      <div class="rogue-loot-detail-name" style="color:${color};text-shadow:0 0 14px ${color}88">${escapeHtml(itemTitle(item))}</div>
+      <div class="rogue-loot-detail-sub">${escapeHtml(rarityLabel(item.rarity))} &middot; ${escapeHtml(slotLabel(item.slot))}</div>
+      <div class="rogue-loot-detail-affixes">${affixLines}${modLines}</div>
+      <button class="big-button rogue-wide" type="button" id="rogue-loot-detail-back">${t("rogue.end.lootDetailBack", "BACK")}</button>
+    </div>
+  `;
+  document.getElementById("rogue-loot-detail-back").addEventListener("click", () => {
+    if (runEndResult) renderRunEnd(runEndResult);
+  });
+}
+
 function renderRunEnd(result) {
+  runEndResult = result;
   const run = roguelike.getRun();
   if (run) updateHudStrip(run);
   const s = roguelike.getRunSummary(); // null only if `run` is somehow already gone — fall back to `result`
   const won = result.runWon;
+  const items = run ? run.roster.flatMap((rec) =>
+    Object.values(rec.gear || {}).filter(Boolean)
+  ).sort((a, b) => RARITY_ORDER.indexOf(a.rarity) - RARITY_ORDER.indexOf(b.rarity)) : [];
+  const lootHtml = items.length ? `
+    <div class="rogue-loot-showcase">
+      <div class="rogue-loot-title">${t("rogue.end.loot", "ARSENAL BUILT")}</div>
+      <div class="rogue-loot-grid">${items.map((item, i) => itemTileHtml(item, { resultIndex: i })).join("")}</div>
+    </div>` : "";
 
   const summaryHtml = s ? (() => {
     const towerNames = [...ROGUELIKE.starterTowers, ...s.extraTowers]
@@ -760,6 +802,7 @@ function renderRunEnd(result) {
         ? tf("rogue.end.winSub", "Core breached on floor {floor}. Salvage banked: {salvage}.", { floor: result.floor + 1, salvage: result.salvage })
         : tf("rogue.end.lossSub", "Core Integrity fell on floor {floor} of {total}.", { floor: result.floor + 1, total: result.floorCount })}</p>
       ${summaryHtml}
+      ${lootHtml}
       <button class="big-button rogue-wide" type="button" id="rogue-newrun">${t("rogue.end.newRun", "NEW RUN")}</button>
       <button class="big-button rogue-wide" type="button" id="rogue-replay-seed" ${s ? "" : "disabled"}>${t("rogue.end.replaySeed", "REPLAY SEED")}</button>
       <button class="big-button rogue-secondary rogue-wide" type="button" id="rogue-daily-run">${t("rogue.end.daily", "DAILY RUN")}</button>
@@ -767,6 +810,11 @@ function renderRunEnd(result) {
       <button class="big-button rogue-secondary rogue-wide" type="button" id="rogue-mainmenu">${t("rogue.end.mainMenu", "MAIN MENU")}</button>
     </div>
   `;
+  el.body.querySelectorAll("[data-result-item]").forEach((tile) => {
+    tile.addEventListener("click", () => {
+      renderRunEndItemDetail(items[Number(tile.dataset.resultItem)], items);
+    });
+  });
   document.getElementById("rogue-newrun").addEventListener("click", () => {
     roguelike.startRun();
     renderNodeMap();

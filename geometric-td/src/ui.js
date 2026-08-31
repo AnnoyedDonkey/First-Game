@@ -53,7 +53,8 @@ import {
   slotLabel, rarityLabel, affixDef, affixLabel,
   modName, modPower, modPowerText,
   itemTitle, itemUniqueName, slotGlyph, escapeHtml,
-  modFaultBadgesHtml, compareRowsHtml, gearTileHtml, gearTileEmptyHtml,
+  compareRowsHtml, gearTileHtml, gearTileEmptyHtml,
+  itemTileHtml,
 } from "./gear-visuals.js";
 import {
   isEnabled as lbEnabled, getNickname, setNickname,
@@ -1842,33 +1843,6 @@ function itemAffixRowsHtml(item) {
   return `<div class="gear-affix-list">${rows.join("")}</div>`;
 }
 
-// A grid tile for the STASH tab (5-wide), the triage strip, or the STORE
-// grid. `opts.stashId`/`opts.pendingId`/`opts.storeId` sets the data
-// attribute the click delegate reads. `opts.priceTag` (STORE only) shows a
-// Shard price in the corner instead of the lock-dot, dimmed + red when
-// `opts.unaffordable` is set.
-// (modFaultBadgesHtml now lives in gear-visuals.js — imported above.)
-
-function tileHtml(item, opts = {}) {
-  const color = RARITY_COLOR[item.rarity];
-  const lockLetter = item.towerType ? TOWERS[item.towerType].prefix : "";
-  const isNew = opts.stashId && !isItemSeen(item.id);
-  const dataAttr = opts.stashId ? `data-stash-item="${item.id}"`
-    : opts.pendingId ? `data-pending-item="${item.id}"`
-    : opts.storeId ? `data-store-item="${item.id}"`
-    : opts.resultIndex != null ? `data-result-item="${opts.resultIndex}"` : "";
-  const cornerTag = opts.priceTag
-    ? `<span class="price-tag">&#9670;${opts.priceTag}</span>`
-    : lockLetter ? `<span class="lock-dot" style="color:${color}">${lockLetter}</span>` : "";
-  const extraClass = (opts.unaffordable ? " unaffordable" : "") + (opts.tileClass ? ` ${opts.tileClass}` : "");
-  return `<button class="item-tile ${RARITY_CLASS[item.rarity]}${extraClass}" ${dataAttr}>` +
-    slotGlyph(item.slot, color) +
-    cornerTag +
-    modFaultBadgesHtml(item) +
-    (isNew ? `<span class="new-tag">${t("reward.new", "NEW")}</span>` : "") +
-    `</button>`;
-}
-
 // ---- Drop-reveal sequence (U4 pizzazz) ----
 // Called by main.js right before the win/loss overlay, if the battle that
 // just ended granted loot (game.lootResult.placements + any Endless
@@ -2462,7 +2436,7 @@ function renderStashTab() {
   if (pending.length) {
     html += `<div id="gear-triage">` +
       `<div class="gear-triage-title">${tf("gear.dropsUnclaimed", "{n} DROP{s} UNCLAIMED &mdash; STASH IS FULL", { n: pending.length, s: pending.length === 1 ? "" : "S" })}</div>` +
-      `<div class="gear-triage-grid">${pending.map((item) => tileHtml(item, { pendingId: item.id })).join("")}</div>` +
+      `<div class="gear-triage-grid">${pending.map((item) => itemTileHtml(item, { pendingId: item.id })).join("")}</div>` +
       `<div class="gear-actions-row">` +
       `<button class="gear-action" id="triage-claim"${stashSlotsFree() <= 0 ? " disabled" : ""}>${tf("gear.claimFree", "CLAIM ({n} FREE)", { n: stashSlotsFree() })}</button>` +
       `<button class="gear-action" id="triage-sell">${t("gear.sell", "SELL")}</button>` +
@@ -2487,7 +2461,10 @@ function renderStashTab() {
     `</div>` +
     `<div id="gear-filters" class="${gearFiltersOpen ? "" : "hidden"}"></div>` +
     `<div id="gear-stash-grid">${shown.length
-      ? shown.map((item) => tileHtml(item, { stashId: item.id })).join("")
+      ? shown.map((item) => itemTileHtml(item, {
+        stashId: item.id,
+        isNew: item.id && !isItemSeen(item.id),
+      })).join("")
       : `<div class="gear-grid-empty">${stash.length ? t("gear.noMatching", "NO MATCHING GEAR") : t("gear.noStoredGear", "No stored gear yet. Every battle now grants at least one drop.")}</div>`
     }</div>`;
 
@@ -2744,7 +2721,7 @@ function renderStorePanel() {
   el.storeGrid.innerHTML = stock.length
     ? stock.map((item) => {
       const price = LOOT.store.prices[item.rarity] || 0;
-      return tileHtml(item, { storeId: item.id, priceTag: price, unaffordable: free <= 0 || shards < price });
+      return itemTileHtml(item, { storeId: item.id, priceTag: price, unaffordable: free <= 0 || shards < price });
     }).join("")
     : `<div class="gear-grid-empty">${t("store.soldOut", "SOLD OUT &mdash; reroll to restock.")}</div>`;
 
@@ -3424,7 +3401,7 @@ export function showOverlay({ title, subtitle, type, buttons, items, note, narra
     .sort((a, b) => RARITIES.indexOf(b.item.rarity) - RARITIES.indexOf(a.item.rarity));
   if (loot.length) {
     el.overlayItems.innerHTML = loot.map((p, i) =>
-      tileHtml(p.item, {
+      itemTileHtml(p.item, {
         resultIndex: i,
         tileClass: p.dest === "equipped" ? "equipped-tile" : p.dest === "junked" ? "junked-tile" : "stashed-tile",
         priceTag: p.dest === "junked" ? p.value : undefined,

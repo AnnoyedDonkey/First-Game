@@ -1884,6 +1884,65 @@ html[data-lang="fr"] #story-lang-toggle .lang-fr {
 .rogue-runend-sub { font-size: 11px; color: var(--text-dim); letter-spacing: .5px; max-width: 340px; }
 .rogue-runend .big-button, .rogue-outcome .big-button { max-width: 320px; }
 
+/* Equipped gear collected across the run, using the campaign's shared
+   .item-tile markup. Five minmax(0, 1fr) columns stay inside the 300px cap at
+   phone widths; the body scrolls vertically when a long roster fills it. */
+.rogue-loot-showcase {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+.rogue-loot-title { font-size: 11px; letter-spacing: 2px; color: var(--neon-yellow); }
+.rogue-loot-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+  max-width: 300px;
+  min-width: 0;
+}
+.rogue-loot-grid .item-tile { width: 100%; min-width: 0; }
+
+/* Rogue-local item detail: #drop-reveal sits below #rogue-overlay, so the
+   reveal-card vocabulary is composed directly inside the run body. */
+.rogue-loot-detail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  padding: 22px 0;
+  text-align: center;
+}
+.rogue-loot-detail-name {
+  max-width: 320px;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  overflow-wrap: anywhere;
+}
+.rogue-loot-detail-sub { font-size: 10px; color: var(--text-dim); letter-spacing: 1.5px; }
+.rogue-loot-detail-affixes {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  max-width: 320px;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  background: var(--panel);
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.rogue-loot-detail .big-button { max-width: 320px; }
+
 /* Run summary (getRunSummary(): floor/core/salvage/towers/gear/upgrades/
    seed rows), shown under the run-end sub-line. flex-wrap on the row plus
    overflow-wrap on the value keeps long tower/upgrade lists from ever
@@ -1979,7 +2038,7 @@ html[data-lang="fr"] #story-lang-toggle .lang-fr {
   justify-content: space-between;
   gap: 10px;
 }
-.rogue-roster-name { font-size: 13px; letter-spacing: 1px; overflow-wrap: anywhere; }
+.rogue-roster-name { min-width: 0; font-size: 13px; letter-spacing: 1px; overflow-wrap: anywhere; }
 .rogue-roster-mastery {
   font-size: 14px;
   letter-spacing: 1px;
