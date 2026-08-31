@@ -20,7 +20,29 @@ en)` looks it up; `lang` save field via `progression.js getLang/setLang`;
 proper nouns** (tower names Laser/Pulse/Slow/Railgun/Rocket, Indy-7,
 Bratwurst-XL, "GEOMETRIC TD").
 
-**Deployed build: `2026.08.30-7`.**
+**Deployed build: `2026.08.30-8`.**
+
+### Shared gear visuals — roguelike reuse (`2026.08.30-8`)
+The run gear screens now REUSE the campaign's gear presentation instead of their
+own weaker text-only copies. **Read `ROGUELIKE_GEAR_REUSE_PLAN.md`** for the
+3-phase "AS BUILT" record. New leaf module **`src/gear-visuals.js`** holds the
+pure, DOM-string gear primitives extracted from `ui.js` (slot glyph, rarity
+colors/classes, slot/rarity labels, affix/mod helpers, item title/stat/unique,
+`escapeHtml`, `modFaultBadgesHtml`) PLUS three shared builders: `slotGlyph`,
+`gearTileHtml(item, opts)` / `gearTileEmptyHtml(slot, opts)` (the `.gear-tile`
+markup — `opts.asButton:false` for non-interactive run tiles, `opts.dataAttrs`
+for caller-owned attributes), and `compareRowsHtml(current, incoming)` (the pure
+stat/mod/unique delta rows). **Import graph stays one-directional:** both `ui.js`
+and `roguelike-ui.js` import `gear-visuals.js`; neither imports the other. `ui.js`
+deleted its private copies (`openCompareSheet` + `renderTowersTab` call the shared
+builders). `roguelike-ui.js` deleted its duplicate helpers, its reward/shop/roster
+cards now show the glyph + rarity tile + **mod power values**, and equipping a run
+reward into an OCCUPIED slot opens an in-`#rogue-body` compare (shared
+`compareRowsHtml`, EQUIP NEW / KEEP CURRENT) — the campaign's compare-vs-equipped
+behavior brought into the run; empty slots equip directly. Cannot reuse `ui.js`
+`openCompareSheet`'s overlay directly (its `#gear-sheet-overlay` is z-index 5,
+below `#rogue-overlay`'s 42). **New `t("rogue.gear.compare|equipNew|keepCurrent")`
+strings still need French in `src/lang/fr.js` (deferred TODO).**
 
 ### Roguelike mode (`2026.08.29-16`..`2026.08.30-7`) — DEBUG-gated
 A run-based gauntlet layered on the engine. **Behind Settings → DEBUG MODE**

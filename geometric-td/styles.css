@@ -1804,6 +1804,10 @@ html[data-lang="fr"] #story-lang-toggle .lang-fr {
   flex-direction: column;
   gap: 8px;
 }
+.rogue-item-summary { display: flex; align-items: flex-start; gap: 10px; min-width: 0; }
+.rogue-item-icon { width: 58px; flex: 0 0 58px; }
+.rogue-item-icon .gear-tile { width: 100%; cursor: default; }
+.rogue-item-copy { flex: 1; min-width: 0; }
 .rogue-item-head {
   display: flex;
   justify-content: space-between;
@@ -1820,6 +1824,12 @@ html[data-lang="fr"] #story-lang-toggle .lang-fr {
 .rogue-item-targets { display: flex; flex-direction: column; gap: 6px; }
 .rogue-target-btn { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px; }
 .rogue-target-sub { font-size: 9px; opacity: 0.75; letter-spacing: .5px; }
+
+/* Occupied-slot gear confirmation: the global .cmp-* rules provide the grid. */
+.rogue-compare { display: flex; flex-direction: column; gap: 8px; width: 100%; min-width: 0; overflow-x: hidden; }
+.rogue-compare .cmp-cell, .rogue-compare .cmp-label { min-width: 0; overflow-wrap: anywhere; }
+.rogue-compare-actions { display: flex; gap: 8px; margin-top: 6px; }
+.rogue-compare-actions .big-button { flex: 1 1 0; min-width: 0; }
 
 /* Shop */
 .rogue-roster-tabs { display: flex; gap: 8px; }
@@ -1994,9 +2004,12 @@ html[data-lang="fr"] #story-lang-toggle .lang-fr {
   min-width: 0;
 }
 .rogue-roster-slot-empty { opacity: .5; }
+.rogue-roster-slot-main { display: flex; align-items: flex-start; gap: 6px; min-width: 0; }
+.rogue-roster-item-icon { width: 40px; flex-basis: 40px; }
+.rogue-roster-slot-copy { display: flex; flex: 1; flex-direction: column; gap: 2px; min-width: 0; }
 .rogue-roster-slot-name { font-size: 9px; letter-spacing: 1px; }
 .rogue-roster-slot-rarity { font-size: 8.5px; letter-spacing: 1px; color: var(--text-dim); }
-.rogue-roster-slot-empty-label { font-size: 11px; color: var(--text-dim); }
+.rogue-roster-slot-empty-label { align-self: center; font-size: 11px; color: var(--text-dim); }
 .rogue-roster-affixes { display: flex; flex-direction: column; gap: 1px; margin-top: 2px; }
 .rogue-roster-affix { font-size: 9.5px; color: var(--text); overflow-wrap: anywhere; }
 .rogue-roster-mod { font-size: 9.5px; color: var(--neon-magenta); overflow-wrap: anywhere; }

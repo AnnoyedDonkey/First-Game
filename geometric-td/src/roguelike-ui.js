@@ -29,9 +29,13 @@
 // ============================================================
 
 import * as roguelike from "./roguelike.js";
-import { ROGUELIKE, TOWERS, LOOT, TOWER_UPGRADES } from "./config.js";
-import { getMod } from "./affixes.js";
+import { ROGUELIKE, TOWERS, TOWER_UPGRADES } from "./config.js";
 import { t, tf } from "./i18n.js";
+import {
+  RARITY_COLOR, slotLabel, rarityLabel, affixDef, affixLabel,
+  modName, modPowerText, slotGlyph, gearTileHtml, gearTileEmptyHtml,
+  escapeHtml, itemTitle, compareRowsHtml,
+} from "./gear-visuals.js";
 
 const el = {
   overlay: document.getElementById("rogue-overlay"),
@@ -52,11 +56,6 @@ const KIND_ICON = {
   normal: "⚔", elite: "☠", farm: "⚡", gear: "🎁",
   shop: "🛒", event: "❓", recovery: "🔧", boss: "👑", upgrade: "🛠",
 };
-const RARITY_COLOR = {
-  common: "#b7c0d5", enhanced: "#4affa1", rare: "#35e0ff",
-  prismatic: "#ff3fd4", singularity: "#ffe24a",
-};
-const SLOT_LABEL = { optic: "OPTIC", emitter: "EMITTER", capacitor: "CAPACITOR", frame: "FRAME" };
 
 // Set once from main.js (setBattleLauncher-style wiring) — returning to the
 // main menu needs main.js's `startLevel` (via its own goToMainMenu), which
@@ -74,21 +73,6 @@ let abandonArmed = false;
 let abandonTimer = null;
 
 // ---------- Small local render helpers (no ui.js import — see header) ----------
-
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-  })[c]);
-}
-function rarityLabel(r) { return t(`rarity.${r}`, r.toUpperCase()); }
-function slotLabel(s) { return t(`slot.${s}`, SLOT_LABEL[s] || s.toUpperCase()); }
-function modLabel(id) { return getMod(id)?.name || id; }
-function affixDef(slot, stat) {
-  return (LOOT.gen.slots[slot] || []).find((a) => a.stat === stat) || null;
-}
-function affixLabel(def, stat) {
-  return ((def && def.name) || stat).replace(/ %| \+N$/, "");
-}
 
 // ---------- Chrome toggles ----------
 
@@ -246,20 +230,27 @@ function itemBodyHtml(item) {
     ? tf("rogue.item.lock", "{tower} ONLY", { tower: (TOWERS[item.towerType]?.name || item.towerType).toUpperCase() })
     : t("rogue.item.universal", "UNIVERSAL");
   const affixLines = (item.affixes || []).slice(0, 3).map((a) => {
-    const def = affixDef(item.slot, a.stat);
+    const def = affixDef(a.stat);
     const suffix = def && def.int ? "" : "%";
     return `<div class="rogue-item-affix">${escapeHtml(affixLabel(def, a.stat))} +${a.value}${suffix}</div>`;
   }).join("");
   const modLines = (item.mods || []).map((m) =>
-    `<div class="rogue-item-mod">${escapeHtml(modLabel(m.id))}</div>`
+    `<div class="rogue-item-mod">${escapeHtml(modName(m.id))} ${escapeHtml(modPowerText(m.id, m.power))}</div>`
   ).join("");
   return `
-    <div class="rogue-item-head" style="color:${color};border-color:${color}">
-      <span class="rogue-item-rarity">${escapeHtml(rarityLabel(item.rarity))}</span>
-      <span class="rogue-item-slot">${escapeHtml(slotLabel(item.slot))}</span>
+    <div class="rogue-item-summary">
+      <div class="rogue-item-icon">
+        ${gearTileHtml(item, { asButton: false, dataAttrs: `role="img" aria-label="${escapeHtml(itemTitle(item))}"` })}
+      </div>
+      <div class="rogue-item-copy">
+        <div class="rogue-item-head" style="color:${color};border-color:${color}">
+          <span class="rogue-item-rarity">${escapeHtml(rarityLabel(item.rarity))}</span>
+          <span class="rogue-item-slot">${escapeHtml(slotLabel(item.slot))}</span>
+        </div>
+        <div class="rogue-item-lock">${escapeHtml(lock)}</div>
+        <div class="rogue-item-affixes">${affixLines}${modLines}</div>
+      </div>
     </div>
-    <div class="rogue-item-lock">${escapeHtml(lock)}</div>
-    <div class="rogue-item-affixes">${affixLines}${modLines}</div>
   `;
 }
 
@@ -352,23 +343,34 @@ function rosterGearSlotHtml(gear) {
     const item = gear && gear[slot];
     if (!item) {
       return `<div class="rogue-roster-slot rogue-roster-slot-empty">
-        <span class="rogue-roster-slot-name">${escapeHtml(slotLabel(slot))}</span>
-        <span class="rogue-roster-slot-empty-label">${t("rogue.roster.empty", "—")}</span>
+        <div class="rogue-roster-slot-main">
+          <div class="rogue-item-icon rogue-roster-item-icon">
+            ${gearTileEmptyHtml(slot, { asButton: false })}
+          </div>
+          <span class="rogue-roster-slot-empty-label">${t("rogue.roster.empty", "—")}</span>
+        </div>
       </div>`;
     }
     const color = RARITY_COLOR[item.rarity] || RARITY_COLOR.common;
     const affixLines = (item.affixes || []).slice(0, 3).map((a) => {
-      const def = affixDef(item.slot, a.stat);
+      const def = affixDef(a.stat);
       const suffix = def && def.int ? "" : "%";
       return `<div class="rogue-roster-affix">${escapeHtml(affixLabel(def, a.stat))} +${a.value}${suffix}</div>`;
     }).join("");
     const modLines = (item.mods || []).map((m) =>
-      `<div class="rogue-roster-mod">${escapeHtml(modLabel(m.id))}</div>`
+      `<div class="rogue-roster-mod">${escapeHtml(modName(m.id))} ${escapeHtml(modPowerText(m.id, m.power))}</div>`
     ).join("");
     return `<div class="rogue-roster-slot" style="border-color:${color}">
-      <span class="rogue-roster-slot-name" style="color:${color}">${escapeHtml(slotLabel(slot))}</span>
-      <span class="rogue-roster-slot-rarity">${escapeHtml(rarityLabel(item.rarity))}</span>
-      <div class="rogue-roster-affixes">${affixLines}${modLines}</div>
+      <div class="rogue-roster-slot-main">
+        <div class="rogue-item-icon rogue-roster-item-icon">
+          ${gearTileHtml(item, { asButton: false, dataAttrs: `role="img" aria-label="${escapeHtml(itemTitle(item))}"` })}
+        </div>
+        <div class="rogue-roster-slot-copy">
+          <span class="rogue-roster-slot-name" style="color:${color}">${escapeHtml(slotLabel(slot))}</span>
+          <span class="rogue-roster-slot-rarity">${escapeHtml(rarityLabel(item.rarity))}</span>
+          <div class="rogue-roster-affixes">${affixLines}${modLines}</div>
+        </div>
+      </div>
     </div>`;
   }).join("");
 }
@@ -489,6 +491,40 @@ function rosterTargetButtons(item, itemIndex, run) {
   }).join("")}</div>`;
 }
 
+function renderGearCompare(current, incoming, itemIndex, rosterIndex, items) {
+  const run = roguelike.getRun();
+  if (!run) { renderRunStart(); return; }
+  updateHudStrip(run);
+  const slot = incoming.slot;
+  const curColor = RARITY_COLOR[current.rarity] || RARITY_COLOR.common;
+  const newColor = RARITY_COLOR[incoming.rarity] || RARITY_COLOR.common;
+
+  el.body.innerHTML = `
+    <div class="rogue-compare">
+      <div class="gear-sheet-title">${slotGlyph(slot, "#8fa0c8")} ${t("rogue.gear.compare", "COMPARE")} &middot; ${escapeHtml(slotLabel(slot))}</div>
+      <div class="cmp-head">
+        <span class="cmp-label"></span>
+        <span class="cmp-cell" style="color:${curColor}">${escapeHtml(itemTitle(current))}
+          <small>${escapeHtml(rarityLabel(current.rarity))}</small>
+        </span>
+        <span class="cmp-cell" style="color:${newColor}">${escapeHtml(itemTitle(incoming))}
+          <small>${escapeHtml(rarityLabel(incoming.rarity))}</small>
+        </span>
+      </div>
+      ${compareRowsHtml(current, incoming)}
+      <div class="rogue-compare-actions">
+        <button class="big-button" type="button" id="rogue-compare-equip">${t("rogue.gear.equipNew", "EQUIP NEW")}</button>
+        <button class="big-button rogue-secondary" type="button" id="rogue-compare-keep">${t("rogue.gear.keepCurrent", "KEEP CURRENT")}</button>
+      </div>
+    </div>
+  `;
+  document.getElementById("rogue-compare-equip").addEventListener("click", () => {
+    roguelike.pickGearReward(itemIndex, rosterIndex);
+    renderNodeMap();
+  });
+  document.getElementById("rogue-compare-keep").addEventListener("click", () => renderGearReward(items));
+}
+
 function renderGearReward(items) {
   const run = roguelike.getRun();
   updateHudStrip(run);
@@ -508,8 +544,13 @@ function renderGearReward(items) {
   el.body.querySelectorAll("[data-equip]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const [i, idx] = btn.dataset.equip.split(":").map(Number);
-      roguelike.pickGearReward(i, idx);
-      renderNodeMap();
+      const item = items[i];
+      const current = run.roster[idx]?.gear?.[item?.slot];
+      if (current && item) renderGearCompare(current, item, i, idx, items);
+      else {
+        roguelike.pickGearReward(i, idx);
+        renderNodeMap();
+      }
     });
   });
   document.getElementById("rogue-gear-skip").addEventListener("click", () => {
